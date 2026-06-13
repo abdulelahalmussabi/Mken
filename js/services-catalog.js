@@ -1145,4 +1145,37 @@ window.MkenServicesCatalog = [
     category: 'تطوير',
     svg: '<path d="M10 14h4l2 16h16l2-16h4" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="36" r="3" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="36" r="3" stroke="currentColor" stroke-width="2"/>',
   },
+  {
+    id: 'hockey-training',
+    activityId: 'hockey',
+    icon: '🏑',
+    title: 'حصة تدريب جماعية',
+    shortTitle: 'تدريب جماعي',
+    description: 'حصص تدريب جماعية مع الكوتش لتطوير مهارات اللعب الجماعي واللياقة.',
+    features: ['تدريب على التكتيك والمهارات', 'تجهيز اللياقة البدنية للهوكي', 'تحت إشراف كوتش معتمد'],
+    category: 'هوكي',
+    svg: '<circle cx="24" cy="24" r="10" stroke="currentColor" stroke-width="2"/><path d="M24 14v20M14 24h20" stroke="currentColor" stroke-width="2"/>'
+  },
+  {
+    id: 'hockey-match',
+    activityId: 'hockey',
+    icon: '🏆',
+    title: 'مباراة ودية / تقسيم',
+    shortTitle: 'مباراة ودية',
+    description: 'مباريات ودية وتقسيمات لتطبيق المهارات التكتيكية في الملعب.',
+    features: ['تنظيم المباريات والفرق', 'تحكيم وإشراف فني', 'جوائز تشجيعية'],
+    category: 'هوكي',
+    svg: '<path d="M12 12h24v12H12zm0 12c0 6 5 10 12 10s12-4 12-10" stroke="currentColor" stroke-width="2"/>'
+  },
+  {
+    id: 'hockey-private-coaching',
+    activityId: 'hockey',
+    icon: '👤',
+    title: 'تدريب شخصي خاص (PT)',
+    shortTitle: 'تدريب خاص',
+    description: 'حصة تدريب خاصة 1-on-1 لتطوير المهارات الفردية بدقة مع الكوتش.',
+    features: ['خطة تدريب فردية مخصصة', 'تركيز على المهارات الفردية', 'مرونة عالية في تحديد المواعيد'],
+    category: 'هوكي',
+    svg: '<path d="M24 20a5 5 0 100-10 5 5 0 000 10zm-10 14c0-5 4-8 10-8s10 3 10 8" stroke="currentColor" stroke-width="2"/>'
+  }
 ];

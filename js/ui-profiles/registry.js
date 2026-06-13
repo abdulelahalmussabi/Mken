@@ -55,6 +55,7 @@ window.MkenContentRegistry = {
   travel: function () { return window.MkenContentTravel; },
   events: function () { return window.MkenContentEvents; },
   commerce: function () { return window.MkenContentCommerce; },
+  hockey: function () { return window.MkenContentHockey; },
 };
 
 window.MkenUiProfile = {

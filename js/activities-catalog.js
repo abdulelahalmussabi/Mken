@@ -362,4 +362,16 @@ window.MkenActivitiesCatalog = [
       requiresAddress: true,
     },
   },
+  {
+    id: 'hockey',
+    icon: '🏑',
+    title: 'النشاط الرياضي للهوكي',
+    shortTitle: 'الهوكي',
+    tagline: 'تمارين وتدريب الهوكي',
+    description: 'بوابة تدريب الهوكي وإدارة التمارين والتصويت على المواعيد والمواقع.',
+    uiProfile: 'appointment-based',
+    defaultTheme: 'midnight',
+    serviceIds: ['hockey-training', 'hockey-match', 'hockey-private-coaching'],
+    booking: { type: 'appointment', requiresAddress: false, slotDuration: 90, ctaLabel: 'بوابة التمارين' },
+  }
 ];

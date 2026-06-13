@@ -87,6 +87,7 @@
       'veterinary', 'restaurant', 'consulting', 'photography', 'tutoring',
       'hotels', 'travel', 'events', 'commerce',
       'maintenance', 'tech-digital', 'it-support', 'cleaning', 'renovation', 'security', 'training',
+      'hockey',
     ],
     enabled: [
       'mens-haircut', 'beard-grooming',
@@ -105,6 +106,7 @@
       'ac', 'web-design', 'whatsapp-crm',
       'computer', 'cleaning', 'painting',
       'cameras', 'computer-basics',
+      'hockey-training', 'hockey-match', 'hockey-private-coaching',
     ],
     featuredActivity: 'barber-salon',
     featured: 'mens-haircut',
