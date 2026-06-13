@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط التشطيب والديكور
  */
-window.RonaqContentRenovation = {
+window.MkenContentRenovation = {
   hero: {
     titleAccent: 'تشطيب وديكور احترافي',
     desc: 'في {brand} نحوّل مساحتك — دهانات عصرية، نجارة مخصصة، بلاط وديكور — فريق تشطيب محترف بأسعار واضحة.',

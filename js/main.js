@@ -35,7 +35,7 @@
     { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
   );
 
-  window.RonaqObserve = function (el) {
+  window.MkenObserve = function (el) {
     observer.observe(el);
   };
 

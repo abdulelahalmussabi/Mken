@@ -2,7 +2,7 @@
  * كتالوج جميع الخدمات — مرتبطة بأنشطة رئيسية عبر activityId
  * الأنشطة: maintenance | tech-digital | it-support | cleaning | renovation | security | training | barber-salon | car-care | healthcare
  */
-window.RonaqServicesCatalog = [
+window.MkenServicesCatalog = [
   /* ─── التشغيل والصيانة ─── */
   {
     id: 'ac',

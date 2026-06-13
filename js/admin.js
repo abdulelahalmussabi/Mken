@@ -4,9 +4,9 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var contentAdmin = window.RonaqAdminContent;
-  var socialCatalog = (window.RonaqSocialCatalog && window.RonaqSocialCatalog.PLATFORMS) || [];
+  var store = window.MkenServicesStore;
+  var contentAdmin = window.MkenAdminContent;
+  var socialCatalog = (window.MkenSocialCatalog && window.MkenSocialCatalog.PLATFORMS) || [];
 
   var loginView = document.getElementById('loginView');
   var adminView = document.getElementById('adminView');
@@ -57,7 +57,7 @@
     setTimeout(function () { toast.hidden = true; }, 4000);
   }
 
-  window.RonaqAdminToast = showToast;
+  window.MkenAdminToast = showToast;
 
   function showAdmin() {
     loginView.hidden = true;
@@ -83,20 +83,23 @@
       var actId = (contentAdmin && contentAdmin.getCurrentActivityId()) || cfg.featuredActivity || cfg.enabledActivities[0];
       if (contentAdmin) contentAdmin.renderEditor(actId);
     }
-    if (tabId === 'appointments' && window.RonaqAdminBooking) {
-      window.RonaqAdminBooking.refresh();
+    if (tabId === 'appointments' && window.MkenAdminBooking) {
+      window.MkenAdminBooking.refresh();
     }
-    if (tabId === 'orders' && window.RonaqAdminOrders) {
-      window.RonaqAdminOrders.refresh();
+    if (tabId === 'orders' && window.MkenAdminOrders) {
+      window.MkenAdminOrders.refresh();
     }
-    if (tabId === 'staff' && window.RonaqAdminStaff) {
-      window.RonaqAdminStaff.refresh();
+    if (tabId === 'staff' && window.MkenAdminStaff) {
+      window.MkenAdminStaff.refresh();
     }
-    if (tabId === 'developer' && window.RonaqAdminDeveloper) {
-      window.RonaqAdminDeveloper.refresh();
+    if (tabId === 'whatsapp-logs' && window.MkenAdminWhatsappLogs) {
+      window.MkenAdminWhatsappLogs.refresh();
     }
-    if (tabId === 'saas' && window.RonaqAdminDeveloper) {
-      window.RonaqAdminDeveloper.refresh();
+    if (tabId === 'developer' && window.MkenAdminDeveloper) {
+      window.MkenAdminDeveloper.refresh();
+    }
+    if (tabId === 'saas' && window.MkenAdminDeveloper) {
+      window.MkenAdminDeveloper.refresh();
     }
   }
 
@@ -195,7 +198,7 @@
       tagline: brandTaglineInput ? brandTaglineInput.value.trim() : config.brand.tagline,
       logo: pendingBrandLogoTouched ? (pendingBrandLogo || '') : config.brand.logo,
     });
-    if (window.RonaqBrandLogo) window.RonaqBrandLogo.apply(brand);
+    if (window.MkenBrandLogo) window.MkenBrandLogo.apply(brand);
   }
 
   function renderBrand(config) {
@@ -307,8 +310,8 @@
     if (cb) cb.checked = !!sb.enabled;
     if (urlInput) urlInput.value = sb.url || '';
     if (keyInput) keyInput.value = sb.key || '';
-    if (sqlArea && window.RonaqSupabaseDb) {
-      sqlArea.value = window.RonaqSupabaseDb.getInitSql();
+    if (sqlArea && window.MkenSupabaseDb) {
+      sqlArea.value = window.MkenSupabaseDb.getInitSql();
     }
   }
 
@@ -331,15 +334,27 @@
     var instInput = document.getElementById('whatsappApiInstanceId');
     var tokInput = document.getElementById('whatsappApiToken');
     var fromInput = document.getElementById('whatsappApiFromNumber');
+    var templateInput = document.getElementById('whatsappApiTemplateName');
+    var languageInput = document.getElementById('whatsappApiLanguageCode');
     var confirmCb = document.getElementById('whatsappSendConfirmation');
     var remindCb = document.getElementById('whatsappSendReminder');
 
     if (cb) cb.checked = !!wa.enabled;
     if (provSelect) provSelect.value = wa.provider || 'none';
     if (urlInput) urlInput.value = wa.url || '';
-    if (instInput) instInput.value = wa.provider === 'twilio' ? (wa.accountSid || '') : (wa.instanceId || '');
+    if (instInput) {
+      if (wa.provider === 'twilio') {
+        instInput.value = wa.accountSid || '';
+      } else if (wa.provider === 'whatsapp_business') {
+        instInput.value = wa.phoneNumberId || '';
+      } else {
+        instInput.value = wa.instanceId || '';
+      }
+    }
     if (tokInput) tokInput.value = wa.token || '';
     if (fromInput) fromInput.value = wa.fromNumber || '';
+    if (templateInput) templateInput.value = wa.templateName || '';
+    if (languageInput) languageInput.value = wa.languageCode || 'ar';
     if (confirmCb) confirmCb.checked = wa.sendConfirmation !== false;
     if (remindCb) remindCb.checked = wa.sendReminder !== false;
 
@@ -352,21 +367,37 @@
     var instBlock = document.getElementById('whatsappInstanceBlock');
     var tokBlock = document.getElementById('whatsappTokenBlock');
     var fromBlock = document.getElementById('whatsappFromBlock');
+    var templateBlock = document.getElementById('whatsappTemplateBlock');
+    var languageBlock = document.getElementById('whatsappLanguageBlock');
     var docsBlock = document.getElementById('whatsappCustomDocsBlock');
     var instLabel = document.querySelector('label[for="whatsappApiInstanceId"]');
     var tokLabel = document.querySelector('label[for="whatsappApiToken"]');
 
     if (urlBlock) urlBlock.hidden = provider !== 'custom';
-    if (instBlock) instBlock.hidden = (provider !== 'ultramsg' && provider !== 'twilio');
+    if (instBlock) instBlock.hidden = (provider !== 'ultramsg' && provider !== 'twilio' && provider !== 'whatsapp_business');
     if (tokBlock) tokBlock.hidden = (provider === 'none');
     if (fromBlock) fromBlock.hidden = provider !== 'twilio';
+    if (templateBlock) templateBlock.hidden = provider !== 'whatsapp_business';
+    if (languageBlock) languageBlock.hidden = provider !== 'whatsapp_business';
     if (docsBlock) docsBlock.hidden = provider !== 'custom';
 
     if (instLabel) {
-      instLabel.textContent = provider === 'twilio' ? 'معرف حساب Twilio (Account SID)' : 'معرف نسخة UltraMsg (Instance ID)';
+      if (provider === 'twilio') {
+        instLabel.textContent = 'معرف حساب Twilio (Account SID)';
+      } else if (provider === 'whatsapp_business') {
+        instLabel.textContent = 'معرف رقم الهاتف (Phone Number ID)';
+      } else {
+        instLabel.textContent = 'معرف نسخة UltraMsg (Instance ID)';
+      }
     }
     if (tokLabel) {
-      tokLabel.textContent = provider === 'custom' ? 'مفتاح التحقق للـ Webhook (Token)' : 'رمز المرور للربط (Token / Auth Token)';
+      if (provider === 'custom') {
+        tokLabel.textContent = 'مفتاح التحقق للـ Webhook (Token)';
+      } else if (provider === 'whatsapp_business') {
+        tokLabel.textContent = 'رمز الوصول الدائم (Permanent Access Token)';
+      } else {
+        tokLabel.textContent = 'رمز المرور للربط (Token / Auth Token)';
+      }
     }
   }
 
@@ -413,6 +444,10 @@
       if (!fields.accountSid) return 'يرجى إدخال Account SID لـ Twilio';
       if (!fields.token) return 'يرجى إدخال Auth Token لـ Twilio';
       if (!fields.fromNumber) return 'يرجى إدخال رقم المرسل لـ Twilio';
+    }
+    if (provider === 'whatsapp_business') {
+      if (!fields.instanceId) return 'يرجى إدخال معرف رقم الهاتف (Phone Number ID)';
+      if (!fields.token) return 'يرجى إدخال رمز الوصول الدائم (Permanent Access Token)';
     }
     return '';
   }
@@ -523,7 +558,7 @@
   }
 
   function renderPanel() {
-    window.RonaqAdminPanelReload = renderPanel;
+    window.MkenAdminPanelReload = renderPanel;
     var config = store.loadConfig();
     renderBrand(config);
     renderSocial(config);
@@ -637,8 +672,11 @@
         url: waUrl ? waUrl.value.trim() : (current.whatsappApi && current.whatsappApi.url),
         instanceId: providerVal === 'ultramsg' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.instanceId),
         accountSid: providerVal === 'twilio' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.accountSid),
+        phoneNumberId: providerVal === 'whatsapp_business' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.phoneNumberId),
         token: waToken ? waToken.value.trim() : (current.whatsappApi && current.whatsappApi.token),
         fromNumber: waFrom ? waFrom.value.trim() : (current.whatsappApi && current.whatsappApi.fromNumber),
+        templateName: document.getElementById('whatsappApiTemplateName') ? document.getElementById('whatsappApiTemplateName').value.trim() : (current.whatsappApi && current.whatsappApi.templateName),
+        languageCode: document.getElementById('whatsappApiLanguageCode') ? document.getElementById('whatsappApiLanguageCode').value.trim() : (current.whatsappApi && current.whatsappApi.languageCode),
         sendConfirmation: waConfirm ? waConfirm.checked : (current.whatsappApi && current.whatsappApi.sendConfirmation),
         sendReminder: waRemind ? waRemind.checked : (current.whatsappApi && current.whatsappApi.sendReminder),
       },
@@ -760,7 +798,7 @@
         // SAAS Login via Supabase Auth
         var email = loginEmailInput ? loginEmailInput.value.trim() : '';
         var password = loginPasswordInput ? loginPasswordInput.value : '';
-        var db = window.RonaqSupabaseDb;
+        var db = window.MkenSupabaseDb;
         
         if (!db || !db.isConfigured()) {
           showToast('يرجى تهيئة وتفعيل المزامنة السحابية (Supabase) أولاً في تبويب الإعدادات.', 'error');
@@ -785,7 +823,7 @@
             
             // Fetch the tenant slug associated with this owner_id
             return client
-              .from('ronaq_saas_clients')
+              .from('mken_saas_clients')
               .select('tenant_slug')
               .eq('owner_id', authRes.data.user.id)
               .maybeSingle()
@@ -828,7 +866,7 @@
       var password = document.getElementById('regPassword').value;
       var phone = document.getElementById('regPhone').value.trim();
 
-      var db = window.RonaqSupabaseDb;
+      var db = window.MkenSupabaseDb;
       if (!db || !db.isConfigured()) {
         showToast('يرجى ربط قاعدة بيانات Supabase أولاً للتمكن من تسجيل مستأجر جديد سحابياً.', 'error');
         return;
@@ -849,7 +887,7 @@
 
       // Check if tenant slug is already taken
       client
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .select('id')
         .eq('tenant_slug', slug)
         .maybeSingle()
@@ -879,7 +917,7 @@
           });
 
           return client
-            .from('ronaq_saas_clients')
+            .from('mken_saas_clients')
             .insert({
               tenant_slug: slug,
               owner_id: user.id,
@@ -916,7 +954,7 @@
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function () {
-      var db = window.RonaqSupabaseDb;
+      var db = window.MkenSupabaseDb;
       if (db && db.isConfigured()) {
         var client = db.getClient();
         if (client) {
@@ -1010,8 +1048,8 @@
       var cfg = collectConfig();
       store.saveConfig(cfg);
       
-      if (window.RonaqSupabaseDb) {
-        window.RonaqSupabaseDb.reinit(cfg.supabase.url, cfg.supabase.key, cfg.supabase.enabled);
+      if (window.MkenSupabaseDb) {
+        window.MkenSupabaseDb.reinit(cfg.supabase.url, cfg.supabase.key, cfg.supabase.enabled);
       }
       
       showToast('تم حفظ إعدادات الربط السحابي ومزامنتها');
@@ -1034,8 +1072,8 @@
       supabaseTestBtn.disabled = true;
       supabaseTestBtn.textContent = 'جاري الفحص...';
       
-      if (window.RonaqSupabaseDb) {
-        window.RonaqSupabaseDb.testConnection(url, key)
+      if (window.MkenSupabaseDb) {
+        window.MkenSupabaseDb.testConnection(url, key)
           .then(function (res) {
             supabaseTestBtn.disabled = false;
             supabaseTestBtn.textContent = 'اختبار الاتصال';
@@ -1163,15 +1201,18 @@
           url: urlInput ? urlInput.value.trim() : '',
           instanceId: provider === 'ultramsg' && instInput ? instInput.value.trim() : '',
           accountSid: provider === 'twilio' && instInput ? instInput.value.trim() : '',
+          phoneNumberId: provider === 'whatsapp_business' && instInput ? instInput.value.trim() : '',
           token: tokInput ? tokInput.value.trim() : '',
           fromNumber: fromInput ? fromInput.value.trim() : '',
+          templateName: document.getElementById('whatsappApiTemplateName') ? document.getElementById('whatsappApiTemplateName').value.trim() : '',
+          languageCode: document.getElementById('whatsappApiLanguageCode') ? document.getElementById('whatsappApiLanguageCode').value.trim() : 'ar'
         }
       };
 
       var testMsg = 'رسالة تجريبية من منصة مكِّن — تم ربط أتمتة الواتساب بنجاح! 🚀';
       
-      if (window.RonaqWhatsappAutomation) {
-        window.RonaqWhatsappAutomation.sendMessage(ownerPhone, testMsg, 'test', null, testConfig)
+      if (window.MkenWhatsappAutomation) {
+        window.MkenWhatsappAutomation.sendMessage(ownerPhone, testMsg, 'test', null, testConfig)
           .then(function (res) {
             whatsappTestBtn.disabled = false;
             whatsappTestBtn.textContent = 'اختبار الإرسال التجريبي';
@@ -1197,8 +1238,8 @@
       if (document.hidden) return;
       var config = store.loadConfig();
       if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendReminder) {
-        if (window.RonaqWhatsappAutomation) {
-          window.RonaqWhatsappAutomation.processQueue(config);
+        if (window.MkenWhatsappAutomation) {
+          window.MkenWhatsappAutomation.processQueue(config);
         }
       }
     }, 60000);

@@ -1,5 +1,5 @@
 /** محتوى — سفر وسياحة */
-window.RonaqContentTravel = {
+window.MkenContentTravel = {
   hero: {
     titleAccent: 'رحلتك تبدأ هنا',
     desc: 'في {brand} نخطّط رحلاتك — عمرة، سياحة، وشهر عسل — باقات شاملة وأسعار شفافة.',

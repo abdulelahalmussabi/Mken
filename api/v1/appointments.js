@@ -23,9 +23,9 @@ async function authenticateApiKey(req, res) {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
-  // Find key in ronaq_api_keys
+  // Find key in mken_api_keys
   const { data, error } = await supabase
-    .from('ronaq_api_keys')
+    .from('mken_api_keys')
     .select('tenant_slug, expires_at')
     .eq('api_key', apiKey)
     .maybeSingle();
@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET') {
       const { id, phone, date } = req.query;
       let query = supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .select('*')
         .eq('tenant_slug', tenantSlug);
 
@@ -163,7 +163,7 @@ module.exports = async function handler(req, res) {
       };
 
       const { data, error } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .insert(newRow)
         .select()
         .single();
@@ -182,7 +182,7 @@ module.exports = async function handler(req, res) {
 
       // Check existence and tenant ownership
       const { data: existing, error: findError } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .select('id')
         .eq('id', appointmentId)
         .eq('tenant_slug', tenantSlug)
@@ -224,7 +224,7 @@ module.exports = async function handler(req, res) {
       mapField('staffId', 'staff_id');
 
       const { data, error } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .update(updates)
         .eq('id', appointmentId)
         .eq('tenant_slug', tenantSlug)
@@ -245,7 +245,7 @@ module.exports = async function handler(req, res) {
 
       // Check existence and tenant ownership
       const { data: existing, error: findError } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .select('id')
         .eq('id', appointmentId)
         .eq('tenant_slug', tenantSlug)
@@ -257,7 +257,7 @@ module.exports = async function handler(req, res) {
       }
 
       const { error } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .delete()
         .eq('id', appointmentId)
         .eq('tenant_slug', tenantSlug);

@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط النظافة والتعقيم
  */
-window.RonaqContentCleaning = {
+window.MkenContentCleaning = {
   hero: {
     titleAccent: 'نظافة احترافية وتعقيم',
     desc: 'في {brand} نوفر فرق نظافة مدربة — تنظيف عميق للمنازل والفلل والمكاتب، تعقيم شامل، وغسيل سجاد بمعدات احترافية.',

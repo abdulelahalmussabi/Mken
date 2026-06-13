@@ -167,7 +167,7 @@ async function checkTenantSubscriptions(supabase, masterConfig) {
   console.log('--- Checking SAAS Tenant Subscriptions ---');
   
   const { data: tenants, error: tenantsError } = await supabase
-    .from('ronaq_saas_clients')
+    .from('mken_saas_clients')
     .select('*');
 
   if (tenantsError) {
@@ -212,7 +212,7 @@ async function checkTenantSubscriptions(supabase, masterConfig) {
       };
 
       const { error: updateError } = await supabase
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .update({
           subscription_status: 'expired',
           config_data: expiredConfig,
@@ -256,7 +256,7 @@ async function checkTenantSubscriptions(supabase, masterConfig) {
           sentReminders.push(reminderDays);
           
           await supabase
-            .from('ronaq_saas_clients')
+            .from('mken_saas_clients')
             .update({
               reminders_sent: sentReminders,
               updated_at: new Date().toISOString()
@@ -278,7 +278,7 @@ async function run() {
 
   // 1. Get master config from Supabase
   let { data: defaultTenant, error: configError } = await supabase
-    .from('ronaq_saas_clients')
+    .from('mken_saas_clients')
     .select('config_data')
     .eq('tenant_slug', 'default')
     .maybeSingle();
@@ -287,7 +287,7 @@ async function run() {
   if (configError || !defaultTenant) {
     // Try fallback to old table
     const { data: oldConfig, error: oldConfigError } = await supabase
-      .from('ronaq_config')
+      .from('mken_config')
       .select('config_data')
       .eq('id', 1)
       .maybeSingle();
@@ -306,7 +306,7 @@ async function run() {
 
   // 3. Get active appointments across all tenants
   const { data: appointments, error: aptError } = await supabase
-    .from('ronaq_appointments')
+    .from('mken_appointments')
     .select('*')
     .eq('status', 'confirmed');
 
@@ -331,7 +331,7 @@ async function run() {
     let tenantConfig = tenantConfigs.get(tenantSlug);
     if (!tenantConfig) {
       const { data: row } = await supabase
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .select('config_data')
         .eq('tenant_slug', tenantSlug)
         .maybeSingle();
@@ -404,7 +404,7 @@ async function run() {
           // Update DB
           sent.push(hours);
           const { error: updateError } = await supabase
-            .from('ronaq_appointments')
+            .from('mken_appointments')
             .update({ reminders_sent: sent, updated_at: new Date().toISOString() })
             .eq('id', apt.id);
 

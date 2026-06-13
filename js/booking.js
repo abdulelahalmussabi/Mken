@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var bookingStore = window.RonaqBookingStore;
+  var store = window.MkenServicesStore;
+  var bookingStore = window.MkenBookingStore;
   if (!store || !bookingStore) return;
 
   var config, booking, enabled, appointments, activeActivity, activeActivityId;
@@ -74,7 +74,7 @@
     document.querySelectorAll('[data-brand="tagline"]').forEach(function (el) {
       el.textContent = brand.tagline;
     });
-    if (window.RonaqBrandLogo) window.RonaqBrandLogo.apply(brand);
+    if (window.MkenBrandLogo) window.MkenBrandLogo.apply(brand);
     document.title = 'حجز موعد | ' + brand.name;
   }
 
@@ -320,7 +320,7 @@
 
   function renderSuccessCalendarLinks() {
     var container = document.getElementById('bookingCalendarLinks');
-    var cal = window.RonaqCalendarExport;
+    var cal = window.MkenCalendarExport;
     if (!container || !cal || !lastSubmittedAppointment) {
       if (container) container.innerHTML = '';
       return;
@@ -342,7 +342,7 @@
         cal.downloadIcs(
           lastSubmittedAppointment,
           meta,
-          'ronaq-' + lastSubmittedAppointment.date + '.ics'
+          'mken-' + lastSubmittedAppointment.date + '.ics'
         );
       });
     }
@@ -388,8 +388,8 @@
     var actTitle = req ? (req.activityTitle || '') : '';
 
     if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-      if (window.RonaqWhatsappAutomation) {
-        window.RonaqWhatsappAutomation.sendConfirmation(updatedApt, config)
+      if (window.MkenWhatsappAutomation) {
+        window.MkenWhatsappAutomation.sendConfirmation(updatedApt, config)
           .catch(function (err) {
             console.error('Failed to send auto-confirmation:', err);
           });

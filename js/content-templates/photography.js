@@ -1,5 +1,5 @@
 /** محتوى — تصوير */
-window.RonaqContentPhotography = {
+window.MkenContentPhotography = {
   hero: { titleAccent: 'لحظات تُخلّد', desc: 'في {brand} تصوير بورتريه، مناسبات، منتجات، وأفراح — احجز جلسة مع مصوّر محترف.', badgeSingle: 'جلسة تصوير', badgeMulti: 'جلسات تصوير' },
   stats: [{ num: '+300', label: 'جلسة' }, { num: '4K', label: 'جودة' }, { num: '5★', label: 'تقييم' }, { num: '7/7', label: 'حجز' }],
   features: [{ icon: '📷', text: 'بورتريه' }, { icon: '🎉', text: 'مناسبات' }, { icon: '📦', text: 'منتجات' }, { icon: '💍', text: 'أعراس' }, { icon: '🎬', text: 'فيديو' }],

@@ -18,7 +18,7 @@ if (!subsFile || !title || !body) {
 
 const publicKey = process.env.VAPID_PUBLIC_KEY;
 const privateKey = process.env.VAPID_PRIVATE_KEY;
-const subject = process.env.VAPID_SUBJECT || 'mailto:admin@ronaq.local';
+const subject = process.env.VAPID_SUBJECT || 'mailto:admin@mken.local';
 
 if (!publicKey || !privateKey) {
   console.error('Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY');

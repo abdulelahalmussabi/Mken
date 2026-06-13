@@ -1,5 +1,5 @@
 /** محتوى — ضيافة وفنادق */
-window.RonaqContentHotels = {
+window.MkenContentHotels = {
   hero: {
     titleAccent: 'إقامة مميزة',
     desc: 'في {brand} غرف وأجنحة بمعايير ضيافة عالية — احجز مسبقاً واستمتع بإقامة مريحة.',

@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط مغاسل وعناية السيارات
  */
-window.RonaqContentCarCare = {
+window.MkenContentCarCare = {
   hero: {
     titleAccent: 'سيارتك تلمع في دقائق',
     desc: 'في {brand} غسيل سريع وكامل، تلميع، وتنظيف داخلي — احجز موعدك وتجنّب الانتظار في المغسلة.',

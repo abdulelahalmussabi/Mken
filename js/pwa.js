@@ -72,7 +72,7 @@
   registerSw();
   bindInstallPrompt();
 
-  window.RonaqPwa = {
+  window.MkenPwa = {
     requestNotificationPermission: requestNotificationPermission,
     showLocalNotification: function (title, body, tag) {
       if (!('Notification' in window) || Notification.permission !== 'granted') return false;
@@ -80,7 +80,7 @@
         var n = new Notification(title, {
           body: body,
           icon: 'assets/logo.svg',
-          tag: tag || 'ronaq-local',
+          tag: tag || 'mken-local',
           dir: 'rtl',
           lang: 'ar',
         });

@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط التدريب والتأهيل
  */
-window.RonaqContentTraining = {
+window.MkenContentTraining = {
   hero: {
     titleAccent: 'طوّر مهاراتك الرقمية',
     desc: 'في {brand} نقدّم دورات عملية — أساسيات الحاسب، Office، الأمن السيبراني، وWhatsApp Business — حضورياً في جدة أو عن بُعد.',

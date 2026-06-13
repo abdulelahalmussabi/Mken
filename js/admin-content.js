@@ -383,7 +383,7 @@
     );
   }
 
-  window.RonaqAdminContent = {
+  window.MkenAdminContent = {
     init: function (storeRef) { store = storeRef; },
     renderEditor: renderEditor,
     renderServiceEditor: renderServiceEditor,

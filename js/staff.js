@@ -4,10 +4,10 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
+  var store = window.MkenServicesStore;
   if (!store) return;
 
-  var bookingStore = window.RonaqBookingStore;
+  var bookingStore = window.MkenBookingStore;
 
   var panelLogin = document.getElementById('panelLogin');
   var panelDashboard = document.getElementById('panelDashboard');
@@ -76,12 +76,12 @@
   // --- Session Management ---
   function saveSession(session) {
     currentSession = session;
-    localStorage.setItem('ronaq_mken_staff_session', JSON.stringify(session));
+    localStorage.setItem('mken_mken_staff_session', JSON.stringify(session));
   }
 
   function loadSession() {
     try {
-      var raw = localStorage.getItem('ronaq_mken_staff_session');
+      var raw = localStorage.getItem('mken_mken_staff_session');
       currentSession = raw ? JSON.parse(raw) : null;
     } catch (e) {
       currentSession = null;
@@ -91,7 +91,7 @@
 
   function clearSession() {
     currentSession = null;
-    localStorage.removeItem('ronaq_mken_staff_session');
+    localStorage.removeItem('mken_mken_staff_session');
   }
 
   function sha256(message) {
@@ -114,12 +114,12 @@
 
     if (!tenant || !phone || !pin) return;
 
-    if (!window.RonaqSupabaseDb || !window.RonaqSupabaseDb.isConfigured()) {
+    if (!window.MkenSupabaseDb || !window.MkenSupabaseDb.isConfigured()) {
       toast('Supabase غير مهيأ محلياً. لا يمكن التحقق من الفنيين.', 'error');
       return;
     }
 
-    var client = window.RonaqSupabaseDb.getClient();
+    var client = window.MkenSupabaseDb.getClient();
     
     sha256(pin).then(function (hashedPin) {
       return client
@@ -233,9 +233,9 @@
     })
     .then(function (result) {
       // Store registered credential ID locally
-      localStorage.setItem('ronaq_mken_staff_biometric_id', '1');
-      localStorage.setItem('ronaq_mken_staff_registered_phone', currentSession.phone);
-      localStorage.setItem('ronaq_mken_staff_registered_tenant', currentSession.tenantSlug);
+      localStorage.setItem('mken_mken_staff_biometric_id', '1');
+      localStorage.setItem('mken_mken_staff_registered_phone', currentSession.phone);
+      localStorage.setItem('mken_mken_staff_registered_tenant', currentSession.tenantSlug);
       
       toast('تم تفعيل الدخول بالبصمة/الوجه وحفظ الجهاز المعتمد بنجاح! 🚀');
     })
@@ -246,8 +246,8 @@
 
   // --- Biometric/WebAuthn Login (Assertion) ---
   function loginBiometrically() {
-    var phone = localStorage.getItem('ronaq_mken_staff_registered_phone') || '';
-    var tenant = localStorage.getItem('ronaq_mken_staff_registered_tenant') || '';
+    var phone = localStorage.getItem('mken_mken_staff_registered_phone') || '';
+    var tenant = localStorage.getItem('mken_mken_staff_registered_tenant') || '';
 
     if (!phone || !tenant) {
       toast('لا توجد بصمات مسجلة على هذا المتصفح سابقاً.', 'error');
@@ -320,7 +320,7 @@
     if (!currentSession) return;
     tasksList.innerHTML = '<div class="loading-spinner">جاري تحميل مهامك اليومية...</div>';
 
-    var client = window.RonaqSupabaseDb.getClient();
+    var client = window.MkenSupabaseDb.getClient();
     client
       .rpc('get_staff_appointments', { p_staff_id: currentSession.id })
       .order('date', { ascending: true })
@@ -349,8 +349,8 @@
 
     var html = list.map(function (task) {
       var svcTitle = task.service_id;
-      if (window.RonaqServicesStore) {
-        var svc = window.RonaqServicesStore.getServiceById(task.service_id);
+      if (window.MkenServicesStore) {
+        var svc = window.MkenServicesStore.getServiceById(task.service_id);
         if (svc) svcTitle = (svc.icon || '🛠️') + ' ' + svc.title;
       }
 
@@ -431,10 +431,10 @@
   }
 
   function updateTaskStatus(id, newStatus) {
-    if (!window.RonaqSupabaseDb || !window.RonaqSupabaseDb.isConfigured()) return;
+    if (!window.MkenSupabaseDb || !window.MkenSupabaseDb.isConfigured()) return;
     toast('جاري تحديث حالة المهمة سحابياً...', 'warning');
 
-    var client = window.RonaqSupabaseDb.getClient();
+    var client = window.MkenSupabaseDb.getClient();
     client
       .rpc('update_staff_appointment_status', {
         p_appointment_id: id,
@@ -477,7 +477,7 @@
     panelDashboard.hidden = true;
 
     // Check if we can show biometric login button
-    var hasBiometricId = localStorage.getItem('ronaq_mken_staff_biometric_id');
+    var hasBiometricId = localStorage.getItem('mken_mken_staff_biometric_id');
     var isWebAuthnSupported = !!window.publicKeyCredential;
     if (btnBiometricLogin) {
       btnBiometricLogin.style.display = (hasBiometricId && isWebAuthnSupported) ? 'flex' : 'none';
@@ -499,7 +499,7 @@
     // Force PWA config init
     store.init().then(function () {
       var session = loadSession();
-      if (session && window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+      if (session && window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
         showDashboard();
       } else {
         showLogin();

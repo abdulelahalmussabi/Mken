@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'ronaq_platform_appointments';
-  var PENDING_KEY = 'ronaq_platform_pending';
+  var STORAGE_KEY = 'mken_platform_appointments';
+  var PENDING_KEY = 'mken_platform_pending';
   var APPOINTMENTS_URL = 'data/appointments.json';
 
   var _data = null;
@@ -136,9 +136,9 @@
         return normalizeData(null);
       })
       .then(function (data) {
-        if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-          var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-          return window.RonaqSupabaseDb.fetchAppointments(tenantSlug)
+        if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+          var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+          return window.MkenSupabaseDb.fetchAppointments(tenantSlug)
             .then(function (dbApts) {
               _source = 'supabase';
               return {
@@ -180,9 +180,9 @@
     _source = 'local';
     localStorage.setItem(STORAGE_KEY, JSON.stringify(_data));
     
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-      _ready = window.RonaqSupabaseDb.saveAppointmentsBulk(_data.appointments, tenantSlug)
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+      _ready = window.MkenSupabaseDb.saveAppointmentsBulk(_data.appointments, tenantSlug)
         .then(function () {
           _source = 'supabase';
           return _data;
@@ -244,8 +244,8 @@
       return a.id !== id;
     });
     
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      window.RonaqSupabaseDb.deleteAppointment(id).catch(function (err) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      window.MkenSupabaseDb.deleteAppointment(id).catch(function (err) {
         console.error('Failed to delete appointment from Supabase', err);
       });
     }
@@ -391,9 +391,9 @@
       console.warn('Failed to save pending request to localStorage', e);
     }
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-      window.RonaqSupabaseDb.saveAppointment(apt, tenantSlug).catch(function (err) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+      window.MkenSupabaseDb.saveAppointment(apt, tenantSlug).catch(function (err) {
         console.error('Failed to save pending request to Supabase', err);
       });
     }
@@ -549,7 +549,7 @@
     return lines.join('\n');
   }
 
-  window.RonaqBookingStore = {
+  window.MkenBookingStore = {
     STORAGE_KEY: STORAGE_KEY,
     APPOINTMENTS_URL: APPOINTMENTS_URL,
     AR_MONTHS: AR_MONTHS,

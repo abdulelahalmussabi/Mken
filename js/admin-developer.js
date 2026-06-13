@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
+  var store = window.MkenServicesStore;
   if (!store) return;
 
   var apiKeysList = document.getElementById('apiKeysList');
@@ -19,7 +19,7 @@
   var _invoices = [];
 
   function toast(msg, type) {
-    if (window.RonaqAdminToast) window.RonaqAdminToast(msg, type);
+    if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
 
   function esc(str) {
@@ -50,9 +50,9 @@
   function loadApiKeys() {
     if (apiKeysList) apiKeysList.innerHTML = '<p class="admin-hint">جاري تحميل المفاتيح...</p>';
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      window.RonaqSupabaseDb.fetchApiKeys(tenantSlug)
+      window.MkenSupabaseDb.fetchApiKeys(tenantSlug)
         .then(function (keys) {
           _apiKeys = keys;
           renderApiKeys();
@@ -68,7 +68,7 @@
 
   function loadLocalApiKeys() {
     try {
-      var raw = localStorage.getItem('ronaq_mken_apikeys');
+      var raw = localStorage.getItem('mken_mken_apikeys');
       _apiKeys = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _apiKeys = [];
@@ -135,9 +135,9 @@
       createdAt: new Date().toISOString()
     };
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      window.RonaqSupabaseDb.saveApiKey(keyObj, tenantSlug)
+      window.MkenSupabaseDb.saveApiKey(keyObj, tenantSlug)
         .then(function () {
           toast('تم توليد مفتاح الـ API بنجاح سحابياً');
           loadApiKeys();
@@ -147,15 +147,15 @@
         });
     } else {
       _apiKeys.push(keyObj);
-      localStorage.setItem('ronaq_mken_apikeys', JSON.stringify(_apiKeys));
+      localStorage.setItem('mken_mken_apikeys', JSON.stringify(_apiKeys));
       toast('تم التوليد والحفظ محلياً بنجاح');
       renderApiKeys();
     }
   }
 
   function revokeApiKey(id) {
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      window.RonaqSupabaseDb.deleteApiKey(id)
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      window.MkenSupabaseDb.deleteApiKey(id)
         .then(function () {
           toast('تم إلغاء مفتاح الـ API بنجاح');
           loadApiKeys();
@@ -165,7 +165,7 @@
         });
     } else {
       _apiKeys = _apiKeys.filter(function (k) { return k.id !== id; });
-      localStorage.setItem('ronaq_mken_apikeys', JSON.stringify(_apiKeys));
+      localStorage.setItem('mken_mken_apikeys', JSON.stringify(_apiKeys));
       toast('تم الإلغاء محلياً');
       renderApiKeys();
     }
@@ -177,12 +177,12 @@
       saasInvoicesList.innerHTML = '<tr><td colspan="5" class="admin-hint" style="text-align:center; padding:15px;">جاري تحميل سجل الفواتير...</td></tr>';
     }
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      window.RonaqSupabaseDb.fetchInvoices(tenantSlug)
+      window.MkenSupabaseDb.fetchInvoices(tenantSlug)
         .then(function (invoices) {
           _invoices = invoices;
-          localStorage.setItem('ronaq_mken_invoices', JSON.stringify(invoices));
+          localStorage.setItem('mken_mken_invoices', JSON.stringify(invoices));
           renderInvoices();
         })
         .catch(function (err) {
@@ -196,7 +196,7 @@
 
   function loadLocalInvoices() {
     try {
-      var raw = localStorage.getItem('ronaq_mken_invoices');
+      var raw = localStorage.getItem('mken_mken_invoices');
       _invoices = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _invoices = [];
@@ -256,8 +256,8 @@
     // Retrieve master publishable key from default tenant config if possible
     var masterPublishableKey = '';
     try {
-      // Moyasar key is loaded from RonaqServicesStore configurations
-      var raw = localStorage.getItem('ronaq_platform_config');
+      // Moyasar key is loaded from MkenServicesStore configurations
+      var raw = localStorage.getItem('mken_platform_config');
       if (raw) {
         var parsed = JSON.parse(raw);
         // Fallback to local storage config or use the public publishable key configured in database
@@ -265,9 +265,9 @@
       }
     } catch (e) { /* ignore */ }
 
-    if (!masterPublishableKey && window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (!masterPublishableKey && window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       // Fetch default config dynamically
-      window.RonaqSupabaseDb.fetchConfig('default')
+      window.MkenSupabaseDb.fetchConfig('default')
         .then(function (defConfig) {
           var pKey = defConfig && defConfig.payment && defConfig.payment.publishableKey;
           if (pKey) {
@@ -342,8 +342,8 @@
     };
 
     // Save invoice
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      window.RonaqSupabaseDb.saveInvoice(invoice, tenantSlug)
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      window.MkenSupabaseDb.saveInvoice(invoice, tenantSlug)
         .then(function () {
           // Renew subscription in Database
           return store.renewSubscription(tenantSlug, months);
@@ -363,7 +363,7 @@
     } else {
       // Local fallback
       _invoices.unshift(invoice);
-      localStorage.setItem('ronaq_mken_invoices', JSON.stringify(_invoices));
+      localStorage.setItem('mken_mken_invoices', JSON.stringify(_invoices));
       store.renewSubscription(tenantSlug, months)
         .then(function () {
           toast('تم الدفع والتجديد محلياً بنجاح!');
@@ -406,17 +406,17 @@
           createdAt: new Date().toISOString()
         };
 
-        if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-          window.RonaqSupabaseDb.saveInvoice(invoice, tenantSlug).then(loadInvoices);
+        if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+          window.MkenSupabaseDb.saveInvoice(invoice, tenantSlug).then(loadInvoices);
         } else {
           _invoices.unshift(invoice);
-          localStorage.setItem('ronaq_mken_invoices', JSON.stringify(_invoices));
+          localStorage.setItem('mken_mken_invoices', JSON.stringify(_invoices));
           renderInvoices();
         }
 
         toast('تم تجديد الاشتراك يدوياً وبالمجان بنجاح! 🎉');
         // Trigger render panel to reload subscription status label
-        if (window.RonaqAdminPanelReload) window.RonaqAdminPanelReload();
+        if (window.MkenAdminPanelReload) window.MkenAdminPanelReload();
       })
       .catch(function (err) {
         if (renewBtn) {
@@ -479,7 +479,7 @@
     }
   }
 
-  window.RonaqAdminDeveloper = {
+  window.MkenAdminDeveloper = {
     refresh: refresh
   };
 

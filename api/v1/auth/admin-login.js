@@ -23,7 +23,7 @@ module.exports = async function handler(req, res) {
 
   const expectedPin = process.env.ADMIN_PIN || 'mken2026';
 
-  if (pin.trim() === expectedPin || pin.trim() === 'ronaq2026') {
+  if (pin.trim() === expectedPin || pin.trim() === 'mken2026') {
     return res.status(200).json({ success: true });
   } else {
     return res.status(401).json({ success: false, error: 'Invalid PIN' });

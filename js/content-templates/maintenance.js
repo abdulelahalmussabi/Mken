@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط التشغيل والصيانة
  */
-window.RonaqContentMaintenance = {
+window.MkenContentMaintenance = {
   hero: {
     titleAccent: 'فنيون متخصصون',
     desc: 'في {brand} نركّز على رضاكم — فريق فنيين معتمدين يصل إلى باب منزلك بسرعة. تركيب احترافي، صيانة دقيقة، وأسعار واضحة مع ضمان على الخدمة.',

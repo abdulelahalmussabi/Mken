@@ -1,5 +1,5 @@
 /** محتوى — متجر وتجارة */
-window.RonaqContentCommerce = {
+window.MkenContentCommerce = {
   hero: {
     titleAccent: 'تسوّق بسهولة',
     desc: 'في {brand} منتجات مختارة بأسعار واضحة — اطلب عبر واتساب ونوصّل لبابك.',

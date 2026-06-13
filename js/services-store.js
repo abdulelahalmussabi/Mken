@@ -5,8 +5,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'ronaq_platform_config';
-  var ADMIN_KEY = 'ronaq_platform_admin';
+  var STORAGE_KEY = 'mken_platform_config';
+  var ADMIN_KEY = 'mken_platform_admin';
   var CONFIG_URL = 'data/config.json';
   var DEFAULT_PHONE = '9665056138908';
 
@@ -126,7 +126,7 @@
   };
 
   function resolver() {
-    return window.RonaqContentResolver;
+    return window.MkenContentResolver;
   }
 
   var VALID_THEMES = ['terracotta', 'ocean', 'forest', 'midnight', 'desert', 'slate'];
@@ -140,11 +140,11 @@
   }
 
   function getActivitiesCatalog() {
-    return window.RonaqActivitiesCatalog || [];
+    return window.MkenActivitiesCatalog || [];
   }
 
   function getCatalog() {
-    return window.RonaqServicesCatalog || [];
+    return window.MkenServicesCatalog || [];
   }
 
   function getActivityById(id) {
@@ -178,7 +178,7 @@
 
   function normalizeSocial(rawSocial) {
     var social = {};
-    var catalog = (window.RonaqSocialCatalog && window.RonaqSocialCatalog.PLATFORMS) || [];
+    var catalog = (window.MkenSocialCatalog && window.MkenSocialCatalog.PLATFORMS) || [];
     catalog.forEach(function (platform) {
       var incoming = (rawSocial && rawSocial[platform.id]) || {};
       var fallback = DEFAULT_SOCIAL[platform.id] || { enabled: false, value: '' };
@@ -196,12 +196,12 @@
   function getSocialUrl(platformId, social) {
     var entry = social && social[platformId];
     if (!entry || !entry.enabled || !entry.value) return '';
-    var catalog = window.RonaqSocialCatalog;
+    var catalog = window.MkenSocialCatalog;
     return catalog ? catalog.buildUrl(platformId, entry.value) : '';
   }
 
   function getEnabledSocial(social) {
-    var catalog = (window.RonaqSocialCatalog && window.RonaqSocialCatalog.PLATFORMS) || [];
+    var catalog = (window.MkenSocialCatalog && window.MkenSocialCatalog.PLATFORMS) || [];
     return catalog.filter(function (p) {
       var e = social[p.id];
       return e && e.enabled && e.value;
@@ -274,7 +274,7 @@
       },
       maxPerSlot: Math.max(1, parseInt(incoming.maxPerSlot, 10) || DEFAULT_BOOKING.maxPerSlot),
       reminders: (function () {
-        var bookingStore = window.RonaqBookingStore;
+        var bookingStore = window.MkenBookingStore;
         if (bookingStore && bookingStore.getReminderSettings) {
           return bookingStore.getReminderSettings(incoming);
         }
@@ -337,14 +337,14 @@
 
   function getBookableActivities() {
     return getEnabledActivities().filter(function (act) {
-      var profile = window.RonaqUiProfile && window.RonaqUiProfile.get(act.uiProfile);
+      var profile = window.MkenUiProfile && window.MkenUiProfile.get(act.uiProfile);
       return profile && profile.showBooking;
     });
   }
 
   function getOrderableActivities() {
     return getEnabledActivities().filter(function (act) {
-      var profile = window.RonaqUiProfile && window.RonaqUiProfile.get(act.uiProfile);
+      var profile = window.MkenUiProfile && window.MkenUiProfile.get(act.uiProfile);
       return profile && profile.showOrder;
     });
   }
@@ -454,7 +454,7 @@
     var r = resolver();
     config = config || loadConfig();
     if (!r) {
-      var fn = window.RonaqContentRegistry && window.RonaqContentRegistry[activityId];
+      var fn = window.MkenContentRegistry && window.MkenContentRegistry[activityId];
       return fn ? fn() : {};
     }
     return r.resolveContent(activityId, config);
@@ -586,9 +586,9 @@
         var dbUrl = cfg.supabase && cfg.supabase.url;
         var dbKey = cfg.supabase && cfg.supabase.key;
 
-        if (dbEnabled && dbUrl && dbKey && window.RonaqSupabaseDb) {
-          window.RonaqSupabaseDb.reinit(dbUrl, dbKey, true);
-          return window.RonaqSupabaseDb.fetchConfig(_currentTenantSlug)
+        if (dbEnabled && dbUrl && dbKey && window.MkenSupabaseDb) {
+          window.MkenSupabaseDb.reinit(dbUrl, dbKey, true);
+          return window.MkenSupabaseDb.fetchConfig(_currentTenantSlug)
             .then(function (dbCfg) {
               if (dbCfg) {
                 _source = 'supabase';
@@ -645,8 +645,8 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(_config));
     applyTheme(_config.theme);
     
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      _ready = window.RonaqSupabaseDb.saveConfig(_config, _currentTenantSlug)
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      _ready = window.MkenSupabaseDb.saveConfig(_config, _currentTenantSlug)
         .then(function () {
           _source = 'supabase';
           return _config;
@@ -662,14 +662,14 @@
   }
 
   function renewSubscription(tenantSlug, months) {
-    var client = window.RonaqSupabaseDb ? window.RonaqSupabaseDb.getClient() : null;
+    var client = window.MkenSupabaseDb ? window.MkenSupabaseDb.getClient() : null;
     if (!client) return Promise.reject(new Error('Supabase not configured'));
     
     var slug = tenantSlug || _currentTenantSlug;
     if (!slug) return Promise.reject(new Error('No tenant selected'));
     
     return client
-      .from('ronaq_saas_clients')
+      .from('mken_saas_clients')
       .select('*')
       .eq('tenant_slug', slug)
       .maybeSingle()
@@ -695,7 +695,7 @@
         }
         
         return client
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .update(updateFields)
           .eq('tenant_slug', slug)
           .then(function (updateRes) {
@@ -774,7 +774,7 @@
     } catch (e) { /* ignore */ }
   }
 
-  window.RonaqServicesStore = {
+  window.MkenServicesStore = {
     STORAGE_KEY: STORAGE_KEY,
     CONFIG_URL: CONFIG_URL,
     DEFAULT_CONFIG: DEFAULT_CONFIG,
@@ -826,6 +826,6 @@
     downloadConfigFile: downloadConfigFile,
     applyTheme: applyTheme,
     applyThemeEarly: applyThemeEarly,
-    getThemesCatalog: function () { return window.RonaqThemesCatalog || []; },
+    getThemesCatalog: function () { return window.MkenThemesCatalog || []; },
   };
 })();

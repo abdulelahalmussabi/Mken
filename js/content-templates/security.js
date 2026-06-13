@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط الأمن والمراقبة
  */
-window.RonaqContentSecurity = {
+window.MkenContentSecurity = {
   hero: {
     titleAccent: 'حماية متكاملة لمنزلك',
     desc: 'في {brand} نركّب ونبرمج أنظمة أمن احترافية — كاميرات CCTV، إنذار، تحكم بالدخول، ومنزل ذكي — مع ربط كامل بالجوال.',

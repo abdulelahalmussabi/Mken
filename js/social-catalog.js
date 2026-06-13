@@ -17,56 +17,56 @@
       id: 'instagram',
       name: 'إنستغرام',
       icon: '📷',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم المستخدم فقط أو الرابط الكامل',
     },
     {
       id: 'twitter',
       name: 'إكس (تويتر)',
       icon: '𝕏',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم المستخدم فقط أو الرابط الكامل',
     },
     {
       id: 'facebook',
       name: 'فيسبوك',
       icon: '👤',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم الصفحة أو الرابط الكامل',
     },
     {
       id: 'tiktok',
       name: 'تيك توك',
       icon: '🎵',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم المستخدم مع أو بدون @',
     },
     {
       id: 'snapchat',
       name: 'سناب شات',
       icon: '👻',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم المستخدم فقط',
     },
     {
       id: 'telegram',
       name: 'تيليجرام',
       icon: '✈️',
-      placeholder: 'ronaqalkhayal',
+      placeholder: 'mkenalkhayal',
       hint: 'اسم المستخدم مع أو بدون @',
     },
     {
       id: 'youtube',
       name: 'يوتيوب',
       icon: '▶️',
-      placeholder: '@ronaqalkhayal',
+      placeholder: '@mkenalkhayal',
       hint: 'اسم القناة أو الرابط الكامل',
     },
     {
       id: 'linkedin',
       name: 'لينكدإن',
       icon: '💼',
-      placeholder: 'company/ronaqalkhayal',
+      placeholder: 'company/mkenalkhayal',
       hint: 'in/username أو company/name أو الرابط الكامل',
     },
   ];
@@ -128,7 +128,7 @@
     return PLATFORMS.find(function (p) { return p.id === id; });
   }
 
-  window.RonaqSocialCatalog = {
+  window.MkenSocialCatalog = {
     PLATFORMS: PLATFORMS,
     getPlatform: getPlatform,
     buildUrl: buildUrl,

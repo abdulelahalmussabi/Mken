@@ -1,5 +1,5 @@
 /** محتوى — دروس خصوصية */
-window.RonaqContentTutoring = {
+window.MkenContentTutoring = {
   hero: { titleAccent: 'تعليم يناسبك', desc: 'في {brand} دروس رياضيات، لغات، علوم، وتحضير اختبارات — حضوري أو عن بُعد.', badgeSingle: 'الدرس المتاح', badgeMulti: 'الدروس المتاحة' },
   stats: [{ num: '+40', label: 'مدرس' }, { num: '60', label: 'دقيقة/درس' }, { num: '95%', label: 'رضا' }, { num: '7/7', label: 'حجز' }],
   features: [{ icon: '➗', text: 'رياضيات' }, { icon: '🇬🇧', text: 'إنجليزي' }, { icon: '📖', text: 'عربي' }, { icon: '🔬', text: 'علوم' }, { icon: '💻', text: 'عن بُعد' }],

@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط الحاسب والتقنية الرقمية
  */
-window.RonaqContentTechDigital = {
+window.MkenContentTechDigital = {
   hero: {
     titleAccent: 'حضورك الرقمي يبدأ هنا',
     desc: 'في {brand} نبني حلولاً رقمية متكاملة — مواقع احترافية، تطبيقات جوال، SEO، وأنظمة واتساب CRM تُحوّل زوارك إلى عملاء.',

@@ -1,7 +1,7 @@
 /**
  * كتالوج ثيمات الموقع
  */
-window.RonaqThemesCatalog = [
+window.MkenThemesCatalog = [
   {
     id: 'terracotta',
     name: 'تراكوتا وطين',

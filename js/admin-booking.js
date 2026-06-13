@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var bookingStore = window.RonaqBookingStore;
+  var store = window.MkenServicesStore;
+  var bookingStore = window.MkenBookingStore;
   if (!store || !bookingStore) return;
 
   var calYear, calMonth;
@@ -40,7 +40,7 @@
   }
 
   function toast(msg, type) {
-    if (window.RonaqAdminToast) window.RonaqAdminToast(msg, type);
+    if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
 
   function getBookableServices() {
@@ -193,18 +193,18 @@
     toast(count + ' تذكير واتساب مستحق — راجع القائمة أعلاه');
     var title = 'تذكير واتساب — مكِّن';
     var body = count + ' موعد يحتاج تذكيراً عبر واتساب';
-    if (window.RonaqPwa && window.RonaqPwa.showLocalNotification(title, body, 'ronaq-reminders')) {
+    if (window.MkenPwa && window.MkenPwa.showLocalNotification(title, body, 'mken-reminders')) {
       return;
     }
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     try {
-      new Notification(title, { body: body, tag: 'ronaq-reminders' });
+      new Notification(title, { body: body, tag: 'mken-reminders' });
     } catch (e) { /* ignore */ }
   }
 
   function requestNotificationPermission() {
-    if (window.RonaqPwa && window.RonaqPwa.requestNotificationPermission) {
-      return window.RonaqPwa.requestNotificationPermission();
+    if (window.MkenPwa && window.MkenPwa.requestNotificationPermission) {
+      return window.MkenPwa.requestNotificationPermission();
     }
     if (!('Notification' in window)) return Promise.resolve('unsupported');
     if (Notification.permission !== 'default') return Promise.resolve(Notification.permission);
@@ -342,8 +342,8 @@
         
         var config = store.loadConfig();
         if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          if (window.RonaqWhatsappAutomation) {
-            window.RonaqWhatsappAutomation.sendConfirmation(apt, config)
+          if (window.MkenWhatsappAutomation) {
+            window.MkenWhatsappAutomation.sendConfirmation(apt, config)
               .catch(function (err) {
                 console.error('Failed to send auto-confirmation:', err);
               });
@@ -445,8 +445,8 @@
                    paymentStatusLabel(pStatus) + ': ' + (a.paymentAmount || svc.price) + ' ر.س' + pMethod + '</span>';
       }
       var staffBadge = '';
-      if (a.staffId && window.RonaqAdminStaff && window.RonaqAdminStaff.getStaffName) {
-        var staffName = window.RonaqAdminStaff.getStaffName(a.staffId);
+      if (a.staffId && window.MkenAdminStaff && window.MkenAdminStaff.getStaffName) {
+        var staffName = window.MkenAdminStaff.getStaffName(a.staffId);
         if (staffName) {
           staffBadge = ' <span class="badge" style="background:#e8f5e9; color:#2e7d32; font-weight:bold; font-size:0.75rem;">👤 الفني: ' + escHtml(staffName) + '</span>';
         }
@@ -498,8 +498,8 @@
         
         var config = store.loadConfig();
         if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          if (window.RonaqWhatsappAutomation) {
-            window.RonaqWhatsappAutomation.sendConfirmation(Object.assign({}, apt, { status: 'confirmed' }), config)
+          if (window.MkenWhatsappAutomation) {
+            window.MkenWhatsappAutomation.sendConfirmation(Object.assign({}, apt, { status: 'confirmed' }), config)
               .catch(function (err) {
                 console.error('Failed to send auto-confirmation:', err);
               });
@@ -512,7 +512,22 @@
 
     adminAppointmentsList.querySelectorAll('[data-apt-cancel]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        bookingStore.updateAppointment(btn.getAttribute('data-apt-cancel'), { status: 'cancelled' });
+        var id = btn.getAttribute('data-apt-cancel');
+        var apt = bookingStore.getAppointments().find(function (a) { return a.id === id; });
+
+        bookingStore.updateAppointment(id, { status: 'cancelled' });
+
+        if (apt) {
+          var config = store.loadConfig();
+          if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
+            if (window.MkenWhatsappAutomation) {
+              window.MkenWhatsappAutomation.sendCancellation(Object.assign({}, apt, { status: 'cancelled' }), config)
+                .catch(function (err) {
+                  console.error('Failed to send cancellation notification:', err);
+                });
+            }
+          }
+        }
         renderAll();
       });
     });
@@ -547,7 +562,7 @@
       });
     });
 
-    var calExport = window.RonaqCalendarExport;
+    var calExport = window.MkenCalendarExport;
     if (calExport) {
       adminAppointmentsList.querySelectorAll('[data-apt-gcal]').forEach(function (link) {
         link.addEventListener('click', function (e) {
@@ -564,7 +579,7 @@
           var id = btn.getAttribute('data-apt-ics');
           var apt = bookingStore.getAppointments().find(function (a) { return a.id === id; });
           if (!apt) return;
-          calExport.downloadIcs(apt, buildMetaForAppointment(apt), 'ronaq-' + apt.date + '.ics');
+          calExport.downloadIcs(apt, buildMetaForAppointment(apt), 'mken-' + apt.date + '.ics');
         });
       });
     }
@@ -632,8 +647,8 @@
     var aptStaff = document.getElementById('aptStaff');
     if (aptStaff) {
       aptStaff.innerHTML = '<option value="">— غير مسند —</option>';
-      if (window.RonaqAdminStaff && window.RonaqAdminStaff.getStaffList) {
-        window.RonaqAdminStaff.getStaffList().forEach(function (member) {
+      if (window.MkenAdminStaff && window.MkenAdminStaff.getStaffList) {
+        window.MkenAdminStaff.getStaffList().forEach(function (member) {
           if (member.status === 'active') {
             var opt = document.createElement('option');
             opt.value = member.id;
@@ -786,7 +801,26 @@
         if (!data.serviceId || !data.date || !data.time || !data.customerName || !data.phone) return;
 
         if (editingId) {
+          var oldApt = bookingStore.getAppointments().find(function (a) { return a.id === editingId; });
           bookingStore.updateAppointment(editingId, data);
+
+          if (oldApt && oldApt.status !== 'cancelled' && data.status !== 'cancelled') {
+            var dateChanged = oldApt.date !== data.date;
+            var timeChanged = oldApt.time !== data.time;
+            var serviceChanged = oldApt.serviceId !== data.serviceId;
+
+            if (dateChanged || timeChanged || serviceChanged) {
+              var config = store.loadConfig();
+              if (config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
+                if (window.MkenWhatsappAutomation) {
+                  window.MkenWhatsappAutomation.sendPostponement(Object.assign({}, oldApt, data), config)
+                    .catch(function (err) {
+                      console.error('Failed to send reschedule notification:', err);
+                    });
+                }
+              }
+            }
+          }
         } else {
           bookingStore.addAppointment(data);
         }
@@ -801,7 +835,7 @@
     var saveAptBtn = document.getElementById('saveAppointmentsBtn');
     if (saveAptBtn) {
       saveAptBtn.addEventListener('click', function () {
-        if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+        if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
           toast('تم حفظ ومزامنة المواعيد مع السحابة بنجاح');
         } else {
           bookingStore.downloadFile();
@@ -843,7 +877,7 @@
     var exportIcsBtn = document.getElementById('exportIcsBtn');
     if (exportIcsBtn) {
       exportIcsBtn.addEventListener('click', function () {
-        var calExport = window.RonaqCalendarExport;
+        var calExport = window.MkenCalendarExport;
         if (!calExport) return;
         var list = filterAppointments(bookingStore.getActiveAppointments());
         if (!list.length) {
@@ -882,7 +916,7 @@
     requestNotificationPermission();
   }
 
-  window.RonaqAdminBooking = {
+  window.MkenAdminBooking = {
     refresh: renderAll,
     init: initBookingAdmin,
   };

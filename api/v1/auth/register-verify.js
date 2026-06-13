@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
     // 3. Save device and public key in DB
     const deviceId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
     const { error } = await supabase
-      .from('ronaq_staff_devices')
+      .from('mken_staff_devices')
       .insert({
         id: deviceId,
         staff_id: staffId,

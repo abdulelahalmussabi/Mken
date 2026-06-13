@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'ronaq_platform_orders';
-  var CART_PREFIX = 'ronaq_platform_cart_';
+  var STORAGE_KEY = 'mken_platform_orders';
+  var CART_PREFIX = 'mken_platform_cart_';
 
   function generateId() {
     return 'ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
@@ -93,9 +93,9 @@
       list.push(newOrder);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
-      if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-        var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-        window.RonaqSupabaseDb.saveOrder(newOrder, tenantSlug).catch(function (err) {
+      if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+        var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+        window.MkenSupabaseDb.saveOrder(newOrder, tenantSlug).catch(function (err) {
           console.error('Failed to save order to Supabase:', err);
         });
       }
@@ -108,9 +108,9 @@
   function saveOrdersBulk(orders) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(orders || []));
-      if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-        var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-        window.RonaqSupabaseDb.saveOrdersBulk(orders, tenantSlug).catch(function (err) {
+      if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+        var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+        window.MkenSupabaseDb.saveOrdersBulk(orders, tenantSlug).catch(function (err) {
           console.error('Failed to sync bulk orders to Supabase:', err);
         });
       }
@@ -134,9 +134,9 @@
       if (!found) return null;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
-      if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured() && updatedOrder) {
-        var tenantSlug = window.RonaqServicesStore ? window.RonaqServicesStore.getCurrentTenantSlug() : null;
-        window.RonaqSupabaseDb.saveOrder(updatedOrder, tenantSlug).catch(function (err) {
+      if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured() && updatedOrder) {
+        var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+        window.MkenSupabaseDb.saveOrder(updatedOrder, tenantSlug).catch(function (err) {
           console.error('Failed to sync updated order to Supabase:', err);
         });
       }
@@ -151,8 +151,8 @@
       var list = getOrders().filter(function (o) { return o.id !== id; });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
-      if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-        window.RonaqSupabaseDb.deleteOrder(id).catch(function (err) {
+      if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+        window.MkenSupabaseDb.deleteOrder(id).catch(function (err) {
           console.error('Failed to delete order from Supabase:', err);
         });
       }
@@ -204,7 +204,7 @@
     });
   }
 
-  window.RonaqOrderStore = {
+  window.MkenOrderStore = {
     STORAGE_KEY: STORAGE_KEY,
     getCart: getCart,
     saveCart: saveCart,

@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
   try {
     // 1. Get default config for master credentials
     let { data: defaultTenant, error: configError } = await supabase
-      .from('ronaq_saas_clients')
+      .from('mken_saas_clients')
       .select('config_data')
       .eq('tenant_slug', 'default')
       .maybeSingle();
@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
     // 2. Check tenant subscriptions
     log('Checking SAAS Tenant Subscriptions...');
     const { data: tenants, error: tenantsError } = await supabase
-      .from('ronaq_saas_clients')
+      .from('mken_saas_clients')
       .select('*');
 
     if (tenantsError) throw tenantsError;
@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
         };
 
         const { error: updateError } = await supabase
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .update({
             subscription_status: 'expired',
             config_data: expiredConfig,
@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
         } else {
           const expiryMsg = `عذراً شريكنا في منصة مكِّن ⚠️\nانتهى اشتراك نشاطك الموقر (${tenant.business_name}) اليوم.\nتم حفظ كافة بياناتك وإعداداتك بشكل آمن، ولكن تم إرجاع الصفحة العامة للوضع الافتراضي لحين التجديد.\nيرجى الدخول للوحة الإدارة لتجديد الاشتراك واستعادة موقعك فوراً.`;
           try {
-            await sendWhatsAppMessage(tenant.phone, expiryMsg, 'subscription_expired', null, masterConfig);
+            await sendWhatsAppMessage(tenant.phone, expiryMsg, 'subscription_expired', null, masterConfig, supabase, tenant.tenant_slug);
             log(`Expiration alert sent to ${tenant.tenant_slug} (${tenant.phone})`);
           } catch (e) {
             log(`Failed to send expiration message to tenant ${tenant.tenant_slug}: ${e.message}`);
@@ -113,11 +113,11 @@ module.exports = async function handler(req, res) {
           const reminderMsg = `تنبيه تجديد الاشتراك — منصة مكِّن 🔔\nشريكنا العزيز في (${tenant.business_name})، نود تذكيرك بأن اشتراكك سينتهي بعد ${textTime} بتاريخ ${endDate.toLocaleDateString('ar-EG')}.\nيرجى تجديد الاشتراك مبكراً لضمان استمرار عمل موقعك وتلقي حجوزات عملائك دون انقطاع. 🚀`;
 
           try {
-            await sendWhatsAppMessage(tenant.phone, reminderMsg, 'subscription_reminder', null, masterConfig);
+            await sendWhatsAppMessage(tenant.phone, reminderMsg, 'subscription_reminder', null, masterConfig, supabase, tenant.tenant_slug);
             sentReminders.push(reminderDays);
             
             await supabase
-              .from('ronaq_saas_clients')
+              .from('mken_saas_clients')
               .update({
                 reminders_sent: sentReminders,
                 updated_at: new Date().toISOString()
@@ -135,7 +135,7 @@ module.exports = async function handler(req, res) {
     // 3. Check active appointments and send due reminders
     log('Checking active appointments...');
     const { data: appointments, error: aptError } = await supabase
-      .from('ronaq_appointments')
+      .from('mken_appointments')
       .select('*')
       .eq('status', 'confirmed');
 
@@ -154,7 +154,7 @@ module.exports = async function handler(req, res) {
       let tenantConfig = tenantConfigs.get(tenantSlug);
       if (!tenantConfig) {
         const { data: row } = await supabase
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .select('config_data')
           .eq('tenant_slug', tenantSlug)
           .maybeSingle();
@@ -202,11 +202,11 @@ module.exports = async function handler(req, res) {
           log(`Sending reminder ${hours}h for appointment ${apt.id} to ${apt.phone}...`);
 
           try {
-            await sendWhatsAppMessage(apt.phone, body, 'reminder', apt, tenantConfig);
+            await sendWhatsAppMessage(apt.phone, body, 'reminder', apt, tenantConfig, supabase, tenantSlug);
 
             sent.push(hours);
             await supabase
-              .from('ronaq_appointments')
+              .from('mken_appointments')
               .update({ reminders_sent: sent, updated_at: new Date().toISOString() })
               .eq('id', apt.id);
 
@@ -216,6 +216,90 @@ module.exports = async function handler(req, res) {
           }
         }
       }
+    }
+
+    // 4. Automatic Retry of failed WhatsApp logs
+    log('Checking for failed WhatsApp messages to retry...');
+    try {
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: failedLogs, error: logsError } = await supabase
+        .from('mken_whatsapp_logs')
+        .select('*')
+        .eq('status', 'failed')
+        .lt('retry_count', 3)
+        .gt('created_at', oneDayAgo);
+
+      if (logsError) {
+        log(`Failed to fetch failed logs for retry: ${logsError.message}`);
+      } else if (failedLogs && failedLogs.length > 0) {
+        log(`Found ${failedLogs.length} failed messages to retry. Processing...`);
+        for (const logItem of failedLogs) {
+          log(`Retrying log ID ${logItem.id} to phone ${logItem.phone} (Attempt ${logItem.retry_count + 1})...`);
+          
+          let tenantConfig = tenantConfigs.get(logItem.tenant_slug);
+          if (!tenantConfig) {
+            const { data: row } = await supabase
+              .from('mken_saas_clients')
+              .select('config_data')
+              .eq('tenant_slug', logItem.tenant_slug)
+              .maybeSingle();
+            
+            tenantConfig = row ? row.config_data : masterConfig;
+            tenantConfigs.set(logItem.tenant_slug, tenantConfig);
+          }
+
+          const waConfig = tenantConfig.whatsappApi || masterConfig.whatsappApi || {};
+          if (!waConfig.enabled) {
+            log(`Skipping retry for log ${logItem.id}: WhatsApp disabled for tenant.`);
+            continue;
+          }
+
+          const provider = waConfig.provider;
+          let retryPromise;
+          try {
+            switch (provider) {
+              case 'ultramsg':
+                retryPromise = sendUltramsg(logItem.phone, logItem.body, waConfig.instanceId, waConfig.token);
+                break;
+              case 'twilio':
+                retryPromise = sendTwilio(logItem.phone, logItem.body, waConfig.accountSid, waConfig.token, waConfig.fromNumber);
+                break;
+              case 'custom':
+                retryPromise = sendCustom(logItem.phone, logItem.body, waConfig.url, waConfig.token, logItem.event_type, null);
+                break;
+              case 'whatsapp_business':
+                retryPromise = sendWhatsAppBusiness(logItem.phone, logItem.body, waConfig.phoneNumberId, waConfig.token, waConfig.templateName, waConfig.languageCode);
+                break;
+              default:
+                throw new Error('Unsupported provider: ' + provider);
+            }
+
+            await retryPromise;
+            log(`Successfully retried message for log ${logItem.id}`);
+            
+            await supabase
+              .from('mken_whatsapp_logs')
+              .update({
+                status: 'success',
+                error_message: null,
+                retry_count: logItem.retry_count + 1
+              })
+              .eq('id', logItem.id);
+          } catch (err) {
+            log(`Retry failed for log ${logItem.id}: ${err.message}`);
+            
+            await supabase
+              .from('mken_whatsapp_logs')
+              .update({
+                error_message: err.message,
+                retry_count: logItem.retry_count + 1
+              })
+              .eq('id', logItem.id);
+          }
+        }
+      }
+    } catch (retryErr) {
+      log(`Failed to run log retry cycle: ${retryErr.message}`);
     }
 
     log('Cron job execution finished successfully.');
@@ -228,22 +312,74 @@ module.exports = async function handler(req, res) {
 };
 
 // Standalone Helper functions
-async function sendWhatsAppMessage(to, body, eventType, appointment, config) {
+async function logWhatsappMessageServer(supabase, logObj, tenantSlug) {
+  if (!supabase) return;
+  try {
+    await supabase.from('mken_whatsapp_logs').insert({
+      tenant_slug: tenantSlug,
+      phone: logObj.phone,
+      body: logObj.body,
+      provider: logObj.provider,
+      status: logObj.status,
+      error_message: logObj.errorMessage || null,
+      event_type: logObj.eventType || null,
+      appointment_id: logObj.appointmentId || null,
+      retry_count: logObj.retryCount || 0
+    });
+  } catch (err) {
+    console.error('Failed to log WhatsApp message on server:', err.message);
+  }
+}
+
+async function sendWhatsAppMessage(to, body, eventType, appointment, config, supabase, tenantSlug = 'default') {
   const waConfig = config.whatsappApi || {};
   if (!waConfig.enabled) throw new Error('WhatsApp API is disabled');
 
   const phone = cleanPhone(to);
   if (!phone) throw new Error('Invalid phone number: ' + to);
 
-  switch (waConfig.provider) {
+  const provider = waConfig.provider;
+  let promise;
+
+  switch (provider) {
     case 'ultramsg':
-      return sendUltramsg(phone, body, waConfig.instanceId, waConfig.token);
+      promise = sendUltramsg(phone, body, waConfig.instanceId, waConfig.token);
+      break;
     case 'twilio':
-      return sendTwilio(phone, body, waConfig.accountSid, waConfig.token, waConfig.fromNumber);
+      promise = sendTwilio(phone, body, waConfig.accountSid, waConfig.token, waConfig.fromNumber);
+      break;
     case 'custom':
-      return sendCustom(phone, body, waConfig.url, waConfig.token, eventType, appointment);
+      promise = sendCustom(phone, body, waConfig.url, waConfig.token, eventType, appointment);
+      break;
+    case 'whatsapp_business':
+      promise = sendWhatsAppBusiness(phone, body, waConfig.phoneNumberId, waConfig.token, waConfig.templateName, waConfig.languageCode);
+      break;
     default:
-      throw new Error('Unsupported provider: ' + waConfig.provider);
+      throw new Error('Unsupported provider: ' + provider);
+  }
+
+  try {
+    const result = await promise;
+    await logWhatsappMessageServer(supabase, {
+      phone,
+      body,
+      provider,
+      status: 'success',
+      eventType,
+      appointmentId: appointment ? appointment.id : null
+    }, tenantSlug);
+    return result;
+  } catch (err) {
+    await logWhatsappMessageServer(supabase, {
+      phone,
+      body,
+      provider,
+      status: 'failed',
+      errorMessage: err.message,
+      eventType,
+      appointmentId: appointment ? appointment.id : null
+    }, tenantSlug);
+    throw err;
   }
 }
 
@@ -280,6 +416,71 @@ async function sendTwilio(phone, body, accountSid, token, fromNumber) {
     body: params.toString()
   });
   if (!res.ok) throw new Error('Twilio request failed, status ' + res.status);
+  return res.json();
+}
+
+async function sendWhatsAppBusiness(phone, body, phoneNumberId, token, templateName, languageCode) {
+  if (!phoneNumberId || !token) throw new Error('Missing WhatsApp Business credentials');
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+  const headers = {
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json'
+  };
+
+  let payload;
+  if (templateName) {
+    payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phone,
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: languageCode || "ar"
+        },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                text: body
+              }
+            ]
+          }
+        ]
+      }
+    };
+  } else {
+    payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: phone,
+      type: "text",
+      text: {
+        body: body
+      }
+    };
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    let errorMsg = `HTTP Status ${res.status}`;
+    try {
+      const errData = await res.json();
+      if (errData && errData.error && errData.error.message) {
+        errorMsg = errData.error.message;
+      }
+    } catch (e) {}
+    throw new Error('WhatsApp Business API failed: ' + errorMsg);
+  }
   return res.json();
 }
 

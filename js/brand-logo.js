@@ -20,7 +20,7 @@
     '</svg>';
 
   function getDefaultBrand() {
-    var store = window.RonaqServicesStore;
+    var store = window.MkenServicesStore;
     return store && store.DEFAULT_BRAND
       ? store.DEFAULT_BRAND
       : { name: 'شركة مكِّن', tagline: 'صيانة منزلية متنقلة', logo: '' };
@@ -46,7 +46,7 @@
     if (brand && brand.logo) {
       el.innerHTML = '';
       var img = document.createElement('img');
-      var store = window.RonaqServicesStore;
+      var store = window.MkenServicesStore;
       img.src = store && store.resolveAssetUrl
         ? store.resolveAssetUrl(brand.logo, store.loadConfig().updatedAt)
         : brand.logo;
@@ -63,7 +63,7 @@
 
   function applyFavicon(brand) {
     var logo = brand && brand.logo ? brand.logo : '';
-    var store = window.RonaqServicesStore;
+    var store = window.MkenServicesStore;
     var href = logo || 'assets/logo.svg';
     if (store && store.resolveAssetUrl && logo && logo.indexOf('data:') !== 0) {
       href = store.resolveAssetUrl(logo, store.loadConfig().updatedAt);
@@ -98,7 +98,7 @@
     applyFavicon(resolved);
   }
 
-  window.RonaqBrandLogo = {
+  window.MkenBrandLogo = {
     apply: apply,
     applyFavicon: applyFavicon,
     mountLogo: mountLogo,

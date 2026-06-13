@@ -1,7 +1,7 @@
 /**
  * كتالوج الأنشطة الرئيسية — منصة رونق متعددة الأنشطة
  */
-window.RonaqActivitiesCatalog = [
+window.MkenActivitiesCatalog = [
   {
     id: 'maintenance',
     icon: '🔧',

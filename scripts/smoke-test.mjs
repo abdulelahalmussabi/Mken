@@ -199,7 +199,7 @@ async function runTests() {
     console.log('   - حقن محاكاة Supabase لصفحة الموظف...');
     await page.evaluate(() => {
       window.mockSupabaseData = {
-        ronaq_staff: [
+        mken_staff: [
           {
             id: 'staff_test_1',
             name: 'فني تجريبي Smoke Test',
@@ -210,7 +210,7 @@ async function runTests() {
             tenant_slug: 'default'
           }
         ],
-        ronaq_appointments: [
+        mken_appointments: [
           {
             id: 'apt_test_1',
             tenant_slug: 'default',
@@ -229,7 +229,7 @@ async function runTests() {
         ]
       };
 
-      window.RonaqSupabaseDb = {
+      window.MkenSupabaseDb = {
         isConfigured: () => true,
         getClient: () => {
           const builder = {
@@ -237,29 +237,29 @@ async function runTests() {
             eq: () => builder,
             order: () => builder,
             maybeSingle: async () => {
-              return { data: window.mockSupabaseData.ronaq_staff[0], error: null };
+              return { data: window.mockSupabaseData.mken_staff[0], error: null };
             },
             update: (updates) => {
-              Object.assign(window.mockSupabaseData.ronaq_appointments[0], updates);
+              Object.assign(window.mockSupabaseData.mken_appointments[0], updates);
               return {
                 eq: () => ({
                   then: function(resolve) {
-                    resolve({ data: [window.mockSupabaseData.ronaq_appointments[0]], error: null });
-                    return Promise.resolve({ data: [window.mockSupabaseData.ronaq_appointments[0]], error: null });
+                    resolve({ data: [window.mockSupabaseData.mken_appointments[0]], error: null });
+                    return Promise.resolve({ data: [window.mockSupabaseData.mken_appointments[0]], error: null });
                   }
                 })
               };
             },
             then: function(resolve) {
-              resolve({ data: window.mockSupabaseData.ronaq_appointments, error: null });
-              return Promise.resolve({ data: window.mockSupabaseData.ronaq_appointments, error: null });
+              resolve({ data: window.mockSupabaseData.mken_appointments, error: null });
+              return Promise.resolve({ data: window.mockSupabaseData.mken_appointments, error: null });
             }
           };
           const rpcBuilder = {
             order: () => rpcBuilder,
             then: function(resolve) {
-              resolve({ data: window.mockSupabaseData.ronaq_appointments, error: null });
-              return Promise.resolve({ data: window.mockSupabaseData.ronaq_appointments, error: null });
+              resolve({ data: window.mockSupabaseData.mken_appointments, error: null });
+              return Promise.resolve({ data: window.mockSupabaseData.mken_appointments, error: null });
             }
           };
           return {
@@ -268,7 +268,7 @@ async function runTests() {
               if (name === 'verify_staff_pin') {
                 return {
                   then: function(resolve) {
-                    const staff = window.mockSupabaseData.ronaq_staff[0];
+                    const staff = window.mockSupabaseData.mken_staff[0];
                     resolve({
                       data: {
                         success: true,
@@ -289,7 +289,7 @@ async function runTests() {
               }
               if (name === 'update_staff_appointment_status') {
                 if (args && args.p_new_status) {
-                  window.mockSupabaseData.ronaq_appointments[0].status = args.p_new_status;
+                  window.mockSupabaseData.mken_appointments[0].status = args.p_new_status;
                 }
                 return {
                   then: function(resolve) {
@@ -377,17 +377,17 @@ async function runTests() {
           select: () => ({
             eq: () => ({
               maybeSingle: async () => {
-                if (table === 'ronaq_api_keys') {
+                if (table === 'mken_api_keys') {
                   return { data: { tenant_slug: 'default', expires_at: null }, error: null };
                 }
-                if (table === 'ronaq_appointments' || table === 'ronaq_orders') {
+                if (table === 'mken_appointments' || table === 'mken_orders') {
                   return { data: { id: 'test_123', tenant_slug: 'default' }, error: null };
                 }
                 return { data: null, error: null };
               },
               order: () => ({
                 then: (resolve) => {
-                  const items = table === 'ronaq_appointments' 
+                  const items = table === 'mken_appointments' 
                     ? [{ id: 'apt_test_1', tenant_slug: 'default', activity_id: 'hair', service_id: 'cut', date: '2026-06-12', time: '12:00', customer_name: 'Ahmed', phone: '966500000000', status: 'pending' }]
                     : [{ id: 'ord_test_1', tenant_slug: 'default', activity_id: 'commerce', customer_name: 'Ali', phone: '966500000000', items: [], status: 'pending' }];
                   resolve({ data: items, error: null });

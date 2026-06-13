@@ -1,5 +1,5 @@
 /** محتوى — سبا ومساج */
-window.RonaqContentSpaWellness = {
+window.MkenContentSpaWellness = {
   hero: { titleAccent: 'استرخِ وجدّد حيويتك', desc: 'في {brand} جلسات مساج، حمام مغربي، وعناية — احجز وقتك للراحة.', badgeSingle: 'جلسة سبا', badgeMulti: 'جلسات سبا' },
   stats: [{ num: '+400', label: 'جلسة' }, { num: '60–90', label: 'دقيقة' }, { num: '4.9', label: 'تقييم' }, { num: '7/7', label: 'مواعيد' }],
   features: [{ icon: '💆', text: 'مساج سويدي' }, { icon: '🛁', text: 'حمام مغربي' }, { icon: '✨', text: 'عناية وجه' }, { icon: '💑', text: 'سبا أزواج' }, { icon: '🏠', text: 'سبا منزلي' }],

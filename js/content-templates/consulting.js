@@ -1,5 +1,5 @@
 /** محتوى — استشارات مهنية */
-window.RonaqContentConsulting = {
+window.MkenContentConsulting = {
   hero: { titleAccent: 'خبراء في خدمتك', desc: 'في {brand} استشارات قانونية، محاسبة، عقارات، وأعمال — احجز جلسة مع مختص.', badgeSingle: 'الاستشارة المتوفرة', badgeMulti: 'الاستشارات المتوفرة' },
   stats: [{ num: '+20', label: 'مستشار' }, { num: '60', label: 'دقيقة/جلسة' }, { num: '100%', label: 'سرية' }, { num: '7/7', label: 'حجز' }],
   features: [{ icon: '⚖️', text: 'قانون' }, { icon: '📊', text: 'محاسبة' }, { icon: '🏢', text: 'عقارات' }, { icon: '💼', text: 'أعمال' }, { icon: '👔', text: 'HR' }],

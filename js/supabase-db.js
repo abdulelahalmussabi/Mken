@@ -21,7 +21,7 @@
     if (_client) return _client;
 
     try {
-      var raw = localStorage.getItem('ronaq_platform_config');
+      var raw = localStorage.getItem('mken_platform_config');
       if (raw) {
         var config = JSON.parse(raw);
         if (config && config.supabase && config.supabase.enabled) {
@@ -62,7 +62,7 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_saas_clients')
+      .from('mken_saas_clients')
       .select('*')
       .eq('tenant_slug', slug)
       .maybeSingle()
@@ -70,7 +70,7 @@
         if (res.error) {
           // Fallback to old table if new table does not exist yet
           return client
-            .from('ronaq_config')
+            .from('mken_config')
             .select('config_data')
             .eq('id', 1)
             .maybeSingle()
@@ -102,7 +102,7 @@
     var slug = tenantSlug || 'default';
 
     return client
-      .from('ronaq_saas_clients')
+      .from('mken_saas_clients')
       .select('id')
       .eq('tenant_slug', slug)
       .maybeSingle()
@@ -112,11 +112,11 @@
           var oneYear = new Date();
           oneYear.setFullYear(oneYear.getFullYear() + 1);
           return client
-            .from('ronaq_saas_clients')
+            .from('mken_saas_clients')
             .insert({
               tenant_slug: slug,
               business_name: (configData.brand && configData.brand.name) || 'منشأة جديدة',
-              email: slug + '@ronaq.com',
+              email: slug + '@mken.com',
               phone: configData.phone || '9665056138908',
               subscription_end: oneYear.toISOString(),
               config_data: configData,
@@ -125,7 +125,7 @@
         } else {
           // Update existing
           return client
-            .from('ronaq_saas_clients')
+            .from('mken_saas_clients')
             .update({
               config_data: configData,
               updated_at: new Date().toISOString()
@@ -156,7 +156,7 @@
       }
     }
 
-    var targetTable = user ? 'ronaq_appointments' : 'ronaq_public_appointments';
+    var targetTable = user ? 'mken_appointments' : 'mken_public_appointments';
 
     return client
       .from(targetTable)
@@ -210,7 +210,7 @@
 
     var slug = tenantSlug || apt.tenantSlug || 'default';
     return client
-      .from('ronaq_appointments')
+      .from('mken_appointments')
       .upsert({
         id: apt.id,
         tenant_slug: slug,
@@ -272,7 +272,7 @@
     });
 
     return client
-      .from('ronaq_appointments')
+      .from('mken_appointments')
       .upsert(rows)
       .then(function (res) {
         if (res.error) throw res.error;
@@ -307,7 +307,7 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_orders')
+      .from('mken_orders')
       .select('*')
       .eq('tenant_slug', slug)
       .order('created_at', { ascending: false })
@@ -323,7 +323,7 @@
 
     var slug = tenantSlug || order.tenantSlug || 'default';
     return client
-      .from('ronaq_orders')
+      .from('mken_orders')
       .upsert({
         id: order.id,
         tenant_slug: slug,
@@ -377,7 +377,7 @@
     });
 
     return client
-      .from('ronaq_orders')
+      .from('mken_orders')
       .upsert(rows)
       .then(function (res) {
         if (res.error) throw res.error;
@@ -390,7 +390,7 @@
     if (!client) return Promise.reject(new Error('Supabase not configured'));
 
     return client
-      .from('ronaq_orders')
+      .from('mken_orders')
       .delete()
       .eq('id', id)
       .then(function (res) {
@@ -404,7 +404,7 @@
     if (!client) return Promise.reject(new Error('Supabase not configured'));
 
     return client
-      .from('ronaq_appointments')
+      .from('mken_appointments')
       .delete()
       .eq('id', id)
       .then(function (res) {
@@ -419,7 +419,7 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_saas_invoices')
+      .from('mken_saas_invoices')
       .select('*')
       .eq('tenant_slug', slug)
       .order('created_at', { ascending: false })
@@ -447,7 +447,7 @@
 
     var slug = tenantSlug || inv.tenantSlug || 'default';
     return client
-      .from('ronaq_saas_invoices')
+      .from('mken_saas_invoices')
       .upsert({
         id: inv.id,
         tenant_slug: slug,
@@ -465,13 +465,83 @@
       });
   }
 
+  function fetchWhatsappLogs(tenantSlug) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    var slug = tenantSlug || 'default';
+    return client
+      .from('mken_whatsapp_logs')
+      .select('*')
+      .eq('tenant_slug', slug)
+      .order('created_at', { ascending: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return (res.data || []).map(function (row) {
+          return {
+            id: row.id,
+            tenantSlug: row.tenant_slug,
+            phone: row.phone,
+            body: row.body,
+            provider: row.provider,
+            status: row.status,
+            errorMessage: row.error_message,
+            eventType: row.event_type,
+            appointmentId: row.appointment_id,
+            createdAt: row.created_at,
+            retryCount: row.retry_count
+          };
+        });
+      });
+  }
+
+  function logWhatsappMessage(log, tenantSlug) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    var slug = tenantSlug || log.tenantSlug || 'default';
+    return client
+      .from('mken_whatsapp_logs')
+      .upsert({
+        id: log.id || undefined,
+        tenant_slug: slug,
+        phone: log.phone,
+        body: log.body,
+        provider: log.provider,
+        status: log.status,
+        error_message: log.errorMessage || null,
+        event_type: log.eventType || null,
+        appointment_id: log.appointmentId || null,
+        created_at: log.createdAt || new Date().toISOString(),
+        retry_count: log.retryCount || 0
+      })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return res.data;
+      });
+  }
+
+  function deleteWhatsappLog(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_whatsapp_logs')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
   function fetchStaff(tenantSlug) {
     var client = getClient();
     if (!client) return Promise.reject(new Error('Supabase not configured'));
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_staff')
+      .from('mken_staff')
       .select('*')
       .eq('tenant_slug', slug)
       .order('name', { ascending: true })
@@ -521,7 +591,7 @@
       }
 
       return client
-        .from('ronaq_staff')
+        .from('mken_staff')
         .upsert(payload)
         .then(function (res) {
           if (res.error) throw res.error;
@@ -535,7 +605,7 @@
     if (!client) return Promise.reject(new Error('Supabase not configured'));
 
     return client
-      .from('ronaq_staff')
+      .from('mken_staff')
       .delete()
       .eq('id', id)
       .then(function (res) {
@@ -550,7 +620,7 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_api_keys')
+      .from('mken_api_keys')
       .select('*')
       .eq('tenant_slug', slug)
       .order('created_at', { ascending: false })
@@ -575,7 +645,7 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('ronaq_api_keys')
+      .from('mken_api_keys')
       .upsert({
         id: keyObj.id || undefined,
         tenant_slug: slug,
@@ -594,7 +664,7 @@
     if (!client) return Promise.reject(new Error('Supabase not configured'));
 
     return client
-      .from('ronaq_api_keys')
+      .from('mken_api_keys')
       .delete()
       .eq('id', id)
       .then(function (res) {
@@ -608,14 +678,14 @@
     try {
       var tempClient = window.supabase.createClient(url, key);
       return tempClient
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .select('id')
         .limit(1)
         .then(function (res) {
           if (res.error) {
             // Check old table
             return tempClient
-              .from('ronaq_config')
+              .from('mken_config')
               .select('id')
               .limit(1)
               .then(function (oldRes) {
@@ -635,7 +705,7 @@
   function getInitSql() {
     return [
       '-- 1. إنشاء جدول العملاء (المستأجرين) لنظام SAAS',
-      'CREATE TABLE IF NOT EXISTS ronaq_saas_clients (',
+      'CREATE TABLE IF NOT EXISTS mken_saas_clients (',
       '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
       '    tenant_slug TEXT UNIQUE NOT NULL,',
       '    owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,',
@@ -653,7 +723,7 @@
       ');',
       '',
       '-- 2. إنشاء جدول المواعيد وتطويره لدعم المستأجرين',
-      'CREATE TABLE IF NOT EXISTS ronaq_appointments (',
+      'CREATE TABLE IF NOT EXISTS mken_appointments (',
       '    id TEXT PRIMARY KEY,',
       '    tenant_slug TEXT DEFAULT \'default\',',
       '    activity_id TEXT NOT NULL,',
@@ -678,7 +748,7 @@
       ');',
       '',
       '-- 3. إنشاء جدول الطلبات وتفعيله لدعم المستأجرين',
-      'CREATE TABLE IF NOT EXISTS ronaq_orders (',
+      'CREATE TABLE IF NOT EXISTS mken_orders (',
       '    id TEXT PRIMARY KEY,',
       '    tenant_slug TEXT DEFAULT \'default\',',
       '    activity_id TEXT NOT NULL,',
@@ -698,8 +768,8 @@
       '    payment_amount NUMERIC',
       ');',
       '',
-      '-- 4. إنشاء جدول الموظفين/الفنيين ronaq_staff',
-      'CREATE TABLE IF NOT EXISTS ronaq_staff (',
+      '-- 4. إنشاء جدول الموظفين/الفنيين mken_staff',
+      'CREATE TABLE IF NOT EXISTS mken_staff (',
       '    id TEXT PRIMARY KEY,',
       '    tenant_slug TEXT NOT NULL,',
       '    name TEXT NOT NULL,',
@@ -712,12 +782,12 @@
       ');',
       '',
       '-- 5. ربط جدول المواعيد بالفنيين المباشرين',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS staff_id TEXT REFERENCES ronaq_staff(id) ON DELETE SET NULL;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS staff_id TEXT REFERENCES mken_staff(id) ON DELETE SET NULL;',
       '',
-      '-- 6. إنشاء جدول الأجهزة والتوثيق الحيوي للفنيين ronaq_staff_devices',
-      'CREATE TABLE IF NOT EXISTS ronaq_staff_devices (',
+      '-- 6. إنشاء جدول الأجهزة والتوثيق الحيوي للفنيين mken_staff_devices',
+      'CREATE TABLE IF NOT EXISTS mken_staff_devices (',
       '    id TEXT PRIMARY KEY,',
-      '    staff_id TEXT NOT NULL REFERENCES ronaq_staff(id) ON DELETE CASCADE,',
+      '    staff_id TEXT NOT NULL REFERENCES mken_staff(id) ON DELETE CASCADE,',
       '    device_name TEXT NOT NULL,',
       '    credential_id TEXT UNIQUE NOT NULL,',
       '    public_key TEXT NOT NULL,',
@@ -725,10 +795,10 @@
       '    created_at TIMESTAMPTZ DEFAULT NOW()',
       ');',
       '',
-      '-- 7. إنشاء جدول الفواتير لـ SaaS ronaq_saas_invoices',
-      'CREATE TABLE IF NOT EXISTS ronaq_saas_invoices (',
+      '-- 7. إنشاء جدول الفواتير لـ SaaS mken_saas_invoices',
+      'CREATE TABLE IF NOT EXISTS mken_saas_invoices (',
       '    id TEXT PRIMARY KEY,',
-      '    tenant_slug TEXT NOT NULL REFERENCES ronaq_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
       '    amount NUMERIC NOT NULL,',
       '    months INTEGER NOT NULL,',
       '    status TEXT DEFAULT \'unpaid\',',
@@ -738,104 +808,125 @@
       '    updated_at TIMESTAMPTZ DEFAULT NOW()',
       ');',
       '',
-      '-- 8. إنشاء جدول مفاتيح الـ API للتكامل الخارجي ronaq_api_keys',
-      'CREATE TABLE IF NOT EXISTS ronaq_api_keys (',
+      '-- 8. إنشاء جدول مفاتيح الـ API للتكامل الخارجي mken_api_keys',
+      'CREATE TABLE IF NOT EXISTS mken_api_keys (',
       '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
-      '    tenant_slug TEXT NOT NULL REFERENCES ronaq_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
       '    key_name TEXT NOT NULL,',
       '    api_key TEXT UNIQUE NOT NULL,',
       '    created_at TIMESTAMPTZ DEFAULT NOW(),',
       '    expires_at TIMESTAMPTZ',
       ');',
       '',
+      '-- 8c. إنشاء جدول سجل الرسائل mken_whatsapp_logs',
+      'CREATE TABLE IF NOT EXISTS mken_whatsapp_logs (',
+      '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    phone TEXT NOT NULL,',
+      '    body TEXT NOT NULL,',
+      '    provider TEXT NOT NULL,',
+      '    status TEXT NOT NULL,',
+      '    error_message TEXT,',
+      '    event_type TEXT,',
+      '    appointment_id TEXT,',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    retry_count INTEGER DEFAULT 0',
+      ');',
+      '',
       '-- 8b. ترقية الجداول القديمة — إضافة أعمدة SaaS والدفع',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT \'default\';',
-      'UPDATE ronaq_appointments SET tenant_slug = \'default\' WHERE tenant_slug IS NULL;',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS reminders_sent JSONB DEFAULT \'[]\'::jsonb;',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT \'unpaid\';',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;',
-      'ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;',
-      '-- ملاحظة: جدول ronaq_orders يُنشأ في القسم 3 أعلاه إن لم يكن موجوداً',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT \'default\';',
+      'UPDATE mken_appointments SET tenant_slug = \'default\' WHERE tenant_slug IS NULL;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS reminders_sent JSONB DEFAULT \'[]\'::jsonb;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT \'unpaid\';',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;',
+      '-- ملاحظة: جدول mken_orders يُنشأ في القسم 3 أعلاه إن لم يكن موجوداً',
       'DO $$ BEGIN',
-      '  IF to_regclass(\'public.ronaq_orders\') IS NOT NULL THEN',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT \'default\';',
-      '    UPDATE ronaq_orders SET tenant_slug = \'default\' WHERE tenant_slug IS NULL;',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT \'unpaid\';',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS payment_id TEXT;',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS payment_method TEXT;',
-      '    ALTER TABLE ronaq_orders ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;',
+      '  IF to_regclass(\'public.mken_orders\') IS NOT NULL THEN',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT \'default\';',
+      '    UPDATE mken_orders SET tenant_slug = \'default\' WHERE tenant_slug IS NULL;',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT \'unpaid\';',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS payment_id TEXT;',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS payment_method TEXT;',
+      '    ALTER TABLE mken_orders ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;',
       '  END IF;',
       'END $$;',
       'DO $$ BEGIN',
-      '  IF to_regclass(\'public.ronaq_saas_clients\') IS NOT NULL THEN',
-      '    ALTER TABLE ronaq_saas_clients ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;',
-      '    ALTER TABLE ronaq_saas_clients ADD COLUMN IF NOT EXISTS saved_config_data JSONB;',
-      '    ALTER TABLE ronaq_saas_clients ADD COLUMN IF NOT EXISTS reminders_sent JSONB DEFAULT \'[]\'::jsonb;',
+      '  IF to_regclass(\'public.mken_saas_clients\') IS NOT NULL THEN',
+      '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;',
+      '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS saved_config_data JSONB;',
+      '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS reminders_sent JSONB DEFAULT \'[]\'::jsonb;',
       '  END IF;',
       'END $$;',
       '',
       '-- 9. إدراج مستأجر افتراضي للتوافق الكامل',
-      'INSERT INTO ronaq_saas_clients (tenant_slug, business_name, email, phone, subscription_end, config_data)',
-      'VALUES (\'default\', \'المنصة الافتراضية\', \'default@ronaq.com\', \'9665056138908\', NOW() + INTERVAL \'10 years\', \'{}\'::jsonb)',
+      'INSERT INTO mken_saas_clients (tenant_slug, business_name, email, phone, subscription_end, config_data)',
+      'VALUES (\'default\', \'المنصة الافتراضية\', \'default@mken.com\', \'9665056138908\', NOW() + INTERVAL \'10 years\', \'{}\'::jsonb)',
       'ON CONFLICT (tenant_slug) DO NOTHING;',
       '',
       '-- 10. تفعيل الحماية والأمان (RLS)',
-      'DROP POLICY IF EXISTS "Allow public read appointments" ON ronaq_appointments;',
-      'DROP POLICY IF EXISTS "Allow public read orders" ON ronaq_orders;',
-      'DROP POLICY IF EXISTS "Allow public read staff" ON ronaq_staff;',
-      'DROP POLICY IF EXISTS "Allow public read staff devices" ON ronaq_staff_devices;',
-      'DROP POLICY IF EXISTS "Allow public read on clients" ON ronaq_saas_clients;',
-      'DROP POLICY IF EXISTS "Allow owner manage client" ON ronaq_saas_clients;',
-      'DROP POLICY IF EXISTS "Allow public insert on appointments" ON ronaq_appointments;',
-      'DROP POLICY IF EXISTS "Allow owner manage appointments" ON ronaq_appointments;',
-      'DROP POLICY IF EXISTS "Allow public insert on orders" ON ronaq_orders;',
-      'DROP POLICY IF EXISTS "Allow owner manage orders" ON ronaq_orders;',
-      'DROP POLICY IF EXISTS "Allow owner manage staff" ON ronaq_staff;',
-      'DROP POLICY IF EXISTS "Allow owner read invoices" ON ronaq_saas_invoices;',
-      'DROP POLICY IF EXISTS "Allow owner manage api keys" ON ronaq_api_keys;',
-      'ALTER TABLE ronaq_saas_clients ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_appointments ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_orders ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_staff ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_staff_devices ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_saas_invoices ENABLE ROW LEVEL SECURITY;',
-      'ALTER TABLE ronaq_api_keys ENABLE ROW LEVEL SECURITY;',
+      'DROP POLICY IF EXISTS "Allow public read appointments" ON mken_appointments;',
+      'DROP POLICY IF EXISTS "Allow public read orders" ON mken_orders;',
+      'DROP POLICY IF EXISTS "Allow public read staff" ON mken_staff;',
+      'DROP POLICY IF EXISTS "Allow public read staff devices" ON mken_staff_devices;',
+      'DROP POLICY IF EXISTS "Allow public read on clients" ON mken_saas_clients;',
+      'DROP POLICY IF EXISTS "Allow owner manage client" ON mken_saas_clients;',
+      'DROP POLICY IF EXISTS "Allow public insert on appointments" ON mken_appointments;',
+      'DROP POLICY IF EXISTS "Allow owner manage appointments" ON mken_appointments;',
+      'DROP POLICY IF EXISTS "Allow public insert on orders" ON mken_orders;',
+      'DROP POLICY IF EXISTS "Allow owner manage orders" ON mken_orders;',
+      'DROP POLICY IF EXISTS "Allow owner manage staff" ON mken_staff;',
+      'DROP POLICY IF EXISTS "Allow owner read invoices" ON mken_saas_invoices;',
+      'DROP POLICY IF EXISTS "Allow owner manage api keys" ON mken_api_keys;',
+      'DROP POLICY IF EXISTS "Allow owner manage whatsapp logs" ON mken_whatsapp_logs;',
+      'ALTER TABLE mken_saas_clients ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_appointments ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_orders ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_staff ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_staff_devices ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_saas_invoices ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_api_keys ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_whatsapp_logs ENABLE ROW LEVEL SECURITY;',
       '',
-      '-- 11. سياسات الأمان لجدول العملاء ronaq_saas_clients',
-      'CREATE POLICY "Allow public read on clients" ON ronaq_saas_clients FOR SELECT USING (true);',
-      'CREATE POLICY "Allow owner manage client" ON ronaq_saas_clients FOR ALL TO authenticated ',
+      '-- 11. سياسات الأمان لجدول العملاء mken_saas_clients',
+      'CREATE POLICY "Allow public read on clients" ON mken_saas_clients FOR SELECT USING (true);',
+      'CREATE POLICY "Allow owner manage client" ON mken_saas_clients FOR ALL TO authenticated ',
       '  USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);',
       '',
-      '-- 12. سياسات الأمان لجدول المواعيد ronaq_appointments',
-      'CREATE POLICY "Allow public insert on appointments" ON ronaq_appointments FOR INSERT WITH CHECK (true);',
-      'CREATE POLICY "Allow owner manage appointments" ON ronaq_appointments FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM ronaq_saas_clients WHERE tenant_slug = ronaq_appointments.tenant_slug LIMIT 1));',
+      '-- 12. سياسات الأمان لجدول المواعيد mken_appointments',
+      'CREATE POLICY "Allow public insert on appointments" ON mken_appointments FOR INSERT WITH CHECK (true);',
+      'CREATE POLICY "Allow owner manage appointments" ON mken_appointments FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_appointments.tenant_slug LIMIT 1));',
       '',
-      '-- 13. سياسات الأمان لجدول الطلبات ronaq_orders',
-      'CREATE POLICY "Allow public insert on orders" ON ronaq_orders FOR INSERT WITH CHECK (true);',
-      'CREATE POLICY "Allow owner manage orders" ON ronaq_orders FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM ronaq_saas_clients WHERE tenant_slug = ronaq_orders.tenant_slug LIMIT 1));',
+      '-- 13. سياسات الأمان لجدول الطلبات mken_orders',
+      'CREATE POLICY "Allow public insert on orders" ON mken_orders FOR INSERT WITH CHECK (true);',
+      'CREATE POLICY "Allow owner manage orders" ON mken_orders FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_orders.tenant_slug LIMIT 1));',
       '',
-      '-- 14. سياسات الأمان لجدول الموظفين ronaq_staff',
-      'CREATE POLICY "Allow owner manage staff" ON ronaq_staff FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM ronaq_saas_clients WHERE tenant_slug = ronaq_staff.tenant_slug LIMIT 1));',
+      '-- 14. سياسات الأمان لجدول الموظفين mken_staff',
+      'CREATE POLICY "Allow owner manage staff" ON mken_staff FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_staff.tenant_slug LIMIT 1));',
       '',
-      '-- 15. سياسات الأمان للفواتير ronaq_saas_invoices',
-      'CREATE POLICY "Allow owner read invoices" ON ronaq_saas_invoices FOR SELECT TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM ronaq_saas_clients WHERE tenant_slug = ronaq_saas_invoices.tenant_slug LIMIT 1));',
+      '-- 15. سياسات الأمان للفواتير mken_saas_invoices',
+      'CREATE POLICY "Allow owner read invoices" ON mken_saas_invoices FOR SELECT TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_saas_invoices.tenant_slug LIMIT 1));',
       '',
       '-- 16. سياسات الأمان لمفاتيح الـ API',
-      'CREATE POLICY "Allow owner manage api keys" ON ronaq_api_keys FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM ronaq_saas_clients WHERE tenant_slug = ronaq_api_keys.tenant_slug LIMIT 1));',
+      'CREATE POLICY "Allow owner manage api keys" ON mken_api_keys FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_api_keys.tenant_slug LIMIT 1));',
+      '',
+      '-- 16b. سياسات الأمان لسجل رسائل الواتساب',
+      'CREATE POLICY "Allow owner manage whatsapp logs" ON mken_whatsapp_logs FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_whatsapp_logs.tenant_slug LIMIT 1));',
       '',
       '-- 17. إنشاء منظر عام للمواعيد لا يعرض معلومات حساسة',
-      'CREATE OR REPLACE VIEW ronaq_public_appointments AS ',
-      '  SELECT id, tenant_slug, activity_id, service_id, date, time, status FROM ronaq_appointments;',
-      'GRANT SELECT ON ronaq_public_appointments TO anon;',
-      'GRANT SELECT ON ronaq_public_appointments TO authenticated;',
+      'CREATE OR REPLACE VIEW mken_public_appointments AS ',
+      '  SELECT id, tenant_slug, activity_id, service_id, date, time, status FROM mken_appointments;',
+      'GRANT SELECT ON mken_public_appointments TO anon;',
+      'GRANT SELECT ON mken_public_appointments TO authenticated;',
       '',
       '-- 18. دالة التحقق من رمز PIN للموظفين بشكل آمن',
       'CREATE OR REPLACE FUNCTION verify_staff_pin(p_tenant text, p_phone text, p_pin_hash text) ',
@@ -844,7 +935,7 @@
       '    v_staff record;',
       'BEGIN',
       '    SELECT id, name, role, phone, tenant_slug, status INTO v_staff ',
-      '    FROM ronaq_staff ',
+      '    FROM mken_staff ',
       '    WHERE tenant_slug = p_tenant AND phone = p_phone AND pin_code = p_pin_hash AND status = \'active\';',
       '    IF FOUND THEN',
       '        RETURN jsonb_build_object(\'success\', true, \'id\', v_staff.id, \'name\', v_staff.name, \'role\', v_staff.role, \'phone\', v_staff.phone, \'tenantSlug\', v_staff.tenant_slug);',
@@ -858,9 +949,9 @@
       '',
       '-- 19. دالة جلب مهام الفنيين بشكل آمن',
       'CREATE OR REPLACE FUNCTION get_staff_appointments(p_staff_id text) ',
-      'RETURNS SETOF ronaq_appointments SECURITY DEFINER AS $$',
+      'RETURNS SETOF mken_appointments SECURITY DEFINER AS $$',
       'BEGIN',
-      '    RETURN QUERY SELECT * FROM ronaq_appointments WHERE staff_id = p_staff_id;',
+      '    RETURN QUERY SELECT * FROM mken_appointments WHERE staff_id = p_staff_id;',
       'END;',
       '$$ LANGUAGE plpgsql;',
       'GRANT EXECUTE ON FUNCTION get_staff_appointments(text) TO anon;',
@@ -870,7 +961,7 @@
       'CREATE OR REPLACE FUNCTION update_staff_appointment_status(p_appointment_id text, p_staff_id text, p_new_status text) ',
       'RETURNS jsonb SECURITY DEFINER AS $$',
       'BEGIN',
-      '    UPDATE ronaq_appointments ',
+      '    UPDATE mken_appointments ',
       '    SET status = p_new_status, updated_at = NOW() ',
       '    WHERE id = p_appointment_id AND staff_id = p_staff_id;',
       '    IF FOUND THEN',
@@ -885,7 +976,7 @@
     ].join('\n');
   }
 
-  window.RonaqSupabaseDb = {
+  window.MkenSupabaseDb = {
     isConfigured: isConfigured,
     reinit: reinit,
     fetchConfig: fetchConfig,
@@ -907,6 +998,9 @@
     fetchApiKeys: fetchApiKeys,
     saveApiKey: saveApiKey,
     deleteApiKey: deleteApiKey,
+    fetchWhatsappLogs: fetchWhatsappLogs,
+    logWhatsappMessage: logWhatsappMessage,
+    deleteWhatsappLog: deleteWhatsappLog,
     testConnection: testConnection,
     getInitSql: getInitSql,
     getClient: getClient,

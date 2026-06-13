@@ -42,7 +42,7 @@
         <!-- Dynamic Fields -->
         <div id="loginEmailBlock" class="admin-field">
           <label for="loginEmailInput">البريد الإلكتروني</label>
-          <input type="email" id="loginEmailInput" class="admin-input" placeholder="example@ronaq.com" dir="ltr" required>
+          <input type="email" id="loginEmailInput" class="admin-input" placeholder="example@mken.com" dir="ltr" required>
         </div>
 
         <div id="loginPasswordBlock" class="admin-field">
@@ -113,6 +113,7 @@
       <button type="button" class="admin-tab" data-tab="orders">الطلبات</button>
       <button type="button" class="admin-tab" data-tab="staff">الموظفين</button>
       <button type="button" class="admin-tab" data-tab="supabase">الربط والأتمتة</button>
+      <button type="button" class="admin-tab" data-tab="whatsapp-logs">سجل الرسائل</button>
       <button type="button" class="admin-tab" data-tab="saas">الاشتراك والخرائط</button>
       <button type="button" class="admin-tab" data-tab="developer">المطورين (API)</button>
     </nav>
@@ -359,6 +360,7 @@
               <option value="none">— اختر البوابة —</option>
               <option value="ultramsg">UltraMsg (غير رسمي - كود QR)</option>
               <option value="twilio">Twilio (رسمي - موافقات فيسبوك)</option>
+              <option value="whatsapp_business">WhatsApp Business API (رسمي - Cloud API)</option>
               <option value="custom">Custom Webhook (رابط مخصص لبوت/خادم خارجي)</option>
             </select>
           </div>
@@ -381,6 +383,17 @@
           <div id="whatsappFromBlock" class="admin-field" hidden>
             <label for="whatsappApiFromNumber">رقم المرسل لـ Twilio (Twilio Sender Number)</label>
             <input type="text" id="whatsappApiFromNumber" class="admin-input" dir="ltr" placeholder="+14155253486">
+          </div>
+
+          <div id="whatsappTemplateBlock" class="admin-field" hidden>
+            <label for="whatsappApiTemplateName">اسم قالب الواتساب (Template Name - اختياري)</label>
+            <input type="text" id="whatsappApiTemplateName" class="admin-input" dir="ltr" placeholder="مثال: booking_confirmation">
+            <small class="admin-field__hint">اختياري: إذا كنت تستخدم قالباً معتمداً للإرسال الرسمي في الفيس بوك.</small>
+          </div>
+
+          <div id="whatsappLanguageBlock" class="admin-field" hidden>
+            <label for="whatsappApiLanguageCode">رمز لغة القالب (Language Code)</label>
+            <input type="text" id="whatsappApiLanguageCode" class="admin-input" dir="ltr" placeholder="ar" value="ar">
           </div>
 
           <div id="whatsappCustomDocsBlock" class="admin-field" hidden>
@@ -505,15 +518,15 @@
 
         <section class="admin-section">
           <h3>تحديث قاعدة البيانات لدعم حقول الدفع (SQL Upgrade)</h3>
-          <p class="admin-hint">إذا كان لديك جدول <code>ronaq_appointments</code> قديم فقط، شغّل هذا الأمر أولاً. جدول <code>ronaq_orders</code> يُنشأ تلقائياً عند تشغيل <strong>سكربت التهيئة الكامل</strong> من تبويب Supabase.</p>
+          <p class="admin-hint">إذا كان لديك جدول <code>mken_appointments</code> قديم فقط، شغّل هذا الأمر أولاً. جدول <code>mken_orders</code> يُنشأ تلقائياً عند تشغيل <strong>سكربت التهيئة الكامل</strong> من تبويب Supabase.</p>
           <div class="admin-field">
             <textarea id="supabaseUpgradeSqlArea" class="admin-input" rows="8" readonly dir="ltr" style="font-family: monospace; font-size: 13px; background: #1a1a2e; color: #a9b7c6;">
-ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT 'default';
-UPDATE ronaq_appointments SET tenant_slug = 'default' WHERE tenant_slug IS NULL;
-ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
-ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;
-ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;
-ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</textarea>
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT 'default';
+UPDATE mken_appointments SET tenant_slug = 'default' WHERE tenant_slug IS NULL;
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</textarea>
           </div>
           <div class="admin-backup">
             <button type="button" id="supabaseCopyUpgradeSqlBtn" class="btn btn--outline" style="width:100%">نسخ أمر التحديث</button>
@@ -692,6 +705,64 @@ ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;<
 .then(res => res.json())
 .then(data => console.log(data));</pre>
           </section>
+        </div>
+      </div>
+
+      <div class="admin-tab-panel" data-panel="whatsapp-logs" hidden>
+        <div class="admin-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <h3 style="margin:0;">سجل إرسال رسائل واتساب</h3>
+            <div style="display:flex; gap:10px;">
+              <button type="button" id="refreshWhatsappLogsBtn" class="btn btn--outline btn--sm">🔄 تحديث السجل</button>
+              <button type="button" id="clearWhatsappLogsBtn" class="btn btn--outline btn--sm" style="color:#c0392b; border-color:#c0392b15;">🗑️ تنظيف السجل</button>
+            </div>
+          </div>
+          
+          <div class="admin-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div style="background:#f4f6f8; padding:15px; border-radius:8px; text-align:center; border:1px solid var(--color-border);">
+              <div style="font-size:0.85rem; color:var(--color-text-muted);">إجمالي الرسائل</div>
+              <div id="waStatTotal" style="font-size:1.8rem; font-weight:bold; color:var(--color-primary); margin-top:5px;">0</div>
+            </div>
+            <div style="background:#e8f5e9; padding:15px; border-radius:8px; text-align:center; border:1px solid #c8e6c9;">
+              <div style="font-size:0.85rem; color:#2e7d32;">أُرسلت بنجاح</div>
+              <div id="waStatSuccess" style="font-size:1.8rem; font-weight:bold; color:#2e7d32; margin-top:5px;">0</div>
+            </div>
+            <div style="background:#fce4ec; padding:15px; border-radius:8px; text-align:center; border:1px solid #f8bbd0;">
+              <div style="font-size:0.85rem; color:#c62828;">فشلت</div>
+              <div id="waStatFailed" style="font-size:1.8rem; font-weight:bold; color:#c62828; margin-top:5px;">0</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+            <input type="text" id="waLogsSearchPhone" class="admin-input" placeholder="ابحث برقم الجوال..." style="max-width:250px;">
+            <select id="waLogsFilterStatus" class="admin-input" style="max-width:150px;">
+              <option value="all">كل الحالات</option>
+              <option value="success">ناجحة</option>
+              <option value="failed">فشلت</option>
+            </select>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="admin-table" style="width:100%; border-collapse:collapse; text-align:right;">
+              <thead>
+                <tr style="background:#faf8f5; border-bottom:2px solid var(--color-border);">
+                  <th style="padding:10px;">التاريخ والوقت</th>
+                  <th style="padding:10px;">رقم الجوال</th>
+                  <th style="padding:10px;">الحدث</th>
+                  <th style="padding:10px;">البوابة</th>
+                  <th style="padding:10px;">الرسالة</th>
+                  <th style="padding:10px;">الحالة</th>
+                  <th style="padding:10px;">المحاولات</th>
+                  <th style="padding:10px;">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="whatsappLogsTableBody">
+                <tr>
+                  <td colspan="8" style="padding:20px; text-align:center; color:var(--color-text-muted);">جاري تحميل السجلات...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -880,5 +951,6 @@ ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;<
   <script src="js/admin-staff.js"></script>
   <script src="js/admin-developer.js"></script>
   <script src="js/admin-push.js"></script>
+  <script src="js/admin-whatsapp-logs.js"></script>
 </body>
 </html>

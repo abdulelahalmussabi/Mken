@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
+  var store = window.MkenServicesStore;
   if (!store) return;
 
   var config, activities, activeActivityId, content, profile;
@@ -79,7 +79,7 @@
     if (!act) return;
 
     content = store.getActivityContent(activityId);
-    profile = window.RonaqUiProfile.get(act.uiProfile);
+    profile = window.MkenUiProfile.get(act.uiProfile);
 
     if (config.theme) store.applyTheme(config.theme);
     else if (act.defaultTheme) store.applyTheme(act.defaultTheme);
@@ -407,7 +407,7 @@
     document.querySelectorAll('[data-brand="tagline"]').forEach(function (el) {
       el.textContent = brand.tagline;
     });
-    if (window.RonaqBrandLogo) window.RonaqBrandLogo.apply(brand);
+    if (window.MkenBrandLogo) window.MkenBrandLogo.apply(brand);
   }
 
   function updateMeta() {

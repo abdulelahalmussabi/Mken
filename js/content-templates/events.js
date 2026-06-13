@@ -1,5 +1,5 @@
 /** محتوى — مناسبات وقاعات */
-window.RonaqContentEvents = {
+window.MkenContentEvents = {
   hero: {
     titleAccent: 'مناسبتك بلا عناء',
     desc: 'في {brand} قاعات أفراح، مؤتمرات، وحفلات — مع تنسيق كامل وضيافة احترافية.',

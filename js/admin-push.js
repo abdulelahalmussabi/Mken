@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var pushApi = window.RonaqPushSubscribe;
+  var store = window.MkenServicesStore;
+  var pushApi = window.MkenPushSubscribe;
   if (!store || !pushApi) return;
 
   var pushEnabled = document.getElementById('pushEnabled');
@@ -16,7 +16,7 @@
   var pushStatus = document.getElementById('pushStatus');
 
   function toast(msg, type) {
-    if (window.RonaqAdminToast) window.RonaqAdminToast(msg, type);
+    if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
 
   function loadPushSettings() {

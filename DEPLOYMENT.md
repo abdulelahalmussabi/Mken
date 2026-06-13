@@ -35,8 +35,8 @@
 4. انسخ كود الـ SQL بالكامل من الصندوق المخصص في صفحة الإدارة.
 5. الصق الكود في **SQL Editor** بـ Supabase واضغط على **Run**.
 6. سيقوم السكريبت بإنشاء:
-   * جدول المستأجرين `ronaq_saas_clients`.
-   * جدول المواعيد `ronaq_appointments` مع عمود `tenant_slug`.
+   * جدول المستأجرين `mken_saas_clients`.
+   * جدول المواعيد `mken_appointments` مع عمود `tenant_slug`.
    * تفعيل جدار حماية الجداول (RLS) وتجهيز سياسات الأمان للإنتاج.
 
 ### ب) تفعيل نظام الحسابات (Supabase Auth)
@@ -47,13 +47,13 @@
    * **للتسجيل اليدوي من طرفك (Super Admin):**
      1. أنشئ مستخدماً بريداً إلكترونياً جديداً في قسم **Users** بـ Supabase.
      2. انسخ معرّف المستخدم (User ID / UUID).
-     3. أدخل صفاً جديداً في جدول `ronaq_saas_clients` وضع المعرّف المنسوخ في حقل `owner_id`.
+     3. أدخل صفاً جديداً في جدول `mken_saas_clients` وضع المعرّف المنسوخ في حقل `owner_id`.
 
 ---
 
 ## 3. تشغيل أتمتة الواتساب وتنبيهات الاشتراكات (WhatsApp Scheduler)
 
-يقوم السكربت [whatsapp-scheduler.mjs](file:///d:/de7me/ronaq-platform/scripts/whatsapp-scheduler.mjs) بفحص قاعدة البيانات دورياً لإرسال تنبيهات المواعيد وتذكير العملاء قبل انتهاء اشتراكاتهم بـ 30 يوماً و 14 يوماً.
+يقوم السكربت [whatsapp-scheduler.mjs](file:///d:/de7me/mken-platform/scripts/whatsapp-scheduler.mjs) بفحص قاعدة البيانات دورياً لإرسال تنبيهات المواعيد وتذكير العملاء قبل انتهاء اشتراكاتهم بـ 30 يوماً و 14 يوماً.
 
 ### أ) المتطلبات والتشغيل المحلي
 1. انتقل لمجلد السكربتات وثبت الحزم:
@@ -84,7 +84,7 @@
    | `SUPABASE_URL` | رابط مشروعك في Supabase | 🔴 إلزامي |
    | `SUPABASE_SERVICE_ROLE_KEY` | مفتاح الخدمة الكاملة (لتعديل البيانات والتأكيد) | 🔴 إلزامي |
    | `MOYASAR_SECRET_KEY` | مفتاح Moyasar السري للتحقق من المدفوعات | 🔴 إلزامي (webhook يرفض الطلبات بدونه) |
-   | `ADMIN_PIN` | رمز الدخول للوحة الإدارة (بديل `ronaq2026` الافتراضي) | 🟡 موصى به |
+   | `ADMIN_PIN` | رمز الدخول للوحة الإدارة (بديل `mken2026` الافتراضي) | 🟡 موصى به |
    | `MKEN_PIN` | رمز الدخول البديل للوحة الإدارة | 🟡 موصى به |
    | `CRON_SECRET` | رمز حماية مسار ويب هوك الكرون من الاستدعاء العشوائي | 🟢 اختياري |
 
@@ -124,7 +124,7 @@ jobs:
 #### 3. الجدولة على خادم VPS (Linux Cron Job)
 أضف السطر التالي لملف الجدولة `crontab -e`:
 ```bash
-0 */6 * * * cd /path/to/ronaq-platform && SUPABASE_URL="https://xxx.supabase.co" SUPABASE_KEY="your_key" node scripts/whatsapp-scheduler.mjs >> scheduler.log 2>&1
+0 */6 * * * cd /path/to/mken-platform && SUPABASE_URL="https://xxx.supabase.co" SUPABASE_KEY="your_key" node scripts/whatsapp-scheduler.mjs >> scheduler.log 2>&1
 ```
 
 ---

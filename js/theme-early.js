@@ -1,6 +1,6 @@
 /** تطبيق الثيم من localStorage قبل رسم الصفحة */
 (function () {
-  var KEY = 'ronaq_platform_config';
+  var KEY = 'mken_platform_config';
   var THEMES = ['terracotta', 'ocean', 'forest', 'midnight', 'desert', 'slate'];
   try {
     var raw = localStorage.getItem(KEY);

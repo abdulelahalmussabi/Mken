@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط صيانة الحاسب والشبكات
  */
-window.RonaqContentItSupport = {
+window.MkenContentItSupport = {
   hero: {
     titleAccent: 'دعم تقني متنقل',
     desc: 'في {brand} نصل إليك لإصلاح أجهزة الكمبيوتر واللابتوب، إعداد الشبكات، واستعادة بياناتك — فنيون IT معتمدون بخبرة عملية.',

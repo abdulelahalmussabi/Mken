@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط صالونات الحلاقة والتجميل
  */
-window.RonaqContentBarberSalon = {
+window.MkenContentBarberSalon = {
   hero: {
     titleAccent: 'احجز وادخل بدون انتظار',
     desc: 'في {brand} نوفر حلاقة رجالية ونسائية، عناية باللحية، وتجميل — احجز موعدك أونلاين واختر الوقت المناسب.',

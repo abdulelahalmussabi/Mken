@@ -1,7 +1,7 @@
 /**
  * محتوى واجهة نشاط الخدمات الطبية والصحية
  */
-window.RonaqContentHealthcare = {
+window.MkenContentHealthcare = {
   hero: {
     titleAccent: 'رعاية صحية بموعد محدد',
     desc: 'في {brand} احجز كشفاً طبياً، تمريضاً منزلياً، تحاليل، أو استشارة عن بُعد — رعاية موثوقة في وقتك.',

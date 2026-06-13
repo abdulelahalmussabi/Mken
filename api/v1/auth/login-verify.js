@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
   try {
     // 1. Fetch staff member
     const { data: staff, error: staffErr } = await supabase
-      .from('ronaq_staff')
+      .from('mken_staff')
       .select('*')
       .eq('tenant_slug', tenantSlug)
       .eq('phone', phone)
@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
 
     // 3. Fetch device public key
     const { data: device, error: devErr } = await supabase
-      .from('ronaq_staff_devices')
+      .from('mken_staff_devices')
       .select('*')
       .eq('staff_id', staff.id)
       .eq('credential_id', credentialId)

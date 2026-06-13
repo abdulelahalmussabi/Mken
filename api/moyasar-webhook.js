@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
 
       // Update appointment in Supabase
       const { data, error } = await supabase
-        .from('ronaq_appointments')
+        .from('mken_appointments')
         .update({
           payment_status: 'paid',
           payment_id: paymentId,
@@ -86,14 +86,14 @@ module.exports = async function handler(req, res) {
         const apt = data[0];
         // Fetch tenant WhatsApp settings
         const { data: tenant } = await supabase
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .select('config_data')
           .eq('tenant_slug', slug)
           .maybeSingle();
 
         const config = tenant ? tenant.config_data : null;
         if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          await sendServerWhatsApp(apt, 'booking', config);
+          await sendServerWhatsApp(apt, 'booking', config, supabase, slug);
         }
       }
 
@@ -108,7 +108,7 @@ module.exports = async function handler(req, res) {
 
       // Update order in Supabase
       const { data, error } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .update({
           payment_status: 'paid',
           payment_id: paymentId,
@@ -126,14 +126,14 @@ module.exports = async function handler(req, res) {
         const ord = data[0];
         // Fetch tenant WhatsApp settings
         const { data: tenant } = await supabase
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .select('config_data')
           .eq('tenant_slug', slug)
           .maybeSingle();
 
         const config = tenant ? tenant.config_data : null;
         if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          await sendServerWhatsApp(ord, 'order', config);
+          await sendServerWhatsApp(ord, 'order', config, supabase, slug);
         }
       }
 
@@ -147,7 +147,7 @@ module.exports = async function handler(req, res) {
       console.log(`Processing SaaS renewal: ${slug} for ${renewMonths} months`);
 
       const { data: tenant, error: fetchErr } = await supabase
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .select('*')
         .eq('tenant_slug', slug)
         .maybeSingle();
@@ -176,7 +176,7 @@ module.exports = async function handler(req, res) {
 
       // 1. Update subscription status and end date
       const { error: updateErr } = await supabase
-        .from('ronaq_saas_clients')
+        .from('mken_saas_clients')
         .update(updateFields)
         .eq('tenant_slug', slug);
 
@@ -185,7 +185,7 @@ module.exports = async function handler(req, res) {
       // 2. Save Invoice record
       const invoiceId = 'inv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
       const { error: invoiceErr } = await supabase
-        .from('ronaq_saas_invoices')
+        .from('mken_saas_invoices')
         .insert({
           id: invoiceId,
           tenant_slug: slug,
@@ -201,7 +201,7 @@ module.exports = async function handler(req, res) {
       // 3. Send WhatsApp confirmation using master credentials
       try {
         const { data: defaultTenant } = await supabase
-          .from('ronaq_saas_clients')
+          .from('mken_saas_clients')
           .select('config_data')
           .eq('tenant_slug', 'default')
           .maybeSingle();
@@ -258,9 +258,28 @@ module.exports = async function handler(req, res) {
 };
 
 // Standalone Helper to send WhatsApp messages from Server side
-async function sendServerWhatsApp(item, type, config) {
+async function logWhatsappMessageServer(supabase, logObj, tenantSlug) {
+  if (!supabase) return;
+  try {
+    await supabase.from('mken_whatsapp_logs').insert({
+      tenant_slug: tenantSlug,
+      phone: logObj.phone,
+      body: logObj.body,
+      provider: logObj.provider,
+      status: logObj.status,
+      error_message: logObj.errorMessage || null,
+      event_type: logObj.eventType || null,
+      appointment_id: logObj.appointmentId || null,
+      retry_count: logObj.retryCount || 0
+    });
+  } catch (err) {
+    console.error('Failed to log WhatsApp message on server:', err.message);
+  }
+}
+
+async function sendServerWhatsApp(item, type, config, supabase, tenantSlug = 'default') {
   const wa = config.whatsappApi || {};
-  if (!wa.enabled || !wa.token) return;
+  if (!wa.enabled) return;
 
   const phone = cleanPhone(item.phone);
   if (!phone) return;
@@ -317,44 +336,44 @@ async function sendServerWhatsApp(item, type, config) {
   }
 
   const messageText = body.join('\n');
+  const provider = wa.provider;
+  let promise;
 
   try {
-    if (wa.provider === 'ultramsg' && wa.instanceId) {
+    if (provider === 'ultramsg' && wa.instanceId) {
       const url = `https://api.ultramsg.com/${wa.instanceId}/messages/chat`;
       const params = new URLSearchParams();
       params.append('token', wa.token);
       params.append('to', phone);
       params.append('body', messageText);
 
-      await fetch(url, {
+      promise = fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString()
-      });
-      console.log(`Auto WhatsApp sent via UltraMsg for ${item.id}`);
-    } else if (wa.provider === 'twilio' && wa.accountSid && wa.fromNumber) {
+      }).then(r => r.ok ? r.json() : Promise.reject(new Error(`UltraMsg status ${r.status}`)));
+    } else if (provider === 'twilio' && wa.accountSid && wa.fromNumber) {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${wa.accountSid}/Messages.json`;
       const params = new URLSearchParams();
       params.append('Body', messageText);
       params.append('From', 'whatsapp:' + wa.fromNumber.replace(/^\+?/, '+'));
       params.append('To', 'whatsapp:+' + phone);
 
-      await fetch(url, {
+      promise = fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': 'Basic ' + Buffer.from(wa.accountSid + ':' + wa.token).toString('base64')
         },
         body: params.toString()
-      });
-      console.log(`Auto WhatsApp sent via Twilio for ${item.id}`);
-    } else if (wa.provider === 'custom' && wa.url) {
+      }).then(r => r.ok ? r.json() : Promise.reject(new Error(`Twilio status ${r.status}`)));
+    } else if (provider === 'custom' && wa.url) {
       const headers = { 'Content-Type': 'application/json' };
       if (wa.token) headers['Authorization'] = 'Bearer ' + wa.token;
 
       const appointment = mapDbItemToAppointment(item, type);
 
-      await fetch(wa.url, {
+      promise = fetch(wa.url, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
@@ -364,11 +383,94 @@ async function sendServerWhatsApp(item, type, config) {
           appointment: appointment,
           item: item
         })
+      }).then(r => r.ok ? r.text() : Promise.reject(new Error(`Custom Webhook status ${r.status}`)));
+    } else if (provider === 'whatsapp_business' && wa.phoneNumberId) {
+      const url = `https://graph.facebook.com/v18.0/${wa.phoneNumberId}/messages`;
+      const headers = {
+        'Authorization': 'Bearer ' + wa.token,
+        'Content-Type': 'application/json'
+      };
+
+      let payload;
+      if (wa.templateName) {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: phone,
+          type: "template",
+          template: {
+            name: wa.templateName,
+            language: {
+              code: wa.languageCode || "ar"
+            },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: messageText
+                  }
+                ]
+              }
+            ]
+          }
+        };
+      } else {
+        payload = {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: phone,
+          type: "text",
+          text: {
+            body: messageText
+          }
+        };
+      }
+
+      promise = fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      }).then(async r => {
+        if (r.ok) return r.json();
+        let errorMsg = `WhatsApp Business status ${r.status}`;
+        try {
+          const errData = await r.json();
+          if (errData && errData.error && errData.error.message) {
+            errorMsg = errData.error.message;
+          }
+        } catch (e) {}
+        throw new Error(errorMsg);
       });
-      console.log(`Auto WhatsApp sent via Custom Webhook for ${item.id}`);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
+
+    const result = await promise;
+    console.log(`Auto WhatsApp sent via ${provider} for ${item.id}`);
+
+    await logWhatsappMessageServer(supabase, {
+      phone,
+      body: messageText,
+      provider,
+      status: 'success',
+      eventType: 'confirmation',
+      appointmentId: type === 'booking' ? item.id : null
+    }, tenantSlug);
+
   } catch (err) {
     console.error(`Failed to send auto WhatsApp in webhook for ${item.id}:`, err.message);
+
+    await logWhatsappMessageServer(supabase, {
+      phone,
+      body: messageText,
+      provider,
+      status: 'failed',
+      errorMessage: err.message,
+      eventType: 'confirmation',
+      appointmentId: type === 'booking' ? item.id : null
+    }, tenantSlug);
   }
 }
 

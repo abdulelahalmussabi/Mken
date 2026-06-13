@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var orderStore = window.RonaqOrderStore;
+  var store = window.MkenServicesStore;
+  var orderStore = window.MkenOrderStore;
   if (!store || !orderStore) return;
 
   var config, activeActivity, activeActivityId, lastSubmittedOrder = null;
@@ -61,7 +61,7 @@
     document.querySelectorAll('[data-brand="tagline"]').forEach(function (el) {
       el.textContent = brand.tagline;
     });
-    if (window.RonaqBrandLogo) window.RonaqBrandLogo.apply(brand);
+    if (window.MkenBrandLogo) window.MkenBrandLogo.apply(brand);
     document.title = 'اطلب الآن | ' + brand.name;
   }
 

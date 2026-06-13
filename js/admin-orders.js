@@ -4,8 +4,8 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
-  var orderStore = window.RonaqOrderStore;
+  var store = window.MkenServicesStore;
+  var orderStore = window.MkenOrderStore;
   if (!store || !orderStore) return;
 
   var filterActivity = document.getElementById('ordersActivityFilter');
@@ -18,7 +18,7 @@
   var _orders = [];
 
   function toast(msg, type) {
-    if (window.RonaqAdminToast) window.RonaqAdminToast(msg, type);
+    if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
 
   function esc(str) {
@@ -56,9 +56,9 @@
   function loadOrders() {
     ordersListContainer.innerHTML = '<p class="admin-hint">جاري تحميل الطلبات...</p>';
     
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      return window.RonaqSupabaseDb.fetchOrders(tenantSlug)
+      return window.MkenSupabaseDb.fetchOrders(tenantSlug)
         .then(function (dbOrders) {
           _orders = dbOrders;
           // Sync back to local storage
@@ -282,7 +282,7 @@
     loadOrders();
   }
 
-  window.RonaqAdminOrders = {
+  window.MkenAdminOrders = {
     refresh: refresh,
     loadOrders: loadOrders
   };

@@ -1,5 +1,5 @@
 /** محتوى — خدمات بيطرية */
-window.RonaqContentVeterinary = {
+window.MkenContentVeterinary = {
   hero: { titleAccent: 'رعاية لأليفك', desc: 'في {brand} كشف، تطعيم، وتجميل — واحجز زيارة منزلية لراحة حيوانك.', badgeSingle: 'الخدمة البيطرية', badgeMulti: 'الخدمات البيطرية' },
   stats: [{ num: '+2000', label: 'حيوان' }, { num: '30', label: 'دقيقة كشف' }, { num: '4.8', label: 'تقييم' }, { num: '7/7', label: 'مواعيد' }],
   features: [{ icon: '🐕', text: 'كشف شامل' }, { icon: '💉', text: 'تطعيم' }, { icon: '✂️', text: 'تجميل' }, { icon: '🏠', text: 'زيارة منزلية' }, { icon: '🏥', text: 'استشارة جراحية' }],

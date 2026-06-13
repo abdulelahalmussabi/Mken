@@ -1,5 +1,5 @@
 /** محتوى — رياضة ولياقة */
-window.RonaqContentFitness = {
+window.MkenContentFitness = {
   hero: { titleAccent: 'حقّق أهدافك الرياضية', desc: 'في {brand} تدريب شخصي، يoga، وحصص جماعية — احجز حصتك.', badgeSingle: 'الحصة المتوفرة', badgeMulti: 'الحصص المتوفرة' },
   stats: [{ num: '+15', label: 'مدرب' }, { num: '60', label: 'دقيقة/حصة' }, { num: '5★', label: 'تقييم' }, { num: '6–22', label: 'ساعات العمل' }],
   features: [{ icon: '🏋️', text: 'PT شخصي' }, { icon: '🧘', text: 'يوga' }, { icon: '👥', text: 'حصص جماعية' }, { icon: '🥗', text: 'تغذية' }, { icon: '🎫', text: 'دخول يومي' }],

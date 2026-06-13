@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var store = window.RonaqServicesStore;
+  var store = window.MkenServicesStore;
   if (!store) return;
 
   var staffListContainer = document.getElementById('adminStaffList');
@@ -17,7 +17,7 @@
   var editingId = null;
 
   function toast(msg, type) {
-    if (window.RonaqAdminToast) window.RonaqAdminToast(msg, type);
+    if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
 
   function esc(str) {
@@ -29,12 +29,12 @@
       staffListContainer.innerHTML = '<p class="admin-hint">جاري تحميل الفنيين والموظفين...</p>';
     }
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      return window.RonaqSupabaseDb.fetchStaff(tenantSlug)
+      return window.MkenSupabaseDb.fetchStaff(tenantSlug)
         .then(function (dbStaff) {
           _staffList = dbStaff;
-          localStorage.setItem('ronaq_mken_staff', JSON.stringify(dbStaff));
+          localStorage.setItem('mken_mken_staff', JSON.stringify(dbStaff));
           renderStaff();
         })
         .catch(function (err) {
@@ -49,7 +49,7 @@
 
   function loadLocalStaff() {
     try {
-      var raw = localStorage.getItem('ronaq_mken_staff');
+      var raw = localStorage.getItem('mken_mken_staff');
       _staffList = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _staffList = [];
@@ -150,8 +150,8 @@
   }
 
   function deleteStaffMember(id) {
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
-      window.RonaqSupabaseDb.deleteStaff(id)
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      window.MkenSupabaseDb.deleteStaff(id)
         .then(function () {
           toast('تم حذف الموظف بنجاح');
           loadStaff();
@@ -161,7 +161,7 @@
         });
     } else {
       _staffList = _staffList.filter(function (s) { return s.id !== id; });
-      localStorage.setItem('ronaq_mken_staff', JSON.stringify(_staffList));
+      localStorage.setItem('mken_mken_staff', JSON.stringify(_staffList));
       toast('تم الحذف محلياً');
       renderStaff();
     }
@@ -199,9 +199,9 @@
       status: status
     };
 
-    if (window.RonaqSupabaseDb && window.RonaqSupabaseDb.isConfigured()) {
+    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
-      window.RonaqSupabaseDb.saveStaff(member, tenantSlug)
+      window.MkenSupabaseDb.saveStaff(member, tenantSlug)
         .then(function () {
           toast('تم حفظ بيانات الموظف بنجاح سحابياً');
           closeModal();
@@ -221,7 +221,7 @@
         return member;
       });
       if (!found) _staffList.push(member);
-      localStorage.setItem('ronaq_mken_staff', JSON.stringify(_staffList));
+      localStorage.setItem('mken_mken_staff', JSON.stringify(_staffList));
       toast('تم الحفظ محلياً بنجاح');
       closeModal();
       renderStaff();
@@ -262,7 +262,7 @@
     }
   }
 
-  window.RonaqAdminStaff = {
+  window.MkenAdminStaff = {
     refresh: refresh,
     getStaffList: getStaffList,
     getStaffName: getStaffName

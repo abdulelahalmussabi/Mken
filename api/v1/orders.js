@@ -23,9 +23,9 @@ async function authenticateApiKey(req, res) {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
-  // Find key in ronaq_api_keys
+  // Find key in mken_api_keys
   const { data, error } = await supabase
-    .from('ronaq_api_keys')
+    .from('mken_api_keys')
     .select('tenant_slug, expires_at')
     .eq('api_key', apiKey)
     .maybeSingle();
@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'GET') {
       const { id, phone } = req.query;
       let query = supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .select('*')
         .eq('tenant_slug', tenantSlug);
 
@@ -147,7 +147,7 @@ module.exports = async function handler(req, res) {
       };
 
       const { data, error } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .insert(newRow)
         .select()
         .single();
@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
 
       // Check existence and tenant ownership
       const { data: existing, error: findError } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .select('id')
         .eq('id', orderId)
         .eq('tenant_slug', tenantSlug)
@@ -203,7 +203,7 @@ module.exports = async function handler(req, res) {
       mapField('paymentAmount', 'payment_amount');
 
       const { data, error } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .update(updates)
         .eq('id', orderId)
         .eq('tenant_slug', tenantSlug)
@@ -224,7 +224,7 @@ module.exports = async function handler(req, res) {
 
       // Check existence and tenant ownership
       const { data: existing, error: findError } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .select('id')
         .eq('id', orderId)
         .eq('tenant_slug', tenantSlug)
@@ -236,7 +236,7 @@ module.exports = async function handler(req, res) {
       }
 
       const { error } = await supabase
-        .from('ronaq_orders')
+        .from('mken_orders')
         .delete()
         .eq('id', orderId)
         .eq('tenant_slug', tenantSlug);

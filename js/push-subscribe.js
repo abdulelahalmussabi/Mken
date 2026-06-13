@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  var SUBS_KEY = 'ronaq_push_subscriptions';
+  var SUBS_KEY = 'mken_push_subscriptions';
 
   function urlBase64ToUint8Array(base64String) {
     var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -96,7 +96,7 @@
     return cfg.enabled && !!cfg.vapidPublicKey;
   }
 
-  window.RonaqPushSubscribe = {
+  window.MkenPushSubscribe = {
     SUBS_KEY: SUBS_KEY,
     getPushConfig: getPushConfig,
     getSubscriptions: getSubscriptions,

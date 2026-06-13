@@ -26,13 +26,13 @@
     return JSON.parse(JSON.stringify(obj || {}));
   }
 
-  window.RonaqContentResolver = {
+  window.MkenContentResolver = {
     deepMerge: deepMerge,
     clone: clone,
 
     resolveActivity: function (activityId, config, catalogFn) {
       var getActivity = catalogFn || function (id) {
-        return (window.RonaqActivitiesCatalog || []).find(function (a) { return a.id === id; });
+        return (window.MkenActivitiesCatalog || []).find(function (a) { return a.id === id; });
       };
       var base = getActivity(activityId);
       if (!base) return null;
@@ -54,7 +54,7 @@
 
     resolveService: function (serviceId, config, catalogFn) {
       var getService = catalogFn || function (id) {
-        return (window.RonaqServicesCatalog || []).find(function (s) { return s.id === id; });
+        return (window.MkenServicesCatalog || []).find(function (s) { return s.id === id; });
       };
       var base = getService(serviceId);
       if (!base) return null;
@@ -72,7 +72,7 @@
     },
 
     resolveContent: function (activityId, config) {
-      var templateFn = window.RonaqContentRegistry && window.RonaqContentRegistry[activityId];
+      var templateFn = window.MkenContentRegistry && window.MkenContentRegistry[activityId];
       var template = templateFn ? clone(templateFn()) : {};
       var ov = (config.activities && config.activities[activityId] && config.activities[activityId].content) || {};
       return deepMerge(template, ov);

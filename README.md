@@ -29,7 +29,7 @@
 ## التشغيل المحلي
 
 ```powershell
-cd ronaq-platform
+cd mken-platform
 python -m http.server 8080
 ```
 
@@ -44,7 +44,7 @@ python -m http.server 8080
 ## الهيكل
 
 ```
-ronaq-platform/
+mken-platform/
 ├── js/
 │   ├── activities-catalog.js      ← الأنشطة الرئيسية
 │   ├── services-catalog.js        ← الخدمات (مرتبطة بـ activityId)

@@ -219,7 +219,7 @@
     return true;
   }
 
-  window.RonaqCalendarExport = {
+  window.MkenCalendarExport = {
     TIMEZONE: TIMEZONE,
     getEventTimes: getEventTimes,
     buildGoogleCalendarUrl: buildGoogleCalendarUrl,

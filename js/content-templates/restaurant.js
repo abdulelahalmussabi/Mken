@@ -1,5 +1,5 @@
 /** محتوى — مطاعم */
-window.RonaqContentRestaurant = {
+window.MkenContentRestaurant = {
   hero: { titleAccent: 'احجز طاولتك', desc: 'في {brand} تجربة طعام بدون انتظار — حجز طاولة، غرف خاصة، وبوفيه.', badgeSingle: 'حجز متاح', badgeMulti: 'خيارات الحجز' },
   stats: [{ num: '+120', label: 'طاولة/يوم' }, { num: '90', label: 'دقيقة/حجز' }, { num: '4.7', label: 'تقييم' }, { num: '12–12', label: 'ساعات العمل' }],
   features: [{ icon: '🍽️', text: 'حجز طاولة' }, { icon: '🚪', text: 'غرفة VIP' }, { icon: '🍱', text: 'بوفيه' }, { icon: '👨‍🍳', text: 'تذوق قائمة' }],
