@@ -334,7 +334,7 @@
         },
       },
     };
-    if (pendingHeroTouched) ov.heroImage = pendingHeroImage || '';
+    ov.heroImage = pendingHeroImage || '';
     return { id: currentActivityId, data: ov };
   }
 

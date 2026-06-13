@@ -352,13 +352,16 @@ async function sendServerWhatsApp(item, type, config) {
       const headers = { 'Content-Type': 'application/json' };
       if (wa.token) headers['Authorization'] = 'Bearer ' + wa.token;
 
+      const appointment = mapDbItemToAppointment(item, type);
+
       await fetch(wa.url, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
           to: phone,
           body: messageText,
-          event: 'confirmation_webhook',
+          event: 'confirmation',
+          appointment: appointment,
           item: item
         })
       });
@@ -376,6 +379,41 @@ function cleanPhone(phone) {
   if (digits.indexOf('0') === 0) return '966' + digits.slice(1);
   if (digits.length === 9) return '966' + digits;
   return digits;
+}
+
+function mapDbItemToAppointment(item, type) {
+  if (!item) return null;
+  if (type === 'booking') {
+    return {
+      id: item.id,
+      activityId: item.activity_id || '',
+      serviceId: item.service_id || '',
+      date: item.date || '',
+      time: item.time || '',
+      customerName: item.customer_name || '',
+      phone: item.phone || '',
+      district: item.district || '',
+      locationAddress: item.location_address || '',
+      notes: item.notes || '',
+      partySize: item.party_size != null ? item.party_size : null,
+      nights: item.nights != null ? item.nights : null,
+      status: item.status || 'confirmed',
+      paymentStatus: item.payment_status || 'paid',
+      paymentId: item.payment_id || null,
+    };
+  }
+  return {
+    id: item.id,
+    activityId: item.activity_id || '',
+    customerName: item.customer_name || '',
+    phone: item.phone || '',
+    district: item.district || '',
+    locationAddress: item.location_address || '',
+    status: item.status || 'confirmed',
+    paymentStatus: item.payment_status || 'paid',
+    paymentId: item.payment_id || null,
+    items: Array.isArray(item.items) ? item.items : [],
+  };
 }
 
 const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يونيو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];

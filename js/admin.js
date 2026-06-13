@@ -344,6 +344,7 @@
     if (remindCb) remindCb.checked = wa.sendReminder !== false;
 
     toggleWhatsappFields(wa.provider);
+    fillCustomWebhookPayloadSample();
   }
 
   function toggleWhatsappFields(provider) {
@@ -351,6 +352,7 @@
     var instBlock = document.getElementById('whatsappInstanceBlock');
     var tokBlock = document.getElementById('whatsappTokenBlock');
     var fromBlock = document.getElementById('whatsappFromBlock');
+    var docsBlock = document.getElementById('whatsappCustomDocsBlock');
     var instLabel = document.querySelector('label[for="whatsappApiInstanceId"]');
     var tokLabel = document.querySelector('label[for="whatsappApiToken"]');
 
@@ -358,6 +360,7 @@
     if (instBlock) instBlock.hidden = (provider !== 'ultramsg' && provider !== 'twilio');
     if (tokBlock) tokBlock.hidden = (provider === 'none');
     if (fromBlock) fromBlock.hidden = provider !== 'twilio';
+    if (docsBlock) docsBlock.hidden = provider !== 'custom';
 
     if (instLabel) {
       instLabel.textContent = provider === 'twilio' ? 'معرف حساب Twilio (Account SID)' : 'معرف نسخة UltraMsg (Instance ID)';
@@ -365,6 +368,53 @@
     if (tokLabel) {
       tokLabel.textContent = provider === 'custom' ? 'مفتاح التحقق للـ Webhook (Token)' : 'رمز المرور للربط (Token / Auth Token)';
     }
+  }
+
+  var CUSTOM_WEBHOOK_PAYLOAD_SAMPLE = [
+    'POST {your-webhook-url}',
+    'Content-Type: application/json',
+    'Authorization: Bearer {your-token}',
+    '',
+    '{',
+    '  "to": "9665xxxxxxxx",',
+    '  "body": "نص الرسالة الجاهز للإرسال",',
+    '  "event": "confirmation",',
+    '  "appointment": {',
+    '    "id": "apt_123",',
+    '    "customerName": "أحمد محمد",',
+    '    "phone": "9665xxxxxxxx",',
+    '    "serviceId": "mens-haircut",',
+    '    "activityId": "barber-salon",',
+    '    "date": "2026-06-15",',
+    '    "time": "14:30",',
+    '    "status": "confirmed"',
+    '  }',
+    '}'
+  ].join('\n');
+
+  function fillCustomWebhookPayloadSample() {
+    var area = document.getElementById('whatsappCustomPayloadSample');
+    if (area) area.value = CUSTOM_WEBHOOK_PAYLOAD_SAMPLE;
+  }
+
+  function validateWhatsappApiSettings(provider, fields) {
+    if (provider === 'none') {
+      return 'يرجى اختيار بوابة الإرسال أولاً';
+    }
+    if (provider === 'custom') {
+      if (!fields.url) return 'يرجى إدخال رابط الـ Webhook';
+      if (!/^https?:\/\/.+/i.test(fields.url)) return 'رابط الـ Webhook يجب أن يبدأ بـ http:// أو https://';
+    }
+    if (provider === 'ultramsg') {
+      if (!fields.instanceId) return 'يرجى إدخال معرف نسخة UltraMsg';
+      if (!fields.token) return 'يرجى إدخال توكن UltraMsg';
+    }
+    if (provider === 'twilio') {
+      if (!fields.accountSid) return 'يرجى إدخال Account SID لـ Twilio';
+      if (!fields.token) return 'يرجى إدخال Auth Token لـ Twilio';
+      if (!fields.fromNumber) return 'يرجى إدخال رقم المرسل لـ Twilio';
+    }
+    return '';
   }
 
   function renderPayment(config) {
@@ -501,7 +551,9 @@
 
     if (contentAdmin) {
       var actOv = contentAdmin.collectActivityOverride();
-      if (actOv) activities[actOv.id] = actOv.data;
+      if (actOv) {
+        activities[actOv.id] = Object.assign({}, activities[actOv.id] || {}, actOv.data);
+      }
     }
 
     var sbEnabled = document.getElementById('supabaseEnabled');
@@ -931,6 +983,20 @@
   if (provSelect) {
     provSelect.addEventListener('change', function () {
       toggleWhatsappFields(this.value);
+      fillCustomWebhookPayloadSample();
+    });
+  }
+
+  var whatsappCopyPayloadBtn = document.getElementById('whatsappCopyPayloadBtn');
+  if (whatsappCopyPayloadBtn) {
+    whatsappCopyPayloadBtn.addEventListener('click', function () {
+      fillCustomWebhookPayloadSample();
+      var area = document.getElementById('whatsappCustomPayloadSample');
+      if (area) {
+        area.select();
+        document.execCommand('copy');
+        showToast('تم نسخ مثال الطلب إلى الحافظة');
+      }
     });
   }
 
@@ -1011,6 +1077,24 @@
 
   if (whatsappSaveSettingsBtn) {
     whatsappSaveSettingsBtn.addEventListener('click', function () {
+      var waProvider = document.getElementById('whatsappApiProvider');
+      var waUrl = document.getElementById('whatsappApiUrl');
+      var waInst = document.getElementById('whatsappApiInstanceId');
+      var waToken = document.getElementById('whatsappApiToken');
+      var waFrom = document.getElementById('whatsappApiFromNumber');
+      var waEnabled = document.getElementById('whatsappApiEnabled');
+      var provider = waProvider ? waProvider.value : 'none';
+      var validationError = validateWhatsappApiSettings(provider, {
+        url: waUrl ? waUrl.value.trim() : '',
+        instanceId: waInst ? waInst.value.trim() : '',
+        accountSid: waInst ? waInst.value.trim() : '',
+        token: waToken ? waToken.value.trim() : '',
+        fromNumber: waFrom ? waFrom.value.trim() : '',
+      });
+      if (waEnabled && waEnabled.checked && validationError) {
+        showToast(validationError, 'error');
+        return;
+      }
       var cfg = collectConfig();
       store.saveConfig(cfg);
       showToast('تم حفظ إعدادات أتمتة الواتساب ومزامنتها');
@@ -1051,8 +1135,15 @@
       var provSelect = document.getElementById('whatsappApiProvider');
       
       var provider = provSelect ? provSelect.value : 'none';
-      if (provider === 'none') {
-        showToast('يرجى اختيار بوابة الإرسال أولاً', 'error');
+      var validationError = validateWhatsappApiSettings(provider, {
+        url: urlInput ? urlInput.value.trim() : '',
+        instanceId: instInput ? instInput.value.trim() : '',
+        accountSid: instInput ? instInput.value.trim() : '',
+        token: tokInput ? tokInput.value.trim() : '',
+        fromNumber: fromInput ? fromInput.value.trim() : '',
+      });
+      if (validationError) {
+        showToast(validationError, 'error');
         return;
       }
 

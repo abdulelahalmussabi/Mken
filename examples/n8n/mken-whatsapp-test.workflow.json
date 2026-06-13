@@ -1,0 +1,90 @@
+{
+  "name": "Mken WhatsApp — Test Only (no send)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## اختبار الربط فقط\n\nلا يرسل واتساب — يستقبل الطلب ويرد 200.\n\nاستخدمه أولاً للتأكد من الرابط والتوكن، ثم انتقل لسير عمل UltraMsg.",
+        "height": 200,
+        "width": 360
+      },
+      "id": "note-test-001",
+      "name": "Test Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-180, 180]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mken-whatsapp-test",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "http://localhost:8080,http://127.0.0.1:8080,*"
+        }
+      },
+      "id": "webhook-test-001",
+      "name": "Mken Webhook Test",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "mken-whatsapp-test-hook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst headers = input.headers || {};\nconst auth = String(headers.authorization || headers.Authorization || '').trim();\nconst expected = 'Bearer ' + ($env.MKEN_WEBHOOK_TOKEN || 'CHANGE_ME');\nconst payload = input.body && typeof input.body === 'object' ? input.body : input;\n\nif (auth !== expected) {\n  return [{ json: { ok: false, error: 'Unauthorized', statusCode: 401 } }];\n}\n\nreturn [{ json: { ok: true, received: true, event: payload.event || null, to: payload.to || null, bodyPreview: String(payload.body || '').slice(0, 120), statusCode: 200 } }];"
+      },
+      "id": "code-test-001",
+      "name": "Validate And Echo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.ok ? { ok: true, received: true, event: $json.event, to: $json.to, bodyPreview: $json.bodyPreview } : { ok: false, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
+      },
+      "id": "respond-test-001",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Mken Webhook Test": {
+      "main": [
+        [
+          {
+            "node": "Validate And Echo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate And Echo": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

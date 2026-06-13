@@ -212,7 +212,7 @@
     if (circle) {
       if (image) {
         var src = store.resolveAssetUrl ? store.resolveAssetUrl(image, config.updatedAt) : image;
-        circle.innerHTML = '<img src="' + esc(src) + '" alt="" loading="lazy">';
+        circle.innerHTML = '<img src="' + esc(src) + '" alt="" loading="eager" decoding="async">';
         circle.classList.add('hero__circle--image');
       } else {
         circle.innerHTML = '';

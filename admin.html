@@ -365,7 +365,7 @@
 
           <div id="whatsappUrlBlock" class="admin-field" hidden>
             <label for="whatsappApiUrl">رابط الـ Webhook أو البوابة (API URL)</label>
-            <input type="text" id="whatsappApiUrl" class="admin-input" dir="ltr" placeholder="https://api.example.com/whatsapp/send">
+            <input type="text" id="whatsappApiUrl" class="admin-input" dir="ltr" placeholder="https://your-n8n.com/webhook/mken-whatsapp">
           </div>
 
           <div id="whatsappInstanceBlock" class="admin-field" hidden>
@@ -381,6 +381,51 @@
           <div id="whatsappFromBlock" class="admin-field" hidden>
             <label for="whatsappApiFromNumber">رقم المرسل لـ Twilio (Twilio Sender Number)</label>
             <input type="text" id="whatsappApiFromNumber" class="admin-input" dir="ltr" placeholder="+14155253486">
+          </div>
+
+          <div id="whatsappCustomDocsBlock" class="admin-field" hidden>
+            <h4 style="margin: 0 0 8px;">دليل Custom Webhook</h4>
+            <p class="admin-hint">ترسل المنصة طلب <code>POST</code> بصيغة JSON إلى الرابط الذي تحدده. يجب أن يستجيب خادمك بكود <strong>2xx</strong> لاعتبار الإرسال ناجحاً.</p>
+            <p class="admin-hint" style="margin-top: 8px;">
+              <strong>أنواع الأحداث (event):</strong>
+              <code>test</code> · <code>confirmation</code> · <code>reminder</code> · <code>subscription_reminder</code> · <code>subscription_expired</code>
+            </p>
+
+            <div class="admin-field" style="margin-top: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;">
+              <h4 style="margin: 0 0 10px;">إعداد n8n (موصى به)</h4>
+              <ol class="admin-hint" style="margin: 0; padding-right: 18px; line-height: 1.8;">
+                <li>افتح n8n → <strong>Workflows</strong> → <strong>Import from File</strong></li>
+                <li>استورد أولاً: <code>examples/n8n/mken-whatsapp-test.workflow.json</code> للاختبار</li>
+                <li>في n8n عيّن متغير البيئة: <code>MKEN_WEBHOOK_TOKEN</code> (نفس التوكن أدناه)</li>
+                <li>فعّل الـ Workflow (<strong>Active = ON</strong>)</li>
+                <li>من عقدة Webhook انسخ رابط الإنتاج:
+                  <code dir="ltr">https://YOUR-N8N-DOMAIN/webhook/mken-whatsapp-test</code>
+                </li>
+                <li>الصق الرابط في حقل <strong>API URL</strong> أعلاه، ثم اضغط <strong>اختبار الإرسال التجريبي</strong></li>
+                <li>بعد نجاح الاختبار، استورد سير العمل الكامل:
+                  <code>examples/n8n/mken-whatsapp-ultramsg.workflow.json</code>
+                </li>
+                <li>أضف في n8n أيضاً: <code>ULTRAMSG_INSTANCE_ID</code> و <code>ULTRAMSG_TOKEN</code></li>
+                <li>استبدل الرابط بـ:
+                  <code dir="ltr">https://YOUR-N8N-DOMAIN/webhook/mken-whatsapp</code>
+                </li>
+              </ol>
+              <p class="admin-hint" style="margin-top: 10px;">
+                <strong>ملاحظة:</strong> رابط <code>webhook-test</code> يعمل فقط أثناء فتح المحرر. للإنتاج استخدم رابط <code>webhook</code> بعد تفعيل السير.
+              </p>
+            </div>
+
+            <p class="admin-hint" style="margin-top: 12px;">
+              <strong>للاختبار المحلي بدون n8n:</strong> شغّل <code>node examples/custom-webhook-receiver.mjs</code> ثم ضع:
+              <code dir="ltr">http://localhost:3030/webhook</code>
+            </p>
+            <div class="admin-field" style="margin-top: 12px;">
+              <label for="whatsappCustomPayloadSample">مثال الطلب (Payload)</label>
+              <textarea id="whatsappCustomPayloadSample" class="admin-input" rows="14" readonly dir="ltr" style="font-family: monospace; font-size: 12px; background: #1a1a2e; color: #a9b7c6;"></textarea>
+            </div>
+            <div class="admin-backup">
+              <button type="button" id="whatsappCopyPayloadBtn" class="btn btn--outline" style="width:100%">نسخ مثال الطلب (Payload)</button>
+            </div>
           </div>
 
           <div class="admin-field">
@@ -460,9 +505,11 @@
 
         <section class="admin-section">
           <h3>تحديث قاعدة البيانات لدعم حقول الدفع (SQL Upgrade)</h3>
-          <p class="admin-hint">إذا كنت قد قمت بربط Supabase مسبقاً، يرجى تشغيل هذا الأمر في <strong>SQL Editor</strong> لإضافة أعمدة الدفع لجدول المواعيد:</p>
+          <p class="admin-hint">إذا كان لديك جدول <code>ronaq_appointments</code> قديم فقط، شغّل هذا الأمر أولاً. جدول <code>ronaq_orders</code> يُنشأ تلقائياً عند تشغيل <strong>سكربت التهيئة الكامل</strong> من تبويب Supabase.</p>
           <div class="admin-field">
-            <textarea id="supabaseUpgradeSqlArea" class="admin-input" rows="5" readonly dir="ltr" style="font-family: monospace; font-size: 13px; background: #1a1a2e; color: #a9b7c6;">
+            <textarea id="supabaseUpgradeSqlArea" class="admin-input" rows="8" readonly dir="ltr" style="font-family: monospace; font-size: 13px; background: #1a1a2e; color: #a9b7c6;">
+ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT 'default';
+UPDATE ronaq_appointments SET tenant_slug = 'default' WHERE tenant_slug IS NULL;
 ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
 ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;
 ALTER TABLE ronaq_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;

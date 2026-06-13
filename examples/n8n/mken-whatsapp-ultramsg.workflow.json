@@ -1,0 +1,193 @@
+{
+  "name": "Mken WhatsApp — Custom Webhook (UltraMsg)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## إعداد سريع\n\n1. عيّن متغيرات البيئة في n8n:\n   - `MKEN_WEBHOOK_TOKEN` (نفس التوكن في لوحة مكِّن)\n   - `ULTRAMSG_INSTANCE_ID`\n   - `ULTRAMSG_TOKEN`\n\n2. فعّل الـ Workflow (Active = ON)\n\n3. انسخ رابط الإنتاج من عقدة Webhook:\n   `https://YOUR-N8N/webhook/mken-whatsapp`\n\n4. الصق الرابط في لوحة مكِّن → Custom Webhook → API URL",
+        "height": 340,
+        "width": 420
+      },
+      "id": "note-setup-001",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-220, 120]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mken-whatsapp",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "http://localhost:8080,http://127.0.0.1:8080,*"
+        }
+      },
+      "id": "webhook-001",
+      "name": "Mken Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "mken-whatsapp-hook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst headers = input.headers || {};\nconst auth = String(headers.authorization || headers.Authorization || '').trim();\nconst expected = 'Bearer ' + ($env.MKEN_WEBHOOK_TOKEN || 'CHANGE_ME');\n\nconst payload = input.body && typeof input.body === 'object' ? input.body : input;\nconst to = payload.to;\nconst message = payload.body;\nconst event = payload.event || null;\nconst appointment = payload.appointment || null;\n\nif (auth !== expected) {\n  return [{ json: { ok: false, error: 'Unauthorized', statusCode: 401 } }];\n}\nif (!to || !message) {\n  return [{ json: { ok: false, error: 'Missing to or body', statusCode: 400 } }];\n}\n\nreturn [{ json: { ok: true, to, message, event, appointment, statusCode: 200 } }];"
+      },
+      "id": "code-validate-001",
+      "name": "Validate Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-request",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-valid-001",
+      "name": "Is Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.ultramsg.com/{{ $env.ULTRAMSG_INSTANCE_ID }}/messages/chat",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $env.ULTRAMSG_TOKEN }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.to }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ultramsg-001",
+      "name": "Send UltraMsg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, sent: true, event: $('Validate Token').item.json.event, to: $('Validate Token').item.json.to } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-ok-001",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 400 }}"
+        }
+      },
+      "id": "respond-error-001",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 420]
+    }
+  ],
+  "connections": {
+    "Mken Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Token": {
+      "main": [
+        [
+          {
+            "node": "Is Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid": {
+      "main": [
+        [
+          {
+            "node": "Send UltraMsg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send UltraMsg": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -473,6 +473,38 @@
     return path;
   }
 
+  function pickAssetValue(dbVal, localVal) {
+    var db = typeof dbVal === 'string' ? dbVal.trim() : '';
+    if (db) return db;
+    return typeof localVal === 'string' ? localVal.trim() : '';
+  }
+
+  /** احتفظ بالصور المحلية إذا لم تُرفع بعد إلى Supabase */
+  function mergeLocalAssets(dbCfg, localCfg) {
+    if (!dbCfg) return localCfg;
+    if (!localCfg) return dbCfg;
+
+    var merged = Object.assign({}, dbCfg);
+    merged.heroImage = pickAssetValue(dbCfg.heroImage, localCfg.heroImage);
+    merged.brand = Object.assign({}, dbCfg.brand, {
+      logo: pickAssetValue(dbCfg.brand && dbCfg.brand.logo, localCfg.brand && localCfg.brand.logo),
+    });
+
+    var dbActs = dbCfg.activities || {};
+    var localActs = localCfg.activities || {};
+    var mergedActs = Object.assign({}, dbActs);
+    Object.keys(localActs).forEach(function (id) {
+      var dbAct = dbActs[id] || {};
+      var localAct = localActs[id] || {};
+      var heroImage = pickAssetValue(dbAct.heroImage, localAct.heroImage);
+      if (heroImage || dbAct.heroImage || localAct.heroImage) {
+        mergedActs[id] = Object.assign({}, dbAct, { heroImage: heroImage });
+      }
+    });
+    merged.activities = mergedActs;
+    return merged;
+  }
+
   function applyTheme(themeId) {
     var id = VALID_THEMES.indexOf(themeId) !== -1 ? themeId : 'slate';
     document.documentElement.setAttribute('data-theme', id);
@@ -501,7 +533,8 @@
       var st = serverCfg.updatedAt ? Date.parse(serverCfg.updatedAt) : 0;
       var lt = localCfg.updatedAt ? Date.parse(localCfg.updatedAt) : 0;
       _source = lt > st ? 'local' : 'server';
-      return lt > st ? localCfg : serverCfg;
+      var picked = lt > st ? localCfg : serverCfg;
+      return mergeLocalAssets(picked, localCfg);
     }
     if (localCfg) { _source = 'local'; return localCfg; }
     if (serverCfg) { _source = 'server'; return serverCfg; }
@@ -582,7 +615,7 @@
                   }
                 }
                 
-                return normalizeConfig(dbCfg);
+                return normalizeConfig(mergeLocalAssets(dbCfg, localCfg));
               }
               return cfg;
             })
