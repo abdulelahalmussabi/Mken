@@ -9,7 +9,7 @@
       id: 'whatsapp',
       name: 'واتساب',
       icon: '💬',
-      placeholder: '9665056138908',
+      placeholder: '966543530333',
       hint: 'رقم الجوال بصيغة دولية بدون + أو صفر',
       inputMode: 'tel',
     },

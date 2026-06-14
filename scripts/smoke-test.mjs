@@ -108,7 +108,7 @@ async function runTests() {
 
     // تعبئة البيانات
     await page.fill('#customerName', 'عميل تجريبي Smoke Test');
-    await page.fill('#customerPhone', '9665056138908');
+    await page.fill('#customerPhone', '966543530333');
     await page.fill('#customerDistrict', 'النسيم الشرقية');
     if (await page.locator('#customerAddress').isVisible()) {
       await page.fill('#customerAddress', 'شارع حراء، مبنى 12');
@@ -164,7 +164,7 @@ async function runTests() {
 
     // تعبئة البيانات
     await page.fill('#orderName', 'مشتري تجريبي Smoke Test');
-    await page.fill('#orderPhone', '9665056138908');
+    await page.fill('#orderPhone', '966543530333');
     await page.fill('#orderDistrict', 'حي الصفا');
     if (await page.locator('#orderAddress').isVisible()) {
       await page.fill('#orderAddress', 'شارع التحلية، بجانب البريد');
@@ -219,7 +219,7 @@ async function runTests() {
             date: new Date().toISOString().split('T')[0],
             time: '14:00',
             customer_name: 'عميل تجريبي Smoke',
-            phone: '9665056138908',
+            phone: '966543530333',
             district: 'حي النخيل',
             location_address: 'شارع التخصصي',
             notes: 'موعد فحص البصمة والتحكم',

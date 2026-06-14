@@ -13,6 +13,7 @@
   var savePushBtn = document.getElementById('savePushSettingsBtn');
   var subscribePushBtn = document.getElementById('subscribePushBtn');
   var exportPushBtn = document.getElementById('exportPushSubsBtn');
+  var testPushBtn = document.getElementById('testPushBtn');
   var pushStatus = document.getElementById('pushStatus');
 
   function toast(msg, type) {
@@ -36,8 +37,8 @@
       return;
     }
     pushStatus.textContent = subs
-      ? subs + ' اشتراك محفوظ محلياً — صدّر الملف للسيرفر'
-      : 'Push مفعّل — اضغط «اشتراك هذا الجهاز»';
+      ? subs + ' جهاز مشترك — يُزامَن تلقائياً مع السيرفر عند الاشتراك'
+      : 'Push مفعّل — اضغط «اشتراك هذا الجهاز» ثم «اختبار Push»';
   }
 
   function savePushSettings() {
@@ -56,8 +57,12 @@
     if (subscribePushBtn) {
       subscribePushBtn.addEventListener('click', function () {
         var cfg = store.loadConfig();
-        pushApi.subscribePush(cfg).then(function () {
+        pushApi.subscribePush(cfg).then(function (sub) {
           updatePushStatus(cfg);
+          if (sub && sub._serverSynced === false) {
+            toast('تم الاشتراك محلياً — تعذّر المزامنة مع السيرفر (تحقق من Supabase)', 'error');
+            return;
+          }
           toast('تم الاشتراك في Push على هذا الجهاز');
         }).catch(function (err) {
           var msg = err && err.message;
@@ -65,6 +70,44 @@
           else if (msg === 'permission-denied') toast('تم رفض الإشعارات', 'error');
           else if (msg === 'push-unsupported') toast('المتصفح لا يدعم Push', 'error');
           else toast('فشل الاشتراك في Push', 'error');
+        });
+      });
+    }
+    if (testPushBtn) {
+      testPushBtn.addEventListener('click', function () {
+        var cfg = store.loadConfig();
+        if (!pushApi.isConfigured(cfg)) {
+          toast('احفظ إعدادات Push أولاً', 'error');
+          return;
+        }
+        testPushBtn.disabled = true;
+        fetch('/api/v1/push-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenantSlug: store.getCurrentTenantSlug ? store.getCurrentTenantSlug() : 'default',
+          }),
+        }).then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok, data: data };
+          });
+        }).then(function (result) {
+          if (result.ok) {
+            toast('تم إرسال إشعار الاختبار — تحقق من شريط الإشعارات');
+            return;
+          }
+          var errMsg = (result.data && result.data.error) || 'فشل إرسال الاختبار';
+          if (errMsg.indexOf('no-subscriptions') !== -1 || errMsg.indexOf('اشتراكات') !== -1) {
+            toast('اشترك هذا الجهاز أولاً', 'error');
+          } else if (errMsg.indexOf('VAPID') !== -1) {
+            toast('أضف VAPID_PRIVATE_KEY في Vercel ثم أعد النشر', 'error');
+          } else {
+            toast(errMsg, 'error');
+          }
+        }).catch(function () {
+          toast('فشل الاتصال بـ API', 'error');
+        }).finally(function () {
+          testPushBtn.disabled = false;
         });
       });
     }

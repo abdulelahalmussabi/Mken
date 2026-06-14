@@ -32,13 +32,31 @@
     var featuresHtml = (service.features || []).map(function (f) {
       return '<li>' + esc(f) + '</li>';
     }).join('');
+    var categoryHtml = service.category
+      ? '<span class="service-card__category">' + esc(service.category) + '</span>'
+      : '';
+    var priceHtml = service.priceLabel
+      ? '<p class="service-card__price">' + esc(service.priceLabel) + '</p>'
+      : '';
+    var orderUrl = 'order.html?activity=' + encodeURIComponent(activeActivityId) +
+      '&service=' + encodeURIComponent(service.id);
+    var iconHtml = service.icon
+      ? '<span class="service-card__emoji" aria-hidden="true">' + service.icon + '</span>'
+      : renderServiceIcon(service.svg);
     return (
       '<article class="service-card' + (isFeatured ? ' service-card--featured' : '') + '">' +
       (isFeatured ? '<div class="service-card__badge">الأكثر طلباً</div>' : '') +
-      '<div class="service-card__icon">' + renderServiceIcon(service.svg) + '</div>' +
+      categoryHtml +
+      '<div class="service-card__icon">' + iconHtml + '</div>' +
       '<h3>' + esc(service.title) + '</h3>' +
-      '<p>' + esc(service.description) + '</p>' +
+      '<p class="service-card__desc">' + esc(service.description) + '</p>' +
+      priceHtml +
       '<ul class="service-card__list">' + featuresHtml + '</ul>' +
+      '<footer class="service-card__footer">' +
+      '<a href="' + orderUrl + '" class="btn btn--primary btn--sm service-card__cta">اطلب الخدمة</a>' +
+      '<a href="book.html?activity=' + encodeURIComponent(activeActivityId) +
+      '&service=' + encodeURIComponent(service.id) + '" class="btn btn--outline btn--sm">استشارة</a>' +
+      '</footer>' +
       '</article>'
     );
   }
@@ -187,7 +205,7 @@
       if (profile.showOrder) {
         ctaBooking.href = 'order.html?activity=' + encodeURIComponent(activeActivityId);
       } else if (profile.showBooking && globalBooking) {
-        ctaBooking.href = 'book.html?activity=' + encodeURIComponent(activeActivityId);
+        ctaBooking.href = bookCfg.portalUrl || ('book.html?activity=' + encodeURIComponent(activeActivityId));
       } else {
         ctaBooking.href = '#contact';
       }
@@ -246,10 +264,12 @@
     var desc = document.getElementById('servicesDesc');
     var act = store.getResolvedActivity(activeActivityId);
     var services = store.getEnabledServicesByActivity(activeActivityId);
-    var featuredId = config.featured;
+    var featuredId = config.featured || config.heroFocus;
 
-    if (title && act) title.textContent = 'خدمات ' + act.title;
-    if (desc && act) desc.textContent = act.description;
+    if (title && act) title.textContent = 'خدمات ' + act.shortTitle + ' الأساسية';
+    if (desc && act) {
+      desc.textContent = act.description + ' — ' + services.length + ' خدمة متاحة للطلب.';
+    }
 
     if (!grid) return;
     if (!services.length) {

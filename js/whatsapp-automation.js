@@ -682,7 +682,16 @@
     lines.push('━━━━━━━━━━━━━━', 'يرجى مراجعة لوحة الإدارة.');
     var message = lines.join('\n');
 
-    return sendWhatsAppMessage(ownerPhone, message, 'owner_alert', null, config);
+    var pushTitle = type === 'booking' ? '🔔 حجز جديد' : '🔔 طلب جديد';
+    var pushBody = type === 'booking'
+      ? (data.customerName || data.customer_name || '') + ' — ' + formatDateArabic(data.date) + ' ' + formatTimeArabic(data.time)
+      : (data.customerName || data.customer_name || '') + ' — طلب شراء';
+
+    var tasks = [sendWhatsAppMessage(ownerPhone, message, 'owner_alert', null, config)];
+    if (window.MkenPushSubscribe && window.MkenPushSubscribe.notifyOwnerPush) {
+      tasks.push(window.MkenPushSubscribe.notifyOwnerPush(pushTitle, pushBody, config));
+    }
+    return Promise.all(tasks);
   }
 
   function sendTechnicianAssignmentMessage(member, appointment, config) {

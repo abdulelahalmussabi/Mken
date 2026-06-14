@@ -1,7 +1,7 @@
 {
-  "name": "منصة مكِّن",
-  "short_name": "مكِّن",
-  "description": "منصة متعددة الأنشطة — حجز مواعيد وطلبات واتساب",
+  "name": "مكن — حلول رقمية متكاملة",
+  "short_name": "مكن",
+  "description": "تصميم مواقع، تطبيقات، SEO، وواتساب CRM لنمو أعمالك",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./index.html",
@@ -11,9 +11,9 @@
   "theme_color": "#1a1a2e",
   "icons": [
     {
-      "src": "assets/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "assets/mken-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('../_lib/supabase-env');
 
 async function authenticateApiKey(req, res) {
   const authHeader = req.headers.authorization;
@@ -13,8 +14,8 @@ async function authenticateApiKey(req, res) {
     return null;
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseServiceKey = sbEnv.getSupabaseServiceKey();
 
   if (!supabaseUrl || !supabaseServiceKey) {
     res.status(500).json({ error: 'Supabase URL or key not configured in environment.' });

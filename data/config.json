@@ -1,35 +1,27 @@
 {
   "enabledActivities": [
-    "barber-salon", "car-care", "healthcare", "spa-wellness", "fitness",
-    "veterinary", "restaurant", "consulting", "photography", "tutoring",
-    "hotels", "travel", "events", "commerce",
-    "maintenance", "tech-digital", "it-support", "cleaning", "renovation", "security", "training"
+    "tech-digital",
+    "it-support"
   ],
   "enabled": [
-    "mens-haircut", "beard-grooming",
-    "quick-wash", "full-wash",
-    "gp-consultation", "telemedicine",
-    "swedish-massage", "moroccan-bath",
-    "personal-training", "yoga-session",
-    "vet-checkup", "pet-grooming",
-    "table-booking", "private-dining",
-    "legal-consult", "real-estate-viewing",
-    "portrait-session", "event-photography",
-    "math-tutoring", "english-tutoring",
-    "standard-room", "deluxe-room", "umrah-package", "domestic-tour",
-    "wedding-hall", "conference-hall", "event-planning",
-    "general-product", "electronics-item", "grocery-box",
-    "ac", "web-design", "whatsapp-crm",
-    "computer", "cleaning", "painting",
-    "cameras", "computer-basics"
+    "web-design",
+    "mobile-apps",
+    "landing-pages",
+    "seo",
+    "whatsapp-crm",
+    "social-media",
+    "branding",
+    "ecommerce",
+    "computer",
+    "laptop-repair"
   ],
-  "featuredActivity": "barber-salon",
-  "featured": "mens-haircut",
-  "heroFocus": "mens-haircut",
-  "theme": "midnight",
-  "phone": "9665056138908",
+  "featuredActivity": "tech-digital",
+  "featured": "web-design",
+  "heroFocus": "web-design",
+  "theme": "slate",
+  "phone": "966543530333",
   "social": {
-    "whatsapp": { "enabled": true, "value": "9665056138908" },
+    "whatsapp": { "enabled": true, "value": "966543530333" },
     "instagram": { "enabled": false, "value": "" },
     "twitter": { "enabled": false, "value": "" },
     "facebook": { "enabled": false, "value": "" },
@@ -37,16 +29,16 @@
     "linkedin": { "enabled": false, "value": "" }
   },
   "brand": {
-    "name": "اسم منشأتك",
-    "tagline": "وصف مختصر لنشاطك",
-    "logo": ""
+    "name": "مكن",
+    "tagline": "حلول رقمية متكاملة لنمو أعمالك",
+    "logo": "assets/mken-logo.png"
   },
   "activities": {},
   "services": {},
-  "heroImage": "",
+  "heroImage": "assets/mken-hero.png",
   "booking": {
     "enabled": true,
-    "slotDuration": 30,
+    "slotDuration": 60,
     "advanceDays": 14,
     "workingDays": [0, 1, 2, 3, 4, 5, 6],
     "workingHours": { "start": "09:00", "end": "22:00" },
@@ -67,8 +59,12 @@
     "showAsFullCity": true
   },
   "push": {
-    "enabled": false,
-    "vapidPublicKey": ""
+    "enabled": true,
+    "vapidPublicKey": "BG4GftV12GXzIL18ibc6OxPz24uVI4OKdu9r9bNv2ic_wTizq3Ca8s-hKr3XZxJfSUVISnsqqh39xlKIZxkM6Fg"
   },
-  "updatedAt": "2026-06-11T20:00:00.000Z"
+  "saas": {
+    "baseDomain": "mken.live",
+    "useSubdomains": true
+  },
+  "updatedAt": "2026-06-14T15:00:00.000Z"
 }

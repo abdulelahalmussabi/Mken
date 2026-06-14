@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('../../_lib/supabase-env');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,8 +12,8 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing tenant or phone number' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseKey = sbEnv.getSupabaseServiceKey();
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({ error: 'Database configuration error' });
@@ -51,7 +52,7 @@ module.exports = async function handler(req, res) {
     const challenge = crypto.randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + 5 * 60 * 1000;
 
-    const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mken_auth_fallback_secret';
+    const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
     const hmac = crypto.createHmac('sha256', secret)
       .update(challenge + ':' + expiresAt + ':' + staff.id)
       .digest('hex');

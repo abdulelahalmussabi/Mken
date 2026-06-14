@@ -46,7 +46,7 @@
   var defaultCoachingData = {
     coachName: 'الكوتش ياسر السليماني',
     coachBio: 'كوتش هوكي معتمد من الاتحاد السعودي للهوكي، مدرب المنتخب الوطني للفئات السنية وخبير تكتيكي.',
-    coachPhone: '9665056138908',
+    coachPhone: '966543530333',
     players: [
       { id: 'pl-1', name: 'أحمد المالكي', phone: '0501111111', status: 'active' },
       { id: 'pl-2', name: 'سلمان الدوسري', phone: '0502222222', status: 'active' },

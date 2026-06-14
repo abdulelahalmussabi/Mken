@@ -65,6 +65,7 @@
           <label for="regTenantSlug">رابط موقعك المخصص (Tenant Slug)</label>
           <input type="text" id="regTenantSlug" class="admin-input" placeholder="مثال: anas-salon" dir="ltr" required pattern="^[a-z0-9\-]+$">
           <small class="admin-field__hint">يجب أن يحتوي على أحرف صغيرة وأرقام وفواصل فقط.</small>
+          <small class="admin-field__hint">رابط موقعك: <code dir="ltr" id="regTenantUrlPreview">index.html?tenant=anas-salon</code></small>
         </div>
 
         <div class="admin-field">
@@ -112,7 +113,6 @@
       <button type="button" class="admin-tab" data-tab="appointments">المواعيد</button>
       <button type="button" class="admin-tab" data-tab="orders">الطلبات</button>
       <button type="button" class="admin-tab" data-tab="staff">الموظفين</button>
-      <button type="button" class="admin-tab" data-tab="coaching">بوابة التمارين 🏑</button>
       <button type="button" class="admin-tab" data-tab="supabase">الربط والأتمتة</button>
       <button type="button" class="admin-tab" data-tab="whatsapp-logs">سجل الرسائل</button>
       <button type="button" class="admin-tab" data-tab="saas">الاشتراك والخرائط</button>
@@ -242,7 +242,7 @@
 
         <section class="admin-section">
           <h3>Web Push (إشعارات السيرفر)</h3>
-          <p class="admin-hint">للإرسال من سيرفر: أنشئ مفاتيح VAPID ثم اشترك وصدّر الملف. مثال الإرسال: <code>node scripts/send-push.mjs</code></p>
+          <p class="admin-hint">للإرسال من سيرفر: أنشئ مفاتيح VAPID، فعّل Push، اشترك من هذا الجهاز، ثم اختبر. أضف المفتاح الخاص في Vercel: <code>VAPID_PRIVATE_KEY</code></p>
           <div class="admin-reminder-settings">
             <label class="admin-check">
               <input type="checkbox" id="pushEnabled">
@@ -256,7 +256,10 @@
             <div class="admin-backup">
               <button type="button" id="savePushSettingsBtn" class="btn btn--outline" style="flex:1">حفظ Push</button>
               <button type="button" id="subscribePushBtn" class="btn btn--outline" style="flex:1">اشتراك هذا الجهاز</button>
-              <button type="button" id="exportPushSubsBtn" class="btn btn--outline" style="flex:1">تصدير اشتراكات</button>
+              <button type="button" id="testPushBtn" class="btn btn--primary" style="flex:1">اختبار Push</button>
+            </div>
+            <div class="admin-backup" style="margin-top:8px">
+              <button type="button" id="exportPushSubsBtn" class="btn btn--outline" style="flex:1">تصدير اشتراكات (نسخ احتياطي)</button>
             </div>
           </div>
         </section>
@@ -330,6 +333,24 @@
           <div class="admin-backup" style="margin-top: 20px;">
             <button type="button" id="supabaseTestBtn" class="btn btn--outline" style="flex:1">اختبار الاتصال</button>
             <button type="button" id="supabaseSaveSettingsBtn" class="btn btn--primary" style="flex:1">حفظ إعدادات الربط</button>
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <h3>النطاقات الفرعية (SaaS Subdomains)</h3>
+          <p class="admin-hint">عند تفعيل Wildcard في Vercel (<code>*.yourdomain.com</code>)، يحصل كل عميل جديد تلقائياً على رابط فرعي حسب الـ slug.</p>
+
+          <div class="admin-field">
+            <label for="saasBaseDomainInput">النطاق الرئيسي للمنصة</label>
+            <input type="text" id="saasBaseDomainInput" class="admin-input" dir="ltr" placeholder="مثال: mken.sa">
+            <small class="admin-field__hint">اتركه فارغاً للاكتشاف التلقائي من عنوان الموقع الحالي.</small>
+          </div>
+
+          <div class="admin-field">
+            <label class="admin-check">
+              <input type="checkbox" id="saasUseSubdomains" checked>
+              <span>استخدام روابط فرعية (slug.yourdomain.com) بدلاً من ?tenant=slug</span>
+            </label>
           </div>
         </section>
 
@@ -656,7 +677,7 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
             <div class="admin-field">
               <label for="tenantSlugInput">رابط العميل المخصص (Tenant Slug)</label>
               <input type="text" id="tenantSlugInput" class="admin-input" dir="ltr" readonly>
-              <small class="admin-field__hint">رابط موقعك: <code>index.html?tenant=<span id="tenantSlugHint">default</span></code></small>
+              <small class="admin-field__hint">رابط موقعك: <code dir="ltr" id="tenantSiteUrlHint">index.html?tenant=default</code></small>
             </div>
             
             <div class="admin-field" style="margin-top:20px;">
@@ -754,6 +775,50 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
               <div id="adminMapsPreviewContainer"></div>
             </div>
           </section>
+
+          <!-- Google Business Profile integration -->
+          <section class="admin-section">
+            <h3>الربط البرمجي مع جوجل بيزنس (Google Business)</h3>
+            <p class="admin-hint">اربط حسابك برمجياً لتحديث رابط موقعك الإلكتروني المخصص على خرائط جوجل تلقائياً.</p>
+            
+            <div id="googleBusinessLoading" class="admin-hint" style="margin-top: 15px;">جاري فحص حالة الاتصال...</div>
+            
+            <div id="googleBusinessDisconnected" style="margin-top: 15px;" hidden>
+              <div class="admin-error" style="color: #666; background: #f1f1f1; border-color: #ddd; padding: 12px; font-size: 13px; border-radius: 4px; margin-bottom: 15px;">
+                حسابك غير مرتبط بجوجل بيزنس حالياً.
+              </div>
+              <button type="button" id="googleBusinessConnectBtn" class="btn btn--primary" style="width: 100%;">
+                🔗 ربط بحساب جوجل (Connect Google Account)
+              </button>
+            </div>
+            
+            <div id="googleBusinessConnected" style="margin-top: 15px;" hidden>
+              <div class="admin-status-badge" style="background: #2ecc71; color: #fff; padding: 8px 12px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; display: inline-block;">
+                ✓ متصل بحساب جوجل بنجاح
+              </div>
+              
+              <div class="admin-field">
+                <label for="googleBusinessLocationSelect">اختر الفرع / النشاط التجاري لربطه:</label>
+                <select id="googleBusinessLocationSelect" class="admin-input">
+                  <option value="">-- اختر الفرع --</option>
+                </select>
+              </div>
+              
+              <div class="admin-field" id="googleBusinessUrlPreviewBlock" style="margin-top: 10px; font-size: 13px; color: #555;" hidden>
+                <span>رابط الموقع الذي سيتم نشره على جوجل: </span>
+                <code dir="ltr" id="googleBusinessUrlPreview" style="font-weight: bold; color: var(--color-primary);"></code>
+              </div>
+              
+              <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                <button type="button" id="googleBusinessUpdateBtn" class="btn btn--primary" style="flex: 2; min-width: 150px;">
+                  🔄 تحديث رابط الموقع على خرائط جوجل
+                </button>
+                <button type="button" id="googleBusinessDisconnectBtn" class="btn btn--outline" style="flex: 1; min-width: 120px; color: #c0392b; border-color: #c0392b20;">
+                  إلغاء الربط
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -775,35 +840,6 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
               <a id="staffPortalLink" href="staff.html" target="_blank" style="color:var(--color-primary); font-weight:bold; text-decoration:underline;">staff.html</a>
             </div>
             <p class="admin-hint" style="margin-top:10px;">يمكن للفني تسجيل الدخول باستخدام معرف المنشأة (Slug)، رقم جواله، ورمز PIN السري الخاص به.</p>
-          </section>
-        </div>
-      </div>
-
-      <!-- لوحة تحكم النشاط الرياضي المضافة حديثاً -->
-      <div class="admin-tab-panel" data-panel="coaching" hidden>
-        <div class="admin-grid">
-          <section class="admin-section" style="flex:2">
-            <h3>بوابة النشاط الرياضي والتمارين (الهوكي 🏑)</h3>
-            <p class="admin-hint">
-              تم تصميم وتفعيل بوابة مستقلة لإدارة التمارين والنشاط الرياضي للهوكي. تتيح هذه البوابة للمتدربين التصويت على مواعيد التمرين واختيار الملعب المفضل على خرائط جوجل، وتتيح للمدرب إدارة قائمة اللاعبين والتصويت واعتماد المواعيد.
-            </p>
-            <div style="margin-top:25px; display:flex; gap:12px; flex-wrap:wrap;">
-              <a href="coaching.html" class="btn btn--primary" target="_blank">🥇 الانتقال لبوابة التمارين والتصويت</a>
-            </div>
-          </section>
-          
-          <section class="admin-section" style="flex:1">
-            <h3>تفاصيل الدخول والإعدادات</h3>
-            <p class="admin-hint" style="margin-bottom:12px;"><strong>رابط البوابة المباشر:</strong></p>
-            <div style="background:#faf8f5; padding:12px; border-radius:4px; border:1px solid var(--color-border); word-break:break-all; font-family:monospace; font-size:0.85rem; margin-bottom:15px;">
-              <a href="coaching.html" target="_blank" style="color:var(--color-primary); font-weight:bold; text-decoration:underline;">coaching.html</a>
-            </div>
-            <p class="admin-hint">
-              <strong>رمز PIN الافتراضي للكوتش:</strong> <code style="background:#e2f3e4; color:#275a36; padding:3px 8px; border-radius:4px; font-weight:bold; font-family:monospace;">1234</code>
-            </p>
-            <p class="admin-hint" style="margin-top:10px;">
-              تم تنسيق البوابة بالكامل لتتبع الهوية البصرية الرسمية للاتحاد السعودي للهوكي (اللون النعناعي والباذنجاني الفحمي).
-            </p>
           </section>
         </div>
       </div>
@@ -1143,6 +1179,7 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
   <script src="js/content-templates/travel.js"></script>
   <script src="js/content-templates/events.js"></script>
   <script src="js/content-templates/commerce.js"></script>
+  <script src="js/content-templates/hockey.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/content-resolver.js"></script>
   <script src="js/social-catalog.js"></script>

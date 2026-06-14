@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('../../_lib/supabase-env');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,7 +22,7 @@ module.exports = async function handler(req, res) {
   }
 
   // 1. Verify challenge signature
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
   const expectedHmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staffId)
     .digest('hex');
@@ -35,8 +36,8 @@ module.exports = async function handler(req, res) {
   }
 
   // 2. Connect to Supabase
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseServiceKey = sbEnv.getSupabaseServiceKey();
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Database credentials missing' });

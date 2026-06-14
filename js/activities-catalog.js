@@ -372,6 +372,6 @@ window.MkenActivitiesCatalog = [
     uiProfile: 'appointment-based',
     defaultTheme: 'midnight',
     serviceIds: ['hockey-training', 'hockey-match', 'hockey-private-coaching'],
-    booking: { type: 'appointment', requiresAddress: false, slotDuration: 90, ctaLabel: 'بوابة التمارين' },
+    booking: { type: 'appointment', requiresAddress: false, slotDuration: 90, ctaLabel: 'بوابة التمارين', portalUrl: 'coaching.html' },
   }
 ];

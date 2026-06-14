@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('./_lib/supabase-env');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -42,8 +43,8 @@ module.exports = async function handler(req, res) {
   }
 
   // 2. Setup Supabase Client
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseServiceKey = sbEnv.getSupabaseServiceKey();
 
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Missing Supabase credentials in environment variables');

@@ -3,13 +3,14 @@
  */
 'use strict';
 
-var CACHE_NAME = 'mken-platform-v2';
+var CACHE_NAME = 'mken-platform-v4';
 var SHELL = [
   './',
   './index.html',
   './book.html',
   './order.html',
   './admin.html',
+  './coaching.html',
   './staff.html',
   './manifest.webmanifest',
   './css/themes.css',
@@ -18,17 +19,32 @@ var SHELL = [
   './css/booking.css',
   './css/order.css',
   './css/admin.css',
+  './css/coaching.css',
   './css/staff.css',
   './js/theme-early.js',
   './js/pwa.js',
   './js/activities-catalog.js',
   './js/services-catalog.js',
+  './js/content-templates/hockey.js',
   './js/services-store.js',
+  './js/coaching.js',
   './js/supabase-db.js',
   './js/booking-store.js',
   './js/staff.js',
   './assets/logo.svg',
 ];
+
+function isVolatileAsset(url) {
+  return /\.html(\?|$)/.test(url) ||
+    /\/js\/(activities-catalog|services-catalog|services-store|ui-profiles\/registry|content-templates\/hockey)\.js/.test(url);
+}
+
+function cacheResponse(request, response) {
+  if (!response || !response.ok) return;
+  caches.open(CACHE_NAME).then(function (cache) {
+    cache.put(request, response);
+  });
+}
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
@@ -60,6 +76,22 @@ self.addEventListener('fetch', function (event) {
       fetch(event.request)
         .then(function (res) { return res; })
         .catch(function () { return caches.match(event.request); })
+    );
+    return;
+  }
+  if (isVolatileAsset(url)) {
+    event.respondWith(
+      fetch(event.request).then(function (res) {
+        cacheResponse(event.request, res.clone());
+        return res;
+      }).catch(function () {
+        return caches.match(event.request).then(function (cached) {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+        });
+      })
     );
     return;
   }

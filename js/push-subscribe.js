@@ -48,6 +48,29 @@
     return filtered;
   }
 
+  function syncSubscriptionToServer(subscription, meta) {
+    var store = window.MkenServicesStore;
+    var tenantSlug = store && store.getCurrentTenantSlug ? store.getCurrentTenantSlug() : 'default';
+    var json = subscription.toJSON ? subscription.toJSON() : subscription;
+    if (!json.endpoint || !json.keys) return Promise.resolve(false);
+
+    return fetch('/api/v1/push-subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantSlug: tenantSlug || 'default',
+        endpoint: json.endpoint,
+        keys: json.keys,
+        label: (meta && meta.label) || 'admin',
+        userAgent: navigator.userAgent.slice(0, 120),
+      }),
+    }).then(function (res) {
+      return res.ok;
+    }).catch(function () {
+      return false;
+    });
+  }
+
   function subscribePush(config) {
     var cfg = getPushConfig(config);
     if (!cfg.enabled || !cfg.vapidPublicKey) {
@@ -70,7 +93,31 @@
       });
     }).then(function (sub) {
       saveSubscription(sub, { label: 'admin' });
-      return sub;
+      return syncSubscriptionToServer(sub, { label: 'admin' }).then(function (synced) {
+        sub._serverSynced = synced;
+        return sub;
+      });
+    });
+  }
+
+  function notifyOwnerPush(title, body, config, url) {
+    var cfg = getPushConfig(config);
+    if (!cfg.enabled) return Promise.resolve({ skipped: true });
+    var store = window.MkenServicesStore;
+    var tenantSlug = store && store.getCurrentTenantSlug ? store.getCurrentTenantSlug() : 'default';
+    return fetch('/api/v1/push-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantSlug: tenantSlug || 'default',
+        title: title,
+        body: body,
+        url: url || './admin.html',
+      }),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; });
+    }).catch(function () {
+      return { skipped: true };
     });
   }
 
@@ -101,6 +148,8 @@
     getPushConfig: getPushConfig,
     getSubscriptions: getSubscriptions,
     subscribePush: subscribePush,
+    syncSubscriptionToServer: syncSubscriptionToServer,
+    notifyOwnerPush: notifyOwnerPush,
     exportSubscriptionsFile: exportSubscriptionsFile,
     isConfigured: isConfigured,
     requestNotificationPermission: requestNotificationPermission,

@@ -8,7 +8,7 @@
   var STORAGE_KEY = 'mken_platform_config';
   var ADMIN_KEY = 'mken_platform_admin';
   var CONFIG_URL = 'data/config.json';
-  var DEFAULT_PHONE = '9665056138908';
+  var DEFAULT_PHONE = '966543530333';
 
   var DEFAULT_SOCIAL = {
     whatsapp: { enabled: true, value: DEFAULT_PHONE },
@@ -20,9 +20,9 @@
   };
 
   var DEFAULT_BRAND = {
-    name: 'اسم منشأتك',
-    tagline: 'وصف مختصر لنشاطك',
-    logo: '',
+    name: 'مكن',
+    tagline: 'حلول رقمية متكاملة لنمو أعمالك',
+    logo: 'assets/mken-logo.png',
   };
 
   var DEFAULT_BOOKING = {
@@ -81,47 +81,35 @@
     currency: 'SAR',
   };
 
+  var DEFAULT_SAAS = {
+    baseDomain: '',
+    useSubdomains: true,
+  };
+
+  var PLATFORM_HOST_SUFFIXES = ['vercel.app', 'netlify.app', 'github.io', 'pages.dev'];
+
   var DEFAULT_CONFIG = {
-    enabledActivities: [
-      'barber-salon', 'car-care', 'healthcare', 'spa-wellness', 'fitness',
-      'veterinary', 'restaurant', 'consulting', 'photography', 'tutoring',
-      'hotels', 'travel', 'events', 'commerce',
-      'maintenance', 'tech-digital', 'it-support', 'cleaning', 'renovation', 'security', 'training',
-      'hockey',
-    ],
+    enabledActivities: ['tech-digital', 'it-support'],
     enabled: [
-      'mens-haircut', 'beard-grooming',
-      'quick-wash', 'full-wash',
-      'gp-consultation', 'telemedicine',
-      'swedish-massage', 'moroccan-bath',
-      'personal-training', 'yoga-session',
-      'vet-checkup', 'pet-grooming',
-      'table-booking', 'private-dining',
-      'legal-consult', 'real-estate-viewing',
-      'portrait-session', 'event-photography',
-      'math-tutoring', 'english-tutoring',
-      'standard-room', 'deluxe-room', 'umrah-package', 'domestic-tour',
-      'wedding-hall', 'conference-hall', 'event-planning',
-      'general-product', 'electronics-item', 'grocery-box',
-      'ac', 'web-design', 'whatsapp-crm',
-      'computer', 'cleaning', 'painting',
-      'cameras', 'computer-basics',
-      'hockey-training', 'hockey-match', 'hockey-private-coaching',
+      'web-design', 'mobile-apps', 'landing-pages', 'seo',
+      'whatsapp-crm', 'social-media', 'branding', 'ecommerce',
+      'computer', 'laptop-repair',
     ],
-    featuredActivity: 'barber-salon',
-    featured: 'mens-haircut',
-    heroFocus: 'mens-haircut',
+    featuredActivity: 'tech-digital',
+    featured: 'web-design',
+    heroFocus: 'web-design',
     theme: 'slate',
     phone: DEFAULT_PHONE,
     social: DEFAULT_SOCIAL,
     brand: DEFAULT_BRAND,
-    heroImage: '',
+    heroImage: 'assets/mken-hero.png',
     activities: {},
     services: {},
     booking: DEFAULT_BOOKING,
     serviceArea: DEFAULT_SERVICE_AREA,
     push: DEFAULT_PUSH,
     supabase: DEFAULT_SUPABASE,
+    saas: { baseDomain: 'mken.live', useSubdomains: true },
     whatsappApi: DEFAULT_WHATSAPP_API,
     payment: DEFAULT_PAYMENT,
     updatedAt: null,
@@ -435,6 +423,13 @@
         currency: typeof incoming.currency === 'string' ? incoming.currency.trim() : 'SAR',
       };
     })(cfg.payment);
+    cfg.saas = (function (raw) {
+      var incoming = raw || {};
+      return {
+        baseDomain: typeof incoming.baseDomain === 'string' ? incoming.baseDomain.trim().replace(/^\.|\.$/g, '') : '',
+        useSubdomains: incoming.useSubdomains !== false,
+      };
+    })(cfg.saas);
     return cfg;
   }
 
@@ -530,7 +525,18 @@
       .then(normalizeConfig);
   }
 
+  function isPlatformMarketingSite(cfg) {
+    if (_currentTenantSlug) return false;
+    var hostname = window.location.hostname.replace(/^www\./, '');
+    var base = (cfg && cfg.saas && cfg.saas.baseDomain) || 'mken.live';
+    return hostname === base || hostname === 'localhost' || hostname === '127.0.0.1';
+  }
+
   function pickConfig(serverCfg, localCfg) {
+    if (serverCfg && isPlatformMarketingSite(serverCfg)) {
+      _source = 'server';
+      return mergeLocalAssets(serverCfg, null);
+    }
     if (serverCfg && localCfg) {
       var st = serverCfg.updatedAt ? Date.parse(serverCfg.updatedAt) : 0;
       var lt = localCfg.updatedAt ? Date.parse(localCfg.updatedAt) : 0;
@@ -544,14 +550,22 @@
     return normalizeConfig(null);
   }
 
+  function isPlatformHostname(hostname) {
+    var parts = hostname.split('.');
+    if (parts.length < 2) return false;
+    var root = parts.slice(-2).join('.');
+    return PLATFORM_HOST_SUFFIXES.indexOf(root) !== -1;
+  }
+
   function detectTenantFromHostname() {
     var hostname = window.location.hostname;
     if (/^[0-9.]+$/.test(hostname)) return null;
-    
+
     var parts = hostname.split('.');
     if (parts.length === 2 && parts[1] === 'localhost') {
-      return parts[0];
+      return parts[0] !== 'www' ? parts[0] : null;
     }
+    if (isPlatformHostname(hostname)) return null;
     if (parts.length > 2) {
       if (parts[0] === 'www') {
         if (parts.length > 3) {
@@ -562,6 +576,36 @@
       return parts[0];
     }
     return null;
+  }
+
+  function getSaasBaseDomain(cfg) {
+    cfg = cfg || loadConfig();
+    var saas = (cfg && cfg.saas) || DEFAULT_SAAS;
+    if (saas.baseDomain) return saas.baseDomain;
+    var hostname = window.location.hostname;
+    if (isPlatformHostname(hostname)) return '';
+    var parts = hostname.split('.');
+    if (parts.length >= 3) {
+      return parts.slice(1).join('.');
+    }
+    if (parts.length === 2 && parts[1] !== 'localhost') {
+      return hostname.replace(/^www\./, '');
+    }
+    return '';
+  }
+
+  function buildTenantSiteUrl(slug, cfg) {
+    slug = (slug || '').trim();
+    if (!slug) return window.location.origin + '/';
+    cfg = cfg || loadConfig();
+    var saas = (cfg && cfg.saas) || DEFAULT_SAAS;
+    if (saas.useSubdomains !== false) {
+      var base = getSaasBaseDomain(cfg);
+      if (base) {
+        return window.location.protocol + '//' + slug + '.' + base + '/';
+      }
+    }
+    return window.location.origin + '/index.html?tenant=' + encodeURIComponent(slug);
   }
 
   function init() {
@@ -614,7 +658,7 @@
           window.MkenSupabaseDb.reinit(dbUrl, dbKey, true);
         }
 
-        if (dbEnabled && dbUrl && dbKey && window.MkenSupabaseDb) {
+        if (dbEnabled && dbUrl && dbKey && window.MkenSupabaseDb && !isPlatformMarketingSite(cfg)) {
           return window.MkenSupabaseDb.fetchConfig(_currentTenantSlug)
             .then(function (dbCfg) {
               if (dbCfg) {
@@ -813,6 +857,8 @@
     saveConfig: saveConfig,
     renewSubscription: renewSubscription,
     getCurrentTenantSlug: getCurrentTenantSlug,
+    getSaasBaseDomain: getSaasBaseDomain,
+    buildTenantSiteUrl: buildTenantSiteUrl,
     normalizeConfig: normalizeConfig,
     getConfigSource: getConfigSource,
     getActivitiesCatalog: getActivitiesCatalog,

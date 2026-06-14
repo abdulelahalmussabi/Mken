@@ -1,9 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('./_lib/supabase-env');
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabase() {
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseKey = sbEnv.getSupabaseServiceKey();
+  if (!supabaseUrl || !supabaseKey) return null;
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 module.exports = async function handler(req, res) {
   // 1. Meta / Facebook Webhook GET Verification
@@ -25,6 +28,10 @@ module.exports = async function handler(req, res) {
   }
 
   const tenantSlug = req.query.tenant || req.query.slug || 'default';
+  const supabase = getSupabase();
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase credentials missing' });
+  }
 
   try {
     let phone = '';

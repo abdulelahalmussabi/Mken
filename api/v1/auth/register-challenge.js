@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const sbEnv = require('../../_lib/supabase-env');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,7 +14,7 @@ module.exports = async function handler(req, res) {
   const challenge = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
   
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
   const hmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staffId)
     .digest('hex');

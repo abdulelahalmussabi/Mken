@@ -15,6 +15,17 @@
   var cancelSaasPaymentBtn = document.getElementById('cancelSaasPaymentBtn');
   var saasPaymentBlock = document.getElementById('saasPaymentBlock');
 
+  // Google Business DOM elements
+  var googleBusinessLoading = document.getElementById('googleBusinessLoading');
+  var googleBusinessDisconnected = document.getElementById('googleBusinessDisconnected');
+  var googleBusinessConnected = document.getElementById('googleBusinessConnected');
+  var googleBusinessConnectBtn = document.getElementById('googleBusinessConnectBtn');
+  var googleBusinessLocationSelect = document.getElementById('googleBusinessLocationSelect');
+  var googleBusinessUrlPreviewBlock = document.getElementById('googleBusinessUrlPreviewBlock');
+  var googleBusinessUrlPreview = document.getElementById('googleBusinessUrlPreview');
+  var googleBusinessUpdateBtn = document.getElementById('googleBusinessUpdateBtn');
+  var googleBusinessDisconnectBtn = document.getElementById('googleBusinessDisconnectBtn');
+
   var _apiKeys = [];
   var _invoices = [];
 
@@ -427,6 +438,201 @@
       });
   }
 
+  // --- Google Business Profile Integration ---
+  function checkGoogleBusinessStatus() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    if (!tenantSlug) {
+      if (googleBusinessLoading) googleBusinessLoading.textContent = 'الربط البرمجي غير متاح في لوحة التحكم العامة (الافتراضية).';
+      return;
+    }
+
+    if (googleBusinessLoading) {
+      googleBusinessLoading.textContent = 'جاري التحقق من حالة الربط...';
+      googleBusinessLoading.hidden = false;
+    }
+    if (googleBusinessDisconnected) googleBusinessDisconnected.hidden = true;
+    if (googleBusinessConnected) googleBusinessConnected.hidden = true;
+
+    fetch('/api/google-business/locations?tenant=' + encodeURIComponent(tenantSlug))
+      .then(function (res) {
+        if (!res.ok) throw new Error('فشل جلب إعدادات الربط');
+        return res.json();
+      })
+      .then(function (data) {
+        if (googleBusinessLoading) googleBusinessLoading.hidden = true;
+
+        if (data.connected === false) {
+          if (googleBusinessDisconnected) googleBusinessDisconnected.hidden = false;
+        } else if (data.connected === true) {
+          if (googleBusinessConnected) googleBusinessConnected.hidden = false;
+
+          // Populate select
+          if (googleBusinessLocationSelect) {
+            googleBusinessLocationSelect.innerHTML = '<option value="">-- اختر الفرع لربطه --</option>';
+            data.locations.forEach(function (loc) {
+              var opt = document.createElement('option');
+              opt.value = loc.id;
+              opt.textContent = loc.title + ' (' + (loc.websiteUri || 'لا يوجد رابط موقع') + ')';
+              if (data.selectedLocationId === loc.id) {
+                opt.selected = true;
+              }
+              googleBusinessLocationSelect.appendChild(opt);
+            });
+          }
+
+          // Render website preview url
+          var activeSiteUrl = store.buildTenantSiteUrl(tenantSlug);
+          if (googleBusinessUrlPreview) {
+            googleBusinessUrlPreview.textContent = activeSiteUrl;
+          }
+          if (googleBusinessUrlPreviewBlock) {
+            googleBusinessUrlPreviewBlock.hidden = false;
+          }
+        }
+      })
+      .catch(function (err) {
+        console.error(err);
+        if (googleBusinessLoading) {
+          googleBusinessLoading.textContent = 'حدث خطأ أثناء فحص حالة الربط: ' + err.message;
+        }
+      });
+  }
+
+  function connectGoogleBusiness() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    if (!tenantSlug) return;
+
+    if (googleBusinessConnectBtn) {
+      googleBusinessConnectBtn.disabled = true;
+      googleBusinessConnectBtn.textContent = 'جاري توليد الرابط...';
+    }
+
+    fetch('/api/google-business/auth-url?tenant=' + encodeURIComponent(tenantSlug))
+      .then(function (res) {
+        if (!res.ok) throw new Error('فشل توليد رابط الربط');
+        return res.json();
+      })
+      .then(function (data) {
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('لم يتم استلام رابط صالح');
+        }
+      })
+      .catch(function (err) {
+        if (googleBusinessConnectBtn) {
+          googleBusinessConnectBtn.disabled = false;
+          googleBusinessConnectBtn.textContent = '🔗 ربط بحساب جوجل (Connect Google Account)';
+        }
+        toast(err.message, 'error');
+      });
+  }
+
+  function updateGoogleBusinessWebsite() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    if (!tenantSlug || !googleBusinessLocationSelect) return;
+
+    var locId = googleBusinessLocationSelect.value;
+    if (!locId) {
+      toast('يرجى اختيار فرع/نشاط أولاً من القائمة', 'warning');
+      return;
+    }
+
+    var websiteUrl = store.buildTenantSiteUrl(tenantSlug);
+
+    if (googleBusinessUpdateBtn) {
+      googleBusinessUpdateBtn.disabled = true;
+      googleBusinessUpdateBtn.textContent = 'جاري التحديث...';
+    }
+
+    fetch('/api/google-business/update-website', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        locationId: locId,
+        websiteUrl: websiteUrl
+      })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || 'فشل التحديث');
+          return data;
+        });
+      })
+      .then(function () {
+        toast('تم تحديث رابط موقعك بنجاح على خرائط جوجل!', 'success');
+        checkGoogleBusinessStatus();
+      })
+      .catch(function (err) {
+        toast('فشل التحديث: ' + err.message, 'error');
+      })
+      .finally(function () {
+        if (googleBusinessUpdateBtn) {
+          googleBusinessUpdateBtn.disabled = false;
+          googleBusinessUpdateBtn.textContent = '🔄 تحديث رابط الموقع على خرائط جوجل';
+        }
+      });
+  }
+
+  function disconnectGoogleBusiness() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    if (!tenantSlug) return;
+
+    if (!confirm('هل أنت متأكد من رغبتك في إلغاء ربط حساب جوجل بيزنس بالكامل؟')) return;
+
+    if (googleBusinessDisconnectBtn) {
+      googleBusinessDisconnectBtn.disabled = true;
+      googleBusinessDisconnectBtn.textContent = 'جاري إلغاء الربط...';
+    }
+
+    fetch('/api/google-business/update-website', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        action: 'disconnect'
+      })
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('فشل إلغاء الربط');
+        return res.json();
+      })
+      .then(function () {
+        toast('تم إلغاء ربط حساب جوجل بيزنس بنجاح!', 'success');
+        checkGoogleBusinessStatus();
+      })
+      .catch(function (err) {
+        toast(err.message, 'error');
+      })
+      .finally(function () {
+        if (googleBusinessDisconnectBtn) {
+          googleBusinessDisconnectBtn.disabled = false;
+          googleBusinessDisconnectBtn.textContent = 'إلغاء الربط';
+        }
+      });
+  }
+
+  function checkGoogleRedirectParams() {
+    var params = new URLSearchParams(window.location.search);
+    var connectStatus = params.get('google_connect');
+    if (connectStatus === 'success') {
+      toast('تم ربط حساب جوجل بيزنس الخاص بك بنجاح!', 'success');
+      // Clean URL parameters
+      if (window.history && window.history.replaceState) {
+        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(store.getCurrentTenantSlug() || 'default');
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } else if (connectStatus === 'error') {
+      var desc = params.get('error_desc') || 'خطأ غير معروف';
+      toast('فشل ربط حساب جوجل: ' + desc, 'error');
+      if (window.history && window.history.replaceState) {
+        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(store.getCurrentTenantSlug() || 'default');
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+  }
+
   function checkSaaSCallback() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('saas_callback') === '1') {
@@ -456,6 +662,8 @@
     loadApiKeys();
     loadInvoices();
     checkSaaSCallback();
+    checkGoogleRedirectParams();
+    checkGoogleBusinessStatus();
   }
 
   function bindEvents() {
@@ -476,6 +684,15 @@
       cancelSaasPaymentBtn.addEventListener('click', function () {
         if (saasPaymentBlock) saasPaymentBlock.hidden = true;
       });
+    }
+    if (googleBusinessConnectBtn) {
+      googleBusinessConnectBtn.addEventListener('click', connectGoogleBusiness);
+    }
+    if (googleBusinessUpdateBtn) {
+      googleBusinessUpdateBtn.addEventListener('click', updateGoogleBusinessWebsite);
+    }
+    if (googleBusinessDisconnectBtn) {
+      googleBusinessDisconnectBtn.addEventListener('click', disconnectGoogleBusiness);
     }
   }
 

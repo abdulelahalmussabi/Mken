@@ -146,9 +146,12 @@
 
     var select = document.getElementById('contentActivitySelect');
     var enabled = store.loadConfig().enabledActivities || [];
-    select.innerHTML = enabled.map(function (id) {
-      var a = store.getResolvedActivity(id);
-      return '<option value="' + id + '"' + (id === activityId ? ' selected' : '') + '>' + esc(a.title) + '</option>';
+    var catalog = store.getActivitiesCatalog();
+    select.innerHTML = catalog.map(function (act) {
+      var a = store.getResolvedActivity(act.id);
+      var isEnabled = enabled.indexOf(act.id) !== -1;
+      var suffix = isEnabled ? '' : ' (غير مفعّل)';
+      return '<option value="' + act.id + '"' + (act.id === activityId ? ' selected' : '') + '>' + esc(a.title) + suffix + '</option>';
     }).join('');
 
     select.addEventListener('change', function () {

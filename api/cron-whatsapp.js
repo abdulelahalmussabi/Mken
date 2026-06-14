@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const sbEnv = require('./_lib/supabase-env');
 
 module.exports = async function handler(req, res) {
   // Optional security: verify authorization header
@@ -9,8 +10,8 @@ module.exports = async function handler(req, res) {
 
   console.log('--- Serverless Cron Job Triggered ---');
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const supabaseUrl = sbEnv.getSupabaseUrl();
+  const supabaseKey = sbEnv.getSupabaseServiceKey();
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({ error: 'Supabase credentials missing' });

@@ -240,6 +240,10 @@
         );
       }).join('');
 
+      var portalHint = act.id === 'hockey'
+        ? '<p class="admin-hint admin-activity__portal"><a href="coaching.html" target="_blank" rel="noopener">🏑 فتح بوابة التمارين (coaching.html)</a> — PIN الكوتش الافتراضي: <code>1234</code></p>'
+        : '';
+
       return (
         '<div class="admin-activity' + (actOn ? ' admin-activity--on' : '') + '">' +
         '<label class="admin-activity__header">' +
@@ -249,6 +253,7 @@
         '<strong>' + esc(resolved.title) + '</strong>' +
         '<small>' + esc(resolved.tagline) + '</small></span>' +
         '<span class="admin-service__toggle" aria-hidden="true"></span></label>' +
+        portalHint +
         '<div class="admin-activity__services"' + (actOn ? '' : ' hidden') + '>' + servicesHtml + '</div></div>'
       );
     }).join('');
@@ -304,16 +309,31 @@
     });
   }
 
+  function updateTenantUrlHints(slug) {
+    slug = slug || store.getCurrentTenantSlug() || 'default';
+    var cfg = store.loadConfig();
+    var siteUrl = store.buildTenantSiteUrl(slug, cfg);
+    var regPreview = document.getElementById('regTenantUrlPreview');
+    var tenantHint = document.getElementById('tenantSiteUrlHint');
+    if (regPreview) regPreview.textContent = siteUrl.replace(/^https?:\/\//, '');
+    if (tenantHint) tenantHint.textContent = siteUrl.replace(/^https?:\/\//, '');
+  }
+
   function renderSupabase(config) {
     var sb = config.supabase || { enabled: false, url: '', key: '' };
+    var saas = config.saas || { baseDomain: '', useSubdomains: true };
     var cb = document.getElementById('supabaseEnabled');
     var urlInput = document.getElementById('supabaseUrlInput');
     var keyInput = document.getElementById('supabaseKeyInput');
     var sqlArea = document.getElementById('supabaseSqlArea');
+    var saasDomainInput = document.getElementById('saasBaseDomainInput');
+    var saasSubdomainsCb = document.getElementById('saasUseSubdomains');
 
     if (cb) cb.checked = !!sb.enabled;
     if (urlInput) urlInput.value = sb.url || '';
     if (keyInput) keyInput.value = sb.key || '';
+    if (saasDomainInput) saasDomainInput.value = saas.baseDomain || '';
+    if (saasSubdomainsCb) saasSubdomainsCb.checked = saas.useSubdomains !== false;
     if (sqlArea && window.MkenSupabaseDb) {
       sqlArea.value = window.MkenSupabaseDb.getInitSql();
     }
@@ -564,7 +584,6 @@
     var subStatus = document.getElementById('saasSubStatus');
     var subEnd = document.getElementById('saasSubEnd');
     var slugInput = document.getElementById('tenantSlugInput');
-    var slugHint = document.getElementById('tenantSlugHint');
     
     var mapsEnabled = document.getElementById('mapsEnabled');
     var mapsListingUrl = document.getElementById('mapsListingUrl');
@@ -577,7 +596,7 @@
 
     var tenantSlug = store.getCurrentTenantSlug() || 'default';
     if (slugInput) slugInput.value = tenantSlug;
-    if (slugHint) slugHint.textContent = tenantSlug;
+    updateTenantUrlHints(tenantSlug);
     updateN8nTenantSlugHint();
 
     if (config.subscription) {
@@ -686,6 +705,8 @@
     var sbEnabled = document.getElementById('supabaseEnabled');
     var sbUrl = document.getElementById('supabaseUrlInput');
     var sbKey = document.getElementById('supabaseKeyInput');
+    var saasDomainInput = document.getElementById('saasBaseDomainInput');
+    var saasSubdomainsCb = document.getElementById('saasUseSubdomains');
 
     var waEnabled = document.getElementById('whatsappApiEnabled');
     var waProvider = document.getElementById('whatsappApiProvider');
@@ -757,6 +778,10 @@
         enabled: sbEnabled ? sbEnabled.checked : (current.supabase && current.supabase.enabled),
         url: sbUrl ? sbUrl.value.trim() : (current.supabase && current.supabase.url),
         key: sbKey ? sbKey.value.trim() : (current.supabase && current.supabase.key),
+      },
+      saas: {
+        baseDomain: saasDomainInput ? saasDomainInput.value.trim().replace(/^\.|\.$/g, '') : ((current.saas && current.saas.baseDomain) || ''),
+        useSubdomains: saasSubdomainsCb ? saasSubdomainsCb.checked : (current.saas && current.saas.useSubdomains !== false),
       },
       whatsappApi: {
         enabled: waEnabled ? waEnabled.checked : (current.whatsappApi && current.whatsappApi.enabled),
@@ -1050,7 +1075,7 @@
             .then(function (insertRes) {
               if (insertRes.error) throw insertRes.error;
               
-              showToast('تم تسجيل حسابك بنجاح! يرجى تسجيل الدخول الآن. 🎉');
+              showToast('تم تسجيل حسابك بنجاح! رابط موقعك: ' + store.buildTenantSiteUrl(slug).replace(/^https?:\/\//, ''));
               if (regBtn) {
                 regBtn.disabled = false;
                 regBtn.textContent = 'إنشاء الحساب وتفعيل الموقع';
@@ -1430,12 +1455,31 @@
     });
   }
 
+  var regTenantSlugInput = document.getElementById('regTenantSlug');
+  if (regTenantSlugInput) {
+    regTenantSlugInput.addEventListener('input', function () {
+      updateTenantUrlHints(regTenantSlugInput.value.trim().toLowerCase() || 'your-slug');
+    });
+  }
+
+  var saasBaseDomainInput = document.getElementById('saasBaseDomainInput');
+  var saasUseSubdomainsCb = document.getElementById('saasUseSubdomains');
+  [saasBaseDomainInput, saasUseSubdomainsCb].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener('input', function () {
+      updateTenantUrlHints(store.getCurrentTenantSlug() || (regTenantSlugInput && regTenantSlugInput.value.trim().toLowerCase()) || 'default');
+    });
+    el.addEventListener('change', function () {
+      updateTenantUrlHints(store.getCurrentTenantSlug() || (regTenantSlugInput && regTenantSlugInput.value.trim().toLowerCase()) || 'default');
+    });
+  });
+
   store.init().then(function () {
     // Check if Supabase database is connected for SaaS features
     var db = window.MkenSupabaseDb;
     var regError = document.getElementById('registerError');
     if (regError && (!db || !db.isConfigured())) {
-      regError.innerHTML = '⚠️ قاعدة بيانات Supabase غير متصلة.<br>يرجى إضافة المتغيرات البيئية <code>SUPABASE_URL</code> و <code>SUPABASE_KEY</code> (مفتاح Anon الخاص بك) في إعدادات مشروع Vercel وإعادة النشر.';
+      regError.innerHTML = '⚠️ قاعدة بيانات Supabase غير متصلة.<br>أضف في Vercel → Environment Variables:<br><code>SUPABASE_URL</code> · <code>SUPABASE_KEY</code> · <code>SUPABASE_SERVICE_ROLE_KEY</code><br>ثم أعد النشر. (يدعم أيضاً مفاتيح <code>sb_publishable_*</code> و <code>sb_secret_*</code>)';
       regError.style.color = '#e74c3c';
       regError.style.display = 'block';
       regError.style.fontSize = '14px';
@@ -1451,6 +1495,7 @@
       startWhatsappAutomationPolling();
     } else {
       showLogin();
+      updateTenantUrlHints('your-slug');
     }
   });
 })();
