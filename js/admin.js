@@ -64,6 +64,14 @@
     adminView.style.display = '';
     loginView.hidden = true;
     adminView.hidden = false;
+
+    // Show/hide clients tab for Platform/Super Admin only
+    var tabClients = document.getElementById('tabClients');
+    if (tabClients) {
+      var isSuperAdmin = !store.getCurrentTenantSlug() || store.getCurrentTenantSlug() === 'default';
+      tabClients.style.display = isSuperAdmin ? '' : 'none';
+    }
+
     renderPanel();
   }
 
@@ -104,6 +112,9 @@
     }
     if (tabId === 'saas' && window.MkenAdminDeveloper) {
       window.MkenAdminDeveloper.refresh();
+    }
+    if (tabId === 'clients' && window.MkenAdminClients) {
+      window.MkenAdminClients.refresh();
     }
   }
 
@@ -913,6 +924,7 @@
         .then(function (data) {
           if (data && data.success) {
             store.setAdminLoggedIn(true);
+            sessionStorage.setItem('mken_admin_pin', enteredPin);
             showAdmin();
           } else {
             if (loginError) {
@@ -929,6 +941,7 @@
           // Fallback to client-side PIN check if the API is not available (static server)
           if (enteredPin === 'mken2026') {
             store.setAdminLoggedIn(true);
+            sessionStorage.setItem('mken_admin_pin', enteredPin);
             showAdmin();
             showToast('تم تسجيل الدخول محلياً (بيئة تطوير)');
           } else {

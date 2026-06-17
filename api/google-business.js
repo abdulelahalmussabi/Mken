@@ -1,6 +1,8 @@
-const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const { getValidAccessToken } = require('./_lib/google-auth-helper');
+const { getValidAccessToken, ensureTenantClient, getSupabaseAdmin } = require('./_lib/google-auth-helper');
+
+function normalizeTenantSlug(tenant) {
+  return (tenant || 'default').trim() || 'default';
+}
 
 function corsGet(res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -33,10 +35,7 @@ function getAction(req) {
 }
 
 async function handleAuthUrl(req, res) {
-  const { tenant } = req.query;
-  if (!tenant) {
-    return res.status(400).json({ error: 'Tenant parameter is required' });
-  }
+  const tenant = normalizeTenantSlug(req.query.tenant);
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
@@ -100,17 +99,9 @@ async function handleCallback(req, res) {
 
   const tokenData = await tokenRes.json();
   const expiryDate = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
-  const supabase = createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
-
-  const { data: clientData, error: fetchError } = await supabase
-    .from('mken_saas_clients')
-    .select('google_refresh_token')
-    .eq('tenant_slug', state)
-    .single();
-
-  if (fetchError || !clientData) {
-    throw new Error('Tenant client not found in database: ' + state);
-  }
+  const tenantSlug = normalizeTenantSlug(state);
+  const supabase = getSupabaseAdmin();
+  await ensureTenantClient(supabase, tenantSlug);
 
   const updateData = {
     google_access_token: tokenData.access_token,
@@ -124,17 +115,14 @@ async function handleCallback(req, res) {
   const { error: updateError } = await supabase
     .from('mken_saas_clients')
     .update(updateData)
-    .eq('tenant_slug', state);
+    .eq('tenant_slug', tenantSlug);
 
   if (updateError) throw updateError;
-  return res.redirect(baseRedirectUrl + '?tenant=' + encodeURIComponent(state) + '&google_connect=success');
+  return res.redirect(baseRedirectUrl + '?tenant=' + encodeURIComponent(tenantSlug) + '&google_connect=success');
 }
 
 async function handleLocations(req, res) {
-  const { tenant } = req.query;
-  if (!tenant) {
-    return res.status(400).json({ error: 'Tenant parameter is required' });
-  }
+  const tenant = normalizeTenantSlug(req.query.tenant);
 
   let accessToken;
   try {
@@ -146,12 +134,12 @@ async function handleLocations(req, res) {
     throw authErr;
   }
 
-  const supabase = createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
+  const supabase = getSupabaseAdmin();
   const { data: client } = await supabase
     .from('mken_saas_clients')
     .select('google_business_location_id')
     .eq('tenant_slug', tenant)
-    .single();
+    .maybeSingle();
 
   const accountsRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
     headers: { Authorization: 'Bearer ' + accessToken },
@@ -186,12 +174,11 @@ async function handleLocations(req, res) {
 }
 
 async function handleUpdateWebsite(req, res) {
-  const { tenant, locationId, websiteUrl, action } = req.body || {};
-  if (!tenant) {
-    return res.status(400).json({ error: 'Tenant parameter is required' });
-  }
+  const { locationId, websiteUrl, action } = req.body || {};
+  const tenant = normalizeTenantSlug(req.body && req.body.tenant);
 
-  const supabase = createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
+  const supabase = getSupabaseAdmin();
+  await ensureTenantClient(supabase, tenant);
 
   if (action === 'disconnect') {
     const { error: updateError } = await supabase

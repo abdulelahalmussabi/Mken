@@ -329,10 +329,18 @@
     return !!(act && act.booking && act.booking.requiresAddress);
   }
 
+  function getActivityBookingPortalUrl(activityId, config) {
+    var act = getResolvedActivity(activityId, config);
+    var url = act && act.booking && act.booking.portalUrl;
+    return typeof url === 'string' ? url.trim() : '';
+  }
+
   function getBookableActivities() {
     return getEnabledActivities().filter(function (act) {
+      if (getActivityBookingPortalUrl(act.id)) return false;
       var profile = window.MkenUiProfile && window.MkenUiProfile.get(act.uiProfile);
-      return profile && profile.showBooking;
+      if (!profile || !profile.showBooking) return false;
+      return getEnabledServicesByActivity(act.id).length > 0;
     });
   }
 
@@ -892,6 +900,7 @@
     normalizeBooking: normalizeBooking,
     getBooking: getBooking,
     getBookingForActivity: getBookingForActivity,
+    getActivityBookingPortalUrl: getActivityBookingPortalUrl,
     serviceNeedsAddress: serviceNeedsAddress,
     getBookableActivities: getBookableActivities,
     getOrderableActivities: getOrderableActivities,

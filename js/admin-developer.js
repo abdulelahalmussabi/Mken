@@ -391,6 +391,12 @@
       return;
     }
 
+    var isSuperAdmin = !tenantSlug || tenantSlug === 'default';
+    if (!isSuperAdmin) {
+      toast('التجديد اليدوي غير متاح لحسابات العملاء. يرجى الدفع عبر نظام سداد Moyasar.', 'error');
+      return;
+    }
+
     var renewBtn = document.getElementById('renewSubManualBtn');
     if (renewBtn) {
       renewBtn.disabled = true;
@@ -439,12 +445,12 @@
   }
 
   // --- Google Business Profile Integration ---
+  function getGoogleBusinessTenantSlug() {
+    return store.getCurrentTenantSlug() || 'default';
+  }
+
   function checkGoogleBusinessStatus() {
-    var tenantSlug = store.getCurrentTenantSlug();
-    if (!tenantSlug) {
-      if (googleBusinessLoading) googleBusinessLoading.textContent = 'الربط البرمجي غير متاح في لوحة التحكم العامة (الافتراضية).';
-      return;
-    }
+    var tenantSlug = getGoogleBusinessTenantSlug();
 
     if (googleBusinessLoading) {
       googleBusinessLoading.textContent = 'جاري التحقق من حالة الربط...';
@@ -455,8 +461,10 @@
 
     fetch('/api/google-business/locations?tenant=' + encodeURIComponent(tenantSlug))
       .then(function (res) {
-        if (!res.ok) throw new Error('فشل جلب إعدادات الربط');
-        return res.json();
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || 'فشل جلب إعدادات الربط');
+          return data;
+        });
       })
       .then(function (data) {
         if (googleBusinessLoading) googleBusinessLoading.hidden = true;
@@ -499,8 +507,7 @@
   }
 
   function connectGoogleBusiness() {
-    var tenantSlug = store.getCurrentTenantSlug();
-    if (!tenantSlug) return;
+    var tenantSlug = getGoogleBusinessTenantSlug();
 
     if (googleBusinessConnectBtn) {
       googleBusinessConnectBtn.disabled = true;
@@ -529,8 +536,8 @@
   }
 
   function updateGoogleBusinessWebsite() {
-    var tenantSlug = store.getCurrentTenantSlug();
-    if (!tenantSlug || !googleBusinessLocationSelect) return;
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    if (!googleBusinessLocationSelect) return;
 
     var locId = googleBusinessLocationSelect.value;
     if (!locId) {
@@ -576,8 +583,7 @@
   }
 
   function disconnectGoogleBusiness() {
-    var tenantSlug = store.getCurrentTenantSlug();
-    if (!tenantSlug) return;
+    var tenantSlug = getGoogleBusinessTenantSlug();
 
     if (!confirm('هل أنت متأكد من رغبتك في إلغاء ربط حساب جوجل بيزنس بالكامل؟')) return;
 
@@ -620,14 +626,14 @@
       toast('تم ربط حساب جوجل بيزنس الخاص بك بنجاح!', 'success');
       // Clean URL parameters
       if (window.history && window.history.replaceState) {
-        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(store.getCurrentTenantSlug() || 'default');
+        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(getGoogleBusinessTenantSlug());
         window.history.replaceState({}, document.title, cleanUrl);
       }
     } else if (connectStatus === 'error') {
       var desc = params.get('error_desc') || 'خطأ غير معروف';
       toast('فشل ربط حساب جوجل: ' + desc, 'error');
       if (window.history && window.history.replaceState) {
-        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(store.getCurrentTenantSlug() || 'default');
+        var cleanUrl = window.location.pathname + '?tenant=' + encodeURIComponent(getGoogleBusinessTenantSlug());
         window.history.replaceState({}, document.title, cleanUrl);
       }
     }
@@ -658,12 +664,21 @@
     }
   }
 
+  function checkSubscriptionOptionsVisibility() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    var isSuperAdmin = !tenantSlug || tenantSlug === 'default';
+    if (renewSubManualBtn) {
+      renewSubManualBtn.style.display = isSuperAdmin ? '' : 'none';
+    }
+  }
+
   function refresh() {
     loadApiKeys();
     loadInvoices();
     checkSaaSCallback();
     checkGoogleRedirectParams();
     checkGoogleBusinessStatus();
+    checkSubscriptionOptionsVisibility();
   }
 
   function bindEvents() {
@@ -701,4 +716,5 @@
   };
 
   bindEvents();
+  checkSubscriptionOptionsVisibility();
 })();

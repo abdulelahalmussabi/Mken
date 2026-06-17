@@ -760,8 +760,18 @@
     appointments = bookingStore.getActiveAppointments();
 
     var param = parseActivityParam();
+    if (param) {
+      var portalUrl = store.getActivityBookingPortalUrl(param, config);
+      if (portalUrl) {
+        window.location.replace(portalUrl);
+        return;
+      }
+    }
+
     var bookable = store.getBookableActivities();
-    activeActivityId = param || config.featuredActivity || (bookable[0] && bookable[0].id);
+    var featuredId = config.featuredActivity;
+    if (featuredId && store.getActivityBookingPortalUrl(featuredId, config)) featuredId = '';
+    activeActivityId = param || featuredId || (bookable[0] && bookable[0].id);
 
     if (bookable.length && bookable.every(function (a) { return a.id !== activeActivityId; })) {
       activeActivityId = bookable[0].id;

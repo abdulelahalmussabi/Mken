@@ -1,20 +1,53 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./supabase-env');
 
+function getSupabaseAdmin() {
+  return createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
+}
+
+async function ensureTenantClient(supabase, tenantSlug) {
+  const slug = (tenantSlug || 'default').trim() || 'default';
+  const { data: client, error } = await supabase
+    .from('mken_saas_clients')
+    .select('tenant_slug')
+    .eq('tenant_slug', slug)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (client) return client;
+
+  const oneYear = new Date();
+  oneYear.setFullYear(oneYear.getFullYear() + 1);
+  const { error: insertError } = await supabase
+    .from('mken_saas_clients')
+    .insert({
+      tenant_slug: slug,
+      business_name: slug === 'default' ? 'المنصة الافتراضية' : slug,
+      email: slug + '@mken.com',
+      phone: '966543530333',
+      subscription_end: oneYear.toISOString(),
+      config_data: {},
+      subscription_status: 'active',
+    });
+
+  if (insertError) throw insertError;
+  return { tenant_slug: slug };
+}
+
 async function getValidAccessToken(tenantSlug) {
-  const supabaseUrl = sbEnv.getSupabaseUrl();
-  const supabaseServiceKey = sbEnv.getSupabaseServiceKey();
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = getSupabaseAdmin();
+  const slug = (tenantSlug || 'default').trim() || 'default';
 
   // 1. Fetch client tokens from DB
   const { data: client, error: fetchError } = await supabase
     .from('mken_saas_clients')
     .select('google_access_token, google_refresh_token, google_token_expiry')
-    .eq('tenant_slug', tenantSlug)
-    .single();
+    .eq('tenant_slug', slug)
+    .maybeSingle();
 
-  if (fetchError || !client) {
-    throw new Error('Tenant client not found in database');
+  if (fetchError) throw fetchError;
+  if (!client) {
+    throw new Error('Google Business account is not connected');
   }
 
   const { google_access_token: accessToken, google_refresh_token: refreshToken, google_token_expiry: tokenExpiry } = client;
@@ -67,7 +100,7 @@ async function getValidAccessToken(tenantSlug) {
       google_token_expiry: newExpiryDate,
       updated_at: new Date().toISOString()
     })
-    .eq('tenant_slug', tenantSlug);
+    .eq('tenant_slug', slug);
 
   if (updateError) {
     throw new Error(`Failed to save refreshed access token: ${updateError.message}`);
@@ -78,4 +111,6 @@ async function getValidAccessToken(tenantSlug) {
 
 module.exports = {
   getValidAccessToken,
+  ensureTenantClient,
+  getSupabaseAdmin,
 };

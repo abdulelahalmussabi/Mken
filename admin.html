@@ -22,8 +22,8 @@
       <h1 id="loginCardTitle">لوحة الإدارة</h1>
       <p id="loginCardDesc">تحكم كامل بكل محتوى الواجهة والخدمات</p>
       
-      <!-- Toggle Login vs Register -->
-      <div class="login-mode-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--color-border); padding-bottom: 10px;">
+      <!-- Toggle Login vs Register (Hidden to prevent public registration) -->
+      <div class="login-mode-tabs" style="display: none !important; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--color-border); padding-bottom: 10px;">
         <button type="button" id="tabToLogin" class="btn btn--primary btn--sm" style="flex:1">تسجيل الدخول</button>
         <button type="button" id="tabToRegister" class="btn btn--outline btn--sm" style="flex:1">إنشاء حساب جديد</button>
       </div>
@@ -59,38 +59,7 @@
         <button type="submit" id="loginSubmitBtn" class="btn btn--primary btn--lg" style="width:100%">دخول</button>
       </form>
 
-      <!-- Register Form -->
-      <form id="registerForm" hidden>
-        <div class="admin-field">
-          <label for="regTenantSlug">رابط موقعك المخصص (Tenant Slug)</label>
-          <input type="text" id="regTenantSlug" class="admin-input" placeholder="مثال: anas-salon" dir="ltr" required pattern="^[a-z0-9\-]+$">
-          <small class="admin-field__hint">يجب أن يحتوي على أحرف صغيرة وأرقام وفواصل فقط.</small>
-          <small class="admin-field__hint">رابط موقعك: <code dir="ltr" id="regTenantUrlPreview">index.html?tenant=anas-salon</code></small>
-        </div>
 
-        <div class="admin-field">
-          <label for="regBusinessName">اسم المنشأة / النشاط</label>
-          <input type="text" id="regBusinessName" class="admin-input" placeholder="مثال: صالون الحلاقة الأنيق" required>
-        </div>
-
-        <div class="admin-field">
-          <label for="regEmail">البريد الإلكتروني</label>
-          <input type="email" id="regEmail" class="admin-input" placeholder="example@domain.com" dir="ltr" required>
-        </div>
-
-        <div class="admin-field">
-          <label for="regPassword">كلمة المرور</label>
-          <input type="password" id="regPassword" class="admin-input" placeholder="أدخل 6 خانات على الأقل" required minlength="6">
-        </div>
-
-        <div class="admin-field">
-          <label for="regPhone">رقم الجوال الرئيسي (لارتباط الواتساب)</label>
-          <input type="tel" id="regPhone" class="admin-input" placeholder="9665XXXXXXXX" dir="ltr" required>
-        </div>
-
-        <p id="registerError" class="admin-error" hidden style="color: #ff4d4f; font-size: 13px; margin-bottom: 15px;"></p>
-        <button type="submit" id="registerSubmitBtn" class="btn btn--primary btn--lg" style="width:100%">إنشاء الحساب وتفعيل الموقع</button>
-      </form>
 
       <a href="index.html" class="admin-back" style="display: block; margin-top: 15px; text-align: center;">← العودة للموقع</a>
     </div>
@@ -117,6 +86,7 @@
       <button type="button" class="admin-tab" data-tab="whatsapp-logs">سجل الرسائل</button>
       <button type="button" class="admin-tab" data-tab="saas">الاشتراك والخرائط</button>
       <button type="button" class="admin-tab" data-tab="developer">المطورين (API)</button>
+      <button type="button" class="admin-tab" data-tab="clients" id="tabClients" style="display: none;">العملاء والاشتراكات (SaaS)</button>
     </nav>
 
     <main class="admin-main container">
@@ -640,16 +610,22 @@
         </section>
 
         <section class="admin-section">
-          <h3>تحديث قاعدة البيانات لدعم حقول الدفع (SQL Upgrade)</h3>
-          <p class="admin-hint">إذا كان لديك جدول <code>mken_appointments</code> قديم فقط، شغّل هذا الأمر أولاً. جدول <code>mken_orders</code> يُنشأ تلقائياً عند تشغيل <strong>سكربت التهيئة الكامل</strong> من تبويب Supabase.</p>
+          <h3>تحديث قاعدة البيانات لدعم الدفع وجوجل بيزنس (SQL Upgrade)</h3>
+          <p class="admin-hint">إذا كان لديك جدول <code>mken_appointments</code> أو <code>mken_saas_clients</code> قديم، شغّل هذا الأمر لتحديث الحقول في Supabase.</p>
           <div class="admin-field">
-            <textarea id="supabaseUpgradeSqlArea" class="admin-input" rows="8" readonly dir="ltr" style="font-family: monospace; font-size: 13px; background: #1a1a2e; color: #a9b7c6;">
+            <textarea id="supabaseUpgradeSqlArea" class="admin-input" rows="11" readonly dir="ltr" style="font-family: monospace; font-size: 13px; background: #1a1a2e; color: #a9b7c6;">
 ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS tenant_slug TEXT DEFAULT 'default';
 UPDATE mken_appointments SET tenant_slug = 'default' WHERE tenant_slug IS NULL;
 ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
 ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;
 ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;
-ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</textarea>
+ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;
+
+-- إضافة أعمدة ربط جوجل بيزنس لجدول العملاء
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_access_token TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;</textarea>
           </div>
           <div class="admin-backup">
             <button type="button" id="supabaseCopyUpgradeSqlBtn" class="btn btn--outline" style="width:100%">نسخ أمر التحديث</button>
@@ -691,7 +667,7 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
               </select>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button type="button" id="renewSubMoyasarBtn" class="btn btn--primary" style="flex: 2; min-width: 150px;">💳 سداد إلكتروني (Moyasar)</button>
-                <button type="button" id="renewSubManualBtn" class="btn btn--outline" style="flex: 1; min-width: 150px; border-color: var(--color-primary); color: var(--color-primary);">🔄 تجديد يدوي (للتجربة)</button>
+                <button type="button" id="renewSubManualBtn" class="btn btn--outline" style="flex: 1; min-width: 150px; border-color: var(--color-primary); color: var(--color-primary); display: none;">🔄 تجديد يدوي (للتجربة)</button>
               </div>
             </div>
 
@@ -1014,6 +990,75 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
         </div>
       </div>
 
+      <div class="admin-tab-panel" data-panel="clients" hidden>
+        <div class="admin-grid">
+          <!-- Client Listing and Management -->
+          <section class="admin-section" style="flex: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+              <h3 style="margin:0;">إدارة حسابات العملاء والاشتراكات (SaaS)</h3>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="clientsSearchInput" class="admin-input" placeholder="🔍 ابحث عن عميل..." style="max-width: 200px; margin-bottom:0;">
+                <button type="button" id="refreshClientsBtn" class="btn btn--outline btn--sm">🔄 تحديث القائمة</button>
+              </div>
+            </div>
+            <div style="overflow-x: auto; background:#fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <table class="admin-table" style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <thead>
+                  <tr style="background:#f9f8f6; border-bottom:1px solid var(--color-border); text-align:right;">
+                    <th style="padding:12px 10px;">اسم المنشأة</th>
+                    <th style="padding:12px 10px;">معرف الرابط (Slug)</th>
+                    <th style="padding:12px 10px;">البريد الإلكتروني</th>
+                    <th style="padding:12px 10px;">الجوال</th>
+                    <th style="padding:12px 10px;">الحالة</th>
+                    <th style="padding:12px 10px;">تاريخ انتهاء الاشتراك</th>
+                    <th style="padding:12px 10px; text-align: center;">العمليات</th>
+                  </tr>
+                </thead>
+                <tbody id="adminClientsList">
+                  <tr><td colspan="7" class="admin-hint" style="text-align:center; padding:20px;">جاري تحميل قائمة العملاء...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Register/Add Client Form -->
+          <section class="admin-section" style="flex: 1; max-width: 400px;">
+            <h3>تسجيل عميل (منشأة) جديد</h3>
+            <p class="admin-hint">أنشئ حساب مستأجر جديد سحابياً برمز سري وموقع مخصص فوراً.</p>
+            <form id="adminRegisterForm" style="margin-top: 15px;">
+              <div class="admin-field">
+                <label for="adminRegTenantSlug">رابط موقع العميل المخصص (Slug) *</label>
+                <input type="text" id="adminRegTenantSlug" class="admin-input" placeholder="مثال: anas-salon" dir="ltr" required pattern="^[a-z0-9\-]+$">
+                <small class="admin-field__hint">أحرف صغيرة وأرقام وفواصل فقط.</small>
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegBusinessName">اسم المنشأة / النشاط *</label>
+                <input type="text" id="adminRegBusinessName" class="admin-input" placeholder="مثال: صالون الحلاقة الأنيق" required>
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegEmail">البريد الإلكتروني للعميل *</label>
+                <input type="email" id="adminRegEmail" class="admin-input" placeholder="example@domain.com" dir="ltr" required>
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegPassword">كلمة المرور المؤقتة *</label>
+                <input type="password" id="adminRegPassword" class="admin-input" placeholder="٦ خانات على الأقل" required minlength="6">
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegPhone">رقم الجوال الرئيسي للعميل *</label>
+                <input type="tel" id="adminRegPhone" class="admin-input" placeholder="9665XXXXXXXX" dir="ltr" required>
+              </div>
+
+              <p id="adminRegisterError" class="admin-error" hidden style="color: #ff4d4f; font-size: 13px; margin-bottom: 15px;"></p>
+              <button type="submit" id="adminRegisterSubmitBtn" class="btn btn--primary btn--lg" style="width:100%">إنشاء حساب المنشأة وتفعيلها</button>
+            </form>
+          </section>
+        </div>
+      </div>
+
       <div id="appointmentModal" class="admin-modal" hidden>
         <div class="admin-modal__card">
           <h3 id="appointmentModalTitle">إضافة موعد</h3>
@@ -1201,5 +1246,6 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;</
   <script src="js/admin-developer.js"></script>
   <script src="js/admin-push.js"></script>
   <script src="js/admin-whatsapp-logs.js"></script>
+  <script src="js/admin-clients.js"></script>
 </body>
 </html>

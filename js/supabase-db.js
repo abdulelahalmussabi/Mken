@@ -88,6 +88,25 @@
         if (!res.data) return null;
         
         var data = res.data.config_data || {};
+        
+        // FOOLPROOF OVERRIDE: If this is a custom tenant and the brand name is "مكن" or empty,
+        // force it to use the tenant's registered business name and phone number.
+        if (slug !== 'default') {
+          if (!data.brand) {
+            data.brand = {
+              name: res.data.business_name || '',
+              tagline: 'مرحباً بك في موقعنا',
+              logo: ''
+            };
+          } else if (!data.brand.name || data.brand.name === 'مكن') {
+            data.brand.name = res.data.business_name || data.brand.name || '';
+          }
+          
+          if (!data.phone || data.phone === '966543530333') {
+            data.phone = res.data.phone || data.phone || '';
+          }
+        }
+
         data.subscription = {
           status: res.data.subscription_status,
           start: res.data.subscription_start,
