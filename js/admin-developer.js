@@ -24,6 +24,7 @@
   var googleBusinessUrlPreviewBlock = document.getElementById('googleBusinessUrlPreviewBlock');
   var googleBusinessUrlPreview = document.getElementById('googleBusinessUrlPreview');
   var googleBusinessUpdateBtn = document.getElementById('googleBusinessUpdateBtn');
+  var googleBusinessSyncServicesBtn = document.getElementById('googleBusinessSyncServicesBtn');
   var googleBusinessDisconnectBtn = document.getElementById('googleBusinessDisconnectBtn');
 
   var _apiKeys = [];
@@ -619,6 +620,64 @@
       });
   }
 
+  function syncGoogleBusinessServices() {
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    if (!googleBusinessLocationSelect) return;
+
+    var locId = googleBusinessLocationSelect.value;
+    if (!locId) {
+      toast('يرجى اختيار فرع/نشاط أولاً من القائمة', 'warning');
+      return;
+    }
+
+    var enabledServices = store.getEnabledServices();
+    if (!enabledServices || enabledServices.length === 0) {
+      toast('لا توجد أي خدمات مفعّلة حالياً على منصة مكّن لمزامنتها!', 'warning');
+      return;
+    }
+
+    // Format services payload for the backend API
+    var servicesPayload = enabledServices.map(function (svc) {
+      return {
+        title: svc.title || '',
+        description: svc.description || ''
+      };
+    });
+
+    if (googleBusinessSyncServicesBtn) {
+      googleBusinessSyncServicesBtn.disabled = true;
+      googleBusinessSyncServicesBtn.textContent = 'جاري المزامنة...';
+    }
+
+    fetch('/api/google-business/sync-services', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant: tenantSlug,
+        locationId: locId,
+        services: servicesPayload
+      })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data.error || 'فشل مزامنة الخدمات');
+          return data;
+        });
+      })
+      .then(function () {
+        toast('تمت مزامنة قائمة خدماتك بنجاح على بروفايل جوجل!', 'success');
+      })
+      .catch(function (err) {
+        toast('فشل المزامنة: ' + err.message, 'error');
+      })
+      .finally(function () {
+        if (googleBusinessSyncServicesBtn) {
+          googleBusinessSyncServicesBtn.disabled = false;
+          googleBusinessSyncServicesBtn.textContent = '💼 مزامنة الخدمات مع جوجل';
+        }
+      });
+  }
+
   function checkGoogleRedirectParams() {
     var params = new URLSearchParams(window.location.search);
     var connectStatus = params.get('google_connect');
@@ -705,6 +764,9 @@
     }
     if (googleBusinessUpdateBtn) {
       googleBusinessUpdateBtn.addEventListener('click', updateGoogleBusinessWebsite);
+    }
+    if (googleBusinessSyncServicesBtn) {
+      googleBusinessSyncServicesBtn.addEventListener('click', syncGoogleBusinessServices);
     }
     if (googleBusinessDisconnectBtn) {
       googleBusinessDisconnectBtn.addEventListener('click', disconnectGoogleBusiness);

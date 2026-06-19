@@ -23,6 +23,9 @@
   var brandTaglineInput = document.getElementById('brandTaglineInput');
   var phoneInput = document.getElementById('phoneInput');
   var socialList = document.getElementById('socialList');
+  var emailsList = document.getElementById('emailsList');
+  var emailsPreview = document.getElementById('emailsPreview');
+  var emailsCatalog = (window.MkenEmailsCatalog && window.MkenEmailsCatalog.TYPES) || [];
   var themesGrid = document.getElementById('themesGrid');
   var featuredSelect = document.getElementById('featuredSelect');
   var featuredActivitySelect = document.getElementById('featuredActivitySelect');
@@ -205,6 +208,89 @@
       };
     });
     return social;
+  }
+
+  function updateEmailsPreview(emails) {
+    if (!emailsPreview) return;
+    var currentEmails = emails || getEmailValues();
+    var enabled = store.getEnabledEmails(currentEmails);
+    if (!enabled.length) {
+      emailsPreview.innerHTML = '<div class="admin-hint" style="padding:10px;text-align:center;">لم يتم تفعيل أي بريد إلكتروني للتواصل.</div>';
+      return;
+    }
+    emailsPreview.innerHTML = enabled.map(function (item) {
+      return (
+        '<a href="' + item.mailto + '" class="admin-email-preview">' +
+        '<span class="admin-email-preview__icon">' + item.icon + '</span>' +
+        '<span class="admin-email-preview__info">' +
+        '<strong>' + esc(item.name) + '</strong>' +
+        '<small dir="ltr">' + esc(item.value) + '</small>' +
+        '</span></a>'
+      );
+    }).join('');
+  }
+
+  function renderEmails(config) {
+    if (!emailsList) return;
+    var emails = store.normalizeEmails(config.emails);
+
+    emailsList.innerHTML = emailsCatalog.map(function (type) {
+      var entry = emails[type.id] || { enabled: false, value: '' };
+      var checked = entry.enabled ? ' checked' : '';
+      var onClass = entry.enabled ? ' admin-email--on' : '';
+      var fieldHidden = entry.enabled ? '' : ' hidden';
+
+      return (
+        '<div class="admin-email' + onClass + '" data-email="' + type.id + '">' +
+        '<label class="admin-email__toggle-row">' +
+        '<input type="checkbox" class="admin-email__check" data-email="' + type.id + '"' + checked + '>' +
+        '<span class="admin-email__icon">' + type.icon + '</span>' +
+        '<span class="admin-email__name">' + type.name + '</span>' +
+        '<span class="admin-service__toggle" aria-hidden="true"></span>' +
+        '</label>' +
+        '<div class="admin-email__field"' + (fieldHidden ? ' hidden' : '') + '>' +
+        '<input type="email" class="admin-input admin-email__value" data-email="' + type.id + '"' +
+        ' placeholder="' + esc(type.placeholder) + '" value="' + esc(entry.value || '') + '" dir="ltr" inputmode="email">' +
+        '<small class="admin-field__hint">' + type.hint + '</small>' +
+        '</div></div>'
+      );
+    }).join('');
+
+    emailsList.querySelectorAll('.admin-email__check').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var row = input.closest('.admin-email');
+        var field = row.querySelector('.admin-email__field');
+        row.classList.toggle('admin-email--on', input.checked);
+        if (field) field.hidden = !input.checked;
+        updateEmailsPreview();
+      });
+    });
+
+    emailsList.querySelectorAll('.admin-email__value').forEach(function (input) {
+      input.addEventListener('input', function () {
+        updateEmailsPreview();
+      });
+    });
+
+    updateEmailsPreview(emails);
+  }
+
+  function getEmailValues() {
+    var emails = {};
+    if (!emailsList) return store.normalizeEmails(null);
+
+    emailsCatalog.forEach(function (type) {
+      var row = emailsList.querySelector('[data-email="' + type.id + '"]');
+      if (!row) return;
+      var check = row.querySelector('.admin-email__check');
+      var valueInput = row.querySelector('.admin-email__value');
+      emails[type.id] = {
+        enabled: !!(check && check.checked),
+        value: valueInput ? valueInput.value.trim() : '',
+      };
+    });
+
+    return store.normalizeEmails(emails);
   }
 
   function updateBrandPreview(config) {
@@ -684,6 +770,7 @@
     var config = store.loadConfig();
     renderBrand(config);
     renderSocial(config);
+    renderEmails(config);
     renderActivities(config);
     renderThemes(config);
     renderSupabase(config);
@@ -779,6 +866,7 @@
         logo: pendingBrandLogoTouched ? (pendingBrandLogo || '') : current.brand.logo,
       },
       social: getSocialValues(),
+      emails: getEmailValues(),
       activities: activities,
       services: services,
       heroImage: current.heroImage,
@@ -1128,6 +1216,22 @@
       var cfg = collectConfig();
       if (!cfg.brand.name) {
         showToast('أدخل اسم المنشأة', 'error');
+        return;
+      }
+      var emails = getEmailValues();
+      var missingEmail = emailsCatalog.filter(function (type) {
+        return emails[type.id] && emails[type.id].enabled && !emails[type.id].value;
+      });
+      if (missingEmail.length) {
+        showToast('يرجى كتابة عنوان البريد لـ ' + missingEmail[0].name, 'error');
+        return;
+      }
+      var invalidEmail = emailsCatalog.filter(function (type) {
+        var entry = emails[type.id];
+        return entry && entry.enabled && entry.value && !store.isValidEmail(entry.value);
+      });
+      if (invalidEmail.length) {
+        showToast('عنوان البريد غير صحيح لـ ' + invalidEmail[0].name, 'error');
         return;
       }
       saveBtn.disabled = true;

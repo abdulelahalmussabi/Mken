@@ -395,6 +395,30 @@
     contactSocial.hidden = !items.length;
   }
 
+  function renderContactEmails(emails) {
+    var container = document.getElementById('contactEmails');
+    if (!container) return;
+
+    var enabled = store.getEnabledEmails(emails);
+    if (!enabled.length) {
+      container.innerHTML = '';
+      container.hidden = true;
+      return;
+    }
+
+    container.innerHTML = enabled.map(function (item) {
+      return (
+        '<a href="' + item.mailto + '" class="contact__link contact__link--email">' +
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+        '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>' +
+        '<polyline points="22,6 12,13 2,6"/></svg>' +
+        '<span><strong>' + item.name + '</strong><small dir="ltr">' + item.value + '</small></span>' +
+        '</a>'
+      );
+    }).join('');
+    container.hidden = false;
+  }
+
   function renderContact() {
     var c = content.contact;
     if (!c) return;
@@ -417,6 +441,7 @@
     document.querySelectorAll('[data-contact="whatsapp"]').forEach(function (el) {
       el.href = wa;
     });
+    renderContactEmails(config.emails);
   }
 
   function applyBrand() {

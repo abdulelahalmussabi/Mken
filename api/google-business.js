@@ -4,6 +4,30 @@ function normalizeTenantSlug(tenant) {
   return (tenant || 'default').trim() || 'default';
 }
 
+async function handleGoogleResponseError(res, defaultMessage) {
+  const errText = await res.text();
+  let parsed;
+  try {
+    parsed = JSON.parse(errText);
+  } catch (e) {}
+
+  if (parsed && parsed.error) {
+    const apiErr = parsed.error;
+    if (apiErr.status === 'RESOURCE_EXHAUSTED' || (apiErr.message && apiErr.message.includes('Quota exceeded'))) {
+      const isLimitZero = errText.includes('"quota_limit_value": "0"') || errText.includes('"quota_limit_value":"0"');
+      if (isLimitZero) {
+        throw new Error(
+          'تم تجاوز الحصة (Quota Exceeded): القيمة المسموحة لطلب الخدمة هي 0. ' +
+          'مشروع Google Cloud (رقم 529822765960) يحتاج إلى تفعيل وتصريح الوصول لـ Google Business Profile API. ' +
+          'يرجى تعبئة نموذج طلب الوصول (Google Business Profile API Access Request Form) للحصول على حصة فعالة.'
+        );
+      }
+    }
+    throw new Error(defaultMessage + ': ' + apiErr.message);
+  }
+  throw new Error(defaultMessage + ': ' + errText);
+}
+
 function corsGet(res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,6 +53,7 @@ function getAction(req) {
   if (url.indexOf('/callback') !== -1 || req.query.action === 'callback') return 'callback';
   if (url.indexOf('/locations') !== -1 || req.query.action === 'locations') return 'locations';
   if (url.indexOf('/update-website') !== -1 || req.query.action === 'update-website') return 'update-website';
+  if (url.indexOf('/sync-services') !== -1 || req.query.action === 'sync-services') return 'sync-services';
   if (url.indexOf('/auth-url') !== -1 || req.query.action === 'auth-url') return 'auth-url';
   if (req.query.code && req.query.state) return 'callback';
   return 'auth-url';
@@ -146,7 +171,7 @@ async function handleLocations(req, res) {
   });
 
   if (!accountsRes.ok) {
-    throw new Error('Failed to fetch Google accounts: ' + (await accountsRes.text()));
+    await handleGoogleResponseError(accountsRes, 'Failed to fetch Google accounts');
   }
 
   const accountsData = await accountsRes.json();
@@ -212,7 +237,7 @@ async function handleUpdateWebsite(req, res) {
   });
 
   if (!updateRes.ok) {
-    throw new Error('Google API update failed: ' + (await updateRes.text()));
+    await handleGoogleResponseError(updateRes, 'Google API update failed');
   }
 
   const { error: dbError } = await supabase
@@ -225,6 +250,75 @@ async function handleUpdateWebsite(req, res) {
 
   if (dbError) throw dbError;
   return res.status(200).json({ success: true, message: 'Website URL updated successfully on Google Business Profile' });
+}
+
+async function handleSyncServices(req, res) {
+  const { locationId, services } = req.body || {};
+  const tenant = normalizeTenantSlug(req.body && req.body.tenant);
+
+  if (!locationId) {
+    return res.status(400).json({ error: 'locationId is required' });
+  }
+  if (!services || !Array.isArray(services)) {
+    return res.status(400).json({ error: 'services array is required' });
+  }
+
+  const accessToken = await getValidAccessToken(tenant);
+
+  // 1. Get the primary category of the location
+  const categoryRes = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/' + locationId + '?readMask=primaryCategory', {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+
+  if (!categoryRes.ok) {
+    await handleGoogleResponseError(categoryRes, 'Failed to fetch Google location primary category');
+  }
+
+  const categoryData = await categoryRes.json();
+  const categoryId = (categoryData.primaryCategory && categoryData.primaryCategory.name) || '';
+
+  if (!categoryId) {
+    throw new Error('Google location does not have a primary category set');
+  }
+
+  // 2. Format services as freeFormServiceItems
+  const serviceItems = services.map(function (svc) {
+    const title = typeof svc === 'string' ? svc : (svc.title || '');
+    const desc = typeof svc === 'string' ? '' : (svc.description || '');
+
+    const freeFormItem = {
+      category: categoryId,
+      label: {
+        displayName: title,
+        languageCode: 'ar'
+      }
+    };
+
+    if (desc) {
+      freeFormItem.label.description = desc;
+    }
+
+    return {
+      freeFormServiceItem: freeFormItem
+    };
+  });
+
+  // 3. Patch the location's serviceItems
+  const googleApiUrl = 'https://mybusinessbusinessinformation.googleapis.com/v1/' + locationId + '?updateMask=serviceItems';
+  const updateRes = await fetch(googleApiUrl, {
+    method: 'PATCH',
+    headers: {
+      Authorization: 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ serviceItems: serviceItems }),
+  });
+
+  if (!updateRes.ok) {
+    await handleGoogleResponseError(updateRes, 'Google API update failed');
+  }
+
+  return res.status(200).json({ success: true, message: 'Services synchronized successfully on Google Business Profile' });
 }
 
 module.exports = async function handler(req, res) {
@@ -250,6 +344,18 @@ module.exports = async function handler(req, res) {
       return await handleUpdateWebsite(req, res);
     } catch (err) {
       console.error('Update Google Business Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'sync-services') {
+    corsPost(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      return await handleSyncServices(req, res);
+    } catch (err) {
+      console.error('Sync Google Business Services Error:', err);
       return res.status(500).json({ error: err.message });
     }
   }

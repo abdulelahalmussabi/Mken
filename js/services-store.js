@@ -10,6 +10,12 @@
   var CONFIG_URL = 'data/config.json';
   var DEFAULT_PHONE = '966543530333';
 
+  var DEFAULT_EMAILS = {
+    inquiries: { enabled: true, value: 'info@mken.live' },
+    sales: { enabled: true, value: 'sales@mken.live' },
+    support: { enabled: true, value: 'CS@mken.live' },
+  };
+
   var DEFAULT_SOCIAL = {
     whatsapp: { enabled: true, value: DEFAULT_PHONE },
     instagram: { enabled: false, value: '' },
@@ -101,6 +107,7 @@
     theme: 'slate',
     phone: DEFAULT_PHONE,
     social: DEFAULT_SOCIAL,
+    emails: DEFAULT_EMAILS,
     brand: DEFAULT_BRAND,
     heroImage: 'assets/mken-hero.png',
     activities: {},
@@ -198,6 +205,40 @@
     }).map(function (p) {
       return { id: p.id, name: p.name, icon: p.icon, url: getSocialUrl(p.id, social) };
     }).filter(function (i) { return !!i.url; });
+  }
+
+  function getEmailsCatalog() {
+    return (window.MkenEmailsCatalog && window.MkenEmailsCatalog.TYPES) || [];
+  }
+
+  function isValidEmail(value) {
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value);
+  }
+
+  function normalizeEmails(rawEmails) {
+    var emails = {};
+    var catalog = getEmailsCatalog();
+    var defaults = DEFAULT_EMAILS;
+    catalog.forEach(function (type) {
+      var incoming = (rawEmails && rawEmails[type.id]) || {};
+      var fallback = defaults[type.id] || { enabled: false, value: '' };
+      emails[type.id] = {
+        enabled: !!incoming.enabled,
+        value: typeof incoming.value === 'string' ? incoming.value.trim() : fallback.value,
+      };
+    });
+    return emails;
+  }
+
+  function getEnabledEmails(emails) {
+    return getEmailsCatalog().filter(function (type) {
+      var entry = emails && emails[type.id];
+      return entry && entry.enabled && entry.value && isValidEmail(entry.value);
+    }).map(function (type) {
+      var entry = emails[type.id];
+      return { id: type.id, name: type.name, icon: type.icon, value: entry.value, mailto: 'mailto:' + entry.value };
+    });
   }
 
   function normalizeBrand(raw) {
@@ -365,20 +406,100 @@
     }
   }
 
+  function getClientDefaults(slug) {
+    if (slug === 'almahrosa' || slug === 'almahrusa') {
+      return {
+        brand: {
+          name: "مجموعة المحروسة",
+          tagline: "مرحباً بكم في مجموعة المحروسة للغرف والوحدات السكنية المفروشة",
+          logo: ""
+        },
+        enabledActivities: ['hotels'],
+        enabled: ['hotel-booking', 'room-service'],
+        featuredActivity: 'hotels',
+        featured: 'hotel-booking',
+        heroFocus: 'hotel-booking',
+        theme: 'ocean',
+        phone: '966554453287',
+        social: {
+          whatsapp: { enabled: true, value: '966554453287' },
+          instagram: { enabled: false, value: '' },
+          twitter: { enabled: false, value: '' },
+          facebook: { enabled: false, value: '' },
+          tiktok: { enabled: false, value: '' },
+          linkedin: { enabled: false, value: '' },
+        },
+        emails: {
+          inquiries: { enabled: true, value: 'info@mken.live' },
+          sales: { enabled: true, value: 'sales@mken.live' },
+          support: { enabled: true, value: 'CS@mken.live' },
+        },
+        heroImage: '',
+        activities: {},
+        services: {},
+        booking: Object.assign({}, DEFAULT_BOOKING),
+        serviceArea: Object.assign({}, DEFAULT_SERVICE_AREA),
+        push: Object.assign({}, DEFAULT_PUSH),
+        supabase: Object.assign({}, DEFAULT_SUPABASE),
+        saas: { baseDomain: 'mken.live', useSubdomains: true },
+        whatsappApi: Object.assign({}, DEFAULT_WHATSAPP_API),
+        payment: Object.assign({}, DEFAULT_PAYMENT),
+        updatedAt: null,
+      };
+    }
+    
+    return {
+      brand: {
+        name: "موقع قيد الإعداد",
+        tagline: "هذا النطاق (" + slug + ") غير مرتبط بنشاط فعال حالياً في النظام.",
+        logo: ""
+      },
+      enabledActivities: [],
+      enabled: [],
+      featuredActivity: '',
+      featured: '',
+      heroFocus: '',
+      theme: 'slate',
+      phone: DEFAULT_PHONE,
+      social: Object.assign({}, DEFAULT_SOCIAL),
+      emails: Object.assign({}, DEFAULT_EMAILS),
+      heroImage: '',
+      activities: {},
+      services: {},
+      booking: Object.assign({}, DEFAULT_BOOKING),
+      serviceArea: Object.assign({}, DEFAULT_SERVICE_AREA),
+      push: Object.assign({}, DEFAULT_PUSH),
+      supabase: Object.assign({}, DEFAULT_SUPABASE),
+      saas: { baseDomain: 'mken.live', useSubdomains: true },
+      whatsappApi: Object.assign({}, DEFAULT_WHATSAPP_API),
+      payment: Object.assign({}, DEFAULT_PAYMENT),
+      updatedAt: null,
+    };
+  }
+
   function normalizeConfig(raw) {
-    var cfg = Object.assign({}, DEFAULT_CONFIG, raw || {});
-    if (!Array.isArray(cfg.enabledActivities)) cfg.enabledActivities = DEFAULT_CONFIG.enabledActivities.slice();
-    if (!Array.isArray(cfg.enabled)) cfg.enabled = DEFAULT_CONFIG.enabled.slice();
+    var baseConfig = DEFAULT_CONFIG;
+    if (_currentTenantSlug) {
+      baseConfig = getClientDefaults(_currentTenantSlug);
+    }
+    
+    var cfg = Object.assign({}, baseConfig, raw || {});
+    if (!Array.isArray(cfg.enabledActivities)) cfg.enabledActivities = baseConfig.enabledActivities.slice();
+    if (!Array.isArray(cfg.enabled)) cfg.enabled = baseConfig.enabled.slice();
 
     cfg.enabledActivities = cfg.enabledActivities.filter(function (id) {
       return !!getActivityById(id);
     });
-    if (!cfg.enabledActivities.length) cfg.enabledActivities = ['tech-digital'];
+    if (!cfg.enabledActivities.length && baseConfig.enabledActivities.length) {
+      cfg.enabledActivities = baseConfig.enabledActivities.slice();
+    } else if (!cfg.enabledActivities.length) {
+      cfg.enabledActivities = ['tech-digital'];
+    }
 
     pruneEnabledServices(cfg);
 
     if (!cfg.featuredActivity || cfg.enabledActivities.indexOf(cfg.featuredActivity) === -1) {
-      cfg.featuredActivity = cfg.enabledActivities[0];
+      cfg.featuredActivity = cfg.enabledActivities[0] || '';
     }
     if (!cfg.featured || cfg.enabled.indexOf(cfg.featured) === -1) {
       cfg.featured = cfg.enabled[0] || '';
@@ -395,6 +516,7 @@
 
     cfg.phone = normalizePhone(cfg.phone);
     cfg.social = normalizeSocial(cfg.social);
+    cfg.emails = normalizeEmails(cfg.emails);
     cfg.brand = normalizeBrand(cfg.brand);
     cfg.heroImage = typeof cfg.heroImage === 'string' ? cfg.heroImage.trim() : '';
     cfg.activities = normalizeActivitiesMap(cfg.activities, cfg);
@@ -529,9 +651,15 @@
   }
 
   function fetchServerConfig() {
-    return fetch(CONFIG_URL + '?t=' + Date.now(), { cache: 'no-store' })
+    var url = CONFIG_URL;
+    if (_currentTenantSlug) {
+      url = 'data/tenants/' + _currentTenantSlug + '.json';
+    }
+    return fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
       .then(function (res) {
-        if (!res.ok) throw new Error('not found');
+        if (!res.ok) {
+          throw new Error('not found');
+        }
         return res.json();
       })
       .then(normalizeConfig);
@@ -630,6 +758,13 @@
       tenantSlug = detectTenantFromHostname();
     }
     _currentTenantSlug = tenantSlug || null;
+    if (_currentTenantSlug) {
+      _currentTenantSlug = _currentTenantSlug.trim().toLowerCase();
+      // Normalize common spelling variants
+      if (_currentTenantSlug === 'almahrusa') {
+        _currentTenantSlug = 'almahrosa';
+      }
+    }
 
     var localCfg = loadFromStorage();
     if (_currentTenantSlug && localCfg && localCfg.subscription && localCfg.subscription.tenantSlug !== _currentTenantSlug) {
@@ -700,10 +835,26 @@
                 
                 return normalizeConfig(mergeLocalAssets(dbCfg, localCfg));
               }
+              
+              // IF CUSTOM TENANT NOT FOUND IN DATABASE, DO NOT FALLBACK TO "MKEN" MARKETING CONFIG!
+              if (_currentTenantSlug) {
+                var customDefaults = getClientDefaults(_currentTenantSlug);
+                customDefaults.supabase = cfg.supabase; // Keep credentials so admin login works
+                return normalizeConfig(customDefaults);
+              }
+              
               return cfg;
             })
             .catch(function (err) {
               console.warn('Failed to fetch config from Supabase, falling back to local/server', err);
+              
+              // IF CUSTOM TENANT FETCH FAILED, DO NOT FALLBACK TO "MKEN" MARKETING CONFIG!
+              if (_currentTenantSlug) {
+                var customDefaults = getClientDefaults(_currentTenantSlug);
+                customDefaults.supabase = cfg.supabase; // Keep credentials so admin login works
+                return normalizeConfig(customDefaults);
+              }
+              
               return cfg;
             });
         }
@@ -897,6 +1048,11 @@
     waLink: waLink,
     getSocialUrl: getSocialUrl,
     getEnabledSocial: getEnabledSocial,
+    DEFAULT_EMAILS: DEFAULT_EMAILS,
+    getEmailsCatalog: getEmailsCatalog,
+    normalizeEmails: normalizeEmails,
+    getEnabledEmails: getEnabledEmails,
+    isValidEmail: isValidEmail,
     normalizeBooking: normalizeBooking,
     getBooking: getBooking,
     getBookingForActivity: getBookingForActivity,

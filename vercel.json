@@ -13,6 +13,7 @@
     { "source": "/api/google-business/callback", "destination": "/api/google-business?action=callback" },
     { "source": "/api/google-business/locations", "destination": "/api/google-business?action=locations" },
     { "source": "/api/google-business/update-website", "destination": "/api/google-business?action=update-website" },
+    { "source": "/api/google-business/sync-services", "destination": "/api/google-business?action=sync-services" },
     { "source": "/api/v1/auth/login-challenge", "destination": "/api/v1/auth/login?step=challenge" },
     { "source": "/api/v1/auth/login-verify", "destination": "/api/v1/auth/login?step=verify" },
     { "source": "/api/v1/auth/register-challenge", "destination": "/api/v1/auth/register?step=challenge" },

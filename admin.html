@@ -154,6 +154,12 @@
             </div>
             <div id="socialList" class="admin-social-list"></div>
           </section>
+          <section class="admin-section">
+            <h3>عناوين البريد الإلكتروني للتواصل</h3>
+            <p class="admin-hint">تفعيل أو تعطيل وتعديل الإيميلات الرسمية المعروضة للزوار.</p>
+            <div id="emailsList" class="admin-emails-list"></div>
+            <div id="emailsPreview" class="admin-emails-preview" aria-label="معاينة البريد الإلكتروني"></div>
+          </section>
         </div>
       </div>
 
@@ -789,6 +795,9 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
                 <button type="button" id="googleBusinessUpdateBtn" class="btn btn--primary" style="flex: 2; min-width: 150px;">
                   🔄 تحديث رابط الموقع على خرائط جوجل
                 </button>
+                <button type="button" id="googleBusinessSyncServicesBtn" class="btn btn--outline" style="flex: 2; min-width: 150px;">
+                  💼 مزامنة الخدمات مع جوجل
+                </button>
                 <button type="button" id="googleBusinessDisconnectBtn" class="btn btn--outline" style="flex: 1; min-width: 120px; color: #c0392b; border-color: #c0392b20;">
                   إلغاء الربط
                 </button>
@@ -1227,6 +1236,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
   <script src="js/content-templates/hockey.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/content-resolver.js"></script>
+  <script src="js/emails-catalog.js"></script>
   <script src="js/social-catalog.js"></script>
   <script src="js/themes-catalog.js"></script>
   <script src="js/brand-logo.js"></script>

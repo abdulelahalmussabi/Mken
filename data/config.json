@@ -66,5 +66,10 @@
     "baseDomain": "mken.live",
     "useSubdomains": true
   },
+  "emails": {
+    "inquiries": { "enabled": true, "value": "info@mken.live" },
+    "sales": { "enabled": true, "value": "sales@mken.live" },
+    "support": { "enabled": true, "value": "CS@mken.live" }
+  },
   "updatedAt": "2026-06-14T15:00:00.000Z"
 }

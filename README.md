@@ -29,7 +29,7 @@
 ## التشغيل المحلي
 
 ```powershell
-cd mken-platform
+cd mken
 python -m http.server 8080
 ```
 
@@ -44,7 +44,7 @@ python -m http.server 8080
 ## الهيكل
 
 ```
-mken-platform/
+mken/
 ├── js/
 │   ├── activities-catalog.js      ← الأنشطة الرئيسية
 │   ├── services-catalog.js        ← الخدمات (مرتبطة بـ activityId)

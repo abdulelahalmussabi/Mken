@@ -53,7 +53,7 @@
 
 ## 3. تشغيل أتمتة الواتساب وتنبيهات الاشتراكات (WhatsApp Scheduler)
 
-يقوم السكربت [whatsapp-scheduler.mjs](file:///d:/de7me/mken-platform/scripts/whatsapp-scheduler.mjs) بفحص قاعدة البيانات دورياً لإرسال تنبيهات المواعيد وتذكير العملاء قبل انتهاء اشتراكاتهم بـ 30 يوماً و 14 يوماً.
+يقوم السكربت [whatsapp-scheduler.mjs](file:///d:/de7me/mken/scripts/whatsapp-scheduler.mjs) بفحص قاعدة البيانات دورياً لإرسال تنبيهات المواعيد وتذكير العملاء قبل انتهاء اشتراكاتهم بـ 30 يوماً و 14 يوماً.
 
 ### أ) المتطلبات والتشغيل المحلي
 1. انتقل لمجلد السكربتات وثبت الحزم:
@@ -124,7 +124,7 @@ jobs:
 #### 3. الجدولة على خادم VPS (Linux Cron Job)
 أضف السطر التالي لملف الجدولة `crontab -e`:
 ```bash
-0 */6 * * * cd /path/to/mken-platform && SUPABASE_URL="https://xxx.supabase.co" SUPABASE_KEY="your_key" node scripts/whatsapp-scheduler.mjs >> scheduler.log 2>&1
+0 */6 * * * cd /path/to/mken && SUPABASE_URL="https://xxx.supabase.co" SUPABASE_KEY="your_key" node scripts/whatsapp-scheduler.mjs >> scheduler.log 2>&1
 ```
 
 ---
