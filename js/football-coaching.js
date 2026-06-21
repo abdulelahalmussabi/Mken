@@ -1,6 +1,5 @@
 /**
- * بوابة الأنشطة الرياضية والتمارين — الهوية البصرية للاتحاد السعودي للهوكي
- * إدارة المدربين، اللاعبين، التصويت على المواعيد وخرائط جوجل
+ * بوابة تدريب كرة القدم — منفصلة تماماً عن الهوكي وكمال الأجسام
  */
 (function () {
   'use strict';
@@ -8,17 +7,17 @@
   var store = window.MkenServicesStore;
   var db = window.MkenSupabaseDb;
 
-  var CONFIG_KEY = 'hockeyCoaching';
+  var CONFIG_KEY = 'footballCoaching';
 
-  var HOCKEY_SPORT = {
-    activityId: 'hockey',
-    serviceId: 'hockey-training',
-    aptIdPrefix: 'hockey-wk-',
-    workoutNote: '🏑 تمرين هوكي معتمد',
+  var FOOTBALL_SPORT = {
+    activityId: 'football',
+    serviceId: 'football-team-training',
+    aptIdPrefix: 'football-wk-',
+    workoutNote: '⚽ تمرين كرة قدم معتمد',
   };
 
   function getStorageKey() {
-    return 'mken_hockey_coaching_' + currentTenantSlug;
+    return 'mken_football_coaching_' + currentTenantSlug;
   }
 
   // معرفات العناصر في واجهة المستخدم
@@ -55,19 +54,16 @@
   var pinDotsContainer = document.getElementById('pinDotsContainer');
   var pinKeyboard = document.getElementById('pinKeyboard');
 
-  // بيانات افتراضية — الهوكي فقط (منفصلة عن باقي الأنشطة)
+  // بيانات افتراضية — كرة القدم فقط
   var defaultCoachingData = {
-    coachName: 'الكوتش ياسر السليماني',
-    coachBio: 'كوتش هوكي معتمد من الاتحاد السعودي للهوكي، مدرب المنتخب الوطني للفئات السنية وخبير تكتيكي.',
+    coachName: 'المدرب خالد العتيبي',
+    coachBio: 'مدرب UEFA B معتمد — تخصص تكتيك وإعداد بدني لفرق الناشئين والشباب.',
     coachPhone: '966543530333',
-    coachAvatar: '🧢',
+    coachAvatar: '⚽',
     coachPin: '1234',
-    players: [
-      { id: 'pl-1', name: 'أحمد المالكي', phone: '0501111111', status: 'active' },
-      { id: 'pl-2', name: 'سلمان الدوسري', phone: '0502222222', status: 'active' },
-    ],
+    players: [],
     activePoll: {
-      question: 'التصويت على التمرين القادم للهوكي 🏑',
+      question: 'التصويت على التمرين القادم لكرة القدم ⚽',
       status: 'closed',
       timings: [],
       locations: [],
@@ -99,10 +95,13 @@
     return String(pin || '1234').replace(/\D/g, '').slice(0, 4) || '1234';
   }
 
+  function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }
+
   function extractCoachingFromConfig(cfg) {
     if (!cfg) return null;
     if (cfg[CONFIG_KEY]) return cfg[CONFIG_KEY];
-    if (cfg.coaching && cfg.coaching.coachName) return cfg.coaching;
     return null;
   }
 
@@ -189,7 +188,7 @@
       coachPhoneDisp.href = 'https://wa.me/' + waPhone;
     }
     if (coachAvatar) {
-      coachAvatar.textContent = coachingData.coachAvatar || '🧢';
+      coachAvatar.textContent = coachingData.coachAvatar || '⚽';
     }
 
     // تحديث بيانات الهيدر في الأعلى ببيانات الكوتش بدلاً من منصة رونق
@@ -200,7 +199,7 @@
 
     var logoSymbol = document.querySelector('.hockey-logo__symbol');
     if (logoSymbol) {
-      logoSymbol.textContent = coachingData.coachAvatar || '🧢';
+      logoSymbol.textContent = coachingData.coachAvatar || '⚽';
     }
 
     var headerCta = document.querySelector('.header__cta');
@@ -263,7 +262,7 @@
     if (!pollContainer) return;
 
     if (!poll || poll.status === 'closed') {
-      pollContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--hockey-silver);">لا يوجد تصويت نشط حالياً. سيقوم الكوتش بإنشاء تصويت جديد قريباً. 🏑</div>';
+      pollContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--hockey-silver);">لا يوجد تصويت نشط. سيُطلق المدرب تصويتاً جديداً قريباً. ⚽</div>';
       return;
     }
 
@@ -391,11 +390,11 @@
         '    <div class="finalized-workout__subtitle" style="font-size:0.85rem;color:var(--hockey-silver);margin-top:4px;">📍 ' + esc(w.locationName || '') + '</div>' +
         '    <div class="finalized-workout__meta">' +
         '      <span>👥 اللاعبين: ' + (w.votersCount || w.playersCount || 0) + '</span>' +
-        '      <span>🧢 الكوتش: ' + esc(w.coachName || coachingData.coachName) + '</span>' +
+        '      <span>🧢 المدرب: ' + esc(w.coachName || coachingData.coachName) + '</span>' +
         '    </div>' +
         '  </div>' +
         '  <a href="' + esc(w.mapUrl) + '" target="_blank" class="hockey-btn hockey-btn--dark hockey-btn--sm">' +
-        '    🏑 موقع التمرين (خرائط جوجل)' +
+        '    ⚽ موقع التمرين (خرائط جوجل)' +
         '  </a>' +
         '</div>'
       );
@@ -409,7 +408,7 @@
       document.getElementById('editCoachBio').value = coachingData.coachBio;
       document.getElementById('editCoachPhone').value = coachingData.coachPhone;
       var avatarField = document.getElementById('editCoachAvatar');
-      if (avatarField) avatarField.value = coachingData.coachAvatar || '🧢';
+      if (avatarField) avatarField.value = coachingData.coachAvatar || '⚽';
       var pinField = document.getElementById('editCoachPin');
       if (pinField) pinField.value = coachingData.coachPin || '1234';
     }
@@ -501,7 +500,7 @@
 
       var existingPlayer = coachingData.players.find(function (p) { return normalizePhoneDigits(p.phone) === formattedPhone; });
       if (existingPlayer && existingPlayer.status === 'expired') {
-        showToast('انتهت عضويتك — تواصل مع الكوتش لإعادة التفعيل.', true);
+        showToast('انتهت عضويتك — تواصل مع المدرب لإعادة التفعيل.', true);
         return;
       }
 
@@ -533,7 +532,7 @@
 
       saveData().then(function () {
         applyLoadedData();
-        showToast('تم تسجيل تصويتك بنجاح! 🏑');
+        showToast('تم تسجيل تصويتك بنجاح! ⚽');
         activePollForm.reset();
         
         // إزالة التحديد عن الكروت
@@ -553,7 +552,7 @@
       coachingData.coachPhone = document.getElementById('editCoachPhone').value.trim();
       var avatarField = document.getElementById('editCoachAvatar');
       if (avatarField) {
-        coachingData.coachAvatar = avatarField.value.trim() || '🧢';
+        coachingData.coachAvatar = avatarField.value.trim() || '⚽';
       }
       var pinField = document.getElementById('editCoachPin');
       if (pinField) {
@@ -563,7 +562,7 @@
 
       saveData().then(function () {
         applyLoadedData();
-        showToast('تم تحديث معلومات الكوتش بنجاح');
+        showToast('تم تحديث معلومات المدرب بنجاح');
       });
     });
   }
@@ -618,7 +617,7 @@
       var label2 = bridge ? bridge.buildTimingLabel(d2, tm2) : (d2 + ' ' + tm2);
 
       coachingData.activePoll = {
-        question: 'التصويت على التمرين القادم للهوكي 🏑',
+        question: 'التصويت على التمرين القادم لكرة القدم ⚽',
         status: 'active',
         timings: [
           { id: 'time-1', label: label1, date: d1, time: tm1, votes: 0 },
@@ -649,12 +648,12 @@
 
   function buildFinalizeNotifyMessage(workout) {
     var lines = [
-      '🏑 تمرين هوكي معتمد',
+      '⚽ تمرين كرة قدم معتمد',
       '━━━━━━━━━━━━━━',
       '📅 الموعد: ' + workout.dateTime,
       '📍 الملعب: ' + workout.locationName,
       '🗺️ ' + workout.mapUrl,
-      'الكوتش: ' + (workout.coachName || coachingData.coachName),
+      'المدرب: ' + (workout.coachName || coachingData.coachName),
       '━━━━━━━━━━━━━━',
       'نتطلع لرؤيتكم في التمرين!',
     ];
@@ -672,7 +671,7 @@
       phones.forEach(function (phone) {
         var digits = normalizePhoneDigits(phone);
         if (!digits) return;
-        wa.sendMessage(digits, msg, 'hockey_finalize', { id: workout.id, phone: digits }, cfg)
+        wa.sendMessage(digits, msg, 'football_finalize', { id: workout.id, phone: digits }, cfg)
           .then(function () { sent += 1; })
           .catch(function (err) { console.warn('Notify failed for', digits, err); });
       });
@@ -748,7 +747,7 @@
             voters: votersToNotify,
             players: coachingData.players,
             normalizePhone: normalizePhoneDigits,
-            sport: HOCKEY_SPORT,
+            sport: FOOTBALL_SPORT,
             config: configObj,
           })
           : Promise.resolve({ created: 0 });
@@ -820,7 +819,7 @@
                   isCoachAuthenticated = true;
                   closePinModal();
                   showCoachView();
-                  showToast('تم تسجيل دخول المدرب بنجاح! 🏑');
+                  showToast('تم تسجيل دخول المدرب بنجاح! ⚽');
                 } else {
                   enteredPin = '';
                   updatePinDots();
@@ -841,7 +840,7 @@
       if (bridge && bridge.startReminderPoller) {
         bridge.startReminderPoller(configObj);
       }
-      console.log('Hockey coaching portal successfully initialized');
+      console.log('Football coaching portal initialized');
     });
   });
 

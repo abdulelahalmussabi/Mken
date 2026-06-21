@@ -3,7 +3,7 @@
  */
 'use strict';
 
-var CACHE_NAME = 'mken-platform-v4';
+var CACHE_NAME = 'mken-platform-v7';
 var SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ var SHELL = [
   './order.html',
   './admin.html',
   './coaching.html',
+  './football-coaching.html',
   './staff.html',
   './manifest.webmanifest',
   './css/themes.css',
@@ -20,16 +21,22 @@ var SHELL = [
   './css/order.css',
   './css/admin.css',
   './css/coaching.css',
+  './css/football-coaching.css',
   './css/staff.css',
   './js/theme-early.js',
   './js/pwa.js',
   './js/activities-catalog.js',
   './js/services-catalog.js',
   './js/content-templates/hockey.js',
+  './js/content-templates/bodybuilding.js',
+  './js/content-templates/football.js',
   './js/services-store.js',
   './js/coaching.js',
+  './js/football-coaching.js',
   './js/supabase-db.js',
   './js/booking-store.js',
+  './js/team-workout-bridge.js',
+  './js/whatsapp-automation.js',
   './js/staff.js',
   './assets/logo.svg',
 ];

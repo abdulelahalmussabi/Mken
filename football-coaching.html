@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <script src="js/theme-early.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#322931">
-  <title>بوابة التمارين والتدريب | الاتحاد السعودي للهوكي</title>
+  <meta name="theme-color" content="#1b3d20">
+  <title>بوابة تمارين كرة القدم</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/platform.css">
-  <link rel="stylesheet" href="css/coaching.css">
+  <link rel="stylesheet" href="css/football-coaching.css">
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
 </head>
 <body class="hockey-body">
@@ -25,18 +25,18 @@
   <header class="hockey-header">
     <div class="container hockey-header__inner">
       <a href="index.html" class="hockey-logo" aria-label="العودة للصفحة الرئيسية">
-        <span class="hockey-logo__symbol">🏑</span>
+        <span class="hockey-logo__symbol">⚽</span>
         <div class="hockey-logo__text">
-          <span class="hockey-logo__title" data-brand="name">رونق الرياضي</span>
-          <span class="hockey-logo__subtitle">بوابة التدريب والتمارين - الاتحاد السعودي للهوكي</span>
+          <span class="hockey-logo__title" data-brand="name">أكاديمية كرة القدم</span>
+          <span class="hockey-logo__subtitle">بوابة التمارين والتصويت — كرة القدم فقط</span>
         </div>
       </a>
       <nav class="nav" id="nav">
         <a href="index.html">الرئيسية</a>
-        <a href="index.html#services">خدمات الهوكي</a>
+        <a href="index.html#services">خدمات كرة القدم</a>
         <a href="admin.html">الإدارة</a>
       </nav>
-      <a href="#" class="btn btn--primary header__cta" data-contact="whatsapp" style="background-color: var(--hockey-primary); color: var(--hockey-dark); border-color: var(--hockey-primary);" target="_blank" rel="noopener">مراسلة الكوتش</a>
+      <a href="#" class="btn btn--primary header__cta" data-contact="whatsapp" style="background-color: var(--hockey-primary); color: #fff; border-color: var(--hockey-primary);" target="_blank" rel="noopener">مراسلة المدرب</a>
     </div>
   </header>
 
@@ -44,9 +44,9 @@
   <section class="hockey-hero">
     <div class="hockey-bg-pattern"></div>
     <div class="container">
-      <span class="hockey-hero__badge">🏑 نشاط الهوكي</span>
-      <h1>بوابة التدريب والتمارين <span>السعودية للهوكي</span></h1>
-      <p>بوابتك الرسمية لمتابعة مواعيد تمارين الهوكي، التصويت على الملاعب، والاطلاع على قائمة اللاعبين والكوتش.</p>
+      <span class="hockey-hero__badge">⚽ كرة القدم</span>
+      <h1>بوابة التمارين <span>كرة القدم</span></h1>
+      <p>بوابة مستقلة لتمارين كرة القدم — تصويت اللاعبين على المواعيد والملاعب، واعتماد المدرب للقرار النهائي.</p>
     </div>
   </section>
 
@@ -57,7 +57,7 @@
         <span>👥</span> بوابة اللاعبين والمتدربين
       </button>
       <button type="button" class="hockey-switch-btn" id="btnViewCoach">
-        <span>🔑</span> لوحة تحكم الكوتش
+        <span>🔑</span> لوحة تحكم المدرب
       </button>
     </div>
   </div>
@@ -75,13 +75,13 @@
           <!-- كارت الكوتش الأساسي -->
           <div class="hockey-card hockey-card--primary-border">
             <h3 class="hockey-card__title">
-              <span class="hockey-card__title-icon">🧢</span> الكوتش الأساسي للتمارين
+              <span class="hockey-card__title-icon">⚽</span> المدرب الأساسي
             </h3>
             <div class="coach-profile">
               <div class="coach-profile__avatar" id="coachAvatar">🧢</div>
               <div class="coach-profile__info">
-                <h3 id="coachNameDisp">الكوتش ياسر السليماني</h3>
-                <p id="coachBioDisp">كوتش هوكي معتمد من الاتحاد السعودي للهوكي، مدرب المنتخب الوطني للفئات السنية وخبير تكتيكي.</p>
+                <h3 id="coachNameDisp">المدرب خالد العتيبي</h3>
+                <p id="coachBioDisp">مدرب UEFA B معتمد — تخصص تكتيك وإعداد بدني لفرق الناشئين والشباب.</p>
                 <a href="#" id="coachPhoneDisp" class="coach-profile__phone">📞 966543530333</a>
               </div>
             </div>
@@ -106,7 +106,7 @@
               <span class="hockey-card__title-icon">🗳️</span> تصويت اللاعبين على التمرين القادم
             </h3>
             <p style="font-size: 0.9rem; color: var(--hockey-dark-light); margin-bottom: 20px;" id="pollQuestionTitle">
-              صوّت الآن على الموعد المناسب والموقع المفضل لديك للتمرين القادم للهوكي.
+              صوّت على موعد وملعب التمرين القادم لكرة القدم.
             </p>
 
             <form id="activePollForm">
@@ -137,7 +137,7 @@
                 </div>
               </div>
 
-              <button type="submit" class="hockey-btn" style="width: 100%;">🏑 إرسال تصويتي وتسجيل الحضور</button>
+              <button type="submit" class="hockey-btn" style="width: 100%;">⚽ إرسال تصويتي</button>
             </form>
           </div>
 
@@ -155,10 +155,10 @@
           <!-- كارت قائمة اللاعبين المقيدين -->
           <div class="hockey-card hockey-card--primary-border">
             <h3 class="hockey-card__title">
-              <span class="hockey-card__title-icon">👥</span> اللاعبين المقيدين بالنشاط
+              <span class="hockey-card__title-icon">👥</span> اللاعبين المسجّلين
             </h3>
             <p style="font-size: 0.85rem; color: var(--hockey-dark-light); margin-bottom: 15px;">
-              قائمة باللاعبين المعتمدين لحضور التمارين مع الكوتش الأساسي وحالة اشتراكاتهم الحالية.
+              قائمة لاعبي كرة القدم المسجّلين في الأكاديمية.
             </p>
             <div class="players-table-wrapper">
               <table class="players-table">
@@ -196,7 +196,7 @@
             </h3>
             <form id="coachInfoForm">
               <div class="hockey-input-group">
-                <label for="editCoachName">اسم الكوتش الأساسي *</label>
+                <label for="editCoachName">اسم المدرب *</label>
                 <input type="text" id="editCoachName" class="hockey-input" required>
               </div>
               <div class="hockey-input-group">
@@ -208,8 +208,8 @@
                 <input type="tel" id="editCoachPhone" class="hockey-input" required dir="ltr">
               </div>
               <div class="hockey-input-group">
-                <label for="editCoachAvatar">شعار أو رمز الكوتش (إيموجي مثل 🧢 أو أي رمز) *</label>
-                <input type="text" id="editCoachAvatar" class="hockey-input" required placeholder="🧢">
+                <label for="editCoachAvatar">شعار أو رمز الكوتش (إيموجي مثل ⚽ أو أي رمز) *</label>
+                <input type="text" id="editCoachAvatar" class="hockey-input" required placeholder="⚽">
               </div>
               <div class="hockey-input-group">
                 <label for="editCoachPin">رمز دخول المدرب (PIN — 4 أرقام)</label>
@@ -310,7 +310,7 @@
           <!-- كارت إضافة لاعبين للقائمة المقيدة -->
           <div class="hockey-card hockey-card--primary-border">
             <h3 class="hockey-card__title">
-              <span class="hockey-card__title-icon">➕</span> تسجيل لاعب جديد بالاتحاد
+              <span class="hockey-card__title-icon">➕</span> تسجيل لاعب جديد
             </h3>
             <form id="addPlayerForm">
               <div class="hockey-input-group">
@@ -343,7 +343,7 @@
   <div class="pin-modal" id="pinModal">
     <div class="pin-modal__card">
       <div style="font-size: 3rem; margin-bottom: 10px;">🔐</div>
-      <h3 style="color: var(--hockey-dark);">تسجيل دخول الكوتش</h3>
+      <h3 style="color: var(--hockey-dark);">تسجيل دخول المدرب</h3>
       <p style="font-size: 0.85rem; color: var(--hockey-dark-light); margin-top: 5px;">
         أدخل الرمز السري المكون من 4 أرقام للوصول للوحة تحكم التمارين (الافتراضي: 1234)
       </p>
@@ -365,7 +365,7 @@
 
   <!-- توست التنبيهات -->
   <div class="hockey-toast" id="hockeyToast">
-    <span>🏑</span>
+    <span>⚽</span>
     <span id="toastMessage">تم تسجيل تصويتك بنجاح</span>
   </div>
 
@@ -378,7 +378,7 @@
   <script src="js/booking-store.js"></script>
   <script src="js/whatsapp-automation.js"></script>
   <script src="js/team-workout-bridge.js"></script>
-  <script src="js/coaching.js"></script>
+  <script src="js/football-coaching.js"></script>
 
 </body>
 </html>
