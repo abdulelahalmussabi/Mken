@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../../_lib/supabase-env');
+const sbEnv = require('../_lib/supabase-env');
 
 // Helper to determine step for login/register
 function getStep(req) {
