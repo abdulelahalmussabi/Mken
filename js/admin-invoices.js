@@ -348,7 +348,8 @@
       '      <div>فاتورة إلكترونية معتمدة</div>' +
       '    </div>' + qrBlock +
       '  </div>' +
-      '</div>';
+      '</div>'
+    );
   }
 
   function generateA4LayoutHtml(inv, brand, phone, qrBase64) {
@@ -454,7 +455,8 @@
       '  <div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 15px; font-size: 0.75rem; text-align: center; color: #777;">' +
       '    تخضع هذه الفاتورة لكافة اشتراطات هيئة الزكاة والضريبة والجمارك بالمملكة العربية السعودية (لائحة الفوترة الإلكترونية المرحلة الثانية).' +
       '  </div>' +
-      '</div>';
+      '</div>'
+    );
   }
 
   function renderPrintArea(inv, layout) {

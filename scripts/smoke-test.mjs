@@ -63,7 +63,7 @@ async function runTests() {
     // الاختبار 1: مسار حجز الخدمات (booking.html)
     // ----------------------------------------------------
     console.log('\n🔍 1. اختبار مسار الحجز والدفع (book.html)...');
-    await page.goto(`${BASE_URL}/book.html?activity=barber-salon`);
+    await page.goto(`${BASE_URL}/book.html?tenant=almahrosa&activity=barber-salon`);
     await page.waitForLoadState('networkidle');
 
     // التأكد من تحميل صفحة الحجز
@@ -142,7 +142,7 @@ async function runTests() {
     // الاختبار 2: مسار الطلبات والتجارة (order.html)
     // ----------------------------------------------------
     console.log('\n🔍 2. اختبار مسار طلب المنتجات والسلة (order.html)...');
-    await page.goto(`${BASE_URL}/order.html?activity=commerce`);
+    await page.goto(`${BASE_URL}/order.html?tenant=almahrosa&activity=commerce`);
     await page.waitForLoadState('networkidle');
 
     // إضافة أول منتج للسلة
