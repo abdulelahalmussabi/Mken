@@ -486,6 +486,8 @@
               </tbody>
             </table>
           </div>
+        </section>
+      </div>
       <!-- تبويب العملاء -->
       <div class="admin-tab-panel" data-panel="customers" hidden>
         <!-- إدارة العملاء -->
@@ -1176,6 +1178,39 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DE
                     </thead>
                     <tbody id="gbpNapAuditTableBody"></tbody>
                   </table>
+                </div>
+              </div>
+
+              <!-- Competitors & Local SEO Scan -->
+              <div id="gbpCompetitorsBlock" style="margin-top: 20px; padding-top: 18px; border-top: 1px dashed rgba(255,255,255,0.12);">
+                <h4 style="margin: 0 0 8px; color: var(--color-primary); font-size: 0.95rem;">🗺️ مقارنة المنافسين والسيو المحلي (Local Scan)</h4>
+                <p class="admin-hint" style="margin-bottom: 12px;">مقارنة تقييم نشاطك الحالي وعدد المراجعات بمتوسط المنافسين القريبين في منطقتك الجغرافية.</p>
+                
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
+                  <button type="button" id="gbpRunScanBtn" class="btn btn--outline" style="flex: 1; min-width: 140px;">🔍 فحص المنافسين بالمنطقة</button>
+                </div>
+
+                <div id="gbpScanLoading" class="admin-hint" style="display: none; margin-bottom: 10px;">جاري فحص الخريطة وتحليل المنافسين...</div>
+
+                <!-- Competitor Table -->
+                <div id="gbpCompetitorsTableWrap" style="display: none; overflow-x: auto;">
+                  <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 15px;">
+                    <thead>
+                      <tr style="background: rgba(0,0,0,0.15); text-align: right;">
+                        <th style="padding: 8px;">النشاط التجاري</th>
+                        <th style="padding: 8px;">التقييم</th>
+                        <th style="padding: 8px;">عدد المراجعات</th>
+                        <th style="padding: 8px;">العنوان</th>
+                      </tr>
+                    </thead>
+                    <tbody id="gbpCompetitorsTableBody"></tbody>
+                  </table>
+                </div>
+
+                <!-- SEO Recommendations -->
+                <div id="gbpRecommendationsBlock" style="display: none; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 8px;">
+                  <h5 style="margin: 0 0 10px; color: #f39c12; font-size: 0.9rem;">💡 توصيات ذكية لتحسين تصنيفك ورفع التقييم:</h5>
+                  <div id="gbpRecommendationsList" style="display: flex; flex-direction: column; gap: 10px;"></div>
                 </div>
               </div>
             </div>

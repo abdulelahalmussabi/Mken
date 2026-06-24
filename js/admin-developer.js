@@ -1143,6 +1143,338 @@
       });
   }
 
+  function runCompetitorScan() {
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var cfg = store.loadConfig() || {};
+    
+    var center = (cfg.serviceArea && cfg.serviceArea.center) || {};
+    var lat = center.lat || 21.485811;
+    var lng = center.lng || 39.192505;
+    var city = (cfg.serviceArea && cfg.serviceArea.city) || 'جدة';
+    
+    var category = '';
+    if (cfg.featuredActivity) {
+      var act = store.getActivityById(cfg.featuredActivity);
+      if (act) {
+        category = act.title || act.name || '';
+      }
+    }
+    if (!category) {
+      category = 'خدمات وتجميل';
+    }
+
+    var runScanBtn = document.getElementById('gbpRunScanBtn');
+    var loadingDiv = document.getElementById('gbpScanLoading');
+    var tableWrap = document.getElementById('gbpCompetitorsTableWrap');
+    var recsBlock = document.getElementById('gbpRecommendationsBlock');
+
+    if (runScanBtn) {
+      runScanBtn.disabled = true;
+      runScanBtn.textContent = 'جاري الفحص...';
+    }
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (tableWrap) tableWrap.style.display = 'none';
+    if (recsBlock) recsBlock.style.display = 'none';
+
+    getGbpAiAuthHeaders()
+      .then(function (headers) {
+        return fetch('/api/google-business/competitors', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            lat: lat,
+            lng: lng,
+            city: city,
+            category: category
+          })
+        });
+      })
+      .then(parseGbpAiResponse)
+      .then(function (data) {
+        if (data.success && data.competitors) {
+          renderCompetitorsList(data.competitors);
+          generateSEORecommendations(data.competitors);
+          toast('اكتمل فحص المنافسين والتحليل بنجاح', 'success');
+        } else {
+          toast('فشل جلب بيانات المنافسين', 'error');
+        }
+      })
+      .catch(handleGbpAiAuthFailure)
+      .finally(function () {
+        if (runScanBtn) {
+          runScanBtn.disabled = false;
+          runScanBtn.textContent = '🔍 فحص المنافسين بالمنطقة';
+        }
+        if (loadingDiv) loadingDiv.style.display = 'none';
+      });
+  }
+
+  function renderCompetitorsList(competitors) {
+    var tableBody = document.getElementById('gbpCompetitorsTableBody');
+    var tableWrap = document.getElementById('gbpCompetitorsTableWrap');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    if (!competitors || competitors.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 12px;">لا توجد نتائج منافسين متاحة</td></tr>';
+      if (tableWrap) tableWrap.style.display = 'block';
+      return;
+    }
+
+    competitors.forEach(function (comp) {
+      var tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+      
+      var tdName = document.createElement('td');
+      tdName.style.padding = '8px';
+      tdName.textContent = comp.name || 'غير معروف';
+      
+      var tdRating = document.createElement('td');
+      tdRating.style.padding = '8px';
+      tdRating.style.color = '#f1c40f';
+      tdRating.innerHTML = '⭐ ' + (comp.rating || '0.0');
+      
+      var tdReviews = document.createElement('td');
+      tdReviews.style.padding = '8px';
+      tdReviews.textContent = (comp.userRatingsTotal || 0) + ' تقييم';
+      
+      var tdAddress = document.createElement('td');
+      tdAddress.style.padding = '8px';
+      tdAddress.style.color = 'var(--color-text-muted)';
+      tdAddress.textContent = comp.address || 'غير متوفر';
+
+      tr.appendChild(tdName);
+      tr.appendChild(tdRating);
+      tr.appendChild(tdReviews);
+      tr.appendChild(tdAddress);
+      
+      tableBody.appendChild(tr);
+    });
+
+    if (tableWrap) tableWrap.style.display = 'block';
+  }
+
+  function generateSEORecommendations(competitors) {
+    var cfg = store.loadConfig() || {};
+    var recs = [];
+
+    // Calculate competitor stats
+    var totalRating = 0;
+    var totalReviews = 0;
+    competitors.forEach(function (c) {
+      totalRating += parseFloat(c.rating || 0);
+      totalReviews += parseInt(c.userRatingsTotal || 0, 10);
+    });
+    var avgRating = competitors.length ? (totalRating / competitors.length).toFixed(1) : 0;
+    var avgReviews = competitors.length ? Math.round(totalReviews / competitors.length) : 0;
+
+    var waEnabled = cfg.whatsappApi && cfg.whatsappApi.enabled;
+    var reviewUrl = cfg.googleBusiness && cfg.googleBusiness.reviewUrl;
+
+    var hasReviewLinkInTemplates = false;
+    if (reviewUrl && cfg.whatsappApi && cfg.whatsappApi.templates) {
+      var confirmationText = cfg.whatsappApi.templates.confirmation || '';
+      var reminderText = cfg.whatsappApi.templates.reminder || '';
+      if (confirmationText.indexOf('{googleReviewUrl}') !== -1 || reminderText.indexOf('{googleReviewUrl}') !== -1 ||
+          confirmationText.indexOf(reviewUrl) !== -1 || reminderText.indexOf(reviewUrl) !== -1) {
+        hasReviewLinkInTemplates = true;
+      }
+    }
+
+    if (!waEnabled) {
+      recs.push({
+        title: 'تفعيل إرسال الرسائل التلقائية عبر واتساب',
+        desc: 'إرسال رسائل التذكير وتأكيد الحجز التلقائية يزيد من تفاعل العملاء وتجاوبهم لتقييم نشاطك.',
+        action: 'enable_whatsapp',
+        btnText: 'تفعيل واتساب تلقائياً ⚡'
+      });
+    }
+
+    if (reviewUrl && !hasReviewLinkInTemplates) {
+      recs.push({
+        title: 'إدراج رابط التقييم في قوالب رسائل الواتساب',
+        desc: 'لم يتم العثور على رابط التقييم في قوالب رسائل الواتساب الحالية. إضافته تزيد بشكل كبير من التقييمات الإيجابية وسهولة وصول العملاء للتقييم.',
+        action: 'insert_review_link',
+        btnText: 'إدراج الرابط في القوالب 📝'
+      });
+    }
+
+    var isConnected = !!(cfg.googleBusiness && cfg.googleBusiness.locationId);
+    if (isConnected) {
+      recs.push({
+        title: 'مزامنة قائمة الخدمات مع جوجل ماب',
+        desc: 'تأكد من أن جميع خدماتك المعروضة في متجرك متزامنة ومتطابقة مع حساب جوجل بيزنس لتعزيز ظهورك في الكلمات المفتاحية المحلية.',
+        action: 'sync_services',
+        btnText: 'مزامنة الخدمات الآن 🔄'
+      });
+      recs.push({
+        title: 'تدقيق وتصحيح بيانات العنوان والهاتف (NAP Consistency)',
+        desc: 'تدقيق تطابق بيانات اسم المتجر، الهاتف، والعنوان الجغرافي بين منصة مكّن وجوجل ماب لرفع الموثوقية لدى محركات البحث.',
+        action: 'run_nap_audit',
+        btnText: 'تشغيل فحص وتعديل NAP 🔍'
+      });
+    }
+
+    var recsList = document.getElementById('gbpRecommendationsList');
+    var recsBlock = document.getElementById('gbpRecommendationsBlock');
+    if (!recsList) return;
+
+    recsList.innerHTML = '';
+    if (recs.length === 0) {
+      recsList.innerHTML = '<div style="color: #2ecc71; padding: 10px; font-size: 0.85rem; text-align: center;">✨ جميع إعدادات السيو المحلي والتقييمات ممتازة ومثالية حالياً!</div>';
+    } else {
+      recs.forEach(function (rec) {
+        var card = document.createElement('div');
+        card.style.background = 'rgba(255,255,255,0.03)';
+        card.style.border = '1px solid rgba(255,255,255,0.08)';
+        card.style.padding = '12px';
+        card.style.borderRadius = '6px';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '8px';
+
+        var titleDiv = document.createElement('div');
+        titleDiv.style.fontWeight = 'bold';
+        titleDiv.style.color = '#f39c12';
+        titleDiv.style.fontSize = '0.85rem';
+        titleDiv.textContent = rec.title;
+
+        var descDiv = document.createElement('div');
+        descDiv.style.fontSize = '0.78rem';
+        descDiv.style.color = 'var(--color-text-muted)';
+        descDiv.textContent = rec.desc;
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn--sm btn--primary';
+        btn.style.alignSelf = 'flex-start';
+        btn.style.fontSize = '0.75rem';
+        btn.style.padding = '4px 10px';
+        btn.textContent = rec.btnText;
+        
+        btn.addEventListener('click', function () {
+          executeAutomatedFix(rec.action, btn);
+        });
+
+        card.appendChild(titleDiv);
+        card.appendChild(descDiv);
+        card.appendChild(btn);
+
+        recsList.appendChild(card);
+      });
+    }
+
+    if (competitors && competitors.length > 0) {
+      var noteDiv = document.createElement('div');
+      noteDiv.style.marginTop = '12px';
+      noteDiv.style.padding = '10px';
+      noteDiv.style.borderRadius = '6px';
+      noteDiv.style.background = 'rgba(243, 156, 18, 0.08)';
+      noteDiv.style.border = '1px solid rgba(243, 156, 18, 0.15)';
+      noteDiv.style.fontSize = '0.8rem';
+      noteDiv.style.color = '#f39c12';
+      noteDiv.innerHTML = '📊 <strong>مقارنة المنطقة الجغرافية:</strong> متوسط تقييم المنافسين بالقرب منك هو <strong>⭐ ' + avgRating + '</strong> بمتوسط <strong>' + avgReviews + '</strong> تقييم.';
+      recsList.appendChild(noteDiv);
+    }
+
+    if (recsBlock) recsBlock.style.display = 'block';
+  }
+
+  function executeAutomatedFix(action, btn) {
+    if (action === 'enable_whatsapp') {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'جاري التفعيل...';
+      }
+      var cfg = store.loadConfig() || {};
+      if (!cfg.whatsappApi) cfg.whatsappApi = {};
+      cfg.whatsappApi.enabled = true;
+      if (!cfg.whatsappApi.provider || cfg.whatsappApi.provider === 'none') {
+        cfg.whatsappApi.provider = 'whatsapp_business';
+      }
+      
+      var waEnabledInput = document.getElementById('whatsappApiEnabled');
+      if (waEnabledInput) waEnabledInput.checked = true;
+      var waProviderSelect = document.getElementById('whatsappApiProvider');
+      if (waProviderSelect && (!waProviderSelect.value || waProviderSelect.value === 'none')) {
+        waProviderSelect.value = 'whatsapp_business';
+      }
+
+      store.saveConfig(cfg)
+        .then(function () {
+          if (window.MkenAdminPanelReload) {
+            window.MkenAdminPanelReload();
+          }
+          toast('تم تفعيل واتساب وتحديث الإعدادات بنجاح', 'success');
+          runCompetitorScan();
+        })
+        .catch(function (err) {
+          toast('فشل تفعيل واتساب: ' + err.message, 'error');
+        })
+        .finally(function () {
+          if (btn) btn.disabled = false;
+        });
+
+    } else if (action === 'insert_review_link') {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'جاري الإدراج...';
+      }
+      var cfg = store.loadConfig() || {};
+      var reviewUrl = (cfg.googleBusiness && cfg.googleBusiness.reviewUrl) || '';
+      if (!reviewUrl) {
+        toast('يرجى التأكد من ربط حساب جوجل وتوفر رابط التقييم أولاً', 'warning');
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      if (!cfg.whatsappApi) cfg.whatsappApi = {};
+      if (!cfg.whatsappApi.templates) cfg.whatsappApi.templates = {};
+
+      var confirmationText = cfg.whatsappApi.templates.confirmation || '';
+      var reminderText = cfg.whatsappApi.templates.reminder || '';
+      var appendedText = '\n\nيسعدنا تقييمك لخدمتنا على الرابط: {googleReviewUrl}';
+
+      if (confirmationText.indexOf('{googleReviewUrl}') === -1 && confirmationText.indexOf(reviewUrl) === -1) {
+        cfg.whatsappApi.templates.confirmation = (confirmationText + appendedText).trim();
+      }
+      if (reminderText.indexOf('{googleReviewUrl}') === -1 && reminderText.indexOf(reviewUrl) === -1) {
+        cfg.whatsappApi.templates.reminder = (reminderText + appendedText).trim();
+      }
+
+      // Update DOM inputs if they exist
+      var confirmationInput = document.getElementById('whatsappTemplateConfirmation');
+      if (confirmationInput) confirmationInput.value = cfg.whatsappApi.templates.confirmation;
+      var reminderInput = document.getElementById('whatsappTemplateReminder');
+      if (reminderInput) reminderInput.value = cfg.whatsappApi.templates.reminder;
+
+      store.saveConfig(cfg)
+        .then(function () {
+          if (window.MkenAdminPanelReload) {
+            window.MkenAdminPanelReload();
+          }
+          toast('تم إدراج رابط التقييم في قوالب الرسائل بنجاح', 'success');
+          runCompetitorScan();
+        })
+        .catch(function (err) {
+          toast('فشل تحديث القوالب: ' + err.message, 'error');
+        })
+        .finally(function () {
+          if (btn) btn.disabled = false;
+        });
+
+    } else if (action === 'sync_services') {
+      syncGoogleBusinessServices();
+    } else if (action === 'run_nap_audit') {
+      runNapAudit();
+      var napSection = document.getElementById('gbpNapAuditBlock');
+      if (napSection) {
+        napSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }
+
   function checkGoogleRedirectParams() {
     var params = new URLSearchParams(window.location.search);
     var connectStatus = params.get('google_connect');
@@ -1238,6 +1570,11 @@
     }
     if (googleBusinessLocationSelect) {
       googleBusinessLocationSelect.addEventListener('change', handleLocationSelectChange);
+    }
+
+    var runScanBtn = document.getElementById('gbpRunScanBtn');
+    if (runScanBtn) {
+      runScanBtn.addEventListener('click', runCompetitorScan);
     }
 
     var napAuditBtn = document.getElementById('gbpRunNapAuditBtn');

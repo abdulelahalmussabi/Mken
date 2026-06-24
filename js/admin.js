@@ -329,6 +329,13 @@
     var enabledActs = config.enabledActivities || [];
     var enabledSvcs = config.enabled || [];
     var catalog = store.getActivitiesCatalog();
+
+    var isSuperAdmin = !store.getCurrentTenantSlug() || store.getCurrentTenantSlug() === 'default';
+    if (!isSuperAdmin) {
+      catalog = catalog.filter(function (act) {
+        return enabledActs.indexOf(act.id) !== -1;
+      });
+    }
     
     var tier = (config.subscription && config.subscription.tier) || 'basic';
     if (!config.subscription) {

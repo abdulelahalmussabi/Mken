@@ -16,6 +16,7 @@
     { "source": "/api/google-business/sync-services", "destination": "/api/google-business?action=sync-services" },
     { "source": "/api/google-business/generate-post", "destination": "/api/google-business?action=generate-post" },
     { "source": "/api/google-business/generate-reply", "destination": "/api/google-business?action=generate-reply" },
+    { "source": "/api/google-business/competitors", "destination": "/api/google-business?action=competitors" },
     { "source": "/api/google-business/nap-audit", "destination": "/api/google-business?action=nap-audit" },
     { "source": "/api/google-business/sync-nap", "destination": "/api/google-business?action=sync-nap" },
     { "source": "/api/v1/auth/login-challenge", "destination": "/api/v1/auth/login?step=challenge" },

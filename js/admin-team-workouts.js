@@ -153,6 +153,49 @@
   function render() {
     if (!container) return;
 
+    var config = store.loadConfig() || {};
+    var enabledActivities = config.enabledActivities || [];
+    var hasSports = enabledActivities.indexOf('hockey') !== -1 || enabledActivities.indexOf('football') !== -1;
+
+    var calendarActivityFilter = document.getElementById('calendarActivityFilter');
+    var currentActivityFilter = calendarActivityFilter ? calendarActivityFilter.value : 'all';
+
+    var shouldShow = hasSports && (currentActivityFilter === 'all' || currentActivityFilter === 'hockey' || currentActivityFilter === 'football');
+
+    var sectionEl = document.getElementById('adminTeamWorkoutsSection');
+    if (sectionEl) {
+      sectionEl.hidden = !shouldShow;
+      sectionEl.style.display = shouldShow ? '' : 'none';
+    }
+
+    if (!shouldShow) return;
+
+    if (sportFilterEl) {
+      var isHockeyEnabled = enabledActivities.indexOf('hockey') !== -1;
+      var isFootballEnabled = enabledActivities.indexOf('football') !== -1;
+      var currentSportVal = sportFilterEl.value;
+
+      var optionsHtml = '';
+      if (isHockeyEnabled && isFootballEnabled) {
+        optionsHtml += '<option value="all">كل الرياضات</option>';
+        optionsHtml += '<option value="hockey">🏑 الهوكي</option>';
+        optionsHtml += '<option value="football">⚽ كرة القدم</option>';
+      } else if (isHockeyEnabled) {
+        optionsHtml += '<option value="hockey">🏑 الهوكي</option>';
+      } else if (isFootballEnabled) {
+        optionsHtml += '<option value="football">⚽ كرة القدم</option>';
+      }
+      sportFilterEl.innerHTML = optionsHtml;
+
+      if (isHockeyEnabled && isFootballEnabled) {
+        sportFilterEl.value = currentSportVal || 'all';
+      } else if (isHockeyEnabled) {
+        sportFilterEl.value = 'hockey';
+      } else if (isFootballEnabled) {
+        sportFilterEl.value = 'football';
+      }
+    }
+
     var sportFilter = sportFilterEl ? sportFilterEl.value : 'all';
     var whenFilter = whenFilterEl ? whenFilterEl.value : 'upcoming';
 
