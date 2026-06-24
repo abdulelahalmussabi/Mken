@@ -172,10 +172,10 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'مطلوب معرّف العميل وعدد الأشهر المراد إضافتها' });
       }
 
-      // Get current client to retrieve subscription end date
+      // Get current client details to retrieve subscription end date and contact info
       const { data: client, error: fetchErr } = await supabase
         .from('mken_saas_clients')
-        .select('subscription_end')
+        .select('subscription_end, phone, business_name, subscription_tier')
         .eq('tenant_slug', tenantSlug)
         .single();
 
@@ -187,8 +187,20 @@ module.exports = async function handler(req, res) {
         currentEnd = new Date();
       }
 
-      currentEnd.setMonth(currentEnd.getMonth() + parseInt(months, 10));
+      const mInt = parseInt(months, 10);
+      currentEnd.setMonth(currentEnd.getMonth() + mInt);
 
+      // Price calculation based on months
+      const getSaaSPrice = (m) => {
+        if (m === 1) return 99;
+        if (m === 3) return 249;
+        if (m === 6) return 449;
+        if (m === 12) return 799;
+        return Math.ceil(m * 799 / 12);
+      };
+      const amount = getSaaSPrice(mInt);
+
+      // 1. Update client subscription status and end date
       const { error: updateErr } = await supabase
         .from('mken_saas_clients')
         .update({
@@ -199,7 +211,91 @@ module.exports = async function handler(req, res) {
         .eq('tenant_slug', tenantSlug);
 
       if (updateErr) throw updateErr;
-      return res.status(200).json({ success: true, newEnd: currentEnd.toISOString() });
+
+      // 2. Create invoice record in mken_saas_invoices
+      const invoiceId = 'inv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      const { error: invoiceErr } = await supabase
+        .from('mken_saas_invoices')
+        .insert({
+          id: invoiceId,
+          tenant_slug: tenantSlug,
+          amount: amount,
+          months: mInt,
+          status: 'paid', // Mark as paid for manual extension
+          payment_id: 'manual_' + Date.now().toString(36),
+          payment_method: 'manual',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (invoiceErr) {
+        console.error('Failed to create manual saas invoice:', invoiceErr);
+      }
+
+      // 3. Send WhatsApp invoice details to client
+      try {
+        const { data: defaultTenant } = await supabase
+          .from('mken_saas_clients')
+          .select('config_data')
+          .eq('tenant_slug', 'default')
+          .maybeSingle();
+
+        const masterConfig = defaultTenant ? defaultTenant.config_data : {};
+        const waConfig = masterConfig.whatsappApi || {};
+
+        if (waConfig.enabled && client.phone) {
+          const cleanPhone = (p) => {
+            let digits = (p || '').replace(/\D/g, '');
+            if (!digits) return '';
+            if (digits.indexOf('966') === 0) return digits;
+            if (digits.indexOf('0') === 0) return '966' + digits.slice(1);
+            if (digits.length === 9) return '966' + digits;
+            return digits;
+          };
+          const phone = cleanPhone(client.phone);
+          if (phone) {
+            const formattedDate = currentEnd.toLocaleDateString('ar-EG', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            const messageText = `فاتورة تجديد اشتراك منصة مكِّن 🧾\n\nشريكنا الموقر في (${client.business_name || tenantSlug})، تم إصدار وتأكيد فاتورة تمديد الاشتراك بنجاح:\n\n- رقم الفاتورة: ${invoiceId}\n- قيمة الفاتورة: ${amount} ريال سعودي\n- مدة التمديد: ${mInt} أشهر\n- تاريخ انتهاء الاشتراك الجديد: ${formattedDate}\n\nشكراً لثقتكم بنا شريكنا المتميز! 🎉`;
+
+            if (waConfig.provider === 'ultramsg' && waConfig.instanceId) {
+              const url = `https://api.ultramsg.com/${waConfig.instanceId}/messages/chat`;
+              const params = new URLSearchParams();
+              params.append('token', waConfig.token);
+              params.append('to', phone);
+              params.append('body', messageText);
+
+              await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+              });
+            } else if (waConfig.provider === 'twilio' && waConfig.accountSid && waConfig.fromNumber) {
+              const url = `https://api.twilio.com/2010-04-01/Accounts/${waConfig.accountSid}/Messages.json`;
+              const params = new URLSearchParams();
+              params.append('Body', messageText);
+              params.append('From', 'whatsapp:' + waConfig.fromNumber.replace(/^\+?/, '+'));
+              params.append('To', 'whatsapp:+' + phone);
+
+              await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'Authorization': 'Basic ' + Buffer.from(waConfig.accountSid + ':' + waConfig.token).toString('base64')
+                },
+                body: params.toString()
+              });
+            }
+          }
+        }
+      } catch (waErr) {
+        console.error('Failed to send WhatsApp saas invoice notification:', waErr.message);
+      }
+
+      return res.status(200).json({ success: true, newEnd: currentEnd.toISOString(), invoiceId });
     }
 
     if (action === 'change-tier') {
