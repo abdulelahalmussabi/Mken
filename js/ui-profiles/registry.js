@@ -51,6 +51,8 @@ window.MkenContentRegistry = {
   consulting: function () { return window.MkenContentConsulting; },
   photography: function () { return window.MkenContentPhotography; },
   tutoring: function () { return window.MkenContentTutoring; },
+  bodybuilding: function () { return window.MkenContentBodybuilding; },
+  football: function () { return window.MkenContentFootball; },
   hotels: function () { return window.MkenContentHotels; },
   travel: function () { return window.MkenContentTravel; },
   events: function () { return window.MkenContentEvents; },

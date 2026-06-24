@@ -58,11 +58,16 @@
       phone: (raw.phone || '').trim(),
       district: (raw.district || '').trim(),
       locationAddress: (raw.locationAddress || '').trim(),
+      deliveryMode: (raw.deliveryMode || '').trim(),
+      meetingContact: (raw.meetingContact || '').trim(),
+      venueNote: (raw.venueNote || '').trim(),
       notes: (raw.notes || '').trim(),
       partySize: raw.partySize != null && raw.partySize !== '' ? Number(raw.partySize) : null,
       nights: raw.nights != null && raw.nights !== '' ? Number(raw.nights) : null,
       stayUnit: raw.stayUnit || '',
       stayBooking: raw.stayBooking === true,
+      checkOutTime: raw.checkOutTime || '',
+      teamWorkoutId: (raw.teamWorkoutId || '').trim(),
       status: raw.status === 'cancelled' ? 'cancelled' : (raw.status === 'pending' ? 'pending' : 'confirmed'),
       remindersSent: Array.isArray(raw.remindersSent)
         ? raw.remindersSent.filter(function (h) { return typeof h === 'number' && h > 0; })
@@ -221,10 +226,39 @@
     });
   }
 
+  function cancelTeamWorkout(workoutId) {
+    var data = loadData();
+    var changed = false;
+    data.appointments = data.appointments.map(function (a) {
+      if (a.teamWorkoutId !== workoutId) return a;
+      changed = true;
+      return normalizeAppointment(Object.assign({}, a, { status: 'cancelled' }));
+    });
+    if (!changed) return data;
+    return saveData(data);
+  }
+
+  function getTeamWorkoutAppointments(workoutId) {
+    return getAppointments().filter(function (a) {
+      return a.teamWorkoutId === workoutId;
+    });
+  }
+
   function addAppointment(appointment) {
     var data = loadData();
     var apt = normalizeAppointment(appointment);
     data.appointments.push(apt);
+    return saveData(data);
+  }
+
+  function upsertTeamWorkoutAppointments(workoutId, appointments) {
+    var data = loadData();
+    data.appointments = data.appointments.filter(function (a) {
+      return a.teamWorkoutId !== workoutId;
+    });
+    (appointments || []).forEach(function (raw) {
+      data.appointments.push(normalizeAppointment(raw));
+    });
     return saveData(data);
   }
 
@@ -321,9 +355,46 @@
     return Math.max(1, parseInt(booking && booking.maxPerSlot, 10) || 1);
   }
 
+  function getServiceSlotDuration(service, booking) {
+    var d = service && parseInt(service.slotDuration, 10);
+    if (d >= 15 && d <= 480) return d;
+    return booking.slotDuration || 30;
+  }
+
+  function getAppointmentCapacity(service, booking) {
+    var svcMax = service && parseInt(service.maxPerSlot, 10);
+    if (svcMax >= 1) return svcMax;
+    return Math.max(1, parseInt(booking && booking.maxPerSlot, 10) || 1);
+  }
+
   function getStayDurationDays(amount, stayUnit) {
     var n = Math.max(1, parseInt(amount, 10) || 1);
     return stayUnit === 'month' ? n * 30 : n;
+  }
+
+  function getDefaultCheckInTime(booking) {
+    return (booking && booking.checkInTime) || '16:00';
+  }
+
+  function getDefaultCheckOutTime(booking) {
+    return (booking && booking.checkOutTime) || '12:00';
+  }
+
+  function getCheckoutDateStr(arrivalDateStr, nights, stayUnit) {
+    if (!arrivalDateStr) return '';
+    var days = getStayDurationDays(nights, stayUnit);
+    var d = parseDateISO(arrivalDateStr);
+    d.setDate(d.getDate() + days);
+    return formatDateISO(d);
+  }
+
+  function appendStayCheckoutLines(lines, appointment, booking) {
+    if (!appointment.stayBooking) return;
+    var checkoutDate = getCheckoutDateStr(appointment.date, appointment.nights, appointment.stayUnit);
+    var checkoutTime = appointment.checkOutTime || getDefaultCheckOutTime(booking);
+    if (checkoutDate) {
+      lines.push('تسجيل الخروج: ' + formatDateArabic(checkoutDate) + ' — ' + formatTimeArabic(checkoutTime));
+    }
   }
 
   function bookingOccupiesDate(apt, dateStr) {
@@ -338,7 +409,9 @@
 
   function countBookingsOnDate(serviceId, dateStr, appointments) {
     return (appointments || getActiveAppointments()).filter(function (a) {
-      return a.serviceId === serviceId && a.status === 'confirmed' && bookingOccupiesDate(a, dateStr);
+      return a.serviceId === serviceId &&
+        (a.status === 'confirmed' || a.status === 'pending') &&
+        bookingOccupiesDate(a, dateStr);
     }).length;
   }
 
@@ -360,13 +433,13 @@
     if (!isDateBookable(dateStr, booking)) return [];
 
     if (isStayBooking(booking)) {
-      var checkIn = booking.checkInTime || '15:00';
+      var checkIn = getDefaultCheckInTime(booking);
       return isStayRangeAvailable(serviceId, dateStr, 1, service, booking, appointments) ? [checkIn] : [];
     }
 
     var startMin = timeToMinutes(booking.workingHours.start);
     var endMin = timeToMinutes(booking.workingHours.end);
-    var duration = booking.slotDuration || 30;
+    var duration = getServiceSlotDuration(service, booking);
     var slots = [];
     var t;
 
@@ -383,9 +456,10 @@
       });
     }
 
-    var capacity = getRoomCapacity(service, booking);
+    var capacity = getAppointmentCapacity(service, booking);
     var booked = (appointments || getActiveAppointments()).filter(function (a) {
-      return a.date === dateStr && a.serviceId === serviceId && a.status === 'confirmed';
+      return a.date === dateStr && a.serviceId === serviceId &&
+        (a.status === 'confirmed' || a.status === 'pending');
     });
 
     return slots.filter(function (slot) {
@@ -422,10 +496,14 @@
       phone: request.phone || '',
       district: request.district || '',
       locationAddress: request.locationAddress || '',
+      deliveryMode: request.deliveryMode || '',
+      meetingContact: request.meetingContact || '',
+      venueNote: request.venueNote || '',
       partySize: request.partySize != null && request.partySize !== '' ? Number(request.partySize) : null,
       nights: request.nights != null && request.nights !== '' ? Number(request.nights) : null,
       stayUnit: request.stayUnit || '',
       stayBooking: request.stayBooking === true,
+      checkOutTime: request.checkOutTime || '',
       notes: request.notes || '',
       status: request.status || 'pending',
       remindersSent: [],
@@ -571,7 +649,14 @@
     if (appointment.nights) {
       lines.push((appointment.stayUnit === 'month' ? 'عدد الأشهر: ' : 'عدد الليالي: ') + appointment.nights);
     }
-    if (appointment.locationAddress) lines.push('العنوان: ' + appointment.locationAddress);
+    appendStayCheckoutLines(lines, appointment);
+    if (appointment.locationAddress) lines.push('📍 المكان: ' + appointment.locationAddress);
+    if (appointment.teamWorkoutId && appointment.notes) {
+      var mapLine = appointment.notes.split('\n').find(function (l) { return l.indexOf('🗺️') !== -1; });
+      if (mapLine) lines.push(mapLine);
+    } else if (appointment.locationAddress) {
+      lines.push('العنوان: ' + appointment.locationAddress);
+    }
     lines.push('━━━━━━━━━━━━━━', 'نتطلع لرؤيتك!', 'للاستفسار رد على هذه الرسالة.');
     return lines.join('\n');
   }
@@ -598,6 +683,14 @@
     if (appointment.nights) {
       lines.push((appointment.stayUnit === 'month' ? 'عدد الأشهر: ' : 'عدد الليالي: ') + appointment.nights);
     }
+    appendStayCheckoutLines(lines, appointment);
+    if (appointment.deliveryMode === 'remote') {
+      lines.push('الحضور: عن بُعد (Zoom/Teams)');
+      if (appointment.meetingContact) lines.push('رابط/حساب الاجتماع: ' + appointment.meetingContact);
+    } else if (appointment.deliveryMode === 'in_person') {
+      lines.push('الحضور: حضوري في المركز');
+      if (appointment.venueNote) lines.push('الموقع: ' + appointment.venueNote);
+    }
     if (appointment.locationAddress) lines.push('العنوان: ' + appointment.locationAddress);
     if (appointment.notes) lines.push('ملاحظات: ' + appointment.notes);
     lines.push('━━━━━━━━━━━━━━', 'يُرجى تأكيد الموعد');
@@ -622,7 +715,15 @@
     isStayBooking: isStayBooking,
     isStayRangeAvailable: isStayRangeAvailable,
     getRoomCapacity: getRoomCapacity,
+    getServiceSlotDuration: getServiceSlotDuration,
+    getAppointmentCapacity: getAppointmentCapacity,
+    getDefaultCheckInTime: getDefaultCheckInTime,
+    getDefaultCheckOutTime: getDefaultCheckOutTime,
+    getCheckoutDateStr: getCheckoutDateStr,
     addAppointment: addAppointment,
+    upsertTeamWorkoutAppointments: upsertTeamWorkoutAppointments,
+    cancelTeamWorkout: cancelTeamWorkout,
+    getTeamWorkoutAppointments: getTeamWorkoutAppointments,
     updateAppointment: updateAppointment,
     removeAppointment: removeAppointment,
     addPendingRequest: addPendingRequest,

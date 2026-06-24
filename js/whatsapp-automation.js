@@ -29,9 +29,19 @@
     return 'خلال ' + hoursBefore + ' ساعات';
   }
 
-  function parseTemplate(templateText, data) {
+  function parseTemplate(templateText, data, config) {
     if (!templateText) return '';
     var text = templateText;
+    
+    var googleReviewUrl = '';
+    if (data && data.googleReviewUrl) {
+      googleReviewUrl = data.googleReviewUrl;
+    } else {
+      var store = window.MkenServicesStore;
+      var cfg = config || (store && store.loadConfig()) || {};
+      googleReviewUrl = (cfg.googleBusiness && cfg.googleBusiness.reviewUrl) || '';
+    }
+
     text = text.replace(/{brandName}/g, data.brandName || '');
     text = text.replace(/{customerName}/g, data.customerName || '');
     text = text.replace(/{phone}/g, data.phone || '');
@@ -44,6 +54,7 @@
     text = text.replace(/{orderItems}/g, data.orderItems || '');
     text = text.replace(/{hoursBefore}/g, data.hoursBefore || '');
     text = text.replace(/{reminderLeadText}/g, data.reminderLeadText || '');
+    text = text.replace(/{googleReviewUrl}/g, googleReviewUrl);
     return text;
   }
 
@@ -397,7 +408,7 @@
         date: formatDateArabic(appointment.date),
         time: formatTimeArabic(appointment.time),
         appointmentId: appointment.id
-      });
+      }, config);
     } else {
       message = bookingStore.buildWhatsAppMessage(
         brandName,
@@ -445,7 +456,7 @@
         appointmentId: appointment.id,
         hoursBefore: hoursBefore,
         reminderLeadText: leadText
-      });
+      }, config);
     } else {
       message = bookingStore.buildReminderMessage(
         brandName,
@@ -508,7 +519,7 @@
         date: formatDateArabic(appointment.date),
         time: formatTimeArabic(appointment.time),
         appointmentId: appointment.id
-      });
+      }, config);
     } else {
       var lines = [
         'تم إلغاء موعدك — ' + brandName,
@@ -553,7 +564,7 @@
         date: formatDateArabic(appointment.date),
         time: formatTimeArabic(appointment.time),
         appointmentId: appointment.id
-      });
+      }, config);
     } else {
       var lines = [
         'تعديل موعدك — ' + brandName,
@@ -616,7 +627,7 @@
         activityTitle: activityTitle,
         orderId: order.id,
         orderItems: orderItemsText
-      });
+      }, config);
     } else {
       message = orderStore.buildWhatsAppMessage(
         brandName,

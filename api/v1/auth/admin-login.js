@@ -59,7 +59,17 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'register-client') {
-      const { tenantSlug, businessName, email, password, phone } = req.body || {};
+      const { 
+        tenantSlug, 
+        businessName, 
+        email, 
+        password, 
+        phone, 
+        subscription_tier,
+        enabledActivities,
+        enabledServices,
+        customFeatures
+      } = req.body || {};
       if (!tenantSlug || !businessName || !email || !password || !phone) {
         return res.status(400).json({ error: 'كافة الحقول مطلوبة لتسجيل العميل' });
       }
@@ -97,15 +107,15 @@ module.exports = async function handler(req, res) {
       oneYear.setFullYear(oneYear.getFullYear() + 1);
 
       const defaultTenantConfig = {
-        enabledActivities: ['tech-digital', 'it-support'],
-        enabled: [
+        enabledActivities: enabledActivities || ['tech-digital', 'it-support'],
+        enabled: enabledServices || [
           'web-design', 'mobile-apps', 'landing-pages', 'seo',
           'whatsapp-crm', 'social-media', 'branding', 'ecommerce',
           'computer', 'laptop-repair',
         ],
-        featuredActivity: 'tech-digital',
-        featured: 'web-design',
-        heroFocus: 'web-design',
+        featuredActivity: (enabledActivities && enabledActivities[0]) || 'tech-digital',
+        featured: (enabledServices && enabledServices[0]) || 'web-design',
+        heroFocus: (enabledServices && enabledServices[0]) || 'web-design',
         theme: 'slate',
         phone: phone,
         brand: {
@@ -115,13 +125,19 @@ module.exports = async function handler(req, res) {
         },
         activities: {},
         services: {},
-        booking: { enabled: true, mode: 'form', requirePayment: false },
+        booking: { enabled: !!(customFeatures ? customFeatures.hasBooking : true), mode: 'form', requirePayment: false },
         serviceArea: { enabled: false, city: 'الرياض', radiusKm: 15 },
         push: { enabled: false },
         supabase: { enabled: false },
         saas: { baseDomain: 'mken.live', useSubdomains: true },
-        whatsappApi: { enabled: false },
+        whatsappApi: { enabled: !!(customFeatures && customFeatures.hasWhatsApp) },
         payment: { enabled: false }
+      };
+
+      // Store subscription tier and custom features inside config_data
+      defaultTenantConfig.subscription = {
+        tier: subscription_tier || 'basic',
+        customFeatures: customFeatures || null
       };
 
       // 3. Insert SaaS client row
@@ -135,7 +151,8 @@ module.exports = async function handler(req, res) {
           phone: phone.trim(),
           subscription_end: oneYear.toISOString(),
           config_data: defaultTenantConfig,
-          subscription_status: 'active'
+          subscription_status: 'active',
+          subscription_tier: subscription_tier || 'basic'
         })
         .select()
         .single();
@@ -183,6 +200,24 @@ module.exports = async function handler(req, res) {
 
       if (updateErr) throw updateErr;
       return res.status(200).json({ success: true, newEnd: currentEnd.toISOString() });
+    }
+
+    if (action === 'change-tier') {
+      const { tenantSlug, tier } = req.body || {};
+      if (!tenantSlug || !tier) {
+        return res.status(400).json({ error: 'مطلوب معرّف العميل وباقة الاشتراك المطلوبة' });
+      }
+
+      const { error: updateErr } = await supabase
+        .from('mken_saas_clients')
+        .update({
+          subscription_tier: tier,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_slug', tenantSlug);
+
+      if (updateErr) throw updateErr;
+      return res.status(200).json({ success: true, tier: tier });
     }
 
     if (action === 'delete-client') {

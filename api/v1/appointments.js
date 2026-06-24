@@ -61,6 +61,9 @@ function mapRowToAppointment(row) {
     notes: row.notes,
     partySize: row.party_size,
     nights: row.nights,
+    stayUnit: row.stay_unit || '',
+    stayBooking: row.stay_booking === true,
+    checkOutTime: row.check_out_time || '',
     status: row.status,
     remindersSent: row.reminders_sent,
     createdAt: row.created_at,
@@ -152,6 +155,9 @@ module.exports = async function handler(req, res) {
         notes: body.notes || null,
         party_size: body.partySize || body.party_size || null,
         nights: body.nights || body.nights_count || null,
+        stay_unit: body.stayUnit || body.stay_unit || null,
+        stay_booking: body.stayBooking === true || body.stay_booking === true,
+        check_out_time: body.checkOutTime || body.check_out_time || null,
         status: body.status || 'pending',
         reminders_sent: body.remindersSent || body.reminders_sent || [],
         payment_status: body.paymentStatus || body.payment_status || 'unpaid',
@@ -216,6 +222,9 @@ module.exports = async function handler(req, res) {
       mapField('notes', 'notes');
       mapField('partySize', 'party_size');
       mapField('nights', 'nights');
+      mapField('stayUnit', 'stay_unit');
+      mapField('stayBooking', 'stay_booking');
+      mapField('checkOutTime', 'check_out_time');
       mapField('status', 'status');
       mapField('remindersSent', 'reminders_sent');
       mapField('paymentStatus', 'payment_status');

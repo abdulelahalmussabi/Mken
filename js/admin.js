@@ -119,6 +119,21 @@
     if (tabId === 'clients' && window.MkenAdminClients) {
       window.MkenAdminClients.refresh();
     }
+    if (tabId === 'inventory' && window.MkenAdminInventory) {
+      window.MkenAdminInventory.refresh();
+    }
+    if (tabId === 'invoices' && window.MkenAdminInvoices) {
+      window.MkenAdminInvoices.refresh();
+    }
+    if (tabId === 'customers' && window.MkenAdminCustomers) {
+      window.MkenAdminCustomers.refresh();
+    }
+    if (tabId === 'purchases' && window.MkenAdminPurchases) {
+      window.MkenAdminPurchases.refresh();
+    }
+    if (tabId === 'reports' && window.MkenAdminReports) {
+      window.MkenAdminReports.refresh();
+    }
   }
 
   function getEnabledActivityIds() {
@@ -314,21 +329,41 @@
     var enabledActs = config.enabledActivities || [];
     var enabledSvcs = config.enabled || [];
     var catalog = store.getActivitiesCatalog();
+    
+    var tier = (config.subscription && config.subscription.tier) || 'basic';
+    if (!config.subscription) {
+      tier = 'unlimited';
+    }
+    var hasCommerce = true;
+    if (tier === 'custom') {
+      var customFeatures = config.subscription && config.subscription.customFeatures;
+      hasCommerce = customFeatures ? !!customFeatures.hasCommerce : true;
+    } else if (store.SAAS_TIERS) {
+      var plan = store.getSaaSPlan(tier);
+      hasCommerce = plan.hasCommerce !== false;
+    }
 
     activitiesList.innerHTML = catalog.map(function (act) {
       var resolved = store.getResolvedActivity(act.id, config);
       var actOn = enabledActs.indexOf(act.id) !== -1;
+      
+      var isCommerce = act.id === 'commerce';
+      var commerceLocked = isCommerce && !hasCommerce;
+      
+      var disabledAttr = commerceLocked ? ' disabled' : '';
+      var lockBadge = commerceLocked ? ' <span style="font-size:0.75rem; color:#ff4d4f; background:rgba(255,77,79,0.1); padding:2px 8px; border-radius:4px; font-weight:bold; margin-right:8px;">🔒 يتطلب الباقة المتقدمة 🌟</span>' : '';
+
       var services = store.getServicesForActivity(act.id);
       var servicesHtml = services.map(function (svc) {
         var resolvedSvc = store.getResolvedService(svc.id, config);
         var svcOn = enabledSvcs.indexOf(svc.id) !== -1;
-        var disabled = actOn ? '' : ' disabled';
+        var disabled = (actOn && !commerceLocked) ? '' : ' disabled';
         var editHtml = contentAdmin ? contentAdmin.renderServiceEditor(svc.id) : '';
         return (
           '<div class="admin-service-wrap">' +
-          '<label class="admin-service' + (svcOn && actOn ? ' admin-service--on' : '') + '">' +
+          '<label class="admin-service' + (svcOn && actOn && !commerceLocked ? ' admin-service--on' : '') + '">' +
           '<input type="checkbox" class="admin-service__check" value="' + svc.id + '"' +
-          (svcOn && actOn ? ' checked' : '') + disabled + '>' +
+          (svcOn && actOn && !commerceLocked ? ' checked' : '') + disabled + '>' +
           '<span class="admin-service__icon">' + resolvedSvc.icon + '</span>' +
           '<span class="admin-service__info"><strong>' + esc(resolvedSvc.title) + '</strong>' +
           '<small>' + esc(resolvedSvc.category) + '</small></span>' +
@@ -337,21 +372,22 @@
         );
       }).join('');
 
-      var portalHint = act.id === 'hockey'
-        ? '<p class="admin-hint admin-activity__portal"><a href="coaching.html" target="_blank" rel="noopener">🏑 فتح بوابة التمارين (coaching.html)</a> — PIN الكوتش الافتراضي: <code>1234</code></p>'
+      var portalUrl = store.getActivityBookingPortalUrl(act.id, store.loadConfig());
+      var portalHint = portalUrl
+        ? '<p class="admin-hint admin-activity__portal"><a href="' + esc(portalUrl) + '" target="_blank" rel="noopener">' + resolved.icon + ' فتح بوابة النشاط: ' + esc(resolved.shortTitle || act.id) + '</a> — يمكن تغيير PIN المدرب من إعدادات البوابة (افتراضي: <code>1234</code>)</p>'
         : '';
 
       return (
-        '<div class="admin-activity' + (actOn ? ' admin-activity--on' : '') + '">' +
+        '<div class="admin-activity' + (actOn && !commerceLocked ? ' admin-activity--on' : '') + '">' +
         '<label class="admin-activity__header">' +
-        '<input type="checkbox" class="admin-activity__check" value="' + act.id + '"' + (actOn ? ' checked' : '') + '>' +
+        '<input type="checkbox" class="admin-activity__check" value="' + act.id + '"' + (actOn && !commerceLocked ? ' checked' : '') + disabledAttr + '>' +
         '<span class="admin-activity__icon">' + resolved.icon + '</span>' +
         '<span class="admin-activity__info">' +
-        '<strong>' + esc(resolved.title) + '</strong>' +
+        '<strong>' + esc(resolved.title) + lockBadge + '</strong>' +
         '<small>' + esc(resolved.tagline) + '</small></span>' +
         '<span class="admin-service__toggle" aria-hidden="true"></span></label>' +
         portalHint +
-        '<div class="admin-activity__services"' + (actOn ? '' : ' hidden') + '>' + servicesHtml + '</div></div>'
+        '<div class="admin-activity__services"' + (actOn && !commerceLocked ? '' : ' hidden') + '>' + servicesHtml + '</div></div>'
       );
     }).join('');
 
@@ -696,6 +732,8 @@
     updateTenantUrlHints(tenantSlug);
     updateN8nTenantSlugHint();
 
+    var subTier = document.getElementById('saasSubTier');
+
     if (config.subscription) {
       var sub = config.subscription;
       var isExpired = sub.status === 'expired' || (sub.end && new Date(sub.end) < new Date());
@@ -714,6 +752,14 @@
         var endDate = new Date(sub.end);
         subEnd.value = endDate.toLocaleDateString('ar-SA') + ' - ' + endDate.toLocaleTimeString('ar-SA');
       }
+      if (subTier) {
+        var tierName = 'الباقة الأساسية (Basic)';
+        if (sub.tier === 'growth') tierName = 'الباقة المتقدمة (Growth)';
+        if (sub.tier === 'unlimited') tierName = 'الباقة الاحترافية (Unlimited)';
+        if (sub.tier === 'custom') tierName = 'باقة مخصصة (Custom Flex)';
+        subTier.textContent = tierName;
+        subTier.style.color = 'var(--color-primary)';
+      }
     } else {
       if (subStatus) {
         subStatus.textContent = 'وضع محلي (غير مرتبط بسحابة)';
@@ -721,6 +767,10 @@
         subStatus.style.color = '#fff';
       }
       if (subEnd) subEnd.value = 'لا ينطبق (غير مرتبط بـ Supabase)';
+      if (subTier) {
+        subTier.textContent = 'وضع محلي / تجريبي (Unlimited)';
+        subTier.style.color = '#777';
+      }
     }
 
     var area = config.serviceArea || {};
@@ -765,6 +815,53 @@
     }
   }
 
+  function updateSaaSFeatureVisibility(config) {
+    var tier = (config.subscription && config.subscription.tier) || 'basic';
+    if (!config.subscription) {
+      tier = 'unlimited';
+    }
+
+    var hasWhatsApp = tier === 'growth' || tier === 'unlimited';
+    var hasCommerce = tier === 'growth' || tier === 'unlimited';
+    var hasInvoices = tier === 'unlimited';
+
+    if (config.subscription && tier === 'custom') {
+      var customFeatures = config.subscription.customFeatures || {};
+      hasWhatsApp = !!customFeatures.hasWhatsApp;
+      hasCommerce = !!customFeatures.hasCommerce;
+      hasInvoices = !!customFeatures.hasInvoices;
+    }
+
+    // Tabs selection
+    var tabs = document.querySelectorAll('.admin-tab');
+    tabs.forEach(function (tab) {
+      var tabId = tab.getAttribute('data-tab');
+      if (['inventory', 'invoices', 'purchases', 'reports'].indexOf(tabId) !== -1) {
+        tab.style.display = hasInvoices ? '' : 'none';
+      }
+      if (tabId === 'customers') {
+        tab.style.display = (hasWhatsApp || hasInvoices) ? '' : 'none';
+      }
+      if (tabId === 'whatsapp-logs') {
+        tab.style.display = hasWhatsApp ? '' : 'none';
+      }
+    });
+
+    // Check if active tab is hidden, switch to "activities"
+    var activeTab = document.querySelector('.admin-tab.admin-tab--active');
+    if (activeTab) {
+      var activeTabId = activeTab.getAttribute('data-tab');
+      if (
+        (!hasInvoices && ['inventory', 'invoices', 'purchases', 'reports'].indexOf(activeTabId) !== -1) ||
+        (!hasWhatsApp && !hasInvoices && activeTabId === 'customers') ||
+        (!hasWhatsApp && activeTabId === 'whatsapp-logs')
+      ) {
+        var defaultTab = document.querySelector('[data-tab="activities"]');
+        if (defaultTab) defaultTab.click();
+      }
+    }
+  }
+
   function renderPanel() {
     window.MkenAdminPanelReload = renderPanel;
     var config = store.loadConfig();
@@ -782,6 +879,7 @@
     if (featuredActivitySelect) featuredActivitySelect.value = config.featuredActivity || '';
     if (featuredSelect) featuredSelect.value = config.featured || '';
     updateCount();
+    updateSaaSFeatureVisibility(config);
     if (contentAdmin) {
       var actId = contentAdmin.getCurrentActivityId() || config.featuredActivity || (config.enabledActivities && config.enabledActivities[0]);
       if (actId) contentAdmin.renderEditor(actId);
@@ -1550,6 +1648,7 @@
       el.addEventListener('input', updateAdminMapPreview);
     }
   });
+  window.updateAdminMapPreview = updateAdminMapPreview;
 
   // Renew Subscription Listener
   var renewSubBtn = document.getElementById('renewSubBtn');
@@ -1600,7 +1699,28 @@
     });
   });
 
+  function updateSyncIndicator() {
+    var indicator = document.getElementById('syncIndicator');
+    var countEl = document.getElementById('syncPendingCount');
+    if (!indicator || !countEl) return;
+    
+    if (window.MkenSupabaseDb && typeof window.MkenSupabaseDb.getPendingSyncCount === 'function') {
+      var count = window.MkenSupabaseDb.getPendingSyncCount();
+      if (count > 0) {
+        countEl.textContent = count;
+        indicator.style.display = 'flex';
+      } else {
+        indicator.style.display = 'none';
+      }
+    } else {
+      indicator.style.display = 'none';
+    }
+  }
+
+  window.addEventListener('mken_sync_queue_changed', updateSyncIndicator);
+
   store.init().then(function () {
+    updateSyncIndicator();
     // Check if Supabase database is connected for SaaS features
     var db = window.MkenSupabaseDb;
     var regError = document.getElementById('registerError');

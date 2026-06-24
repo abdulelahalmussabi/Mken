@@ -732,15 +732,6 @@ ul { list-style: none; }
   text-align: center;
 }
 
-.about__card--accent {
-  background: linear-gradient(135deg, var(--terracotta-500), var(--terracotta-600));
-  border-color: var(--terracotta-600);
-  color: #fff;
-}
-
-.about__card--accent h3,
-.about__card--accent p { color: #fff; }
-
 .about__card-icon { font-size: 2.5rem; margin-bottom: 12px; }
 
 .about__card h3 {
@@ -754,6 +745,15 @@ ul { list-style: none; }
   font-size: 0.88rem;
   color: var(--color-text-muted);
 }
+
+.about__card--accent {
+  background: linear-gradient(135deg, var(--terracotta-500), var(--terracotta-600));
+  border-color: var(--terracotta-600);
+  color: #fff;
+}
+
+.about__card--accent h3,
+.about__card--accent p { color: #fff; }
 
 /* ---- Process ---- */
 .process {

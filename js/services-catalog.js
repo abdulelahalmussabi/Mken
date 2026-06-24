@@ -364,6 +364,7 @@ window.MkenServicesCatalog = [
     title: 'أساسيات الحاسب',
     shortTitle: 'أساسيات حاسب',
     description: 'دورة للمبتدئين — Windows، إنترنت، بريد إلكتروني، وملفات — حضورياً أو عن بُعد.',
+    deliveryMode: 'hybrid', slotDuration: 90,
     features: ['Windows وإعدادات أساسية', 'تصفح آمن وإيميل', 'إدارة الملفات', 'شهادة حضور'],
     featured: true,
     category: 'تدريب',
@@ -409,6 +410,7 @@ window.MkenServicesCatalog = [
     title: 'تدريب WhatsApp Business',
     shortTitle: 'واتساب Business',
     description: 'استخدام WhatsApp Business وAPI — ردود آلية، كتalog، ومتابعة العملاء.',
+    deliveryMode: 'hybrid', requiresAddress: true, slotDuration: 90,
     features: ['إعداد Business App', 'منتجات وردود سريعة', 'Labels وتصنيف', 'مقدمة API'],
     category: 'تدريب',
     svg: '<path d="M12 8h24a4 4 0 014 4v16a4 4 0 01-4 4H12a4 4 0 01-4-4V12a4 4 0 014-4z" stroke="currentColor" stroke-width="2"/><path d="M16 20h16M16 26h10" stroke="currentColor" stroke-width="2"/>',
@@ -708,7 +710,7 @@ window.MkenServicesCatalog = [
   /* ─── رياضة ولياقة ─── */
   {
     id: 'personal-training', activityId: 'fitness', icon: '🏋️', title: 'تدريب شخصي', shortTitle: 'PT',
-    description: 'مدرب شخصي — برنامج مخصص لأهدافك.', slotDuration: 60, featured: true,
+    description: 'مدرب شخصي — برنامج مخصص لأهدافك.', slotDuration: 60, maxPerSlot: 1, featured: true,
     features: ['برنامج مخصص', 'متابعة أسبوعية', 'تغذية'], category: 'تدريب',
     svg: '<path d="M14 32l6-16h8l6 16M20 16v-4a4 4 0 018 0v4" stroke="currentColor" stroke-width="2"/>',
   },
@@ -726,7 +728,7 @@ window.MkenServicesCatalog = [
   },
   {
     id: 'group-class', activityId: 'fitness', icon: '👥', title: 'حصة جماعية', shortTitle: 'جماعي',
-    description: 'Zumba، CrossFit، أو Spinning — طاقة وحماس.', slotDuration: 45,
+    description: 'Zumba، CrossFit، أو Spinning — طاقة وحماس.', slotDuration: 45, maxPerSlot: 12,
     features: ['Zumba / CrossFit', 'مدرب محترف', 'مجموعة محفزة'], category: 'حصص',
     svg: '<circle cx="16" cy="24" r="4" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="20" r="4" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="24" r="4" stroke="currentColor" stroke-width="2"/>',
   },
@@ -862,7 +864,7 @@ window.MkenServicesCatalog = [
   /* ─── دروس خصوصية ─── */
   {
     id: 'math-tutoring', activityId: 'tutoring', icon: '➗', title: 'رياضيات', shortTitle: 'رياضيات',
-    description: 'دروس رياضيات — ابتدائي، متوسط، ثانوي، وقدرات.', slotDuration: 60, featured: true,
+    description: 'دروس رياضيات — ابتدائي، متوسط، ثانوي، وقدرات.', slotDuration: 60, deliveryMode: 'in_person', featured: true,
     features: ['جميع المراحل', 'قدرات وتحصيلي', 'تمارين'], category: 'رياضيات',
     svg: '<path d="M16 32l8-24 8 24M18 24h12" stroke="currentColor" stroke-width="2"/>',
   },
@@ -892,7 +894,7 @@ window.MkenServicesCatalog = [
   },
   {
     id: 'online-tutoring', activityId: 'tutoring', icon: '💻', title: 'دروس عن بُعد', shortTitle: 'عن بُعد',
-    description: 'Zoom / Teams — أي مادة، من أي مكان.', slotDuration: 60,
+    description: 'Zoom / Teams — أي مادة، من أي مكان.', slotDuration: 60, deliveryMode: 'remote',
     features: ['Zoom', 'تسجيل الحصة', 'مرونة'], category: 'عن بُعد',
     svg: '<rect x="8" y="12" width="32" height="22" rx="2" stroke="currentColor" stroke-width="2"/>',
   },
@@ -1187,5 +1189,57 @@ window.MkenServicesCatalog = [
     features: ['خطة تدريب فردية مخصصة', 'تركيز على المهارات الفردية', 'مرونة عالية في تحديد المواعيد'],
     category: 'هوكي',
     svg: '<path d="M24 20a5 5 0 100-10 5 5 0 000 10zm-10 14c0-5 4-8 10-8s10 3 10 8" stroke="currentColor" stroke-width="2"/>'
+  },
+
+  /* ─── كمال أجسام ─── */
+  {
+    id: 'bodybuilding-pt', activityId: 'bodybuilding', icon: '💪', title: 'تدريب شخصي — كمال أجسام', shortTitle: 'PT',
+    description: 'مدرب شخصي متخصص — برنامج قوة وضخامة مخصص 100%.', slotDuration: 60, maxPerSlot: 1, featured: true,
+    features: ['برنامج مخصص', 'متابعة أسبوعية', 'تغذية'], category: 'شخصي',
+    svg: '<path d="M14 32l6-16h8l6 16M20 16v-4a4 4 0 018 0v4" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'hypertrophy-class', activityId: 'bodybuilding', icon: '🏋️', title: 'حصة ضخامة جماعية', shortTitle: 'ضخامة',
+    description: 'حصة Hypertrophy جماعية — حجم عضلي وتقنية صحيحة.', slotDuration: 60, maxPerSlot: 10,
+    features: ['8–12 تكرار', 'مجموعة محفزة', 'مدرب متخصص'], category: 'جماعي',
+    svg: '<rect x="10" y="18" width="28" height="16" rx="2" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'competition-prep', activityId: 'bodybuilding', icon: '🏆', title: 'إعداد مسابقات', shortTitle: 'مسابقات',
+    description: 'برنامج تنشيف وإعداد لمسابقات كمال الأجسام.', slotDuration: 90, maxPerSlot: 1,
+    features: ['تنشيف', 'بروتوكول مسابقة', 'متابعة يومية'], category: 'مسابقات',
+    svg: '<path d="M12 28l12-16 12 16H12z" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'posing-coaching', activityId: 'bodybuilding', icon: '📐', title: 'تدريب وضعيات العرض', shortTitle: 'وضعيات',
+    description: 'جلسة تدريب على وضعيات العرض أمام لجنة التحكيم.', slotDuration: 45, maxPerSlot: 1,
+    features: ['Mandatory poses', 'تصحيح وضعية', 'تمارين مرآة'], category: 'مسابقات',
+    svg: '<path d="M24 12v24M16 20h16" stroke="currentColor" stroke-width="2"/>',
+  },
+
+  /* ─── كرة القدم ─── */
+  {
+    id: 'football-team-training', activityId: 'football', icon: '⚽', title: 'تمرين جماعي', shortTitle: 'جماعي',
+    description: 'تمرين كرة قدم جماعي — تكتيك ولياقة تحت إشراف المدرب.', slotDuration: 90, maxPerSlot: 22, featured: true,
+    features: ['تكتيك', 'لياقة', 'تصويت على الموعد'], category: 'جماعي',
+    svg: '<circle cx="24" cy="24" r="12" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'football-match-prep', activityId: 'football', icon: '🏆', title: 'إعداد مباراة ودية', shortTitle: 'مباراة',
+    description: 'تحضير وتنظيم مباراة ودية أو تقسيم فرق.', slotDuration: 120, maxPerSlot: 22,
+    features: ['تقسيم فرق', 'تحكيم', 'إحماء'], category: 'مباريات',
+    svg: '<path d="M12 12h24v12H12zm0 12c0 6 5 10 12 10s12-4 12-10" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'football-private-coaching', activityId: 'football', icon: '👤', title: 'تدريب خاص', shortTitle: 'خاص',
+    description: 'حصة 1-on-1 لتطوير المهارات الفردية.', slotDuration: 60, maxPerSlot: 1,
+    features: ['مهارات فردية', 'مرونة الموعد', 'خطة مخصصة'], category: 'خاص',
+    svg: '<circle cx="24" cy="18" r="6" stroke="currentColor" stroke-width="2"/><path d="M12 36c0-6 5-10 12-10s12 4 12 10" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'football-goalkeeper-coaching', activityId: 'football', icon: '🧤', title: 'تدريب حراس المرمى', shortTitle: 'حراس',
+    description: 'تدريب متخصص لحراس المرمى — انقضاض وتمرير وتوزيع.', slotDuration: 60, maxPerSlot: 4,
+    features: ['انقضاض', 'تمرير', 'توزيع الكرة'], category: 'حراس',
+    svg: '<path d="M8 20h32v16H8z M16 20V12h16v8" stroke="currentColor" stroke-width="2"/>',
   }
 ];

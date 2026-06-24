@@ -311,6 +311,36 @@
   box-shadow: 0 0 0 3px rgba(196, 112, 78, 0.12);
 }
 
+.booking-field__label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--terracotta-800);
+}
+
+.booking-delivery-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.booking-delivery-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.booking-delivery-option:has(input:checked) {
+  border-color: var(--color-primary);
+  background: rgba(196, 112, 78, 0.08);
+}
+
 .booking-summary {
   background: var(--terracotta-50);
   border: 1px solid var(--terracotta-200);

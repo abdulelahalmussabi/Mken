@@ -349,6 +349,27 @@
     };
   }
 
+  function normalizeActivityBooking(raw) {
+    var base = normalizeBooking(raw);
+    var incoming = raw || {};
+    if (incoming.type) base.type = incoming.type;
+    if (incoming.ctaLabel) base.ctaLabel = String(incoming.ctaLabel).trim();
+    if (incoming.partySizeLabel) base.partySizeLabel = String(incoming.partySizeLabel).trim();
+    if (incoming.collectPartySize === true) base.collectPartySize = true;
+    if (incoming.collectNights === true) base.collectNights = true;
+    if (incoming.skipTimeSelection === true) base.skipTimeSelection = true;
+    if (incoming.requiresAddress === true) base.requiresAddress = true;
+    if (/^\d{2}:\d{2}$/.test(incoming.checkInTime)) base.checkInTime = incoming.checkInTime;
+    if (/^\d{2}:\d{2}$/.test(incoming.checkOutTime)) base.checkOutTime = incoming.checkOutTime;
+    var portal = typeof incoming.portalUrl === 'string' ? incoming.portalUrl.trim() : '';
+    if (portal) base.portalUrl = portal;
+    if (base.type === 'stay' || base.skipTimeSelection) {
+      if (!base.checkInTime) base.checkInTime = '16:00';
+      if (!base.checkOutTime) base.checkOutTime = '12:00';
+    }
+    return base;
+  }
+
   function getBooking(config) {
     return normalizeBooking((config || loadConfig()).booking);
   }
@@ -358,16 +379,47 @@
     var base = getBooking(config);
     var act = getResolvedActivity(activityId, config);
     if (!act || !act.booking) return base;
-    var slot = parseInt(act.booking.slotDuration, 10);
-    return Object.assign({}, base, {
-      slotDuration: slot >= 15 && slot <= 480 ? slot : base.slotDuration,
-    });
+    var r = resolver();
+    var merged = r && r.deepMerge ? r.deepMerge(base, act.booking) : Object.assign({}, base, act.booking);
+    return normalizeActivityBooking(merged);
   }
 
   function serviceNeedsAddress(service, activityId, config) {
     if (service && service.requiresAddress) return true;
     var act = getResolvedActivity(activityId, config);
     return !!(act && act.booking && act.booking.requiresAddress);
+  }
+
+  function getServiceDeliveryMode(service) {
+    var mode = service && service.deliveryMode;
+    if (mode === 'remote' || mode === 'in_person' || mode === 'hybrid') return mode;
+    return 'in_person';
+  }
+
+  function serviceNeedsAddressForDelivery(service, activityId, config, selectedDelivery) {
+    if (serviceNeedsAddress(service, activityId, config)) return true;
+    var mode = getServiceDeliveryMode(service);
+    if (mode === 'remote') return false;
+    if (mode === 'hybrid') return selectedDelivery === 'in_person';
+    return false;
+  }
+
+  function serviceShowsDeliveryChoice(service) {
+    return getServiceDeliveryMode(service) === 'hybrid';
+  }
+
+  function serviceIsRemoteOnly(service) {
+    return getServiceDeliveryMode(service) === 'remote';
+  }
+
+  function getVenueNote(config) {
+    config = config || loadConfig();
+    var area = normalizeServiceArea(config.serviceArea);
+    var parts = [];
+    if (area.city) parts.push(area.city);
+    if (area.coverageNote) parts.push(area.coverageNote);
+    if (area.googleMapsUrl) parts.push(area.googleMapsUrl);
+    return parts.join(' — ');
   }
 
   function getActivityBookingPortalUrl(activityId, config) {
@@ -392,14 +444,14 @@
     });
   }
 
-  function pruneEnabledServices(cfg) {
+  function pruneEnabledServices(cfg, rawHasEnabled) {
     var activities = cfg.enabledActivities || [];
     var catalog = getCatalog();
     cfg.enabled = (cfg.enabled || []).filter(function (id) {
       var svc = catalog.find(function (s) { return s.id === id; });
       return svc && activities.indexOf(svc.activityId) !== -1;
     });
-    if (!cfg.enabled.length && activities.length) {
+    if (!rawHasEnabled && !cfg.enabled.length && activities.length) {
       var first = activities[0];
       var svcs = getServicesForActivity(first);
       if (svcs.length) cfg.enabled = [svcs[0].id];
@@ -415,10 +467,10 @@
           logo: ""
         },
         enabledActivities: ['hotels'],
-        enabled: ['hotel-booking', 'room-service'],
+        enabled: ['standard-room', 'deluxe-room'],
         featuredActivity: 'hotels',
-        featured: 'hotel-booking',
-        heroFocus: 'hotel-booking',
+        featured: 'standard-room',
+        heroFocus: 'standard-room',
         theme: 'ocean',
         phone: '966554453287',
         social: {
@@ -484,19 +536,24 @@
     }
     
     var cfg = Object.assign({}, baseConfig, raw || {});
-    if (!Array.isArray(cfg.enabledActivities)) cfg.enabledActivities = baseConfig.enabledActivities.slice();
-    if (!Array.isArray(cfg.enabled)) cfg.enabled = baseConfig.enabled.slice();
+    var rawHasActivities = raw && Array.isArray(raw.enabledActivities);
+    var rawHasEnabled = raw && Array.isArray(raw.enabled);
 
-    cfg.enabledActivities = cfg.enabledActivities.filter(function (id) {
-      return !!getActivityById(id);
-    });
-    if (!cfg.enabledActivities.length && baseConfig.enabledActivities.length) {
+    if (rawHasActivities) {
+      cfg.enabledActivities = raw.enabledActivities.filter(function (id) {
+        return !!getActivityById(id);
+      });
+    } else {
       cfg.enabledActivities = baseConfig.enabledActivities.slice();
-    } else if (!cfg.enabledActivities.length) {
-      cfg.enabledActivities = ['tech-digital'];
     }
 
-    pruneEnabledServices(cfg);
+    if (rawHasEnabled) {
+      cfg.enabled = raw.enabled.slice();
+    } else {
+      cfg.enabled = baseConfig.enabled.slice();
+    }
+
+    pruneEnabledServices(cfg, rawHasEnabled);
 
     if (!cfg.featuredActivity || cfg.enabledActivities.indexOf(cfg.featuredActivity) === -1) {
       cfg.featuredActivity = cfg.enabledActivities[0] || '';
@@ -939,9 +996,68 @@
       });
   }
 
+  var SAAS_TIERS = {
+    'basic': {
+      id: 'basic',
+      name: 'الباقة الأساسية',
+      maxActivities: 99,
+      priceMonth: 99,
+      priceYear: 990,
+      hasWhatsApp: false,
+      hasCommerce: false,
+      hasInvoices: false,
+      features: ['صفحات الهوية والأنشطة', 'حجز المواعيد الأساسي', 'مزامنة موقع الخريطة']
+    },
+    'growth': {
+      id: 'growth',
+      name: 'الباقة المتقدمة',
+      maxActivities: 99,
+      priceMonth: 299,
+      priceYear: 2990,
+      hasWhatsApp: true,
+      hasCommerce: true,
+      hasInvoices: false,
+      features: ['المتجر الإلكتروني (Commerce)', 'أتمتة واتساب CRM وإرسال التذكيرات', 'إدارة المواعيد وحالة الدفع']
+    },
+    'unlimited': {
+      id: 'unlimited',
+      name: 'الباقة الاحترافية',
+      maxActivities: 99,
+      priceMonth: 599,
+      priceYear: 5990,
+      hasWhatsApp: true,
+      hasCommerce: true,
+      hasInvoices: true,
+      features: ['كافة ميزات النظام دون قيود', 'المتجر الإلكتروني المتكامل', 'إشعارات وحملات واتساب CRM', 'الفواتير وعروض الأسعار', 'إدارة المخازن والمستودعات', 'تقارير مالية ورسوم تفاعلية']
+    }
+  };
+
+  function getSaaSPlan(tier) {
+    return SAAS_TIERS[tier || 'basic'] || SAAS_TIERS['basic'];
+  }
+
   function getEnabledActivities() {
     var config = loadConfig();
+    var tier = (config.subscription && config.subscription.tier) || 'basic';
+    
+    // Non-SaaS clients (local mode) have unlimited tier features unlocked
+    if (!config.subscription) {
+      tier = 'unlimited';
+    }
+
+    var hasCommerce = true;
+    if (tier === 'custom') {
+      var customFeatures = config.subscription && config.subscription.customFeatures;
+      hasCommerce = customFeatures ? !!customFeatures.hasCommerce : true;
+    } else {
+      var plan = SAAS_TIERS[tier] || SAAS_TIERS['basic'];
+      hasCommerce = plan.hasCommerce !== false;
+    }
+
     return (config.enabledActivities || []).map(function (id) {
+      if (id === 'commerce' && !hasCommerce) {
+        return null;
+      }
       return getResolvedActivity(id, config);
     }).filter(Boolean);
   }
@@ -1058,6 +1174,11 @@
     getBookingForActivity: getBookingForActivity,
     getActivityBookingPortalUrl: getActivityBookingPortalUrl,
     serviceNeedsAddress: serviceNeedsAddress,
+    getServiceDeliveryMode: getServiceDeliveryMode,
+    serviceNeedsAddressForDelivery: serviceNeedsAddressForDelivery,
+    serviceShowsDeliveryChoice: serviceShowsDeliveryChoice,
+    serviceIsRemoteOnly: serviceIsRemoteOnly,
+    getVenueNote: getVenueNote,
     getBookableActivities: getBookableActivities,
     getOrderableActivities: getOrderableActivities,
     normalizeServiceArea: normalizeServiceArea,
@@ -1069,5 +1190,7 @@
     applyTheme: applyTheme,
     applyThemeEarly: applyThemeEarly,
     getThemesCatalog: function () { return window.MkenThemesCatalog || []; },
+    SAAS_TIERS: SAAS_TIERS,
+    getSaaSPlan: getSaaSPlan,
   };
 })();

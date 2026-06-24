@@ -1,4 +1,40 @@
 const { getValidAccessToken, ensureTenantClient, getSupabaseAdmin } = require('./_lib/google-auth-helper');
+const { authorizeGbpAiRequest } = require('./_lib/gbp-ai-guard');
+const { buildNapAuditReport, planNapSync } = require('./_lib/nap-audit');
+
+const GBP_POST_MAX_CHARS = 1500;
+const GBP_LOCATION_READ_MASK = 'title,phoneNumbers,websiteUri,storefrontAddress,regularHours,primaryCategory';
+
+async function callGemini(promptText) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured on the server (GEMINI_API_KEY)');
+  }
+  
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: promptText
+        }]
+      }]
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error('Gemini API request failed: ' + errText);
+  }
+
+  const data = await response.json();
+  try {
+    return data.candidates[0].content.parts[0].text;
+  } catch (e) {
+    throw new Error('Failed to parse Gemini API response structure');
+  }
+}
 
 function normalizeTenantSlug(tenant) {
   return (tenant || 'default').trim() || 'default';
@@ -44,8 +80,13 @@ function corsPost(res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Pin'
   );
+}
+
+function trimGbpPostText(text) {
+  if (!text || text.length <= GBP_POST_MAX_CHARS) return text || '';
+  return text.slice(0, GBP_POST_MAX_CHARS - 1).trim() + '…';
 }
 
 function getAction(req) {
@@ -55,6 +96,10 @@ function getAction(req) {
   if (url.indexOf('/update-website') !== -1 || req.query.action === 'update-website') return 'update-website';
   if (url.indexOf('/sync-services') !== -1 || req.query.action === 'sync-services') return 'sync-services';
   if (url.indexOf('/auth-url') !== -1 || req.query.action === 'auth-url') return 'auth-url';
+  if (url.indexOf('/generate-post') !== -1 || req.query.action === 'generate-post') return 'generate-post';
+  if (url.indexOf('/generate-reply') !== -1 || req.query.action === 'generate-reply') return 'generate-reply';
+  if (url.indexOf('/nap-audit') !== -1 || req.query.action === 'nap-audit') return 'nap-audit';
+  if (url.indexOf('/sync-nap') !== -1 || req.query.action === 'sync-nap') return 'sync-nap';
   if (req.query.code && req.query.state) return 'callback';
   return 'auth-url';
 }
@@ -179,14 +224,24 @@ async function handleLocations(req, res) {
 
   for (const account of (accountsData.accounts || [])) {
     const locationsRes = await fetch(
-      'https://mybusinessbusinessinformation.googleapis.com/v1/' + account.name + '/locations?readMask=name,title,websiteUri',
+      'https://mybusinessbusinessinformation.googleapis.com/v1/' + account.name + '/locations?readMask=name,title,websiteUri,metadata,latlng,storefrontAddress',
       { headers: { Authorization: 'Bearer ' + accessToken } }
     );
 
     if (locationsRes.ok) {
       const locationsData = await locationsRes.json();
       allLocations = allLocations.concat((locationsData.locations || []).map(function (loc) {
-        return { id: loc.name, title: loc.title, websiteUri: loc.websiteUri || '' };
+        return {
+          id: loc.name,
+          title: loc.title,
+          websiteUri: loc.websiteUri || '',
+          newReviewUrl: (loc.metadata && loc.metadata.newReviewUrl) || '',
+          mapsUri: (loc.metadata && loc.metadata.mapsUri) || '',
+          placeId: (loc.metadata && loc.metadata.placeId) || '',
+          lat: (loc.latlng && loc.latlng.latitude) || '',
+          lng: (loc.latlng && loc.latlng.longitude) || '',
+          city: (loc.storefrontAddress && loc.storefrontAddress.locality) || ''
+        };
       }));
     }
   }
@@ -321,6 +376,102 @@ async function handleSyncServices(req, res) {
   return res.status(200).json({ success: true, message: 'Services synchronized successfully on Google Business Profile' });
 }
 
+async function handleNapAudit(req, res) {
+  const auth = await authorizeGbpAiRequest(req, res, 'nap-audit');
+  if (!auth) return;
+
+  const { locationId, site } = req.body || {};
+  const tenant = auth.tenantSlug;
+
+  if (!locationId) {
+    return res.status(400).json({ error: 'locationId is required' });
+  }
+
+  const accessToken = await getValidAccessToken(tenant);
+  const gbpLocation = await fetchGbpLocation(locationId, accessToken);
+  const report = buildNapAuditReport(site || {}, gbpLocation);
+
+  return res.status(200).json({ success: true, report: report });
+}
+
+async function fetchGbpLocation(locationId, accessToken) {
+  const locationRes = await fetch(
+    'https://mybusinessbusinessinformation.googleapis.com/v1/' + locationId + '?readMask=' + GBP_LOCATION_READ_MASK,
+    { headers: { Authorization: 'Bearer ' + accessToken } }
+  );
+  if (!locationRes.ok) {
+    await handleGoogleResponseError(locationRes, 'Failed to fetch Google location');
+  }
+  return locationRes.json();
+}
+
+async function handleSyncNap(req, res) {
+  const auth = await authorizeGbpAiRequest(req, res, 'sync-nap');
+  if (!auth) return;
+
+  const { locationId, site } = req.body || {};
+  const tenant = auth.tenantSlug;
+
+  if (!locationId) {
+    return res.status(400).json({ error: 'locationId is required' });
+  }
+  if (!site || typeof site !== 'object') {
+    return res.status(400).json({ error: 'site snapshot is required' });
+  }
+
+  const accessToken = await getValidAccessToken(tenant);
+  const gbpLocation = await fetchGbpLocation(locationId, accessToken);
+  const plan = planNapSync(site, gbpLocation);
+
+  if (!plan.updateMask) {
+    return res.status(200).json({
+      success: true,
+      updated: [],
+      skipped: plan.skipped,
+      report: plan.report,
+      message: 'لا توجد حقول قابلة للمزامنة التلقائية — البيانات متطابقة أو ناقصة في mken.',
+    });
+  }
+
+  const updateRes = await fetch(
+    'https://mybusinessbusinessinformation.googleapis.com/v1/' + locationId + '?updateMask=' + plan.updateMask,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(plan.patchBody),
+    }
+  );
+
+  if (!updateRes.ok) {
+    await handleGoogleResponseError(updateRes, 'Google API NAP sync failed');
+  }
+
+  const supabase = getSupabaseAdmin();
+  await ensureTenantClient(supabase, tenant);
+  const { error: dbError } = await supabase
+    .from('mken_saas_clients')
+    .update({
+      google_business_location_id: locationId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('tenant_slug', tenant);
+  if (dbError) throw dbError;
+
+  const afterLocation = await fetchGbpLocation(locationId, accessToken);
+  const afterReport = buildNapAuditReport(site, afterLocation);
+
+  return res.status(200).json({
+    success: true,
+    updated: plan.updated,
+    skipped: plan.skipped,
+    report: afterReport,
+    message: 'تمت مزامنة ' + plan.updated.length + ' حقل/حقول إلى جوجل بيزنس بنجاح.',
+  });
+}
+
 module.exports = async function handler(req, res) {
   const action = getAction(req);
 
@@ -356,6 +507,97 @@ module.exports = async function handler(req, res) {
       return await handleSyncServices(req, res);
     } catch (err) {
       console.error('Sync Google Business Services Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'generate-post') {
+    corsPost(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      const auth = await authorizeGbpAiRequest(req, res, 'generate-post');
+      if (!auth) return;
+
+      const { prompt, businessName, serviceName } = req.body || {};
+      if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: 'prompt is required' });
+      if (String(prompt).length > 2000) {
+        return res.status(400).json({ error: 'prompt is too long (max 2000 characters)' });
+      }
+      
+      const systemPrompt = `أنت خبير سيو محلي (Local SEO) متمرس. اكتب منشور تسويقي جذاب وملائم لخرائط جوجل (Google Business Profile) باللغة العربية.
+اسم المنشأة: "${businessName || 'مشروعنا'}"
+الخدمة أو العرض المستهدف: "${serviceName || ''}"
+تفاصيل إضافية من التاجر: "${prompt}"
+
+شروط الكتابة:
+1. اكتب بنبرة مهنية وترحيبية تلائم الجمهور السعودي والعربي، واستخدم الرموز التعبيرية (Emojis) بشكل معقول.
+2. ركز على حث العميل على اتخاذ إجراء (Call to Action) مثل الحجز أو الاتصال.
+3. استخدم كلمات مفتاحية طبيعية ومحسنة لمحركات البحث المحلية.
+4. لا تذكر أي روابط أو أرقام هواتف إلا إذا حددها المستخدم.
+5. اجعل المنشور قصيراً ومباشراً ومناسباً لمتصفحي خرائط جوجل.
+6. لا تتجاوز ${GBP_POST_MAX_CHARS} حرفاً في النص النهائي.`;
+
+      const generatedText = trimGbpPostText(await callGemini(systemPrompt));
+      return res.status(200).json({ success: true, text: generatedText });
+    } catch (err) {
+      console.error('Generate Post Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'generate-reply') {
+    corsPost(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      const auth = await authorizeGbpAiRequest(req, res, 'generate-reply');
+      if (!auth) return;
+
+      const { reviewText, rating, businessName } = req.body || {};
+      if (!reviewText && !rating) return res.status(400).json({ error: 'reviewText or rating is required' });
+      if (reviewText && String(reviewText).length > 2000) {
+        return res.status(400).json({ error: 'reviewText is too long (max 2000 characters)' });
+      }
+      
+      const systemPrompt = `أنت ممثل خدمة عملاء محترف لشركة "${businessName || 'نشاطنا التجاري'}". اكتب رداً لبقاً واحترافياً باللغة العربية للرد على تقييم عميل على خرائط جوجل.
+تقييم العميل: ${rating ? rating + ' نجوم' : 'غير محدد'}
+نص المراجعة: "${reviewText || 'لا يوجد نص مراجعة، فقط تقييم بالنجوم'}"
+
+شروط الرد:
+1. إذا كان التقييم إيجابياً (4-5 نجوم)، اشكر العميل بعبارات لطيفة ودافئة وعبر عن سعادتك بخدمته.
+2. إذا كان التقييم سلبياً (1-3 نجوم)، كن متعاطفاً للغاية، اعتذر عن التقصير بأدب ووقار، واقترح عليه التواصل لحل المشكلة (دون ذكر رقم محدد إلا بشكل عام مثل "يسعدنا تواصلكم معنا عبر أرقامنا الرسمية").
+3. اكتب باللغة العربية الفصحى أو بلهجة بيضاء مهذبة ومناسبة.
+4. حافظ على الإيجاز والاحترافية.`;
+
+      const generatedText = await callGemini(systemPrompt);
+      return res.status(200).json({ success: true, text: generatedText });
+    } catch (err) {
+      console.error('Generate Reply Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'nap-audit') {
+    corsPost(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      return await handleNapAudit(req, res);
+    } catch (err) {
+      console.error('NAP Audit Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'sync-nap') {
+    corsPost(res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      return await handleSyncNap(req, res);
+    } catch (err) {
+      console.error('NAP Sync Error:', err);
       return res.status(500).json({ error: err.message });
     }
   }

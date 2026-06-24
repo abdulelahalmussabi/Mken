@@ -450,6 +450,82 @@
     return store.getCurrentTenantSlug() || 'default';
   }
 
+  function getBrandName() {
+    var cfg = store.loadConfig() || {};
+    return (cfg.brand && cfg.brand.name) || 'نشاطنا التجاري';
+  }
+
+  function getGbpAiAuthHeaders() {
+    var headers = { 'Content-Type': 'application/json' };
+    var pin = sessionStorage.getItem('mken_admin_pin');
+    if (pin) {
+      headers['X-Admin-Pin'] = pin;
+      return Promise.resolve(headers);
+    }
+    var db = window.MkenSupabaseDb;
+    if (db && db.isConfigured && db.isConfigured()) {
+      var client = db.getClient();
+      if (client && client.auth && client.auth.getSession) {
+        return client.auth.getSession().then(function (result) {
+          var session = result.data && result.data.session;
+          if (session && session.access_token) {
+            headers['Authorization'] = 'Bearer ' + session.access_token;
+          }
+          return headers;
+        });
+      }
+    }
+    return Promise.resolve(headers);
+  }
+
+  function handleGbpAiAuthFailure(err) {
+    if (err && err.status === 401) {
+      sessionStorage.removeItem('mken_admin_pin');
+      toast('انتهت صلاحية الدخول — أعد تسجيل الدخول للوحة الإدارة', 'error');
+      return;
+    }
+    if (err && err.status === 429) {
+      toast(err.message || 'تم تجاوز حد طلبات الذكاء الاصطناعي. حاول لاحقاً.', 'warning');
+      return;
+    }
+    toast('خطأ في التوليد: ' + (err.message || String(err)), 'error');
+  }
+
+  function parseGbpAiResponse(res) {
+    return res.json().then(function (data) {
+      if (!res.ok) {
+        var err = new Error(data.error || 'فشل التوليد');
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    });
+  }
+
+  function showGbpAiSection() {
+    var aiSection = document.getElementById('googleBusinessAiSection');
+    if (aiSection) aiSection.hidden = false;
+    populateAiServicesDropdown();
+  }
+
+  function updateReviewLinkDisplay(reviewUrl) {
+    var reviewUrlBlock = document.getElementById('googleBusinessReviewUrlBlock');
+    var reviewUrlInput = document.getElementById('googleBusinessReviewUrl');
+    
+    var url = reviewUrl;
+    if (!url) {
+      var cfg = store.loadConfig() || {};
+      url = cfg.googleBusiness && cfg.googleBusiness.reviewUrl;
+    }
+    
+    if (url) {
+      if (reviewUrlInput) reviewUrlInput.value = url;
+      if (reviewUrlBlock) reviewUrlBlock.hidden = false;
+    } else {
+      if (reviewUrlBlock) reviewUrlBlock.hidden = true;
+    }
+  }
+
   function checkGoogleBusinessStatus() {
     var tenantSlug = getGoogleBusinessTenantSlug();
 
@@ -482,6 +558,12 @@
               var opt = document.createElement('option');
               opt.value = loc.id;
               opt.textContent = loc.title + ' (' + (loc.websiteUri || 'لا يوجد رابط موقع') + ')';
+              opt.setAttribute('data-review-url', loc.newReviewUrl || '');
+              opt.setAttribute('data-maps-uri', loc.mapsUri || '');
+              opt.setAttribute('data-place-id', loc.placeId || '');
+              opt.setAttribute('data-lat', loc.lat || '');
+              opt.setAttribute('data-lng', loc.lng || '');
+              opt.setAttribute('data-city', loc.city || '');
               if (data.selectedLocationId === loc.id) {
                 opt.selected = true;
               }
@@ -497,12 +579,19 @@
           if (googleBusinessUrlPreviewBlock) {
             googleBusinessUrlPreviewBlock.hidden = false;
           }
+
+          updateReviewLinkDisplay();
         }
+
+        showGbpAiSection();
       })
       .catch(function (err) {
         console.error(err);
+        if (googleBusinessLoading) googleBusinessLoading.hidden = true;
+        if (googleBusinessDisconnected) googleBusinessDisconnected.hidden = false;
+        showGbpAiSection();
         if (googleBusinessLoading) {
-          googleBusinessLoading.textContent = 'حدث خطأ أثناء فحص حالة الربط: ' + err.message;
+          googleBusinessLoading.textContent = 'تعذّر فحص الربط — AI Copilot متاح بدون ربط جوجل.';
         }
       });
   }
@@ -678,6 +767,382 @@
       });
   }
 
+  function handleLocationSelectChange() {
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    if (!googleBusinessLocationSelect) return;
+    
+    var idx = googleBusinessLocationSelect.selectedIndex;
+    if (idx < 0) return;
+    var opt = googleBusinessLocationSelect.options[idx];
+    var locId = googleBusinessLocationSelect.value;
+    
+    if (!locId) {
+      updateReviewLinkDisplay('');
+      return;
+    }
+
+    var reviewUrl = opt.getAttribute('data-review-url') || '';
+    var mapsUri = opt.getAttribute('data-maps-uri') || '';
+    var placeId = opt.getAttribute('data-place-id') || '';
+    var lat = opt.getAttribute('data-lat') || '';
+    var lng = opt.getAttribute('data-lng') || '';
+    var city = opt.getAttribute('data-city') || '';
+
+    var cfg = store.loadConfig() || {};
+    if (!cfg.googleBusiness) cfg.googleBusiness = {};
+    cfg.googleBusiness.locationId = locId;
+    cfg.googleBusiness.reviewUrl = reviewUrl;
+    cfg.googleBusiness.mapsUri = mapsUri;
+    cfg.googleBusiness.placeId = placeId;
+
+    if (!cfg.serviceArea) cfg.serviceArea = {};
+    cfg.serviceArea.enabled = true;
+    cfg.serviceArea.displayOnHomepage = true;
+
+    if (mapsUri) {
+      cfg.serviceArea.googleMapsUrl = mapsUri;
+      var mapsUrlInput = document.getElementById('mapsListingUrl');
+      if (mapsUrlInput) mapsUrlInput.value = mapsUri;
+    }
+
+    if (city) {
+      cfg.serviceArea.city = city;
+      var mapsCityInput = document.getElementById('mapsCity');
+      if (mapsCityInput) mapsCityInput.value = city;
+    }
+
+    if (lat && lng) {
+      cfg.serviceArea.center = {
+        lat: parseFloat(lat),
+        lng: parseFloat(lng)
+      };
+      var mapsLatInput = document.getElementById('mapsLat');
+      var mapsLngInput = document.getElementById('mapsLng');
+      if (mapsLatInput) mapsLatInput.value = lat;
+      if (mapsLngInput) mapsLngInput.value = lng;
+    }
+
+    var mapsEnabledCheck = document.getElementById('mapsEnabled');
+    if (mapsEnabledCheck) mapsEnabledCheck.checked = true;
+
+    if (window.updateAdminMapPreview) {
+      window.updateAdminMapPreview();
+    }
+
+    store.saveConfig(cfg)
+      .then(function() {
+        updateReviewLinkDisplay(reviewUrl);
+        return fetch('/api/google-business/update-website', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            locationId: locId,
+            websiteUrl: store.buildTenantSiteUrl(tenantSlug)
+          })
+        });
+      })
+      .then(function(res) {
+        if (!res.ok) console.warn('Failed to sync location selection to server');
+        toast('تم حفظ الفرع ورابط التقييم بنجاح', 'success');
+      })
+      .catch(function(err) {
+        console.error(err);
+        toast('حدث خطأ أثناء حفظ الفرع: ' + err.message, 'error');
+      });
+  }
+
+  function populateAiServicesDropdown() {
+    var select = document.getElementById('gbpAiPostServiceSelect');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- اختر خدمة (اختياري) --</option>';
+    var enabledServices = store.getEnabledServices();
+    if (enabledServices && enabledServices.length > 0) {
+      enabledServices.forEach(function (svc) {
+        var opt = document.createElement('option');
+        opt.value = svc.title;
+        opt.textContent = svc.title;
+        select.appendChild(opt);
+      });
+    }
+  }
+
+  function generateGbpAiPost() {
+    var promptInput = document.getElementById('gbpAiPostPrompt');
+    var select = document.getElementById('gbpAiPostServiceSelect');
+    var generateBtn = document.getElementById('gbpAiGeneratePostBtn');
+    var resultBlock = document.getElementById('gbpAiPostResultBlock');
+    var resultText = document.getElementById('gbpAiPostResult');
+    
+    if (!promptInput || !promptInput.value.trim()) {
+      toast('يرجى كتابة فكرة أو تفاصيل للمنشور أولاً', 'warning');
+      return;
+    }
+    
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var brandName = getBrandName();
+    var serviceName = select ? select.value : '';
+    
+    if (generateBtn) {
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'جاري التوليد بالذكاء الاصطناعي... 🪄';
+    }
+    if (resultBlock) resultBlock.hidden = true;
+    
+    getGbpAiAuthHeaders()
+      .then(function (headers) {
+        return fetch('/api/google-business/generate-post', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            prompt: promptInput.value.trim(),
+            businessName: brandName,
+            serviceName: serviceName
+          })
+        });
+      })
+      .then(parseGbpAiResponse)
+      .then(function (data) {
+        if (resultText) resultText.value = data.text;
+        if (resultBlock) resultBlock.hidden = false;
+        toast('تم توليد المنشور بنجاح!', 'success');
+      })
+      .catch(handleGbpAiAuthFailure)
+      .finally(function () {
+        if (generateBtn) {
+          generateBtn.disabled = false;
+          generateBtn.textContent = '🪄 توليد منشور سيو محلي';
+        }
+      });
+  }
+
+  function generateGbpAiReply() {
+    var reviewInput = document.getElementById('gbpAiReplyText');
+    var ratingSelect = document.getElementById('gbpAiReplyRating');
+    var generateBtn = document.getElementById('gbpAiGenerateReplyBtn');
+    var resultBlock = document.getElementById('gbpAiReplyResultBlock');
+    var resultText = document.getElementById('gbpAiReplyResult');
+    
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var brandName = getBrandName();
+    var rating = ratingSelect ? ratingSelect.value : '5';
+    var reviewText = reviewInput ? reviewInput.value.trim() : '';
+    
+    if (generateBtn) {
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'جاري التوليد بالذكاء الاصطناعي... 🪄';
+    }
+    if (resultBlock) resultBlock.hidden = true;
+    
+    getGbpAiAuthHeaders()
+      .then(function (headers) {
+        return fetch('/api/google-business/generate-reply', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            reviewText: reviewText,
+            rating: rating,
+            businessName: brandName
+          })
+        });
+      })
+      .then(parseGbpAiResponse)
+      .then(function (data) {
+        if (resultText) resultText.value = data.text;
+        if (resultBlock) resultBlock.hidden = false;
+        toast('تم توليد الرد بنجاح!', 'success');
+      })
+      .catch(handleGbpAiAuthFailure)
+      .finally(function () {
+        if (generateBtn) {
+          generateBtn.disabled = false;
+          generateBtn.textContent = '🪄 صياغة رد احترافي';
+        }
+      });
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  }
+
+  function buildSiteSnapshotForNap() {
+    var cfg = store.loadConfig() || {};
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var booking = cfg.booking || {};
+    var wh = booking.workingHours || {};
+    var area = cfg.serviceArea || {};
+    return {
+      name: getBrandName(),
+      phone: cfg.phone || '',
+      website: store.buildTenantSiteUrl(tenantSlug),
+      city: area.city || '',
+      hoursStart: wh.start || '',
+      hoursEnd: wh.end || ''
+    };
+  }
+
+  function napStatusLabel(status) {
+    var map = {
+      match: '✓ متطابق',
+      mismatch: '✗ اختلاف',
+      missing_site: '⚠ ناقص في الموقع',
+      missing_gbp: '⚠ ناقص في جوجل',
+      missing_both: '—',
+      info: 'ℹ معلومة'
+    };
+    return map[status] || status;
+  }
+
+  function napStatusColor(status) {
+    if (status === 'match') return '#2ecc71';
+    if (status === 'mismatch') return '#e74c3c';
+    if (status === 'missing_site' || status === 'missing_gbp') return '#f39c12';
+    return '#888';
+  }
+
+  function renderNapAuditReport(report) {
+    var summaryEl = document.getElementById('gbpNapAuditSummary');
+    var tableWrap = document.getElementById('gbpNapAuditTableWrap');
+    var tbody = document.getElementById('gbpNapAuditTableBody');
+    if (!report || !summaryEl || !tbody) return;
+
+    var s = report.summary || {};
+    var overallText = {
+      excellent: 'ممتاز — بيانات NAP متطابقة بالكامل',
+      good: 'جيد — بعض الحقول تحتاج إكمال',
+      fair: 'مقبول — يوجد اختلاف بسيط',
+      poor: 'يحتاج تحسين — عدة اختلافات في NAP'
+    };
+
+    summaryEl.style.display = 'block';
+    summaryEl.innerHTML =
+      '<strong>' + escHtml(overallText[s.overall] || 'نتيجة الفحص') + '</strong><br>' +
+      'النتيجة: ' + (s.matched || 0) + ' / ' + (s.total || 0) + ' متطابق (' + (s.scorePercent || 0) + '%)' +
+      (s.mismatches ? ' — ' + s.mismatches + ' اختلاف' : '') +
+      (report.gbpAddressFull
+        ? '<br><span style="font-size:0.8rem;color:#888;">عنوان GBP الكامل: ' + escHtml(report.gbpAddressFull) + '</span>'
+        : '');
+
+    tbody.innerHTML = (report.items || []).map(function (item) {
+      return '<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">' +
+        '<td style="padding:8px;font-weight:bold;">' + escHtml(item.label) + '</td>' +
+        '<td style="padding:8px;word-break:break-word;">' + escHtml(item.siteValue) + '</td>' +
+        '<td style="padding:8px;word-break:break-word;">' + escHtml(item.gbpValue) + '</td>' +
+        '<td style="padding:8px;color:' + napStatusColor(item.status) + ';white-space:nowrap;">' +
+        napStatusLabel(item.status) +
+        (item.hint ? '<br><span style="font-size:0.75rem;color:#999;">' + escHtml(item.hint) + '</span>' : '') +
+        '</td></tr>';
+    }).join('');
+
+    if (tableWrap) tableWrap.style.display = 'block';
+  }
+
+  function runNapAudit() {
+    if (!googleBusinessLocationSelect || !googleBusinessLocationSelect.value) {
+      toast('يرجى اختيار فرع/نشاط من القائمة أولاً', 'warning');
+      return;
+    }
+
+    var btn = document.getElementById('gbpRunNapAuditBtn');
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var locationId = googleBusinessLocationSelect.value;
+    var site = buildSiteSnapshotForNap();
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'جاري الفحص...';
+    }
+
+    getGbpAiAuthHeaders()
+      .then(function (headers) {
+        return fetch('/api/google-business/nap-audit', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            locationId: locationId,
+            site: site
+          })
+        });
+      })
+      .then(parseGbpAiResponse)
+      .then(function (data) {
+        renderNapAuditReport(data.report);
+        toast('اكتمل فحص NAP', 'success');
+      })
+      .catch(handleGbpAiAuthFailure)
+      .finally(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🔍 تشغيل فحص NAP';
+        }
+      });
+  }
+
+  function syncNapFromMken() {
+    if (!googleBusinessLocationSelect || !googleBusinessLocationSelect.value) {
+      toast('يرجى اختيار فرع/نشاط من القائمة أولاً', 'warning');
+      return;
+    }
+
+    var tenantSlug = getGoogleBusinessTenantSlug();
+    var locationId = googleBusinessLocationSelect.value;
+    var site = buildSiteSnapshotForNap();
+    var btn = document.getElementById('gbpSyncNapBtn');
+
+    var previewLines = [];
+    if (site.name) previewLines.push('• الاسم: ' + site.name);
+    if (site.phone) previewLines.push('• الهاتف: ' + (store.formatPhoneDisplay ? store.formatPhoneDisplay(site.phone) : site.phone));
+    if (site.website) previewLines.push('• الموقع: ' + site.website);
+
+    var confirmMsg =
+      'سيتم تحديث بيانات جوجل بيزنس من mken للحقول غير المتطابقة فقط:\n\n' +
+      previewLines.join('\n') +
+      '\n\nملاحظة: تغيير الاسم قد يتطلب موافقة Google.\n\nهل تريد المتابعة؟';
+
+    if (!confirm(confirmMsg)) return;
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'جاري المزامنة...';
+    }
+
+    getGbpAiAuthHeaders()
+      .then(function (headers) {
+        return fetch('/api/google-business/sync-nap', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            tenant: tenantSlug,
+            locationId: locationId,
+            site: site
+          })
+        });
+      })
+      .then(parseGbpAiResponse)
+      .then(function (data) {
+        if (data.report) renderNapAuditReport(data.report);
+        var updatedCount = (data.updated && data.updated.length) || 0;
+        if (updatedCount > 0) {
+          var names = data.updated.map(function (u) { return u.label; }).join('، ');
+          toast('تم تحديث: ' + names, 'success');
+          checkGoogleBusinessStatus();
+        } else {
+          toast(data.message || 'لا توجد حقول تحتاج مزامنة', 'warning');
+        }
+      })
+      .catch(handleGbpAiAuthFailure)
+      .finally(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🔧 إصلاح تلقائي (mken → جوجل)';
+        }
+      });
+  }
+
   function checkGoogleRedirectParams() {
     var params = new URLSearchParams(window.location.search);
     var connectStatus = params.get('google_connect');
@@ -771,6 +1236,92 @@
     if (googleBusinessDisconnectBtn) {
       googleBusinessDisconnectBtn.addEventListener('click', disconnectGoogleBusiness);
     }
+    if (googleBusinessLocationSelect) {
+      googleBusinessLocationSelect.addEventListener('change', handleLocationSelectChange);
+    }
+
+    var napAuditBtn = document.getElementById('gbpRunNapAuditBtn');
+    if (napAuditBtn) {
+      napAuditBtn.addEventListener('click', runNapAudit);
+    }
+
+    var napSyncBtn = document.getElementById('gbpSyncNapBtn');
+    if (napSyncBtn) {
+      napSyncBtn.addEventListener('click', syncNapFromMken);
+    }
+    
+    var copyReviewBtn = document.getElementById('copyGoogleReviewUrlBtn');
+    if (copyReviewBtn) {
+      copyReviewBtn.addEventListener('click', function() {
+        var reviewUrlInput = document.getElementById('googleBusinessReviewUrl');
+        if (reviewUrlInput && reviewUrlInput.value) {
+          navigator.clipboard.writeText(reviewUrlInput.value).then(function() {
+            copyReviewBtn.textContent = 'تم النسخ';
+            setTimeout(function() { copyReviewBtn.textContent = 'نسخ'; }, 1500);
+          });
+        }
+      });
+    }
+
+    var generatePostBtn = document.getElementById('gbpAiGeneratePostBtn');
+    if (generatePostBtn) {
+      generatePostBtn.addEventListener('click', generateGbpAiPost);
+    }
+
+    var generateReplyBtn = document.getElementById('gbpAiGenerateReplyBtn');
+    if (generateReplyBtn) {
+      generateReplyBtn.addEventListener('click', generateGbpAiReply);
+    }
+
+    var copyPostBtn = document.getElementById('copyGbpAiPostBtn');
+    if (copyPostBtn) {
+      copyPostBtn.addEventListener('click', function() {
+        var txt = document.getElementById('gbpAiPostResult');
+        if (txt && txt.value) {
+          navigator.clipboard.writeText(txt.value).then(function() {
+            copyPostBtn.textContent = 'تم النسخ';
+            setTimeout(function() { copyPostBtn.textContent = 'نسخ النص 📋'; }, 1500);
+          });
+        }
+      });
+    }
+    
+    var copyReplyBtn = document.getElementById('copyGbpAiReplyBtn');
+    if (copyReplyBtn) {
+      copyReplyBtn.addEventListener('click', function() {
+        var txt = document.getElementById('gbpAiReplyResult');
+        if (txt && txt.value) {
+          navigator.clipboard.writeText(txt.value).then(function() {
+            copyReplyBtn.textContent = 'تم النسخ';
+            setTimeout(function() { copyReplyBtn.textContent = 'نسخ النص 📋'; }, 1500);
+          });
+        }
+      });
+    }
+
+    var aiTabs = document.querySelectorAll('.gbp-ai-tab');
+    aiTabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        aiTabs.forEach(function (t) {
+          t.classList.remove('btn--primary');
+          t.classList.add('btn--outline');
+        });
+        tab.classList.remove('btn--outline');
+        tab.classList.add('btn--primary');
+        
+        var tabName = tab.getAttribute('data-gbp-tab');
+        var postPanel = document.getElementById('gbpAiPostPanel');
+        var replyPanel = document.getElementById('gbpAiReplyPanel');
+        
+        if (tabName === 'ai-post') {
+          if (postPanel) postPanel.hidden = false;
+          if (replyPanel) replyPanel.hidden = true;
+        } else {
+          if (postPanel) postPanel.hidden = true;
+          if (replyPanel) replyPanel.hidden = false;
+        }
+      });
+    });
   }
 
   window.MkenAdminDeveloper = {

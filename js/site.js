@@ -473,6 +473,18 @@
       activeActivityId = activities[0].id;
     }
     applyBrand();
+
+    // Dynamic header links visibility based on features availability
+    var hasBookable = store.getBookableActivities && store.getBookableActivities().length > 0;
+    var hasOrderable = store.getOrderableActivities && store.getOrderableActivities().length > 0;
+    
+    document.querySelectorAll('nav a[href="book.html"], .hero__actions a[id="heroBookingCta"]').forEach(function (el) {
+      el.style.display = hasBookable ? '' : 'none';
+    });
+    document.querySelectorAll('nav a[href="order.html"]').forEach(function (el) {
+      el.style.display = hasOrderable ? '' : 'none';
+    });
+
     if (activities.length) switchActivity(activeActivityId);
     else {
       var empty = document.getElementById('servicesEmpty');

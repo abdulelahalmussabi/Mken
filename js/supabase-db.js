@@ -49,6 +49,155 @@
     return !!getClient();
   }
 
+  // --- Offline Caching & Synchronization Core ---
+  var SYNC_QUEUE_KEY = 'mken_sync_queue';
+  var isSyncing = false;
+
+  function getCache(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.error('Failed to get cache for ' + key, e);
+      return null;
+    }
+  }
+
+  function setCache(key, data) {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.error('Failed to set cache for ' + key, e);
+    }
+  }
+
+  function updateLocalCacheArray(cacheKey, newItem) {
+    var list = getCache(cacheKey) || [];
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === newItem.id) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx !== -1) {
+      list[idx] = newItem;
+    } else {
+      list.push(newItem);
+    }
+    setCache(cacheKey, list);
+  }
+
+  function getSyncQueue() {
+    try {
+      var raw = localStorage.getItem(SYNC_QUEUE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveSyncQueue(queue) {
+    try {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+      // Dispatch event to notify UI
+      var event;
+      if (typeof(Event) === 'function') {
+        event = new Event('mken_sync_queue_changed');
+      } else {
+        event = document.createEvent('Event');
+        event.initEvent('mken_sync_queue_changed', true, true);
+      }
+      window.dispatchEvent(event);
+    } catch (e) {
+      console.error('Failed to save sync queue', e);
+    }
+  }
+
+  function addToSyncQueue(action, payload, tenantSlug) {
+    var queue = getSyncQueue();
+    queue.push({
+      id: 'sq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      action: action,
+      payload: payload,
+      tenantSlug: tenantSlug || 'default',
+      timestamp: new Date().toISOString()
+    });
+    saveSyncQueue(queue);
+  }
+
+  function getPendingSyncCount() {
+    return getSyncQueue().length;
+  }
+
+  function processSyncQueue() {
+    if (isSyncing || !navigator.onLine) return;
+    var client = getClient();
+    if (!client) return;
+
+    var queue = getSyncQueue();
+    if (!queue.length) return;
+
+    isSyncing = true;
+    console.log('Processing offline sync queue of ' + queue.length + ' item(s)...');
+
+    function syncNext() {
+      var currentQueue = getSyncQueue();
+      if (!currentQueue.length) {
+        isSyncing = false;
+        console.log('Offline sync queue successfully processed!');
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تمت مزامنة جميع العمليات المعلقة بنجاح');
+        }
+        if (window.MkenAdminInvoices) window.MkenAdminInvoices.refresh();
+        if (window.MkenAdminCustomers) window.MkenAdminCustomers.refresh();
+        if (window.MkenAdminInventory) window.MkenAdminInventory.refresh();
+        if (window.MkenAdminPurchases) window.MkenAdminPurchases.refresh();
+        return;
+      }
+
+      var item = currentQueue[0];
+      var promise = null;
+
+      if (item.action === 'saveCustomer') {
+        promise = saveCustomer(item.payload, item.tenantSlug, true);
+      } else if (item.action === 'saveCustomerInvoice') {
+        promise = saveCustomerInvoice(item.payload, item.tenantSlug, true);
+      } else if (item.action === 'saveVendor') {
+        promise = saveVendor(item.payload, item.tenantSlug, true);
+      } else if (item.action === 'savePurchaseInvoice') {
+        promise = savePurchaseInvoice(item.payload, item.tenantSlug, true);
+      } else if (item.action === 'saveInventoryItem') {
+        promise = saveInventoryItem(item.payload, item.tenantSlug, true);
+      }
+
+      if (promise) {
+        promise.then(function () {
+          var updatedQueue = getSyncQueue();
+          updatedQueue = updatedQueue.filter(function (qi) { return qi.id !== item.id; });
+          saveSyncQueue(updatedQueue);
+          setTimeout(syncNext, 100);
+        }).catch(function (err) {
+          console.error('Failed to sync item in queue: ', item, err);
+          isSyncing = false;
+        });
+      } else {
+        // Unknown action, skip
+        var updatedQueue = getSyncQueue();
+        updatedQueue.shift();
+        saveSyncQueue(updatedQueue);
+        setTimeout(syncNext, 10);
+      }
+    }
+
+    syncNext();
+  }
+
+  // Register network status event
+  window.addEventListener('online', processSyncQueue);
+  setTimeout(processSyncQueue, 3000);
+
+
   function reinit(url, key, enabled) {
     _client = null;
     if (enabled && url && key && window.supabase) {
@@ -107,6 +256,7 @@
           }
         }
 
+        var originalSub = data.subscription || {};
         data.subscription = {
           status: res.data.subscription_status,
           start: res.data.subscription_start,
@@ -114,7 +264,9 @@
           businessName: res.data.business_name,
           email: res.data.email,
           phone: res.data.phone,
-          tenantSlug: res.data.tenant_slug
+          tenantSlug: res.data.tenant_slug,
+          tier: res.data.subscription_tier || 'basic',
+          customFeatures: originalSub.customFeatures || null
         };
         return data;
       });
@@ -219,6 +371,9 @@
       notes: row.notes || '',
       partySize: row.party_size,
       nights: row.nights,
+      stayUnit: row.stay_unit || '',
+      stayBooking: row.stay_booking === true,
+      checkOutTime: row.check_out_time || '',
       status: row.status,
       remindersSent: row.reminders_sent || [],
       createdAt: row.created_at,
@@ -250,6 +405,9 @@
         notes: apt.notes,
         party_size: apt.partySize,
         nights: apt.nights,
+        stay_unit: apt.stayUnit || null,
+        stay_booking: apt.stayBooking === true,
+        check_out_time: apt.checkOutTime || null,
         status: apt.status,
         reminders_sent: apt.remindersSent || [],
         created_at: apt.createdAt || new Date().toISOString(),
@@ -285,6 +443,9 @@
         notes: apt.notes,
         party_size: apt.partySize,
         nights: apt.nights,
+        stay_unit: apt.stayUnit || null,
+        stay_booking: apt.stayBooking === true,
+        check_out_time: apt.checkOutTime || null,
         status: apt.status,
         reminders_sent: apt.remindersSent || [],
         created_at: apt.createdAt || new Date().toISOString(),
@@ -698,6 +859,598 @@
       });
   }
 
+  function fetchInventoryItems(tenantSlug) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_inventory';
+    var slug = tenantSlug || 'default';
+
+    if (client && navigator.onLine) {
+      return client
+        .from('mken_inventory_items')
+        .select('*')
+        .eq('tenant_slug', slug)
+        .order('name', { ascending: true })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var data = (res.data || []).map(function (row) {
+            return {
+              id: row.id,
+              tenantSlug: row.tenant_slug,
+              name: row.name,
+              sku: row.sku || '',
+              barcode: row.barcode || '',
+              costPrice: Number(row.cost_price || 0),
+              sellPrice: Number(row.sell_price || 0),
+              quantity: Number(row.quantity || 0),
+              minStockAlert: Number(row.min_stock_alert || 0),
+              imageUrl: row.image_url || '',
+              createdAt: row.created_at,
+              updatedAt: row.updated_at
+            };
+          });
+          setCache(cacheKey, data);
+          return data;
+        })
+        .catch(function (err) {
+          console.warn('Supabase fetch failed, falling back to local cache', err);
+          var cached = getCache(cacheKey);
+          return cached || [];
+        });
+    } else {
+      var cached = getCache(cacheKey);
+      return Promise.resolve(cached || []);
+    }
+  }
+
+  function saveInventoryItem(item, tenantSlug, bypassQueue) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_inventory';
+    var slug = tenantSlug || item.tenantSlug || 'default';
+
+    var localItem = {
+      id: item.id,
+      tenantSlug: slug,
+      name: item.name,
+      sku: item.sku || '',
+      barcode: item.barcode || '',
+      costPrice: Number(item.costPrice || 0),
+      sellPrice: Number(item.sellPrice || 0),
+      quantity: Number(item.quantity || 0),
+      minStockAlert: Number(item.minStockAlert || 0),
+      imageUrl: item.imageUrl || '',
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateLocalCacheArray(cacheKey, localItem);
+
+    if (client && navigator.onLine && (bypassQueue || getSyncQueue().length === 0)) {
+      return client
+        .from('mken_inventory_items')
+        .upsert({
+          id: item.id,
+          tenant_slug: slug,
+          name: item.name,
+          sku: item.sku || null,
+          barcode: item.barcode || null,
+          cost_price: Number(item.costPrice || 0),
+          sell_price: Number(item.sellPrice || 0),
+          quantity: Number(item.quantity || 0),
+          min_stock_alert: Number(item.minStockAlert || 0),
+          image_url: item.imageUrl || null,
+          created_at: item.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return item;
+        })
+        .catch(function (err) {
+          if (bypassQueue) throw err;
+          console.warn('Supabase save failed, adding to sync queue', err);
+          addToSyncQueue('saveInventoryItem', item, slug);
+          if (window.MkenAdminToast) {
+            window.MkenAdminToast('تم حفظ الصنف محلياً وسيتم مزامنته عند توفر الاتصال');
+          }
+          return item;
+        });
+    } else {
+      if (!bypassQueue) {
+        addToSyncQueue('saveInventoryItem', item, slug);
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تم حفظ الصنف محلياً وسيتم مزامنته عند توفر الاتصال');
+        }
+      }
+      return Promise.resolve(item);
+    }
+  }
+
+  function deleteInventoryItem(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_inventory_items')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
+  function fetchCustomerInvoices(tenantSlug) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_invoices';
+    var slug = tenantSlug || 'default';
+
+    if (client && navigator.onLine) {
+      return client
+        .from('mken_invoices')
+        .select('*')
+        .eq('tenant_slug', slug)
+        .order('created_at', { ascending: false })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var data = (res.data || []).map(function (row) {
+            return {
+              id: row.id,
+              tenantSlug: row.tenant_slug,
+              customerId: row.customer_id || null,
+              customerName: row.customer_name,
+              customerPhone: row.customer_phone || '',
+              items: row.items || [],
+              subtotal: Number(row.subtotal || 0),
+              taxAmount: Number(row.tax_amount || 0),
+              discount: Number(row.discount || 0),
+              totalAmount: Number(row.total_amount || 0),
+              paymentStatus: row.payment_status || 'unpaid',
+              paymentMethod: row.payment_method || '',
+              type: row.type || 'invoice',
+              createdAt: row.created_at,
+              updatedAt: row.updated_at
+            };
+          });
+          setCache(cacheKey, data);
+          return data;
+        })
+        .catch(function (err) {
+          console.warn('Supabase fetch failed, falling back to local cache', err);
+          var cached = getCache(cacheKey);
+          return cached || [];
+        });
+    } else {
+      var cached = getCache(cacheKey);
+      return Promise.resolve(cached || []);
+    }
+  }
+
+  function saveCustomerInvoice(invoice, tenantSlug, bypassQueue) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_invoices';
+    var slug = tenantSlug || invoice.tenantSlug || 'default';
+
+    var localInvoice = {
+      id: invoice.id,
+      tenantSlug: slug,
+      customerId: invoice.customerId || null,
+      customerName: invoice.customerName,
+      customerPhone: invoice.customerPhone || '',
+      items: invoice.items || [],
+      subtotal: Number(invoice.subtotal || 0),
+      taxAmount: Number(invoice.taxAmount || 0),
+      discount: Number(invoice.discount || 0),
+      totalAmount: Number(invoice.totalAmount || 0),
+      paymentStatus: invoice.paymentStatus || 'unpaid',
+      paymentMethod: invoice.paymentMethod || '',
+      type: invoice.type || 'invoice',
+      createdAt: invoice.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateLocalCacheArray(cacheKey, localInvoice);
+
+    if (client && navigator.onLine && (bypassQueue || getSyncQueue().length === 0)) {
+      return client
+        .from('mken_invoices')
+        .upsert({
+          id: invoice.id,
+          tenant_slug: slug,
+          customer_id: invoice.customerId || null,
+          customer_name: invoice.customerName,
+          customer_phone: invoice.customerPhone || null,
+          items: invoice.items || [],
+          subtotal: Number(invoice.subtotal || 0),
+          tax_amount: Number(invoice.taxAmount || 0),
+          discount: Number(invoice.discount || 0),
+          total_amount: Number(invoice.totalAmount || 0),
+          payment_status: invoice.paymentStatus || 'unpaid',
+          payment_method: invoice.paymentMethod || null,
+          type: invoice.type || 'invoice',
+          created_at: invoice.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return invoice;
+        })
+        .catch(function (err) {
+          if (bypassQueue) throw err;
+          console.warn('Supabase save failed, adding to sync queue', err);
+          addToSyncQueue('saveCustomerInvoice', invoice, slug);
+          if (window.MkenAdminToast) {
+            window.MkenAdminToast('تم حفظ الفاتورة محلياً وسيتم مزامنتها عند توفر الاتصال');
+          }
+          return invoice;
+        });
+    } else {
+      if (!bypassQueue) {
+        addToSyncQueue('saveCustomerInvoice', invoice, slug);
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تم حفظ الفاتورة محلياً وسيتم مزامنته عند توفر الاتصال');
+        }
+      }
+      return Promise.resolve(invoice);
+    }
+  }
+
+  function deleteCustomerInvoice(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_invoices')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
+  function fetchVendors(tenantSlug) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_vendors';
+    var slug = tenantSlug || 'default';
+
+    if (client && navigator.onLine) {
+      return client
+        .from('mken_vendors')
+        .select('*')
+        .eq('tenant_slug', slug)
+        .order('name', { ascending: true })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var data = (res.data || []).map(function (row) {
+            return {
+              id: row.id,
+              tenantSlug: row.tenant_slug,
+              name: row.name,
+              contactPerson: row.contact_person || '',
+              phone: row.phone || '',
+              email: row.email || '',
+              address: row.address || '',
+              createdAt: row.created_at
+            };
+          });
+          setCache(cacheKey, data);
+          return data;
+        })
+        .catch(function (err) {
+          console.warn('Supabase fetch failed, falling back to local cache', err);
+          var cached = getCache(cacheKey);
+          return cached || [];
+        });
+    } else {
+      var cached = getCache(cacheKey);
+      return Promise.resolve(cached || []);
+    }
+  }
+
+  function saveVendor(vendor, tenantSlug, bypassQueue) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_vendors';
+    var slug = tenantSlug || vendor.tenantSlug || 'default';
+
+    var localVendor = {
+      id: vendor.id,
+      tenantSlug: slug,
+      name: vendor.name,
+      contactPerson: vendor.contactPerson || '',
+      phone: vendor.phone || '',
+      email: vendor.email || '',
+      address: vendor.address || '',
+      createdAt: vendor.createdAt || new Date().toISOString()
+    };
+    updateLocalCacheArray(cacheKey, localVendor);
+
+    if (client && navigator.onLine && (bypassQueue || getSyncQueue().length === 0)) {
+      return client
+        .from('mken_vendors')
+        .upsert({
+          id: vendor.id,
+          tenant_slug: slug,
+          name: vendor.name,
+          contact_person: vendor.contactPerson || null,
+          phone: vendor.phone || null,
+          email: vendor.email || null,
+          address: vendor.address || null,
+          created_at: vendor.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return vendor;
+        })
+        .catch(function (err) {
+          if (bypassQueue) throw err;
+          console.warn('Supabase save failed, adding to sync queue', err);
+          addToSyncQueue('saveVendor', vendor, slug);
+          if (window.MkenAdminToast) {
+            window.MkenAdminToast('تم حفظ المورد محلياً وسيتم مزامنته عند توفر الاتصال');
+          }
+          return vendor;
+        });
+    } else {
+      if (!bypassQueue) {
+        addToSyncQueue('saveVendor', vendor, slug);
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تم حفظ المورد محلياً وسيتم مزامنته عند توفر الاتصال');
+        }
+      }
+      return Promise.resolve(vendor);
+    }
+  }
+
+  function deleteVendor(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_vendors')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
+  function fetchCustomers(tenantSlug) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_customers';
+    var slug = tenantSlug || 'default';
+
+    if (client && navigator.onLine) {
+      return client
+        .from('mken_customers')
+        .select('*')
+        .eq('tenant_slug', slug)
+        .order('name', { ascending: true })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var data = (res.data || []).map(function (row) {
+            return {
+              id: row.id,
+              tenantSlug: row.tenant_slug,
+              name: row.name,
+              phone: row.phone || '',
+              email: row.email || '',
+              address: row.address || '',
+              createdAt: row.created_at
+            };
+          });
+          setCache(cacheKey, data);
+          return data;
+        })
+        .catch(function (err) {
+          console.warn('Supabase fetch failed, falling back to local cache', err);
+          var cached = getCache(cacheKey);
+          return cached || [];
+        });
+    } else {
+      var cached = getCache(cacheKey);
+      return Promise.resolve(cached || []);
+    }
+  }
+
+  function saveCustomer(customer, tenantSlug, bypassQueue) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_customers';
+    var slug = tenantSlug || customer.tenantSlug || 'default';
+
+    var localCustomer = {
+      id: customer.id,
+      tenantSlug: slug,
+      name: customer.name,
+      phone: customer.phone || '',
+      email: customer.email || '',
+      address: customer.address || '',
+      createdAt: customer.createdAt || new Date().toISOString()
+    };
+    updateLocalCacheArray(cacheKey, localCustomer);
+
+    if (client && navigator.onLine && (bypassQueue || getSyncQueue().length === 0)) {
+      return client
+        .from('mken_customers')
+        .upsert({
+          id: customer.id,
+          tenant_slug: slug,
+          name: customer.name,
+          phone: customer.phone || null,
+          email: customer.email || null,
+          address: customer.address || null,
+          created_at: customer.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return customer;
+        })
+        .catch(function (err) {
+          if (bypassQueue) throw err;
+          console.warn('Supabase save failed, adding to sync queue', err);
+          addToSyncQueue('saveCustomer', customer, slug);
+          if (window.MkenAdminToast) {
+            window.MkenAdminToast('تم حفظ العميل محلياً وسيتم مزامنته عند توفر الاتصال');
+          }
+          return customer;
+        });
+    } else {
+      if (!bypassQueue) {
+        addToSyncQueue('saveCustomer', customer, slug);
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تم حفظ العميل محلياً وسيتم مزامنته عند توفر الاتصال');
+        }
+      }
+      return Promise.resolve(customer);
+    }
+  }
+
+  function deleteCustomer(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_customers')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
+  function fetchPurchaseInvoices(tenantSlug) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_purchase_invoices';
+    var slug = tenantSlug || 'default';
+
+    if (client && navigator.onLine) {
+      return client
+        .from('mken_purchase_invoices')
+        .select('*')
+        .eq('tenant_slug', slug)
+        .order('created_at', { ascending: false })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          var data = (res.data || []).map(function (row) {
+            return {
+              id: row.id,
+              tenantSlug: row.tenant_slug,
+              vendorId: row.vendor_id,
+              items: row.items || [],
+              totalAmount: Number(row.total_amount || 0),
+              paymentStatus: row.payment_status || 'unpaid',
+              createdAt: row.created_at
+            };
+          });
+          setCache(cacheKey, data);
+          return data;
+        })
+        .catch(function (err) {
+          console.warn('Supabase fetch failed, falling back to local cache', err);
+          var cached = getCache(cacheKey);
+          return cached || [];
+        });
+    } else {
+      var cached = getCache(cacheKey);
+      return Promise.resolve(cached || []);
+    }
+  }
+
+  function savePurchaseInvoice(invoice, tenantSlug, bypassQueue) {
+    var client = getClient();
+    var cacheKey = 'mken_cache_purchase_invoices';
+    var slug = tenantSlug || invoice.tenantSlug || 'default';
+
+    var localInvoice = {
+      id: invoice.id,
+      tenantSlug: slug,
+      vendorId: invoice.vendorId || null,
+      items: invoice.items || [],
+      totalAmount: Number(invoice.totalAmount || 0),
+      paymentStatus: invoice.paymentStatus || 'unpaid',
+      createdAt: invoice.createdAt || new Date().toISOString()
+    };
+    updateLocalCacheArray(cacheKey, localInvoice);
+
+    if (client && navigator.onLine && (bypassQueue || getSyncQueue().length === 0)) {
+      return client
+        .from('mken_purchase_invoices')
+        .upsert({
+          id: invoice.id,
+          tenant_slug: slug,
+          vendor_id: invoice.vendorId || null,
+          items: invoice.items || [],
+          total_amount: Number(invoice.totalAmount || 0),
+          payment_status: invoice.paymentStatus || 'unpaid',
+          created_at: invoice.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .then(function (res) {
+          if (res.error) throw res.error;
+          return invoice;
+        })
+        .catch(function (err) {
+          if (bypassQueue) throw err;
+          console.warn('Supabase save failed, adding to sync queue', err);
+          addToSyncQueue('savePurchaseInvoice', invoice, slug);
+          if (window.MkenAdminToast) {
+            window.MkenAdminToast('تم حفظ الفاتورة محلياً وسيتم مزامنته عند توفر الاتصال');
+          }
+          return invoice;
+        });
+    } else {
+      if (!bypassQueue) {
+        addToSyncQueue('savePurchaseInvoice', invoice, slug);
+        if (window.MkenAdminToast) {
+          window.MkenAdminToast('تم حفظ الفاتورة محلياً وسيتم مزامنته عند توفر الاتصال');
+        }
+      }
+      return Promise.resolve(invoice);
+    }
+  }
+
+  function deletePurchaseInvoice(id) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_purchase_invoices')
+      .delete()
+      .eq('id', id)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return id;
+      });
+  }
+
+  function fetchInventoryTransactions(tenantSlug) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    var slug = tenantSlug || 'default';
+    return client
+      .from('mken_inventory_transactions')
+      .select('*')
+      .eq('tenant_slug', slug)
+      .order('created_at', { ascending: false })
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return (res.data || []).map(function (row) {
+          return {
+            id: row.id,
+            tenantSlug: row.tenant_slug,
+            itemId: row.item_id,
+            type: row.type,
+            quantity: Number(row.quantity || 0),
+            referenceId: row.reference_id || '',
+            notes: row.notes || '',
+            createdAt: row.created_at
+          };
+        });
+      });
+  }
+
   function testConnection(url, key) {
     if (!window.supabase) return Promise.reject(new Error('مكتبة Supabase غير محملة على هذا المتصفح.'));
     try {
@@ -738,6 +1491,7 @@
       '    email TEXT UNIQUE NOT NULL,',
       '    phone TEXT NOT NULL,',
       '    subscription_status TEXT DEFAULT \'active\',',
+      '    subscription_tier TEXT DEFAULT \'basic\',',
       '    subscription_start TIMESTAMPTZ DEFAULT NOW(),',
       '    subscription_end TIMESTAMPTZ NOT NULL,',
       '    config_data JSONB NOT NULL,',
@@ -837,6 +1591,92 @@
       '    updated_at TIMESTAMPTZ DEFAULT NOW()',
       ');',
       '',
+      '-- 7b. إنشاء جدول أصناف المستودع والمخزون mken_inventory_items',
+      'CREATE TABLE IF NOT EXISTS mken_inventory_items (',
+      '    id TEXT PRIMARY KEY,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    name TEXT NOT NULL,',
+      '    sku TEXT,',
+      '    barcode TEXT,',
+      '    cost_price NUMERIC DEFAULT 0,',
+      '    sell_price NUMERIC DEFAULT 0,',
+      '    quantity INTEGER DEFAULT 0,',
+      '    min_stock_alert INTEGER DEFAULT 0,',
+      '    image_url TEXT,',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    updated_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- 7c. إنشاء جدول فواتير العملاء mken_invoices',
+      'CREATE TABLE IF NOT EXISTS mken_invoices (',
+      '    id TEXT PRIMARY KEY,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    customer_name TEXT NOT NULL,',
+      '    customer_phone TEXT,',
+      '    items JSONB DEFAULT \'[]\'::jsonb,',
+      '    subtotal NUMERIC DEFAULT 0,',
+      '    tax_amount NUMERIC DEFAULT 0,',
+      '    discount NUMERIC DEFAULT 0,',
+      '    total_amount NUMERIC DEFAULT 0,',
+      '    payment_status TEXT DEFAULT \'unpaid\',',
+      '    payment_method TEXT,',
+      '    type TEXT DEFAULT \'invoice\',',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    updated_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- 7d. إنشاء جدول حركات المخزون mken_inventory_transactions',
+      'CREATE TABLE IF NOT EXISTS mken_inventory_transactions (',
+      '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    item_id TEXT REFERENCES mken_inventory_items(id) ON DELETE CASCADE,',
+      '    type TEXT NOT NULL,',
+      '    quantity INTEGER NOT NULL,',
+      '    reference_id TEXT,',
+      '    notes TEXT,',
+      '    created_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- 7e. إنشاء جدول الموردين mken_vendors',
+      'CREATE TABLE IF NOT EXISTS mken_vendors (',
+      '    id TEXT PRIMARY KEY,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    name TEXT NOT NULL,',
+      '    contact_person TEXT,',
+      '    phone TEXT,',
+      '    email TEXT,',
+      '    address TEXT,',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    updated_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- 7f. إنشاء جدول فواتير المشتريات من الموردين mken_purchase_invoices',
+      'CREATE TABLE IF NOT EXISTS mken_purchase_invoices (',
+      '    id TEXT PRIMARY KEY,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    vendor_id TEXT REFERENCES mken_vendors(id) ON DELETE SET NULL,',
+      '    items JSONB DEFAULT \'[]\'::jsonb,',
+      '    total_amount NUMERIC DEFAULT 0,',
+      '    payment_status TEXT DEFAULT \'unpaid\',',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    updated_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- 7g. إنشاء جدول العملاء mken_customers',
+      'CREATE TABLE IF NOT EXISTS mken_customers (',
+      '    id TEXT PRIMARY KEY,',
+      '    tenant_slug TEXT NOT NULL REFERENCES mken_saas_clients(tenant_slug) ON DELETE CASCADE,',
+      '    name TEXT NOT NULL,',
+      '    phone TEXT,',
+      '    email TEXT,',
+      '    address TEXT,',
+      '    created_at TIMESTAMPTZ DEFAULT NOW(),',
+      '    updated_at TIMESTAMPTZ DEFAULT NOW()',
+      ');',
+      '',
+      '-- ترقية جدول mken_invoices لإضافة customer_id',
+      'ALTER TABLE mken_invoices ADD COLUMN IF NOT EXISTS customer_id TEXT REFERENCES mken_customers(id) ON DELETE SET NULL;',
+      '',
       '-- 8. إنشاء جدول مفاتيح الـ API للتكامل الخارجي mken_api_keys',
       'CREATE TABLE IF NOT EXISTS mken_api_keys (',
       '    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),',
@@ -884,6 +1724,9 @@
       'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_id TEXT;',
       'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_method TEXT;',
       'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS stay_unit TEXT;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS stay_booking BOOLEAN DEFAULT false;',
+      'ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS check_out_time TEXT;',
       '-- ملاحظة: جدول mken_orders يُنشأ في القسم 3 أعلاه إن لم يكن موجوداً',
       'DO $$ BEGIN',
       '  IF to_regclass(\'public.mken_orders\') IS NOT NULL THEN',
@@ -905,6 +1748,11 @@
       '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;',
       '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;',
       '    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;',
+      '  END IF;',
+      'END $$;',
+      'DO $$ BEGIN',
+      '  IF to_regclass(\'public.mken_invoices\') IS NOT NULL THEN',
+      '    ALTER TABLE mken_invoices ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'invoice\';',
       '  END IF;',
       'END $$;',
       '',
@@ -929,6 +1777,13 @@
       'DROP POLICY IF EXISTS "Allow owner read invoices" ON mken_saas_invoices;',
       'DROP POLICY IF EXISTS "Allow owner manage api keys" ON mken_api_keys;',
       'DROP POLICY IF EXISTS "Allow owner manage whatsapp logs" ON mken_whatsapp_logs;',
+      'DROP POLICY IF EXISTS "Allow owner manage inventory items" ON mken_inventory_items;',
+      'DROP POLICY IF EXISTS "Allow public read inventory items" ON mken_inventory_items;',
+      'DROP POLICY IF EXISTS "Allow owner manage invoices" ON mken_invoices;',
+      'DROP POLICY IF EXISTS "Allow owner manage inventory transactions" ON mken_inventory_transactions;',
+      'DROP POLICY IF EXISTS "Allow owner manage vendors" ON mken_vendors;',
+      'DROP POLICY IF EXISTS "Allow owner manage purchase invoices" ON mken_purchase_invoices;',
+      'DROP POLICY IF EXISTS "Allow owner manage customers" ON mken_customers;',
       'ALTER TABLE mken_saas_clients ENABLE ROW LEVEL SECURITY;',
       'ALTER TABLE mken_appointments ENABLE ROW LEVEL SECURITY;',
       'ALTER TABLE mken_orders ENABLE ROW LEVEL SECURITY;',
@@ -937,6 +1792,12 @@
       'ALTER TABLE mken_saas_invoices ENABLE ROW LEVEL SECURITY;',
       'ALTER TABLE mken_api_keys ENABLE ROW LEVEL SECURITY;',
       'ALTER TABLE mken_whatsapp_logs ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_inventory_items ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_invoices ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_inventory_transactions ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_vendors ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_purchase_invoices ENABLE ROW LEVEL SECURITY;',
+      'ALTER TABLE mken_customers ENABLE ROW LEVEL SECURITY;',
       '',
       '-- 11. سياسات الأمان لجدول العملاء mken_saas_clients',
       'CREATE POLICY "Allow public read on clients" ON mken_saas_clients FOR SELECT USING (true);',
@@ -969,6 +1830,31 @@
       '-- 16b. سياسات الأمان لسجل رسائل الواتساب',
       'CREATE POLICY "Allow owner manage whatsapp logs" ON mken_whatsapp_logs FOR ALL TO authenticated ',
       '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_whatsapp_logs.tenant_slug LIMIT 1));',
+      '',
+      '-- 16c. سياسات الأمان للمخزون والمنتجات',
+      'CREATE POLICY "Allow public read inventory items" ON mken_inventory_items FOR SELECT USING (true);',
+      'CREATE POLICY "Allow owner manage inventory items" ON mken_inventory_items FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_items.tenant_slug LIMIT 1));',
+      '',
+      '-- 16d. سياسات الأمان لفواتير العملاء',
+      'CREATE POLICY "Allow owner manage invoices" ON mken_invoices FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_invoices.tenant_slug LIMIT 1));',
+      '',
+      '-- 16e. سياسات الأمان لحركات المخزن',
+      'CREATE POLICY "Allow owner manage inventory transactions" ON mken_inventory_transactions FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_transactions.tenant_slug LIMIT 1));',
+      '',
+      '-- 16f. سياسات الأمان لجدول الموردين',
+      'CREATE POLICY "Allow owner manage vendors" ON mken_vendors FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_vendors.tenant_slug LIMIT 1));',
+      '',
+      '-- 16g. سياسات الأمان لفواتير المشتريات',
+      'CREATE POLICY "Allow owner manage purchase invoices" ON mken_purchase_invoices FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_purchase_invoices.tenant_slug LIMIT 1));',
+      '',
+      '-- 16h. سياسات الأمان لجدول العملاء',
+      'CREATE POLICY "Allow owner manage customers" ON mken_customers FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_customers.tenant_slug LIMIT 1));',
       '',
       '-- 17. إنشاء منظر عام للمواعيد لا يعرض معلومات حساسة',
       'CREATE OR REPLACE VIEW mken_public_appointments AS ',
@@ -1023,7 +1909,54 @@
       'END;',
       '$$ LANGUAGE plpgsql;',
       'GRANT EXECUTE ON FUNCTION update_staff_appointment_status(text, text, text) TO anon;',
-      'GRANT EXECUTE ON FUNCTION update_staff_appointment_status(text, text, text) TO authenticated;'
+      'GRANT EXECUTE ON FUNCTION update_staff_appointment_status(text, text, text) TO authenticated;',
+      '',
+      '-- 21. دالة خصم المخزون بشكل آمن للمتجر الإلكتروني',
+      'DROP FUNCTION IF EXISTS deduct_inventory_stock(text, text, integer, text);',
+      'CREATE OR REPLACE FUNCTION deduct_inventory_stock(p_tenant text, p_item_id text, p_quantity integer, p_reference_id text) ',
+      'RETURNS jsonb SECURITY DEFINER AS $$',
+      'DECLARE',
+      '    v_current_qty integer;',
+      'BEGIN',
+      '    SELECT quantity INTO v_current_qty FROM mken_inventory_items WHERE tenant_slug = p_tenant AND id = p_item_id;',
+      '    IF NOT FOUND THEN',
+      '        RETURN jsonb_build_object(\'success\', false, \'error\', \'Product not found\');',
+      '    END IF;',
+      '    IF v_current_qty < p_quantity THEN',
+      '        RETURN jsonb_build_object(\'success\', false, \'error\', \'Insufficient stock\');',
+      '    END IF;',
+      '    UPDATE mken_inventory_items ',
+      '    SET quantity = quantity - p_quantity, updated_at = NOW() ',
+      '    WHERE tenant_slug = p_tenant AND id = p_item_id;',
+      '    INSERT INTO mken_inventory_transactions (tenant_slug, item_id, type, quantity, reference_id, notes) ',
+      '    VALUES (p_tenant, p_item_id, \'stock-out\', p_quantity, p_reference_id, \'مبيعات متجر إلكتروني\');',
+      '    RETURN jsonb_build_object(\'success\', true);',
+      'END;',
+      '$$ LANGUAGE plpgsql;',
+      'GRANT EXECUTE ON FUNCTION deduct_inventory_stock(text, text, integer, text) TO anon;',
+      'GRANT EXECUTE ON FUNCTION deduct_inventory_stock(text, text, integer, text) TO authenticated;',
+      '',
+      '-- 22. دالة زيادة المخزون تلقائياً وتحديث التكلفة عند الشراء من مورد',
+      'DROP FUNCTION IF EXISTS add_inventory_stock(text, text, integer, numeric, text);',
+      'CREATE OR REPLACE FUNCTION add_inventory_stock(p_tenant text, p_item_id text, p_quantity integer, p_cost_price numeric, p_reference_id text) ',
+      'RETURNS jsonb SECURITY DEFINER AS $$',
+      'BEGIN',
+      '    UPDATE mken_inventory_items ',
+      '    SET quantity = quantity + p_quantity, ',
+      '        cost_price = p_cost_price, ',
+      '        updated_at = NOW() ',
+      '    WHERE tenant_slug = p_tenant AND id = p_item_id;',
+      '    IF FOUND THEN',
+      '        INSERT INTO mken_inventory_transactions (tenant_slug, item_id, type, quantity, reference_id, notes) ',
+      '        VALUES (p_tenant, p_item_id, \'stock-in\', p_quantity, p_reference_id, \'فاتورة مشتريات من مورد\');',
+      '        RETURN jsonb_build_object(\'success\', true);',
+      '    ELSE',
+      '        RETURN jsonb_build_object(\'success\', false, \'error\', \'Product not found\');',
+      '    END IF;',
+      'END;',
+      '$$ LANGUAGE plpgsql;',
+      'GRANT EXECUTE ON FUNCTION add_inventory_stock(text, text, integer, numeric, text) TO anon;',
+      'GRANT EXECUTE ON FUNCTION add_inventory_stock(text, text, integer, numeric, text) TO authenticated;'
     ].join('\n');
   }
 
@@ -1043,6 +1976,22 @@
     // advanced CRUD exports
     fetchInvoices: fetchInvoices,
     saveInvoice: saveInvoice,
+    fetchInventoryItems: fetchInventoryItems,
+    saveInventoryItem: saveInventoryItem,
+    deleteInventoryItem: deleteInventoryItem,
+    fetchCustomerInvoices: fetchCustomerInvoices,
+    saveCustomerInvoice: saveCustomerInvoice,
+    deleteCustomerInvoice: deleteCustomerInvoice,
+    fetchCustomers: fetchCustomers,
+    saveCustomer: saveCustomer,
+    deleteCustomer: deleteCustomer,
+    fetchInventoryTransactions: fetchInventoryTransactions,
+    fetchVendors: fetchVendors,
+    saveVendor: saveVendor,
+    deleteVendor: deleteVendor,
+    fetchPurchaseInvoices: fetchPurchaseInvoices,
+    savePurchaseInvoice: savePurchaseInvoice,
+    deletePurchaseInvoice: deletePurchaseInvoice,
     fetchStaff: fetchStaff,
     saveStaff: saveStaff,
     deleteStaff: deleteStaff,
@@ -1055,5 +2004,6 @@
     testConnection: testConnection,
     getInitSql: getInitSql,
     getClient: getClient,
+    getPendingSyncCount: getPendingSyncCount,
   };
 })();

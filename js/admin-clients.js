@@ -46,7 +46,7 @@
 
   function loadClients() {
     if (adminClientsList) {
-      adminClientsList.innerHTML = '<tr><td colspan="7" class="admin-hint" style="text-align:center; padding:20px;">جاري تحميل قائمة العملاء...</td></tr>';
+      adminClientsList.innerHTML = '<tr><td colspan="8" class="admin-hint" style="text-align:center; padding:20px;">جاري تحميل قائمة العملاء...</td></tr>';
     }
 
     var pin = getPin();
@@ -79,7 +79,7 @@
     .catch(function (err) {
       console.error(err);
       if (adminClientsList) {
-        adminClientsList.innerHTML = '<tr><td colspan="7" class="admin-error" style="text-align:center; padding:20px; color:#e74c3c;">' + esc(err.message) + '</td></tr>';
+        adminClientsList.innerHTML = '<tr><td colspan="8" class="admin-error" style="text-align:center; padding:20px; color:#e74c3c;">' + esc(err.message) + '</td></tr>';
       }
       toast(err.message, 'error');
     });
@@ -99,7 +99,7 @@
     });
 
     if (!filtered.length) {
-      adminClientsList.innerHTML = '<tr><td colspan="7" class="admin-hint" style="text-align:center; padding:20px;">لا يوجد عملاء مطابقين للبحث.</td></tr>';
+      adminClientsList.innerHTML = '<tr><td colspan="8" class="admin-hint" style="text-align:center; padding:20px;">لا يوجد عملاء مطابقين للبحث.</td></tr>';
       return;
     }
 
@@ -108,6 +108,23 @@
       var statusText = isExpired ? 'منتهي الاشتراك' : 'نشط';
       var statusColor = isExpired ? '#e74c3c' : '#2ecc71';
       var statusBg = isExpired ? '#fdf2f2' : '#f4fbf7';
+
+      var tierText = 'الأساسية';
+      var tierColor = '#7f8c8d';
+      var tierBg = '#f5f6fa';
+      if (c.subscription_tier === 'growth') {
+        tierText = 'المتقدمة';
+        tierColor = '#e67e22';
+        tierBg = '#fdf6ee';
+      } else if (c.subscription_tier === 'unlimited') {
+        tierText = 'الاحترافية';
+        tierColor = '#27ae60';
+        tierBg = '#f4fbf7';
+      } else if (c.subscription_tier === 'custom') {
+        tierText = 'مخصصة';
+        tierColor = '#9b59b6';
+        tierBg = '#f5eef8';
+      }
       
       // Build site link
       var siteUrl = store.buildTenantSiteUrl(c.tenant_slug);
@@ -119,12 +136,16 @@
         '  <td style="padding:12px 10px;" dir="ltr">' + esc(c.email) + '</td>' +
         '  <td style="padding:12px 10px;" dir="ltr">' + esc(c.phone) + '</td>' +
         '  <td style="padding:12px 10px;">' +
+        '    <span class="admin-status-badge" style="background:' + tierBg + '; color:' + tierColor + '; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.75rem;">' + tierText + '</span>' +
+        '  </td>' +
+        '  <td style="padding:12px 10px;">' +
         '    <span class="admin-status-badge" style="background:' + statusBg + '; color:' + statusColor + '; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:0.75rem;">' + statusText + '</span>' +
         '  </td>' +
         '  <td style="padding:12px 10px;" dir="ltr">' + formatDate(c.subscription_end) + '</td>' +
         '  <td style="padding:12px 10px; text-align:center;">' +
         '    <div style="display:inline-flex; gap:6px;">' +
         '      <button type="button" class="btn btn--outline btn--sm" data-extend-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem;">➕ تمديد</button>' +
+        '      <button type="button" class="btn btn--outline btn--sm" data-tier-slug="' + esc(c.tenant_slug) + '" data-current-tier="' + esc(c.subscription_tier || 'basic') + '" style="padding:4px 10px; font-size:0.78rem;">⚙️ الباقة</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-delete-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem; color:#e74c3c; border-color:#e74c3c20;">🗑️ حذف</button>' +
         '    </div>' +
         '  </td>' +
@@ -146,6 +167,33 @@
             return;
           }
           extendSubscription(slug, mInt);
+        }
+      });
+    });
+
+    adminClientsList.querySelectorAll('[data-tier-slug]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var slug = btn.getAttribute('data-tier-slug');
+        var current = btn.getAttribute('data-current-tier') || 'basic';
+        var input = prompt(
+          'تغيير باقة العميل (' + slug + '):\n' +
+          'أدخل الرقم أو الرمز الجديد للباقة:\n' +
+          '1 - الباقة الأساسية (basic)\n' +
+          '2 - الباقة المتقدمة (growth)\n' +
+          '3 - الباقة الاحترافية (unlimited)', 
+          current === 'unlimited' ? '3' : (current === 'growth' ? '2' : '1')
+        );
+        if (input !== null) {
+          var newTier = '';
+          if (input === '1' || input === 'basic') newTier = 'basic';
+          else if (input === '2' || input === 'growth') newTier = 'growth';
+          else if (input === '3' || input === 'unlimited') newTier = 'unlimited';
+          
+          if (!newTier) {
+            alert('اختيار باقة غير صالح.');
+            return;
+          }
+          changeClientTier(slug, newTier);
         }
       });
     });
@@ -223,6 +271,38 @@
     });
   }
 
+  function changeClientTier(tenantSlug, tier) {
+    var pin = getPin();
+
+    fetch('/api/v1/auth/admin-login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pin: pin,
+        action: 'change-tier',
+        tenantSlug: tenantSlug,
+        tier: tier
+      })
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error('فشل تغيير باقة الاشتراك.');
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.success) {
+        toast('تم تغيير باقة المشترك بنجاح! ⚙️🎉');
+        loadClients();
+      } else {
+        throw new Error(data.error || 'حدث خطأ أثناء تغيير الباقة.');
+      }
+    })
+    .catch(function (err) {
+      toast(err.message, 'error');
+    });
+  }
+
   function registerClient(e) {
     e.preventDefault();
 
@@ -231,6 +311,58 @@
     var email = document.getElementById('adminRegEmail').value.trim();
     var password = document.getElementById('adminRegPassword').value;
     var phone = document.getElementById('adminRegPhone').value.trim();
+    var tierSelect = document.getElementById('adminRegTier');
+    var tier = tierSelect ? tierSelect.value : 'basic';
+
+    var enabledActivities = [];
+    document.querySelectorAll('.admin-reg-activity-check:checked').forEach(function (cb) {
+      enabledActivities.push(cb.value);
+    });
+
+    if (enabledActivities.length === 0) {
+      alert('الرجاء اختيار نشاط تجاري واحد على الأقل لتفعيل حساب العميل.');
+      return;
+    }
+
+    var bookingCheck = document.getElementById('adminRegSvcBooking');
+    var commerceCheck = document.getElementById('adminRegSvcCommerce');
+    var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
+    var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+
+    var customFeatures = {
+      hasBooking: bookingCheck ? bookingCheck.checked : true,
+      hasCommerce: commerceCheck ? commerceCheck.checked : false,
+      hasWhatsApp: whatsappCheck ? whatsappCheck.checked : false,
+      hasInvoices: invoicesCheck ? invoicesCheck.checked : false
+    };
+
+    if (customFeatures.hasCommerce && enabledActivities.indexOf('commerce') === -1) {
+      enabledActivities.push('commerce');
+    }
+
+    var enabledServices = [];
+    var catalog = (window.MkenActivitiesCatalog) || [];
+    enabledActivities.forEach(function (actId) {
+      var actObj = catalog.find(function (a) { return a.id === actId; });
+      if (actObj && actObj.serviceIds) {
+        actObj.serviceIds.forEach(function (svcId) {
+          if (enabledServices.indexOf(svcId) === -1) {
+            enabledServices.push(svcId);
+          }
+        });
+      }
+    });
+
+    if (customFeatures.hasCommerce) {
+      var commerceAct = catalog.find(function (a) { return a.id === 'commerce'; });
+      if (commerceAct && commerceAct.serviceIds) {
+        commerceAct.serviceIds.forEach(function (svcId) {
+          if (enabledServices.indexOf(svcId) === -1) {
+            enabledServices.push(svcId);
+          }
+        });
+      }
+    }
 
     var regError = document.getElementById('adminRegisterError');
     var regBtn = document.getElementById('adminRegisterSubmitBtn');
@@ -255,7 +387,11 @@
         businessName: name,
         email: email,
         password: password,
-        phone: phone
+        phone: phone,
+        subscription_tier: tier,
+        enabledActivities: enabledActivities,
+        enabledServices: enabledServices,
+        customFeatures: customFeatures
       })
     })
     .then(function (res) {
@@ -290,6 +426,139 @@
     });
   }
 
+  function initRegistrationForm() {
+    var container = document.getElementById('adminRegActivitiesContainer');
+    if (!container) return;
+
+    var catalog = (window.MkenActivitiesCatalog) || [];
+    var html = catalog.map(function (act) {
+      // Precheck tech-digital and it-support
+      var checked = (act.id === 'tech-digital' || act.id === 'it-support') ? ' checked' : '';
+      return (
+        '<label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer; user-select:none; margin:3px 0;">' +
+        '  <input type="checkbox" class="admin-reg-activity-check" value="' + esc(act.id) + '"' + checked + '>' +
+        '  <span>' + esc(act.icon) + ' ' + esc(act.title) + '</span>' +
+        '</label>'
+      );
+    }).join('');
+    container.innerHTML = html;
+
+    var tierSelect = document.getElementById('adminRegTier');
+    var checks = container.querySelectorAll('.admin-reg-activity-check');
+    
+    var bookingCheck = document.getElementById('adminRegSvcBooking');
+    var commerceCheck = document.getElementById('adminRegSvcCommerce');
+    var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
+    var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+
+    function onChange() {
+      updateRegistrationPricing();
+    }
+
+    if (tierSelect) tierSelect.addEventListener('change', onTierSelectChange);
+    checks.forEach(function (cb) {
+      cb.addEventListener('change', onChange);
+    });
+    [bookingCheck, commerceCheck, whatsappCheck, invoicesCheck].forEach(function (cb) {
+      if (cb) cb.addEventListener('change', onChange);
+    });
+
+    onTierSelectChange(); // Force preset initialization on load
+  }
+
+  function onTierSelectChange() {
+    var tierSelect = document.getElementById('adminRegTier');
+    if (!tierSelect) return;
+    
+    var val = tierSelect.value;
+    
+    var bookingCheck = document.getElementById('adminRegSvcBooking');
+    var commerceCheck = document.getElementById('adminRegSvcCommerce');
+    var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
+    var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+    var checks = document.querySelectorAll('.admin-reg-activity-check');
+
+    if (val === 'custom') {
+      if (bookingCheck) bookingCheck.disabled = false;
+      if (commerceCheck) commerceCheck.disabled = false;
+      if (whatsappCheck) whatsappCheck.disabled = false;
+      if (invoicesCheck) invoicesCheck.disabled = false;
+      checks.forEach(function (cb) { cb.disabled = false; });
+    } else {
+      if (val === 'basic') {
+        if (bookingCheck) { bookingCheck.checked = true; bookingCheck.disabled = true; }
+        if (commerceCheck) { commerceCheck.checked = false; commerceCheck.disabled = true; }
+        if (whatsappCheck) { whatsappCheck.checked = false; whatsappCheck.disabled = true; }
+        if (invoicesCheck) { invoicesCheck.checked = false; invoicesCheck.disabled = true; }
+      } else if (val === 'growth') {
+        if (bookingCheck) { bookingCheck.checked = true; bookingCheck.disabled = true; }
+        if (commerceCheck) { commerceCheck.checked = true; commerceCheck.disabled = true; }
+        if (whatsappCheck) { whatsappCheck.checked = true; whatsappCheck.disabled = true; }
+        if (invoicesCheck) { invoicesCheck.checked = false; invoicesCheck.disabled = true; }
+      } else if (val === 'unlimited') {
+        if (bookingCheck) { bookingCheck.checked = true; bookingCheck.disabled = true; }
+        if (commerceCheck) { commerceCheck.checked = true; commerceCheck.disabled = true; }
+        if (whatsappCheck) { whatsappCheck.checked = true; whatsappCheck.disabled = true; }
+        if (invoicesCheck) { invoicesCheck.checked = true; invoicesCheck.disabled = true; }
+      }
+      
+      checks.forEach(function (cb) { cb.disabled = false; });
+    }
+
+    updateRegistrationPricing();
+  }
+
+  function updateRegistrationPricing() {
+    var tierSelect = document.getElementById('adminRegTier');
+    var monthlyEl = document.getElementById('adminRegCalcMonthly');
+    var yearlyEl = document.getElementById('adminRegCalcYearly');
+    if (!tierSelect || !monthlyEl || !yearlyEl) return;
+
+    var val = tierSelect.value;
+    var monthly = 0;
+    var yearly = 0;
+
+    if (val === 'basic') {
+      monthly = 99;
+      yearly = 990;
+    } else if (val === 'growth') {
+      monthly = 299;
+      yearly = 2990;
+    } else if (val === 'unlimited') {
+      monthly = 599;
+      yearly = 5990;
+    } else if (val === 'custom') {
+      var basePrice = 99;
+      var bookingPrice = 49;
+      var commercePrice = 99;
+      var whatsappPrice = 149;
+      var invoicesPrice = 199;
+      var extraActivityPrice = 29;
+
+      var activityCount = document.querySelectorAll('.admin-reg-activity-check:checked').length;
+      
+      monthly = basePrice;
+      if (activityCount > 1) {
+        monthly += (activityCount - 1) * extraActivityPrice;
+      }
+
+      var bookingCheck = document.getElementById('adminRegSvcBooking');
+      var commerceCheck = document.getElementById('adminRegSvcCommerce');
+      var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
+      var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+
+      if (bookingCheck && bookingCheck.checked) monthly += bookingPrice;
+      if (commerceCheck && commerceCheck.checked) monthly += commercePrice;
+      if (whatsappCheck && whatsappCheck.checked) monthly += whatsappPrice;
+      if (invoicesCheck && invoicesCheck.checked) monthly += invoicesPrice;
+
+      yearly = monthly * 10;
+    }
+
+    monthlyEl.textContent = monthly;
+    yearlyEl.textContent = yearly;
+  }
+
   function bindEvents() {
     if (refreshClientsBtn) {
       refreshClientsBtn.addEventListener('click', loadClients);
@@ -311,4 +580,5 @@
   };
 
   bindEvents();
+  initRegistrationForm();
 })();

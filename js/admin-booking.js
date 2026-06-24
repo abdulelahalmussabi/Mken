@@ -117,8 +117,14 @@
     return 'admin-payment--unpaid';
   }
 
-  function filterAppointments(list) {
+  function isTeamWorkoutAppointment(a) {
+    return !!(a.teamWorkoutId && String(a.teamWorkoutId).trim());
+  }
+
+  function filterAppointments(list, opts) {
+    opts = opts || {};
     return list.filter(function (a) {
+      if (!opts.includeTeamWorkouts && isTeamWorkoutAppointment(a)) return false;
       var actId = resolveActivityId(a);
       if (activityFilter !== 'all' && actId !== activityFilter) return false;
       if (serviceFilter !== 'all' && a.serviceId !== serviceFilter) return false;
@@ -332,6 +338,9 @@
           locationAddress: req.locationAddress,
           partySize: req.partySize,
           nights: req.nights,
+          stayUnit: req.stayUnit || '',
+          stayBooking: req.stayBooking === true,
+          checkOutTime: req.checkOutTime || '',
           notes: req.notes,
           status: 'confirmed',
           createdAt: req.createdAt || new Date().toISOString()
@@ -716,6 +725,7 @@
     renderDayList();
     renderPending();
     renderDueReminders();
+    if (window.MkenAdminTeamWorkouts) window.MkenAdminTeamWorkouts.render();
   }
 
   function bindEvents() {
@@ -775,11 +785,14 @@
         e.preventDefault();
         var svcId = document.getElementById('aptService').value;
         var svc = store.getServiceById(svcId);
+        var actId = svc ? svc.activityId : '';
+        var actBooking = store.getBookingForActivity(actId, store.loadConfig());
+        var isStay = bookingStore.isStayBooking(actBooking);
         var partyRaw = document.getElementById('aptPartySize').value.trim();
         var nightsRaw = document.getElementById('aptNights').value.trim();
         var payAmtRaw = document.getElementById('aptPaymentAmount').value.trim();
         var data = {
-          activityId: svc ? svc.activityId : '',
+          activityId: actId,
           serviceId: svcId,
           date: document.getElementById('aptDate').value,
           time: document.getElementById('aptTime').value,
@@ -789,6 +802,9 @@
           locationAddress: document.getElementById('aptAddress').value.trim(),
           partySize: partyRaw ? parseInt(partyRaw, 10) : null,
           nights: nightsRaw ? parseInt(nightsRaw, 10) : null,
+          stayUnit: isStay && svc ? (svc.stayUnit || 'night') : '',
+          stayBooking: isStay,
+          checkOutTime: isStay ? bookingStore.getDefaultCheckOutTime(actBooking) : '',
           notes: document.getElementById('aptNotes').value.trim(),
           staffId: document.getElementById('aptStaff') ? document.getElementById('aptStaff').value : null,
           status: document.getElementById('aptStatus').value,

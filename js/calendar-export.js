@@ -94,7 +94,14 @@
     var nights = parseInt(appointment.nights, 10);
     if (nights > 0 && nights <= 90) {
       end = new Date(start);
-      end.setDate(end.getDate() + nights);
+      var stayUnit = appointment.stayUnit || 'night';
+      var days = stayUnit === 'month' ? nights * 30 : nights;
+      end.setDate(end.getDate() + days);
+      if (appointment.stayBooking) {
+        var checkoutTime = appointment.checkOutTime || '12:00';
+        var coParts = checkoutTime.split(':');
+        end.setHours(parseInt(coParts[0], 10) || 12, parseInt(coParts[1], 10) || 0, 0, 0);
+      }
     } else {
       end = addMinutes(start, duration);
     }
@@ -123,6 +130,14 @@
     if (appointment.district) lines.push('الحي: ' + appointment.district);
     if (appointment.partySize) lines.push('عدد الأشخاص: ' + appointment.partySize);
     if (appointment.nights) lines.push('عدد الليالي: ' + appointment.nights);
+    if (appointment.stayBooking && appointment.nights) {
+      var stayUnit = appointment.stayUnit || 'night';
+      var days = stayUnit === 'month' ? appointment.nights * 30 : appointment.nights;
+      var checkout = new Date(appointment.date + 'T12:00:00');
+      checkout.setDate(checkout.getDate() + days);
+      var coTime = appointment.checkOutTime || '12:00';
+      lines.push('تسجيل الخروج: ' + checkout.toLocaleDateString('ar-SA') + ' ' + coTime);
+    }
     if (appointment.notes) lines.push('ملاحظات: ' + appointment.notes);
     lines.push('— منصة مكِّن');
     return lines.join('\n');

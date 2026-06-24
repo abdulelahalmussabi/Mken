@@ -69,6 +69,10 @@
     <header class="admin-header">
       <div class="admin-header__brand"><strong>إدارة المنصة</strong></div>
       <div class="admin-header__actions">
+        <div id="syncIndicator" style="display:none; align-items:center; gap:6px; background:#f2994a15; color:#f2994a; padding:6px 12px; border-radius:30px; font-size:0.85rem; font-weight:500; margin-left: 10px;">
+          <span>🔄 معلق للمزامنة: </span>
+          <strong id="syncPendingCount">0</strong>
+        </div>
         <a href="index.html" class="btn btn--outline" target="_blank">معاينة</a>
         <button type="button" id="exportBtn" class="btn btn--outline">تصدير config</button>
         <button type="button" id="logoutBtn" class="btn btn--outline">خروج</button>
@@ -81,6 +85,11 @@
       <button type="button" class="admin-tab" data-tab="brand">العلامة والتواصل</button>
       <button type="button" class="admin-tab" data-tab="appointments">المواعيد</button>
       <button type="button" class="admin-tab" data-tab="orders">الطلبات</button>
+      <button type="button" class="admin-tab" data-tab="inventory">المستودع والمخازن</button>
+      <button type="button" class="admin-tab" data-tab="invoices">الفواتير والمبيعات</button>
+      <button type="button" class="admin-tab" data-tab="customers">إدارة العملاء</button>
+      <button type="button" class="admin-tab" data-tab="purchases">الموردين والمشتريات</button>
+      <button type="button" class="admin-tab" data-tab="reports">التقارير والإحصائيات</button>
       <button type="button" class="admin-tab" data-tab="staff">الموظفين</button>
       <button type="button" class="admin-tab" data-tab="supabase">الربط والأتمتة</button>
       <button type="button" class="admin-tab" data-tab="whatsapp-logs">سجل الرسائل</button>
@@ -182,6 +191,28 @@
 
           <div id="dueReminders" class="admin-reminders" hidden></div>
 
+          <section class="admin-section admin-team-workouts-section" id="adminTeamWorkoutsSection">
+            <div class="admin-booking-header">
+              <div>
+                <h3>تمارين الفريق المعتمدة</h3>
+                <p class="admin-hint">تمارين الهوكي وكرة القدم بعد اعتماد التصويت — منفصلة عن حجوزات الدروس واللياقة.</p>
+              </div>
+              <div class="admin-booking-header__actions">
+                <select id="teamWorkoutSportFilter" class="admin-input" title="الرياضة">
+                  <option value="all">كل الرياضات</option>
+                  <option value="hockey">🏑 الهوكي</option>
+                  <option value="football">⚽ كرة القدم</option>
+                </select>
+                <select id="teamWorkoutWhenFilter" class="admin-input" title="التوقيت">
+                  <option value="upcoming">القادمة</option>
+                  <option value="past">السابقة</option>
+                  <option value="all">الكل</option>
+                </select>
+              </div>
+            </div>
+            <div id="adminTeamWorkouts" class="admin-team-workouts"></div>
+          </section>
+
           <div class="admin-calendar-nav">
             <button type="button" id="adminCalPrev" aria-label="الشهر السابق">‹</button>
             <h4 id="adminCalTitle"></h4>
@@ -280,6 +311,311 @@
             <button type="button" id="exportOrdersBtn" class="btn btn--outline" style="flex:1">تنزيل orders.json</button>
             <button type="button" id="importOrdersBtn" class="btn btn--outline" style="flex:1">استيراد طلبات</button>
             <input type="file" id="importOrdersFile" accept=".json" hidden>
+          </div>
+        </section>
+      </div>
+
+      <!-- تبويب المستودع والمخازن -->
+      <div class="admin-tab-panel" data-panel="inventory" hidden>
+        <section class="admin-section">
+          <div class="admin-booking-header">
+            <div>
+              <h3>إدارة المستودع والمخازن</h3>
+              <p class="admin-hint">إضافة المنتجات، تتبع الكميات، وتعديل أسعار الشراء والبيع والباركود.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <button type="button" id="addNewItemBtn" class="btn btn--primary">+ إضافة منتج جديد</button>
+            </div>
+          </div>
+
+          <!-- إحصائيات سريعة للمخزن -->
+          <div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0;">
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">إجمالي قيمة المخزن (بسعر الشراء)</span>
+              <h4 id="statTotalCost" style="margin: 8px 0 0 0; color: var(--color-primary); font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">إجمالي القيمة المتوقعة (بسعر البيع)</span>
+              <h4 id="statTotalSell" style="margin: 8px 0 0 0; color: #2e7d32; font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">الأصناف منخفضة المخزون</span>
+              <h4 id="statLowStockCount" style="margin: 8px 0 0 0; color: #c0392b; font-size: 1.4rem;">0 صنف</h4>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">صورة الصنف</th>
+                  <th style="padding: 12px; font-weight: 600;">اسم الصنف</th>
+                  <th style="padding: 12px; font-weight: 600;">رمز SKU / باركود</th>
+                  <th style="padding: 12px; font-weight: 600;">سعر الشراء</th>
+                  <th style="padding: 12px; font-weight: 600;">سعر البيع</th>
+                  <th style="padding: 12px; font-weight: 600;">الكمية المتوفرة</th>
+                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                </tr>
+              </thead>
+              <tbody id="adminInventoryList">
+                <tr><td colspan="7" style="padding: 20px; text-align: center;" class="admin-hint">جاري تحميل المنتجات من المستودع...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- حركات المخزن الأخيرة -->
+        <section class="admin-section" style="margin-top: 20px;">
+          <h3>حركات المخزون الأخيرة</h3>
+          <p class="admin-hint">سجل عمليات الصادر والوارد وتعديلات الكميات الحاصلة على المستودع.</p>
+          <div style="overflow-x: auto; max-height: 300px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">التاريخ</th>
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">اسم المنتج</th>
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">النوع</th>
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">الكمية</th>
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">المرجع</th>
+                  <th style="padding: 8px 12px; font-size: 0.85rem;">ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody id="adminInventoryTransactions">
+                <tr><td colspan="6" style="padding: 12px; text-align: center;" class="admin-hint">لا توجد حركات مخزنية مسجلة.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- تبويب الفواتير والمبيعات -->
+      <div class="admin-tab-panel" data-panel="invoices" hidden>
+        <section class="admin-section">
+          <div class="admin-booking-header">
+            <div>
+              <h3>إدارة فواتير المبيعات</h3>
+              <p class="admin-hint">إصدار فواتير للعملاء، متابعة السداد، وتصدير أو طباعة الفواتير.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <button type="button" id="addNewInvoiceBtn" class="btn btn--primary">+ إنشاء فاتورة جديدة</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة / العرض</th>
+                  <th style="padding: 12px; font-weight: 600;">النوع</th>
+                  <th style="padding: 12px; font-weight: 600;">العميل</th>
+                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
+                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
+                  <th style="padding: 12px; font-weight: 600;">طريقة السداد</th>
+                  <th style="padding: 12px; font-weight: 600;">تاريخ الإصدار</th>
+                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                </tr>
+              </thead>
+              <tbody id="adminInvoicesList">
+                <tr><td colspan="7" style="padding: 20px; text-align: center;" class="admin-hint">جاري تحميل الفواتير...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- تبويب الموردين والمشتريات -->
+      <div class="admin-tab-panel" data-panel="purchases" hidden>
+        <!-- إدارة الموردين -->
+        <section class="admin-section">
+          <div class="admin-booking-header">
+            <div>
+              <h3>إدارة الموردين</h3>
+              <p class="admin-hint">إضافة الموردين والشركات وتحديث بيانات الاتصال بهم.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <button type="button" id="addNewVendorBtn" class="btn btn--primary">+ إضافة مورد جديد</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">اسم المورد</th>
+                  <th style="padding: 12px; font-weight: 600;">الشخص المسؤول</th>
+                  <th style="padding: 12px; font-weight: 600;">رقم الهاتف</th>
+                  <th style="padding: 12px; font-weight: 600;">البريد الإلكتروني</th>
+                  <th style="padding: 12px; font-weight: 600;">العنوان</th>
+                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                </tr>
+              </thead>
+              <tbody id="adminVendorsList">
+                <tr><td colspan="6" style="padding: 20px; text-align: center;" class="admin-hint">جاري تحميل الموردين...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- إدارة فواتير المشتريات -->
+        <section class="admin-section" style="margin-top: 20px;">
+          <div class="admin-booking-header">
+            <div>
+              <h3>فواتير المشتريات وتوريد المخزون</h3>
+              <p class="admin-hint">تسجيل فواتير الشراء لزيادة كميات المخزون وتعديل متوسط أسعار التكلفة تلقائياً.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <button type="button" id="addNewPurchaseInvoiceBtn" class="btn btn--primary">+ تسجيل فاتورة مشتريات</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة</th>
+                  <th style="padding: 12px; font-weight: 600;">المورد</th>
+                  <th style="padding: 12px; font-weight: 600;">عدد الأصناف</th>
+                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
+                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
+                  <th style="padding: 12px; font-weight: 600;">تاريخ الفاتورة</th>
+                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                </tr>
+              </thead>
+              <tbody id="adminPurchaseInvoicesList">
+                <tr><td colspan="7" style="padding: 20px; text-align: center;" class="admin-hint">جاري تحميل فواتير المشتريات...</td></tr>
+              </tbody>
+            </table>
+          </div>
+      <!-- تبويب العملاء -->
+      <div class="admin-tab-panel" data-panel="customers" hidden>
+        <!-- إدارة العملاء -->
+        <section class="admin-section">
+          <div class="admin-booking-header">
+            <div>
+              <h3>إدارة العملاء والمدفوعات الآجلة</h3>
+              <p class="admin-hint">تسجيل بيانات العملاء، ومتابعة سجلات المبيعات، ومراقبة حسابات المديونيات والمدفوعات الآجلة.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <button type="button" id="addNewCustomerBtn" class="btn btn--primary">+ إضافة عميل جديد</button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">اسم العميل</th>
+                  <th style="padding: 12px; font-weight: 600;">رقم الهاتف</th>
+                  <th style="padding: 12px; font-weight: 600;">البريد الإلكتروني</th>
+                  <th style="padding: 12px; font-weight: 600;">العنوان</th>
+                  <th style="padding: 12px; font-weight: 600;">المدفوعات الآجلة (الديون)</th>
+                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                </tr>
+              </thead>
+              <tbody id="adminCustomersList">
+                <tr><td colspan="6" style="padding: 20px; text-align: center;" class="admin-hint">جاري تحميل قائمة العملاء...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- تبويب التقارير والإحصائيات -->
+      <div class="admin-tab-panel" data-panel="reports" hidden>
+        <section class="admin-section">
+          <div class="admin-booking-header" style="align-items: center;">
+            <div>
+              <h3>التقارير المالية والتحليلات</h3>
+              <p class="admin-hint">تحليلات الأرباح والمبيعات والمشتريات وتتبع حركة السيولة والمنتجات.</p>
+            </div>
+            <div class="admin-booking-header__actions">
+              <div class="admin-field" style="margin: 0; min-width: 180px;">
+                <select id="reportsPeriodSelect" class="admin-input">
+                  <option value="7days">آخر 7 أيام</option>
+                  <option value="30days" selected>آخر 30 يوماً</option>
+                  <option value="thisMonth">الشهر الحالي</option>
+                  <option value="lastMonth">الشهر الماضي</option>
+                  <option value="thisYear">السنة الحالية</option>
+                  <option value="all">كل الأوقات</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- شبكة بطاقات الأرقام -->
+          <div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 20px 0;">
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">إجمالي المبيعات (الإيرادات)</span>
+              <h4 id="repTotalRevenue" style="margin: 8px 0 0 0; color: #2e7d32; font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">تكلفة المبيعات (COGS)</span>
+              <h4 id="repTotalCost" style="margin: 8px 0 0 0; color: #c0392b; font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">إجمالي الأرباح</span>
+              <h4 id="repTotalProfit" style="margin: 8px 0 0 0; color: var(--color-primary); font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">هامش الربح</span>
+              <h4 id="repProfitMargin" style="margin: 8px 0 0 0; color: #2d82b7; font-size: 1.4rem;">0.0%</h4>
+            </div>
+            <div class="admin-stat-card" style="background: #fff; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius); text-align: center;">
+              <span style="font-size: 0.85rem; color: var(--color-text-muted);">إجمالي المشتريات (الموردين)</span>
+              <h4 id="repTotalPurchases" style="margin: 8px 0 0 0; color: #f2994a; font-size: 1.4rem;">0.00 ريال</h4>
+            </div>
+          </div>
+        </section>
+
+        <!-- قسم الرسوم البيانية -->
+        <div class="reports-charts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 20px;">
+          <!-- رسم بياني للمبيعات والأرباح -->
+          <section class="admin-section" style="margin: 0; min-height: 320px; display: flex; flex-direction: column;">
+            <h4>تطور المبيعات وصافي الأرباح</h4>
+            <p class="admin-hint" style="margin-bottom: 15px;">رسم بياني يوضح نمو المبيعات بالمقارنة مع صافي الربح المحقق.</p>
+            <div style="flex: 1; position: relative;">
+              <canvas id="revenueProfitChart" style="max-height: 250px; width: 100%;"></canvas>
+            </div>
+          </section>
+
+          <!-- مقارنة المبيعات والمشتريات -->
+          <section class="admin-section" style="margin: 0; min-height: 320px; display: flex; flex-direction: column;">
+            <h4>التدفقات النقدية: مبيعات ومشتريات</h4>
+            <p class="admin-hint" style="margin-bottom: 15px;">مقارنة التدفق الداخل (المبيعات) والخارج (شراء بضاعة للمستودع).</p>
+            <div style="flex: 1; position: relative;">
+              <canvas id="salesPurchasesChart" style="max-height: 250px; width: 100%;"></canvas>
+            </div>
+          </section>
+
+          <!-- الأصناف الأكثر مبيعاً -->
+          <section class="admin-section" style="margin: 0; min-height: 320px; display: flex; flex-direction: column; grid-column: span 1;">
+            <h4>توزيع الأصناف الأكثر مبيعاً</h4>
+            <p class="admin-hint" style="margin-bottom: 15px;">مبيعات أهم 5 منتجات كحصة نسبية.</p>
+            <div style="flex: 1; position: relative; display: flex; align-items: center; justify-content: center;">
+              <canvas id="topItemsChart" style="max-height: 220px; max-width: 220px;"></canvas>
+            </div>
+          </section>
+        </div>
+
+        <!-- جدول المنتجات الأكثر مبيعاً -->
+        <section class="admin-section" style="margin-top: 20px;">
+          <h3>المنتجات الأكثر مبيعاً وتحقيقاً للأرباح</h3>
+          <p class="admin-hint">قائمة بأداء المنتجات مبيعاتها، تكاليفها وصافي الربح المحقق منها للفترة المحددة.</p>
+          <div style="overflow-x: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">اسم المنتج</th>
+                  <th style="padding: 12px; font-weight: 600;">الكمية المباعة</th>
+                  <th style="padding: 12px; font-weight: 600;">إجمالي الإيرادات</th>
+                  <th style="padding: 12px; font-weight: 600;">إجمالي التكلفة</th>
+                  <th style="padding: 12px; font-weight: 600;">صافي الربح</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTopItemsList">
+                <tr><td colspan="5" style="padding: 20px; text-align: center;" class="admin-hint">لا توجد بيانات مبيعات متوفرة.</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -548,7 +884,8 @@
                 <code>{appointmentId}</code> / <code>{orderId}</code>: معرف الحجز/الطلب | 
                 <code>{orderItems}</code>: منتجات الطلب | 
                 <code>{hoursBefore}</code>: الساعات قبل الموعد<br>
-                <code>{reminderLeadText}</code>: مدة التذكير (مثال: غداً)
+                <code>{reminderLeadText}</code>: مدة التذكير (مثال: غداً) |
+                <code>{googleReviewUrl}</code>: رابط التقييم على جوجل (بعد ربط GBP)
               </div>
 
             </div>
@@ -631,7 +968,8 @@ ALTER TABLE mken_appointments ADD COLUMN IF NOT EXISTS payment_amount NUMERIC;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_access_token TEXT;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;
-ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;</textarea>
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'basic';</textarea>
           </div>
           <div class="admin-backup">
             <button type="button" id="supabaseCopyUpgradeSqlBtn" class="btn btn--outline" style="width:100%">نسخ أمر التحديث</button>
@@ -649,6 +987,11 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
             <div class="admin-field" style="margin-top: 15px;">
               <label>حالة الاشتراك الحالي</label>
               <div id="saasSubStatus" class="admin-status-badge" style="padding: 8px 12px; border-radius: 4px; font-weight: bold; display: inline-block;">جاري التحميل...</div>
+            </div>
+
+            <div class="admin-field">
+              <label>باقة الاشتراك الحالية</label>
+              <div id="saasSubTier" style="font-weight: bold; font-size: 1.1rem; color: var(--color-primary);">جاري التحميل...</div>
             </div>
             
             <div class="admin-field">
@@ -790,6 +1133,14 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
                 <span>رابط الموقع الذي سيتم نشره على جوجل: </span>
                 <code dir="ltr" id="googleBusinessUrlPreview" style="font-weight: bold; color: var(--color-primary);"></code>
               </div>
+
+              <div class="admin-field" id="googleBusinessReviewUrlBlock" style="margin-top: 10px;" hidden>
+                <label for="googleBusinessReviewUrl">رابط التقييم المباشر على جوجل (Google Review Link):</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <input type="text" id="googleBusinessReviewUrl" class="admin-input" dir="ltr" readonly style="flex: 1; margin: 0;">
+                  <button type="button" id="copyGoogleReviewUrlBtn" class="btn btn--outline btn--sm" style="padding: 8px 12px; margin: 0; white-space: nowrap;">نسخ</button>
+                </div>
+              </div>
               
               <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
                 <button type="button" id="googleBusinessUpdateBtn" class="btn btn--primary" style="flex: 2; min-width: 150px;">
@@ -802,6 +1153,87 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
                   إلغاء الربط
                 </button>
               </div>
+
+              <!-- NAP Audit: compare mken site vs Google Business Profile -->
+              <div id="gbpNapAuditBlock" style="margin-top: 20px; padding-top: 18px; border-top: 1px dashed rgba(255,255,255,0.12);">
+                <h4 style="margin: 0 0 8px; color: var(--color-primary); font-size: 0.95rem;">📋 فحص NAP (مطابقة الموقع ↔ جوجل)</h4>
+                <p class="admin-hint" style="margin-bottom: 12px;">يقارن الاسم والهاتف والموقع والمدينة وساعات العمل بين منصة مكّن وبروفايل جوجل بيزنس — أساسي لـ Local SEO.</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                  <button type="button" id="gbpRunNapAuditBtn" class="btn btn--outline" style="flex: 1; min-width: 140px;">🔍 تشغيل فحص NAP</button>
+                  <button type="button" id="gbpSyncNapBtn" class="btn btn--primary" style="flex: 1; min-width: 140px;">🔧 إصلاح تلقائي (mken → جوجل)</button>
+                </div>
+                <p class="admin-hint" style="font-size: 0.78rem; margin-top: 6px;">الإصلاح التلقائي يحدّث: الاسم، الهاتف، والموقع. العنوان وساعات العمل تحتاج مراجعة يدوية.</p>
+                <div id="gbpNapAuditSummary" class="admin-hint" style="margin-top: 12px; display: none;"></div>
+                <div id="gbpNapAuditTableWrap" style="margin-top: 12px; display: none; overflow-x: auto;">
+                  <table id="gbpNapAuditTable" class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                    <thead>
+                      <tr style="background: rgba(0,0,0,0.15); text-align: right;">
+                        <th style="padding: 8px;">الحقل</th>
+                        <th style="padding: 8px;">موقع مكّن</th>
+                        <th style="padding: 8px;">جوجل بيزنس</th>
+                        <th style="padding: 8px;">الحالة</th>
+                      </tr>
+                    </thead>
+                    <tbody id="gbpNapAuditTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- AI tools — available without Google OAuth connection -->
+            <div id="googleBusinessAiSection" style="margin-top: 25px; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 20px;" hidden>
+              <h4 style="margin: 0 0 10px; color: var(--color-primary);">🤖 مساعد جوجل بيزنس الذكي (AI Copilot)</h4>
+              <p class="admin-hint" style="margin-bottom: 15px;">استخدم الذكاء الاصطناعي لكتابة منشورات خرائط جوجل والرد على تقييمات العملاء — <strong>الربط بجوجل اختياري</strong>؛ انسخ النص وانشره يدوياً أو بعد الربط.</p>
+                
+                <!-- Sub-tabs for AI tools -->
+                <div style="display: flex; gap: 8px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; flex-wrap: wrap;">
+                  <button type="button" class="btn btn--sm gbp-ai-tab btn--primary" data-gbp-tab="ai-post" style="border-radius: 20px; padding: 4px 12px; font-size: 0.8rem;">📢 منشور ترويجي</button>
+                  <button type="button" class="btn btn--sm gbp-ai-tab btn--outline" data-gbp-tab="ai-reply" style="border-radius: 20px; padding: 4px 12px; font-size: 0.8rem;">💬 رد ذكي على مراجعة</button>
+                </div>
+                
+                <!-- Panel 1: Post Generator -->
+                <div id="gbpAiPostPanel" class="gbp-ai-panel">
+                  <div class="admin-field">
+                    <label for="gbpAiPostServiceSelect">اختر الخدمة المستهدفة (اختياري)</label>
+                    <select id="gbpAiPostServiceSelect" class="admin-input" style="margin-bottom: 8px;"></select>
+                  </div>
+                  <div class="admin-field">
+                    <label for="gbpAiPostPrompt">عن ماذا تريد الإعلان؟ (اكتب عرضاً، خدمة جديدة، أو فكرة)</label>
+                    <textarea id="gbpAiPostPrompt" class="admin-input" rows="3" placeholder="مثال: خصم 20% بمناسبة نهاية الأسبوع على جميع خدمات صيانة التكييف"></textarea>
+                  </div>
+                  <button type="button" id="gbpAiGeneratePostBtn" class="btn btn--primary" style="width: 100%;">🪄 توليد منشور سيو محلي</button>
+                  
+                  <div id="gbpAiPostResultBlock" style="margin-top: 15px;" hidden>
+                    <label for="gbpAiPostResult">المنشور المقترح (اضغط للنسخ)</label>
+                    <textarea id="gbpAiPostResult" class="admin-input" rows="6" readonly style="font-size: 0.85rem; background: rgba(0, 0, 0, 0.2); font-family: sans-serif;"></textarea>
+                    <button type="button" id="copyGbpAiPostBtn" class="btn btn--outline btn--sm" style="width: 100%; margin-top: 5px;">نسخ النص 📋</button>
+                  </div>
+                </div>
+                
+                <!-- Panel 2: Review Reply Generator -->
+                <div id="gbpAiReplyPanel" class="gbp-ai-panel" hidden>
+                  <div class="admin-field">
+                    <label for="gbpAiReplyRating">تقييم العميل بالنجوم</label>
+                    <select id="gbpAiReplyRating" class="admin-input">
+                      <option value="5">★★★★★ (5 نجوم)</option>
+                      <option value="4">★★★★☆ (4 نجوم)</option>
+                      <option value="3">★★★☆☆ (3 نجوم)</option>
+                      <option value="2">★★☆☆☆ (2 نجوم)</option>
+                      <option value="1">★☆☆☆☆ (1 نجمة)</option>
+                    </select>
+                  </div>
+                  <div class="admin-field">
+                    <label for="gbpAiReplyText">نص مراجعة العميل (اختياري)</label>
+                    <textarea id="gbpAiReplyText" class="admin-input" rows="3" placeholder="ألصق تعليق العميل هنا للحصول على رد مخصص ومناسب..."></textarea>
+                  </div>
+                  <button type="button" id="gbpAiGenerateReplyBtn" class="btn btn--primary" style="width: 100%;">🪄 صياغة رد احترافي</button>
+                  
+                  <div id="gbpAiReplyResultBlock" style="margin-top: 15px;" hidden>
+                    <label for="gbpAiReplyResult">الرد المقترح (اضغط للنسخ)</label>
+                    <textarea id="gbpAiReplyResult" class="admin-input" rows="4" readonly style="font-size: 0.85rem; background: rgba(0, 0, 0, 0.2); font-family: sans-serif;"></textarea>
+                    <button type="button" id="copyGbpAiReplyBtn" class="btn btn--outline btn--sm" style="width: 100%; margin-top: 5px;">نسخ النص 📋</button>
+                  </div>
+                </div>
             </div>
           </section>
         </div>
@@ -1018,13 +1450,14 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
                     <th style="padding:12px 10px;">معرف الرابط (Slug)</th>
                     <th style="padding:12px 10px;">البريد الإلكتروني</th>
                     <th style="padding:12px 10px;">الجوال</th>
+                    <th style="padding:12px 10px;">الباقة</th>
                     <th style="padding:12px 10px;">الحالة</th>
                     <th style="padding:12px 10px;">تاريخ انتهاء الاشتراك</th>
                     <th style="padding:12px 10px; text-align: center;">العمليات</th>
                   </tr>
                 </thead>
                 <tbody id="adminClientsList">
-                  <tr><td colspan="7" class="admin-hint" style="text-align:center; padding:20px;">جاري تحميل قائمة العملاء...</td></tr>
+                  <tr><td colspan="8" class="admin-hint" style="text-align:center; padding:20px;">جاري تحميل قائمة العملاء...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1059,6 +1492,60 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
               <div class="admin-field">
                 <label for="adminRegPhone">رقم الجوال الرئيسي للعميل *</label>
                 <input type="tel" id="adminRegPhone" class="admin-input" placeholder="9665XXXXXXXX" dir="ltr" required>
+              </div>
+
+              <!-- الأنشطة التجارية المفعلة -->
+              <div class="admin-field" style="margin-top: 15px;">
+                <label style="font-weight: bold; margin-bottom: 5px; display: block;">الأنشطة التجارية المتاحة للحساب *</label>
+                <p class="admin-hint" style="margin-top: 0; margin-bottom: 8px;">اختر الأنشطة التي ستظهر وتُفعّل في صفحة هذا التاجر.</p>
+                <div id="adminRegActivitiesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; border: 1px solid var(--color-border); padding: 10px; border-radius: var(--radius); background: #fafafa;">
+                  <!-- سيتم بناؤها ديناميكياً من الكتالوج -->
+                </div>
+              </div>
+
+              <!-- الخدمات والأنظمة الإضافية -->
+              <div class="admin-field" style="margin-top: 15px;">
+                <label style="font-weight: bold; margin-bottom: 5px; display: block;">الخدمات والأنظمة الإضافية</label>
+                <p class="admin-hint" style="margin-top: 0; margin-bottom: 8px;">فعّل الخدمات المتاحة للتاجر بناءً على اشتراكه.</p>
+                <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--color-border); padding: 10px; border-radius: var(--radius); background: #fafafa;">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="adminRegSvcBooking" checked>
+                    <span>📅 نظام حجز المواعيد والجدولة (+49 ر.س/شهر)</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="adminRegSvcCommerce">
+                    <span>🛒 المتجر الإلكتروني - Commerce (+99 ر.س/شهر)</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="adminRegSvcWhatsApp">
+                    <span>💬 أتمتة واتساب CRM والتنبيهات (+149 ر.س/شهر)</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                    <input type="checkbox" id="adminRegSvcInvoices">
+                    <span>🧾 برنامج الفواتير والمخازن والتقارير (+199 ر.س/شهر)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="admin-field" style="margin-top: 15px;">
+                <label for="adminRegTier">نوع باقة الاشتراك وتحديد التسعيرة *</label>
+                <select id="adminRegTier" class="admin-input" required>
+                  <option value="basic">الباقة الأساسية (Basic) — 99 ريال</option>
+                  <option value="growth">الباقة المتقدمة (Growth) — 299 ريال</option>
+                  <option value="unlimited">الباقة الاحترافية (Unlimited) — 599 ريال</option>
+                  <option value="custom" selected>باقة مخصصة (تسعير مرن حسب الخدمات)</option>
+                </select>
+              </div>
+
+              <!-- حاسبة التسعير التفاعلية -->
+              <div class="admin-field" style="background: #fbfaf8; border: 1px solid var(--color-primary); padding: 12px; border-radius: var(--radius); margin-top: 15px;">
+                <div style="font-weight: bold; margin-bottom: 5px; color: var(--color-primary); font-size: 0.85rem;">سعر الاشتراك المحتسب:</div>
+                <div style="font-size: 1.25rem; font-weight: bold; color: #2ecc71;">
+                  <span id="adminRegCalcMonthly">99</span> ر.س <span style="font-size: 0.85rem; color: #7f8c8d; font-weight: normal;">/ شهرياً</span>
+                </div>
+                <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 3px;">
+                  أو <span id="adminRegCalcYearly">990</span> ر.س <span style="font-size: 0.78rem; color: #7f8c8d; font-weight: normal;">/ سنوياً (خصم شهرين)</span>
+                </div>
               </div>
 
               <p id="adminRegisterError" class="admin-error" hidden style="color: #ff4d4f; font-size: 13px; margin-bottom: 15px;"></p>
@@ -1205,6 +1692,360 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
         </div>
       </div>
 
+      <!-- Inventory Item Modal -->
+      <div id="inventoryModal" class="admin-modal" hidden>
+        <div class="admin-modal__card">
+          <h3 id="inventoryModalTitle">إضافة منتج جديد</h3>
+          <form id="inventoryForm" class="admin-modal__form" style="margin-top:15px;">
+            <input type="hidden" id="itemId">
+            <div class="admin-field">
+              <label for="itemName">اسم المنتج *</label>
+              <input type="text" id="itemName" class="admin-input" required placeholder="مثال: سماعة سلكية">
+            </div>
+            <div class="admin-field">
+              <label for="itemSku">رمز SKU</label>
+              <input type="text" id="itemSku" class="admin-input" placeholder="مثال: HEAD-001">
+            </div>
+            <div class="admin-field">
+              <label for="itemBarcode">الباركود</label>
+              <input type="text" id="itemBarcode" class="admin-input" placeholder="أدخل الباركود أو امسحه">
+            </div>
+            <div class="admin-field">
+              <label for="itemCostPrice">سعر الشراء (التكلفة) *</label>
+              <input type="number" step="0.01" id="itemCostPrice" class="admin-input" required value="0">
+            </div>
+            <div class="admin-field">
+              <label for="itemSellPrice">سعر البيع *</label>
+              <input type="number" step="0.01" id="itemSellPrice" class="admin-input" required value="0">
+            </div>
+            <div class="admin-field">
+              <label for="itemQuantity">الكمية المتوفرة *</label>
+              <input type="number" id="itemQuantity" class="admin-input" required value="0">
+            </div>
+            <div class="admin-field">
+              <label for="itemMinStockAlert">الحد الأدنى للتنبيه</label>
+              <input type="number" id="itemMinStockAlert" class="admin-input" value="5">
+            </div>
+            <div class="admin-field">
+              <label for="itemImageUrl">رابط الصورة</label>
+              <input type="url" id="itemImageUrl" class="admin-input" placeholder="https://example.com/image.png">
+            </div>
+            <div class="admin-modal__actions" style="margin-top:20px;">
+              <button type="button" class="btn btn--outline" id="inventoryModalCancel">إلغاء</button>
+              <button type="submit" class="btn btn--primary">حفظ المنتج</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Invoice Modal -->
+      <div id="invoiceModal" class="admin-modal" hidden>
+        <div class="admin-modal__card" style="max-width: 800px; width: 90%;">
+          <h3 id="invoiceModalTitle">إنشاء فاتورة مبيعات</h3>
+          <form id="invoiceForm" class="admin-modal__form" style="margin-top:15px;">
+            <input type="hidden" id="invoiceId">
+            <div class="admin-field" style="margin-bottom: 15px;">
+              <label for="invoiceType">نوع المستند</label>
+              <select id="invoiceType" class="admin-input">
+                <option value="invoice" selected>فاتورة مبيعات</option>
+                <option value="estimate">عرض سعر</option>
+              </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="admin-field">
+                <label for="invoiceCustomerSelect">اسم العميل *</label>
+                <div style="display: flex; gap: 8px;">
+                  <select id="invoiceCustomerSelect" class="admin-input" required style="flex: 1;">
+                    <option value="">-- اختر العميل --</option>
+                  </select>
+                  <button type="button" id="invoiceQuickAddCustomerBtn" class="btn btn--outline" style="padding: 0 12px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;" title="إضافة عميل سريع">+</button>
+                </div>
+              </div>
+              <div class="admin-field">
+                <label for="invoiceCustomerPhone">رقم الجوال</label>
+                <input type="tel" id="invoiceCustomerPhone" class="admin-input" placeholder="05xxxxxxxx" dir="ltr">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="admin-field">
+                <label for="invoicePaymentStatus">حالة الدفع</label>
+                <select id="invoicePaymentStatus" class="admin-input">
+                  <option value="unpaid" selected>غير مدفوع</option>
+                  <option value="paid">مدفوع</option>
+                  <option value="partial">مدفوع جزئياً</option>
+                </select>
+              </div>
+              <div class="admin-field">
+                <label for="invoicePaymentMethod">طريقة السداد</label>
+                <select id="invoicePaymentMethod" class="admin-input">
+                  <option value="cash" selected>نقدي</option>
+                  <option value="card">بطاقة مدى/شبكة</option>
+                  <option value="bank">تحويل بنكي</option>
+                  <option value="whatsapp">دفع إلكتروني</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="admin-field" style="margin-top: 15px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 8px;">بند الفاتورة (الأصناف)</label>
+              <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: right;" class="admin-table">
+                  <thead>
+                    <tr style="background: #f8f9fa;">
+                      <th style="padding: 6px;">الصنف</th>
+                      <th style="padding: 6px; width: 90px;">الكمية</th>
+                      <th style="padding: 6px; width: 100px;">سعر الوحدة</th>
+                      <th style="padding: 6px; width: 100px;">المجموع</th>
+                      <th style="padding: 6px; width: 50px;">حذف</th>
+                    </tr>
+                  </thead>
+                  <tbody id="invoiceItemsList">
+                    <!-- Dynamic rows -->
+                  </tbody>
+                </table>
+              </div>
+              <button type="button" id="invoiceAddItemBtn" class="btn btn--outline btn--sm" style="margin-top: 10px;">+ إضافة بند جديد</button>
+            </div>
+
+            <!-- الحسابات الإجمالية -->
+            <div style="margin-top: 20px; border-top: 1px solid var(--color-border); padding-top: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+              <div>المجموع الفرعي: <strong id="invoiceSubtotal">0.00 ريال</strong></div>
+              <div style="display: flex; align-items: center;">الخصم: <input type="number" id="invoiceDiscount" class="admin-input" style="width: 100px; display: inline-block; padding: 2px 6px; margin: 0 8px;" value="0" step="0.01"> ريال</div>
+              <div>ضريبة القيمة المضافة (15%): <strong id="invoiceTax">0.00 ريال</strong></div>
+              <div style="font-size: 1.1rem; color: var(--color-primary); font-weight: bold;">المجموع الإجمالي: <strong id="invoiceTotal">0.00 ريال</strong></div>
+            </div>
+
+            <div class="admin-modal__actions" style="margin-top:20px;">
+              <button type="button" class="btn btn--outline" id="invoiceModalCancel">إلغاء</button>
+              <button type="submit" class="btn btn--primary">حفظ وإصدار الفاتورة</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Vendor Modal -->
+      <div id="vendorModal" class="admin-modal" hidden>
+        <div class="admin-modal__card">
+          <h3 id="vendorModalTitle">إضافة مورد جديد</h3>
+          <form id="vendorForm" class="admin-modal__form" style="margin-top:15px;">
+            <input type="hidden" id="vendorId">
+            <div class="admin-field">
+              <label for="vendorName">اسم المورد / الشركة *</label>
+              <input type="text" id="vendorName" class="admin-input" required placeholder="مثال: شركة التوريد المحدودة">
+            </div>
+            <div class="admin-field">
+              <label for="vendorContactPerson">الشخص المسؤول</label>
+              <input type="text" id="vendorContactPerson" class="admin-input" placeholder="مثال: أحمد محمد">
+            </div>
+            <div class="admin-field">
+              <label for="vendorPhone">رقم الهاتف</label>
+              <input type="tel" id="vendorPhone" class="admin-input" placeholder="مثال: 0500000000">
+            </div>
+            <div class="admin-field">
+              <label for="vendorEmail">البريد الإلكتروني</label>
+              <input type="email" id="vendorEmail" class="admin-input" placeholder="مثال: vendor@example.com">
+            </div>
+            <div class="admin-field">
+              <label for="vendorAddress">العنوان</label>
+              <input type="text" id="vendorAddress" class="admin-input" placeholder="مثال: الرياض، حي السلي">
+            </div>
+            <div class="admin-modal__actions" style="margin-top:20px;">
+              <button type="button" class="btn btn--outline" id="vendorModalCancel">إلغاء</button>
+              <button type="submit" class="btn btn--primary">حفظ المورد</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Purchase Invoice Modal -->
+      <div id="purchaseInvoiceModal" class="admin-modal" hidden>
+        <div class="admin-modal__card" style="max-width: 800px; width: 95%;">
+          <h3 id="purchaseInvoiceModalTitle">تسجيل فاتورة مشتريات</h3>
+          <form id="purchaseInvoiceForm" class="admin-modal__form" style="margin-top:15px;">
+            <input type="hidden" id="purchaseInvoiceId">
+            
+            <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="admin-field">
+                <label for="purchaseInvoiceVendor">المورد *</label>
+                <select id="purchaseInvoiceVendor" class="admin-input" required>
+                  <option value="">-- اختر المورد --</option>
+                </select>
+              </div>
+              <div class="admin-field">
+                <label for="purchaseInvoiceStatus">حالة الدفع *</label>
+                <select id="purchaseInvoiceStatus" class="admin-input" required>
+                  <option value="paid">مدفوعة</option>
+                  <option value="unpaid">غير مدفوعة</option>
+                  <option value="partially_paid">مدفوعة جزئياً</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- جدول بنود المشتريات -->
+            <div style="margin-top: 20px;">
+              <h4>أصناف الفاتورة</h4>
+              <p class="admin-hint" style="margin-bottom: 10px;">اختر الأصناف التي تم شراؤها وحدد الكمية وسعر الشراء لتوريدها للمخزن.</p>
+              
+              <div style="overflow-x: auto;">
+                <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right;">
+                  <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                      <th style="padding: 8px; font-size: 0.85rem; width: 45%;">الصنف *</th>
+                      <th style="padding: 8px; font-size: 0.85rem; width: 20%;">الكمية *</th>
+                      <th style="padding: 8px; font-size: 0.85rem; width: 25%;">سعر الشراء (ريال) *</th>
+                      <th style="padding: 8px; font-size: 0.85rem; width: 10%;">خيارات</th>
+                    </tr>
+                  </thead>
+                  <tbody id="purchaseInvoiceItemsList">
+                    <!-- سيتم إضافة البنود ديناميكياً -->
+                  </tbody>
+                </table>
+              </div>
+              
+              <button type="button" id="purchaseInvoiceAddItemBtn" class="btn btn--outline btn--sm" style="margin-top: 10px;">+ إضافة صنف للفاتورة</button>
+            </div>
+
+            <!-- المجموع النهائي -->
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: var(--radius); text-align: left; font-size: 1.1rem; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+              <span>المجموع الإجمالي:</span>
+              <strong id="purchaseInvoiceTotal" style="color: var(--color-primary); font-size: 1.3rem;">0.00 ريال</strong>
+            </div>
+
+            <div class="admin-modal__actions" style="margin-top:20px;">
+              <button type="button" class="btn btn--outline" id="purchaseInvoiceModalCancel">إلغاء</button>
+              <button type="submit" class="btn btn--primary">حفظ وتوريد المخزون</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Customer Modal -->
+      <div id="customerModal" class="admin-modal" hidden>
+        <div class="admin-modal__card">
+          <h3 id="customerModalTitle">إضافة عميل جديد</h3>
+          <form id="customerForm" class="admin-modal__form" style="margin-top:15px;">
+            <input type="hidden" id="customerId">
+            <div class="admin-field">
+              <label for="customerName">اسم العميل *</label>
+              <input type="text" id="customerName" class="admin-input" required placeholder="مثال: محمد أحمد العتيبي">
+            </div>
+            <div class="admin-field">
+              <label for="customerPhone">رقم الهاتف</label>
+              <input type="tel" id="customerPhone" class="admin-input" placeholder="مثال: 0500000000">
+            </div>
+            <div class="admin-field">
+              <label for="customerEmail">البريد الإلكتروني</label>
+              <input type="email" id="customerEmail" class="admin-input" placeholder="مثال: customer@example.com">
+            </div>
+            <div class="admin-field">
+              <label for="customerAddress">العنوان</label>
+              <input type="text" id="customerAddress" class="admin-input" placeholder="مثال: الرياض، حي الملقا">
+            </div>
+            <div class="admin-modal__actions" style="margin-top:20px;">
+              <button type="button" class="btn btn--outline" id="customerModalCancel">إلغاء</button>
+              <button type="submit" class="btn btn--primary">حفظ العميل</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Customer Ledger Modal -->
+      <div id="customerLedgerModal" class="admin-modal" hidden>
+        <div class="admin-modal__card" style="max-width: 800px; width: 95%;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 id="customerLedgerTitle">كشف حساب العميل</h3>
+            <button type="button" class="btn btn--outline" id="customerLedgerCloseBtn">إغلاق</button>
+          </div>
+          <div style="background: #f8f9fa; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 15px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div>
+              <span class="admin-hint" style="font-size: 12px; display: block; margin-bottom: 5px;">إجمالي المبيعات</span>
+              <strong id="ledgerTotalSales" style="font-size: 18px; color: var(--color-text-primary);">0.00 ر.س</strong>
+            </div>
+            <div>
+              <span class="admin-hint" style="font-size: 12px; display: block; margin-bottom: 5px;">المبالغ المدفوعة</span>
+              <strong id="ledgerTotalPaid" style="font-size: 18px; color: green;">0.00 ر.س</strong>
+            </div>
+            <div>
+              <span class="admin-hint" style="font-size: 12px; display: block; margin-bottom: 5px;">المدفوعات الآجلة (الديون المستحقة)</span>
+              <strong id="ledgerOutstandingDebt" style="font-size: 18px; color: red;">0.00 ر.س</strong>
+            </div>
+          </div>
+          <div style="overflow-x: auto; max-height: 400px;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
+              <thead>
+                <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
+                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة</th>
+                  <th style="padding: 12px; font-weight: 600;">تاريخ الفاتورة</th>
+                  <th style="padding: 12px; font-weight: 600;">طريقة الدفع</th>
+                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
+                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
+                </tr>
+              </thead>
+              <tbody id="customerLedgerTransactionsList">
+                <tr><td colspan="5" style="padding: 20px; text-align: center;" class="admin-hint">لا توجد حركات مسجلة للعميل.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Printable Invoice Modal -->
+      <div id="invoicePrintModal" class="admin-modal" hidden>
+        <div class="admin-modal__card" style="max-width: 600px; width: 95%; background: #fff; color: #000; padding: 0;">
+          <div id="invoicePrintArea" style="padding: 30px; font-family: 'IBM Plex Sans Arabic', sans-serif;">
+            <!-- Printable Receipt Design -->
+            <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 15px;">
+              <h2 id="printBrandName" style="margin: 0; font-size: 1.5rem; font-weight: 700; color: #000;">منصة مكن</h2>
+              <p id="printBrandTagline" style="margin: 5px 0; font-size: 0.9rem; color: #555;">التاجر الافتراضي</p>
+              <p id="printBrandPhone" style="margin: 2px 0; font-size: 0.85rem; color: #000;">الهاتف: 966543530333</p>
+            </div>
+            
+            <div style="margin-bottom: 15px; font-size: 0.9rem; line-height: 1.4; color: #000; text-align: right;">
+              <div><strong>رقم الفاتورة:</strong> <span id="printInvoiceNo"></span></div>
+              <div><strong>التاريخ:</strong> <span id="printInvoiceDate"></span></div>
+              <div><strong>العميل:</strong> <span id="printCustomerName"></span></div>
+              <div><strong>الجوال:</strong> <span id="printCustomerPhone"></span></div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.9rem; margin-bottom: 15px; color: #000;">
+              <thead>
+                <tr style="border-bottom: 1px solid #000; font-weight: bold;">
+                  <th style="padding: 5px 0;">الصنف</th>
+                  <th style="padding: 5px; text-align: center;">الكمية</th>
+                  <th style="padding: 5px; text-align: left;">السعر</th>
+                  <th style="padding: 5px 0; text-align: left;">المجموع</th>
+                </tr>
+              </thead>
+              <tbody id="printInvoiceItems">
+                <!-- Dynamically filled -->
+              </tbody>
+            </table>
+
+            <div style="border-top: 1px solid #000; padding-top: 10px; font-size: 0.9rem; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; color: #000;">
+              <div>المجموع قبل الضريبة: <span id="printSubtotal">0.00 ريال</span></div>
+              <div>الخصم: <span id="printDiscount">0.00 ريال</span></div>
+              <div>الضريبة (15%): <span id="printTax">0.00 ريال</span></div>
+              <div style="font-size: 1.1rem; font-weight: bold; border-top: 1px double #000; padding-top: 5px;">المجموع النهائي: <span id="printTotal">0.00 ريال</span></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 2px dashed #000; padding-top: 15px; color: #000;">
+              <div style="text-align: right; font-size: 0.78rem; max-width: 60%; line-height: 1.3;">
+                <strong>شكراً لتعاملكم معنا!</strong>
+                <div>فاتورة ضريبية مبسطة</div>
+                <div>تم إصدارها عبر منصة مكّن</div>
+              </div>
+              <div id="printInvoiceQr" style="width: 80px; height: 80px; background: #eee; display: flex; justify-content: center; align-items: center; font-size: 0.65rem; color: #888;">
+                QR Code
+              </div>
+            </div>
+          </div>
+          <div class="admin-modal__actions" style="margin-top: 10px; padding: 20px; display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn btn--outline" id="printInvoiceCancel">إغلاق</button>
+            <button type="button" class="btn btn--primary" id="printInvoiceDoBtn">🖨️ طباعة الفاتورة</button>
+          </div>
+        </div>
+      </div>
+
       <button type="button" id="saveBtn" class="btn btn--primary btn--lg admin-save-fab">حفظ جميع التغييرات</button>
     </main>
     <div id="toast" class="toast" hidden></div>
@@ -1234,6 +2075,8 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
   <script src="js/content-templates/events.js"></script>
   <script src="js/content-templates/commerce.js"></script>
   <script src="js/content-templates/hockey.js"></script>
+  <script src="js/content-templates/bodybuilding.js"></script>
+  <script src="js/content-templates/football.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/content-resolver.js"></script>
   <script src="js/emails-catalog.js"></script>
@@ -1241,6 +2084,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
   <script src="js/themes-catalog.js"></script>
   <script src="js/brand-logo.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/supabase-db.js"></script>
   <script src="js/whatsapp-automation.js"></script>
   <script src="js/services-store.js"></script>
@@ -1251,11 +2095,17 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_
   <script src="js/pwa.js"></script>
   <script src="js/push-subscribe.js"></script>
   <script src="js/admin-booking.js"></script>
+  <script src="js/admin-team-workouts.js"></script>
   <script src="js/admin-orders.js"></script>
   <script src="js/admin-staff.js"></script>
   <script src="js/admin-developer.js"></script>
   <script src="js/admin-push.js"></script>
   <script src="js/admin-whatsapp-logs.js"></script>
   <script src="js/admin-clients.js"></script>
+  <script src="js/admin-inventory.js"></script>
+  <script src="js/admin-invoices.js"></script>
+  <script src="js/admin-customers.js"></script>
+  <script src="js/admin-purchases.js"></script>
+  <script src="js/admin-reports.js"></script>
 </body>
 </html>

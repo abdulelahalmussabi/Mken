@@ -76,7 +76,55 @@
   }
 
   function needsAddress() {
-    return store.serviceNeedsAddress(selectedService, activeActivityId, config);
+    return store.serviceNeedsAddressForDelivery(
+      selectedService,
+      activeActivityId,
+      config,
+      getSelectedDeliveryMode()
+    );
+  }
+
+  function getSelectedDeliveryMode() {
+    if (!selectedService) return 'in_person';
+    var mode = store.getServiceDeliveryMode(selectedService);
+    if (mode === 'remote') return 'remote';
+    if (mode === 'hybrid') {
+      var checked = document.querySelector('input[name="deliveryMode"]:checked');
+      return checked ? checked.value : '';
+    }
+    return 'in_person';
+  }
+
+  function getResolvedDeliveryMode() {
+    if (!selectedService) return 'in_person';
+    var mode = store.getServiceDeliveryMode(selectedService);
+    if (mode === 'hybrid') return getSelectedDeliveryMode() || 'in_person';
+    return mode;
+  }
+
+  function deliveryModeLabel(mode) {
+    if (mode === 'remote') return 'عن بُعد (Zoom/Teams)';
+    if (mode === 'in_person') return 'حضوري في المركز';
+    return '';
+  }
+
+  function normalizeBookingPhone(phone) {
+    var digits = String(phone || '').replace(/\D/g, '');
+    if (digits.indexOf('966') === 0) return digits;
+    if (digits.charAt(0) === '0') return '966' + digits.slice(1);
+    if (digits.length === 9) return '966' + digits;
+    return digits;
+  }
+
+  function hasDuplicateBooking(phone, serviceId, date, time) {
+    var normalized = normalizeBookingPhone(phone);
+    if (!normalized) return false;
+    var all = appointments.concat(bookingStore.getPendingRequests());
+    return all.some(function (a) {
+      if (a.serviceId !== serviceId || a.date !== date || a.time !== time) return false;
+      if (a.status !== 'confirmed' && a.status !== 'pending') return false;
+      return normalizeBookingPhone(a.phone) === normalized;
+    });
   }
 
   function showPanel(id) {
@@ -195,6 +243,7 @@
         booking = getEffectiveBooking();
         updateDateStepUi();
         renderServices();
+        toggleFormFields();
         document.getElementById('btnToDate').disabled = !selectedService;
       });
     });
@@ -306,8 +355,35 @@
       '<dt>' + (isStayBooking() ? 'تاريخ الوصول' : 'التاريخ') + '</dt><dd>' + bookingStore.formatDateArabic(selectedDate) + '</dd>';
     if (!isStayBooking()) {
       html += '<dt>الوقت</dt><dd>' + bookingStore.formatTimeArabic(selectedTime) + '</dd>';
-    } else if (selectedTime) {
-      html += '<dt>تسجيل الوصول</dt><dd>' + bookingStore.formatTimeArabic(selectedTime) + '</dd>';
+    } else {
+      var b = getEffectiveBooking();
+      var checkIn = selectedTime || bookingStore.getDefaultCheckInTime(b);
+      html += '<dt>تسجيل الوصول</dt><dd>' + bookingStore.formatTimeArabic(checkIn) + '</dd>';
+      var nightsEl = document.getElementById('stayNights');
+      var nightsVal = nightsEl ? nightsEl.value.trim() : '';
+      if (nightsVal) {
+        var checkoutDate = bookingStore.getCheckoutDateStr(
+          selectedDate,
+          nightsVal,
+          selectedService.stayUnit || (needsMonths() ? 'month' : 'night')
+        );
+        if (checkoutDate) {
+          html += '<dt>تسجيل الخروج</dt><dd>' +
+            bookingStore.formatDateArabic(checkoutDate) + ' — ' +
+            bookingStore.formatTimeArabic(bookingStore.getDefaultCheckOutTime(b)) + '</dd>';
+        }
+      }
+    }
+    var delivery = getResolvedDeliveryMode();
+    if (selectedService && store.getServiceDeliveryMode(selectedService) !== 'in_person') {
+      html += '<dt>طريقة الحضور</dt><dd>' + esc(deliveryModeLabel(delivery)) + '</dd>';
+      if (delivery === 'in_person') {
+        var venue = store.getVenueNote(config);
+        if (venue) html += '<dt>الموقع</dt><dd>' + esc(venue) + '</dd>';
+      }
+    } else if (selectedService && delivery === 'in_person') {
+      var venueNote = store.getVenueNote(config);
+      if (venueNote) html += '<dt>الموقع</dt><dd>' + esc(venueNote) + '</dd>';
     }
     html += '</dl>';
     bookingSummary.innerHTML = html;
@@ -330,13 +406,42 @@
     var addrBlock = document.getElementById('bookingAddressBlock');
     var partyBlock = document.getElementById('bookingPartyBlock');
     var nightsBlock = document.getElementById('bookingNightsBlock');
+    var deliveryBlock = document.getElementById('bookingDeliveryBlock');
+    var venueBlock = document.getElementById('bookingVenueBlock');
+    var meetingBlock = document.getElementById('bookingMeetingBlock');
+    var venueHint = document.getElementById('bookingVenueHint');
     var partyLabel = document.getElementById('partySizeLabel');
     var districtField = document.getElementById('customerDistrict');
     var districtLabel = document.querySelector('label[for="customerDistrict"]');
+    var svc = selectedService;
+    var deliveryMode = svc ? store.getServiceDeliveryMode(svc) : 'in_person';
+    var showChoice = svc && store.serviceShowsDeliveryChoice(svc);
+    var resolved = getResolvedDeliveryMode();
     var need = needsAddress();
     var party = needsPartySize();
     var nights = needsNights();
 
+    if (deliveryBlock) {
+      deliveryBlock.hidden = !showChoice;
+      if (showChoice) {
+        var inPersonRadio = deliveryBlock.querySelector('input[value="in_person"]');
+        var remoteRadio = deliveryBlock.querySelector('input[value="remote"]');
+        if (inPersonRadio && !inPersonRadio.checked && remoteRadio && !remoteRadio.checked) {
+          inPersonRadio.checked = true;
+        }
+      }
+    }
+    if (venueBlock) {
+      var showVenue = resolved === 'in_person' && (deliveryMode === 'in_person' || deliveryMode === 'hybrid');
+      venueBlock.hidden = !showVenue || isStayBooking();
+      if (venueHint && showVenue) {
+        var note = store.getVenueNote(config);
+        venueHint.textContent = note ? '📍 موقع الحضور: ' + note : '📍 سيتم تأكيد موقع الحضور عبر واتساب.';
+      }
+    }
+    if (meetingBlock) {
+      meetingBlock.hidden = !(resolved === 'remote' && (deliveryMode === 'remote' || deliveryMode === 'hybrid'));
+    }
     if (addrBlock) addrBlock.hidden = !need;
     if (partyBlock) partyBlock.hidden = !party;
     if (nightsBlock) nightsBlock.hidden = !nights;
@@ -522,6 +627,8 @@
     var district = (document.getElementById('customerDistrict').value || '').trim();
     var address = (document.getElementById('customerAddress') && document.getElementById('customerAddress').value || '').trim();
     var notes = document.getElementById('customerNotes').value.trim();
+    var meetingContact = (document.getElementById('meetingContact') && document.getElementById('meetingContact').value || '').trim();
+    var deliveryMode = getResolvedDeliveryMode();
     var partySizeEl = document.getElementById('partySize');
     var partySize = partySizeEl ? partySizeEl.value.trim() : '';
     var nightsEl = document.getElementById('stayNights');
@@ -531,10 +638,19 @@
     var nightsRequired = needsNights();
 
     if (!name || !phone) return;
+    if (selectedService && store.serviceShowsDeliveryChoice(selectedService) && !getSelectedDeliveryMode()) {
+      alert('يرجى اختيار طريقة الحضور (حضوري أو عن بُعد).');
+      return;
+    }
     if (need && !district) return;
     if (need && !address) return;
     if (party && !partySize) return;
     if (nightsRequired && !nights) return;
+
+    if (hasDuplicateBooking(phone, selectedService.id, selectedDate, selectedTime)) {
+      alert('يوجد حجز مسجّل مسبقاً بنفس الجوال لهذا الموعد. تواصل معنا إن أردت تعديله.');
+      return;
+    }
 
     if (isStayBooking() && !bookingStore.isStayRangeAvailable(
       selectedService.id,
@@ -552,15 +668,19 @@
       activityId: activeActivityId,
       serviceId: selectedService.id,
       date: selectedDate,
-      time: selectedTime || (getEffectiveBooking().checkInTime || '15:00'),
+      time: selectedTime || bookingStore.getDefaultCheckInTime(getEffectiveBooking()),
       customerName: name,
       phone: phone,
       district: district,
       locationAddress: address,
+      deliveryMode: deliveryMode,
+      meetingContact: meetingContact,
+      venueNote: deliveryMode === 'in_person' ? store.getVenueNote(config) : '',
       partySize: partySize,
       nights: nights,
       stayUnit: selectedService.stayUnit || (needsMonths() ? 'month' : 'night'),
       stayBooking: isStayBooking(),
+      checkOutTime: bookingStore.getDefaultCheckOutTime(getEffectiveBooking()),
       notes: notes,
       status: 'pending',
     };
@@ -577,13 +697,16 @@
         activityId: activeActivityId,
         serviceId: selectedService.id,
         date: selectedDate,
-        time: selectedTime,
+        time: selectedTime || bookingStore.getDefaultCheckInTime(getEffectiveBooking()),
         customerName: name,
         phone: phone,
         district: district,
         locationAddress: address,
         partySize: partySize,
         nights: nights,
+        stayUnit: selectedService.stayUnit || (needsMonths() ? 'month' : 'night'),
+        stayBooking: isStayBooking(),
+        checkOutTime: bookingStore.getDefaultCheckOutTime(getEffectiveBooking()),
         notes: notes,
         status: payConfig.requirePayment ? 'pending' : 'confirmed',
         paymentStatus: 'unpaid',
@@ -644,8 +767,14 @@
       phone: phone,
       district: district,
       locationAddress: address,
+      deliveryMode: deliveryMode,
+      meetingContact: meetingContact,
+      venueNote: deliveryMode === 'in_person' ? store.getVenueNote(config) : '',
       partySize: partySize,
       nights: nights,
+      stayUnit: selectedService.stayUnit || (needsMonths() ? 'month' : 'night'),
+      stayBooking: isStayBooking(),
+      checkOutTime: bookingStore.getDefaultCheckOutTime(getEffectiveBooking()),
       notes: notes,
     });
 
@@ -701,7 +830,7 @@
           appointments,
           selectedService
         );
-        selectedTime = slots[0] || b.checkInTime || '15:00';
+        selectedTime = slots[0] || bookingStore.getDefaultCheckInTime(b);
         renderSummary();
         toggleFormFields();
         showPanel('panelForm');
@@ -744,6 +873,13 @@
 
     bookingForm.addEventListener('submit', handleSubmit);
     document.getElementById('btnNewBooking').addEventListener('click', resetBooking);
+
+    document.querySelectorAll('input[name="deliveryMode"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        toggleFormFields();
+        renderSummary();
+      });
+    });
 
     var backFormBtn = document.getElementById('btnBackForm');
     if (backFormBtn) {

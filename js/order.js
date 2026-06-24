@@ -8,7 +8,7 @@
   var orderStore = window.MkenOrderStore;
   if (!store || !orderStore) return;
 
-  var config, activeActivity, activeActivityId, lastSubmittedOrder = null;
+  var config, activeActivity, activeActivityId, lastSubmittedOrder = null, _dbItems = [];
   var orderApp = document.getElementById('orderApp');
   var orderDisabled = document.getElementById('orderDisabled');
   var orderSteps = document.getElementById('orderSteps');
@@ -135,35 +135,100 @@
   }
 
   function renderProducts() {
-    var services = store.getEnabledServicesByActivity(activeActivityId);
+    if (activeActivityId === 'commerce' && window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      orderProducts.innerHTML = '<p class="admin-hint" style="grid-column: 1/-1; text-align: center; padding: 20px;">جاري تحميل المنتجات من المستودع...</p>';
+      var tenantSlug = store.getCurrentTenantSlug();
+      window.MkenSupabaseDb.fetchInventoryItems(tenantSlug)
+        .then(function (items) {
+          _dbItems = items || [];
+          var services = _dbItems.map(function (item) {
+            return {
+              id: item.id,
+              title: item.name,
+              icon: '📦',
+              category: item.sku || 'منتج',
+              priceLabel: item.sellPrice.toFixed(2) + ' ريال',
+              price: item.sellPrice,
+              quantity: item.quantity,
+              imageUrl: item.imageUrl
+            };
+          });
+          renderServicesList(services);
+        })
+        .catch(function (err) {
+          console.warn('Failed to load products from database, using static catalog:', err);
+          _dbItems = [];
+          renderServicesList(store.getEnabledServicesByActivity(activeActivityId));
+        });
+    } else {
+      _dbItems = [];
+      renderServicesList(store.getEnabledServicesByActivity(activeActivityId));
+    }
+  }
+
+  function renderServicesList(services) {
+    if (!services || !services.length) {
+      orderProducts.innerHTML = '<p class="admin-hint" style="grid-column: 1/-1; text-align: center; padding: 20px;">لا توجد منتجات متوفرة حالياً في المتجر.</p>';
+      return;
+    }
+
     orderProducts.innerHTML = services.map(function (s) {
       var price = s.priceLabel ? '<small class="order-price">' + esc(s.priceLabel) + '</small>' : '';
+      
+      // Stock warning or out of stock
+      var stockBadge = '';
+      var disabledAttr = '';
+      if (s.quantity !== undefined) {
+        if (s.quantity <= 0) {
+          stockBadge = '<span class="badge" style="background: #fce8e6; color: #c5221f; margin-top: 4px; display: inline-block;">نفد من المخزن</span>';
+          disabledAttr = ' disabled';
+        } else if (s.quantity <= 5) {
+          stockBadge = '<span class="badge" style="background: #fdf6f0; color: #8a6d3b; margin-top: 4px; display: inline-block;">كمية محدودة: ' + s.quantity + '</span>';
+        } else {
+          stockBadge = '<span class="badge" style="background: #e6f4ea; color: #137333; margin-top: 4px; display: inline-block;">متوفر: ' + s.quantity + '</span>';
+        }
+      }
+
+      var iconHtml = s.imageUrl
+        ? '<img src="' + esc(s.imageUrl) + '" alt="' + esc(s.title) + '" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">'
+        : '<span class="booking-service__icon">' + s.icon + '</span>';
+
       return (
-        '<div class="order-product-card">' +
-        '<button type="button" class="booking-service order-product-card__main" data-service="' + s.id + '">' +
-        '<span class="booking-service__icon">' + s.icon + '</span>' +
+        '<div class="order-product-card" style="opacity: ' + (s.quantity <= 0 ? '0.7' : '1') + ';">' +
+        '<button type="button" class="booking-service order-product-card__main" data-service="' + s.id + '"' + disabledAttr + '>' +
+        iconHtml +
         '<strong>' + esc(s.title) + '</strong>' +
         price +
+        stockBadge +
         '<small>' + esc(s.category) + '</small></button>' +
         '<div class="order-product-card__actions">' +
-        '<input type="number" class="order-qty-input" data-qty-for="' + s.id + '" min="1" max="999" value="1" aria-label="الكمية">' +
-        '<button type="button" class="btn btn--primary btn--sm" data-add="' + s.id + '">+ أضف</button>' +
+        '<input type="number" class="order-qty-input" data-qty-for="' + s.id + '" min="1" max="' + (s.quantity || 999) + '" value="1" aria-label="الكمية"' + disabledAttr + '>' +
+        '<button type="button" class="btn btn--primary btn--sm" data-add="' + s.id + '"' + disabledAttr + '>' + (s.quantity <= 0 ? 'نفد' : '+ أضف') + '</button>' +
         '</div></div>'
       );
     }).join('');
 
     orderProducts.querySelectorAll('[data-add]').forEach(function (btn) {
+      if (btn.disabled) return;
       btn.addEventListener('click', function () {
         var id = btn.getAttribute('data-add');
         var svc = services.find(function (x) { return x.id === id; });
         if (!svc) return;
         var qtyEl = orderProducts.querySelector('[data-qty-for="' + id + '"]');
-        var qty = qtyEl ? qtyEl.value : '1';
+        var qty = qtyEl ? parseInt(qtyEl.value) || 1 : 1;
+
+        // Check if qty exceeds available stock
+        if (svc.quantity !== undefined && qty > svc.quantity) {
+          alert('الكمية المطلوبة تتجاوز المخزون المتوفر (' + svc.quantity + ')');
+          return;
+        }
+
         orderStore.addToCart(activeActivityId, {
           serviceId: svc.id,
           serviceTitle: svc.title,
-          icon: svc.icon,
+          icon: svc.imageUrl ? '📦' : svc.icon,
           priceLabel: svc.priceLabel || '',
+          price: svc.price,
           quantity: qty,
         });
         renderCartBar();
@@ -202,7 +267,23 @@
 
     orderCartList.querySelectorAll('[data-line-qty]').forEach(function (input) {
       input.addEventListener('change', function () {
-        orderStore.updateCartLine(activeActivityId, input.getAttribute('data-line-qty'), input.value);
+        var lineId = input.getAttribute('data-line-qty');
+        var line = cart.find(function (x) { return x.lineId === lineId; });
+        if (!line) return;
+
+        var newQty = parseInt(input.value) || 1;
+        newQty = Math.max(1, newQty);
+
+        if (activeActivityId === 'commerce' && _dbItems && _dbItems.length) {
+          var dbItem = _dbItems.find(function (x) { return x.id === line.serviceId; });
+          if (dbItem && dbItem.quantity !== undefined && newQty > dbItem.quantity) {
+            alert('عذراً، الكمية المتوفرة في المخزن لهذا المنتج هي ' + dbItem.quantity + ' فقط.');
+            newQty = dbItem.quantity;
+            input.value = newQty;
+          }
+        }
+
+        orderStore.updateCartLine(activeActivityId, lineId, newQty);
         renderCartBar();
         renderCart();
       });
@@ -242,8 +323,18 @@
     var hasValidPrices = true;
     for (var i = 0; i < cart.length; i++) {
       var line = cart[i];
-      var svc = store.getResolvedService(line.serviceId, config);
-      var priceVal = svc ? parseFloat(svc.price) : NaN;
+      var priceVal = NaN;
+      if (line.price !== undefined && !isNaN(Number(line.price))) {
+        priceVal = Number(line.price);
+      } else {
+        var svc = store.getResolvedService(line.serviceId, config);
+        if (svc) {
+          priceVal = parseFloat(svc.price);
+        } else if (line.priceLabel) {
+          priceVal = parseFloat(line.priceLabel.replace(/[^\d.]/g, ''));
+        }
+      }
+
       if (isNaN(priceVal) || priceVal <= 0) {
         hasValidPrices = false;
         break;
@@ -251,6 +342,74 @@
       total += priceVal * line.quantity;
     }
     return hasValidPrices ? total : 0;
+  }
+
+  function deductStockForOrder(order) {
+    if (activeActivityId === 'commerce' && window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      var client = window.MkenSupabaseDb.getClient();
+      var tenantSlug = store.getCurrentTenantSlug() || 'default';
+      (order.items || []).forEach(function (item) {
+        client.rpc('deduct_inventory_stock', {
+          p_tenant: tenantSlug,
+          p_item_id: item.serviceId,
+          p_quantity: item.quantity,
+          p_reference_id: order.id
+        }).then(function (res) {
+          if (res.error) console.error('Failed to deduct stock:', res.error);
+          else if (res.data && !res.data.success) console.warn('Stock warning:', res.data.error);
+        }).catch(function (err) {
+          console.error('RPC error deduct stock:', err);
+        });
+      });
+    }
+  }
+
+  function createInvoiceFromOrder(order) {
+    if (activeActivityId === 'commerce' && window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+      var tenantSlug = store.getCurrentTenantSlug() || 'default';
+      var subtotal = 0;
+      var items = (order.items || []).map(function (item) {
+        var price = Number(item.price || 0);
+        if (!price && item.priceLabel) {
+          price = parseFloat(item.priceLabel.replace(/[^\d.]/g, '')) || 0;
+        }
+        subtotal += (price * item.quantity);
+        return {
+          itemId: item.serviceId,
+          name: item.serviceTitle,
+          quantity: item.quantity,
+          price: price
+        };
+      });
+
+      var discount = 0;
+      var netSubtotal = Math.max(0, subtotal - discount);
+      var taxAmount = netSubtotal * 0.15;
+      var totalAmount = netSubtotal + taxAmount;
+
+      var invoice = {
+        id: 'inv_' + order.id.replace('ord_', ''),
+        customerName: order.customerName,
+        customerPhone: order.phone || '',
+        items: items,
+        subtotal: subtotal,
+        discount: discount,
+        taxAmount: taxAmount,
+        totalAmount: totalAmount,
+        paymentStatus: order.paymentStatus || 'unpaid',
+        paymentMethod: order.paymentMethod || 'whatsapp',
+        type: 'invoice',
+        createdAt: order.createdAt || new Date().toISOString()
+      };
+
+      window.MkenSupabaseDb.saveCustomerInvoice(invoice, tenantSlug)
+        .then(function () {
+          console.log('Automated sales invoice created successfully:', invoice.id);
+        })
+        .catch(function (err) {
+          console.error('Failed to create automated invoice for order:', err);
+        });
+    }
   }
 
   function handlePaymentSuccess(orderId, paymentDetails) {
@@ -275,6 +434,8 @@
     });
 
     orderStore.updateOrder(orderId, updatedOrder);
+    deductStockForOrder(updatedOrder);
+    createInvoiceFromOrder(updatedOrder);
     orderStore.clearCart(activeActivityId);
     renderCartBar();
 
@@ -416,7 +577,12 @@
 
     var message = orderStore.buildCartWhatsAppMessage(brandName, payload);
 
+    if (!payload.id) payload.id = 'ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+    payload.paymentStatus = 'unpaid';
+    payload.paymentMethod = 'whatsapp';
     orderStore.addPendingOrder(payload);
+    deductStockForOrder(payload);
+    createInvoiceFromOrder(payload);
     orderStore.clearCart(activeActivityId);
     renderCartBar();
 
@@ -479,6 +645,12 @@
     applyBrand();
     applyContactLinks();
     if (config.theme) store.applyTheme(config.theme);
+
+    // Dynamic header links visibility based on features availability
+    var hasBookable = store.getBookableActivities && store.getBookableActivities().length > 0;
+    document.querySelectorAll('nav a[href="book.html"]').forEach(function (el) {
+      el.style.display = hasBookable ? '' : 'none';
+    });
 
     var orderable = getOrderableActivities();
     if (!orderable.length) {

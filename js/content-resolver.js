@@ -73,6 +73,14 @@
           var n = parseInt(ov.roomCount != null ? ov.roomCount : base.roomCount, 10);
           return n >= 1 ? n : (base.roomCount >= 1 ? base.roomCount : 0);
         })(),
+        slotDuration: (function () {
+          var d = parseInt(ov.slotDuration != null ? ov.slotDuration : base.slotDuration, 10);
+          return d >= 15 && d <= 480 ? d : (base.slotDuration >= 15 ? base.slotDuration : 0);
+        })(),
+        maxPerSlot: (function () {
+          var m = parseInt(ov.maxPerSlot != null ? ov.maxPerSlot : base.maxPerSlot, 10);
+          return m >= 1 ? m : (base.maxPerSlot >= 1 ? base.maxPerSlot : 0);
+        })(),
       });
     },
 

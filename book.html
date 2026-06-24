@@ -121,6 +121,21 @@
                 <label for="stayNights">عدد الليالي *</label>
                 <input type="number" id="stayNights" min="1" max="90" placeholder="مثال: 3">
               </div>
+              <div id="bookingDeliveryBlock" class="booking-field" hidden>
+                <span class="booking-field__label">طريقة الحضور *</span>
+                <div class="booking-delivery-options">
+                  <label class="booking-delivery-option"><input type="radio" name="deliveryMode" value="in_person"> 🏢 حضوري في المركز</label>
+                  <label class="booking-delivery-option"><input type="radio" name="deliveryMode" value="remote"> 💻 عن بُعد (Zoom/Teams)</label>
+                </div>
+              </div>
+              <div id="bookingVenueBlock" class="booking-field" hidden>
+                <p class="admin-hint" id="bookingVenueHint"></p>
+              </div>
+              <div id="bookingMeetingBlock" class="booking-field" hidden>
+                <label for="meetingContact">بريد أو حساب Zoom/Teams (اختياري)</label>
+                <input type="text" id="meetingContact" dir="ltr" placeholder="example@email.com">
+                <p class="admin-hint">سيُرسل رابط الاجتماع عبر واتساب قبل الموعد إن لم يُذكر هنا.</p>
+              </div>
               <div id="bookingAddressBlock" class="booking-field" hidden>
                 <label for="customerAddress">العنوان / موقع الخدمة *</label>
                 <input type="text" id="customerAddress" placeholder="الشارع، المبنى، أو وصف الموقع">
@@ -185,6 +200,8 @@
   <script src="js/content-templates/events.js"></script>
   <script src="js/content-templates/commerce.js"></script>
   <script src="js/content-templates/hockey.js"></script>
+  <script src="js/content-templates/bodybuilding.js"></script>
+  <script src="js/content-templates/football.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/social-catalog.js"></script>
   <script src="js/themes-catalog.js"></script>
