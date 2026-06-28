@@ -30,7 +30,7 @@
         sessionStorage.setItem('mken_admin_pin', pin);
       }
     }
-    return pin || 'mken2026';
+    return pin || '';
   }
 
   function formatDate(isoString) {
@@ -129,9 +129,23 @@
       // Build site link
       var siteUrl = store.buildTenantSiteUrl(c.tenant_slug);
 
+      var regDetailsHtml = '';
+      if (c.commercial_registry_number) {
+        regDetailsHtml += '<br><small style="color:var(--color-text-muted); font-size:0.75rem;">س.ت / وثيقة: ' + esc(c.commercial_registry_number) + '</small>';
+      }
+      if (c.civil_registry_number) {
+        regDetailsHtml += '<br><small style="color:var(--color-text-muted); font-size:0.75rem;">سجل مدني: ' + esc(c.civil_registry_number) + '</small>';
+      }
+      if (c.tax_number) {
+        regDetailsHtml += '<br><small style="color:var(--color-text-muted); font-size:0.75rem;">ضريبي: ' + esc(c.tax_number) + '</small>';
+      }
+      if (c.security_attachment) {
+        regDetailsHtml += '<br><small style="font-size:0.75rem;">🛡️ <span style="color:#e67e22; font-weight:bold;">مرفق أمني: </span>' + esc(c.security_attachment) + '</small>';
+      }
+
       return (
         '<tr style="border-bottom: 1px solid var(--color-border);">' +
-        '  <td style="padding:12px 10px; font-weight:500;">' + esc(c.business_name) + '</td>' +
+        '  <td style="padding:12px 10px; font-weight:500; line-height:1.4;">' + esc(c.business_name) + regDetailsHtml + '</td>' +
         '  <td style="padding:12px 10px;"><a href="' + siteUrl + '" target="_blank" style="color:var(--color-primary); font-weight:bold; text-decoration:underline;">' + esc(c.tenant_slug) + '</a></td>' +
         '  <td style="padding:12px 10px;" dir="ltr">' + esc(c.email) + '</td>' +
         '  <td style="padding:12px 10px;" dir="ltr">' + esc(c.phone) + '</td>' +
@@ -146,6 +160,7 @@
         '    <div style="display:inline-flex; gap:6px;">' +
         '      <button type="button" class="btn btn--outline btn--sm" data-extend-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem;">➕ تمديد</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-tier-slug="' + esc(c.tenant_slug) + '" data-current-tier="' + esc(c.subscription_tier || 'basic') + '" style="padding:4px 10px; font-size:0.78rem;">⚙️ الباقة</button>' +
+        '      <button type="button" class="btn btn--outline btn--sm" data-contract-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem; color:#2980b9; border-color:#2980b930;">📄 العقد</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-delete-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem; color:#e74c3c; border-color:#e74c3c20;">🗑️ حذف</button>' +
         '    </div>' +
         '  </td>' +
@@ -203,6 +218,16 @@
         var slug = btn.getAttribute('data-delete-slug');
         if (confirm('⚠️ هل أنت متأكد من حذف العميل "' + slug + '" نهائياً؟ سيتم مسح المنشأة وملف مستخدم تسجيل الدخول المرتبط بها فوراً!')) {
           deleteClient(slug);
+        }
+      });
+    });
+
+    adminClientsList.querySelectorAll('[data-contract-slug]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var slug = btn.getAttribute('data-contract-slug');
+        var pin = getPin();
+        if (pin) {
+          window.open('contract.html?tenant=' + encodeURIComponent(slug) + '&pin=' + encodeURIComponent(pin), '_blank');
         }
       });
     });
@@ -311,6 +336,10 @@
     var email = document.getElementById('adminRegEmail').value.trim();
     var password = document.getElementById('adminRegPassword').value;
     var phone = document.getElementById('adminRegPhone').value.trim();
+    var civilRegistry = document.getElementById('adminRegCivilRegistry').value.trim();
+    var croOrFreelance = document.getElementById('adminRegCROrFreelance').value.trim();
+    var vatNumber = document.getElementById('adminRegVatNumber').value.trim();
+    var securityAttachment = document.getElementById('adminRegSecurityAttachment').value.trim();
     var tierSelect = document.getElementById('adminRegTier');
     var tier = tierSelect ? tierSelect.value : 'basic';
 
@@ -391,7 +420,11 @@
         subscription_tier: tier,
         enabledActivities: enabledActivities,
         enabledServices: enabledServices,
-        customFeatures: customFeatures
+        customFeatures: customFeatures,
+        civilRegistryNumber: civilRegistry,
+        commercialRegistryNumber: croOrFreelance,
+        taxNumber: vatNumber,
+        securityAttachment: securityAttachment
       })
     })
     .then(function (res) {
@@ -451,14 +484,34 @@
     var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
     var invoicesCheck = document.getElementById('adminRegSvcInvoices');
 
+    function toggleSecurityAttachmentField() {
+      var securityCheckbox = container.querySelector('.admin-reg-activity-check[value="security"]');
+      var securityField = document.getElementById('adminRegSecurityAttachmentField');
+      var securityInput = document.getElementById('adminRegSecurityAttachment');
+      if (securityCheckbox && securityField && securityInput) {
+        if (securityCheckbox.checked) {
+          securityField.style.display = 'block';
+          securityInput.required = true;
+        } else {
+          securityField.style.display = 'none';
+          securityInput.required = false;
+          securityInput.value = '';
+        }
+      }
+    }
+
     function onChange() {
       updateRegistrationPricing();
     }
 
     if (tierSelect) tierSelect.addEventListener('change', onTierSelectChange);
     checks.forEach(function (cb) {
-      cb.addEventListener('change', onChange);
+      cb.addEventListener('change', function () {
+        onChange();
+        toggleSecurityAttachmentField();
+      });
     });
+    toggleSecurityAttachmentField();
     [bookingCheck, commerceCheck, whatsappCheck, invoicesCheck].forEach(function (cb) {
       if (cb) cb.addEventListener('change', onChange);
     });

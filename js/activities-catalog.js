@@ -1,5 +1,5 @@
 /**
- * كتالوج الأنشطة الرئيسية — منصة رونق متعددة الأنشطة
+ * كتالوج الأنشطة الرئيسية — منصة مكن متعددة الأنشطة
  */
 window.MkenActivitiesCatalog = [
   {
@@ -253,15 +253,36 @@ window.MkenActivitiesCatalog = [
     },
   },
   {
-    id: 'consulting',
+    id: 'legal',
     icon: '⚖️',
+    title: 'المحاماة والاستشارات القانونية',
+    shortTitle: 'محاماة',
+    tagline: 'تمثيل قانوني واستشارات موثوقة',
+    description: 'استشارات قانونية، صياغة ومراجعة العقود، الترافع والتقاضي، التحكيم، وخدمات الشركات — مع محامين مرخّصين وسرية مهنية تامة.',
+    uiProfile: 'appointment-based',
+    defaultTheme: 'midnight',
+    serviceIds: [
+      'legal-consult', 'contract-drafting', 'contract-review', 'corporate-legal',
+      'labor-dispute', 'family-law', 'litigation-rep', 'arbitration',
+    ],
+    booking: {
+      type: 'appointment',
+      requiresAddress: false,
+      slotDuration: 60,
+      ctaLabel: 'بوابة المكتب القانوني',
+      portalUrl: 'legal-portal.html',
+    },
+  },
+  {
+    id: 'consulting',
+    icon: '💼',
     title: 'استشارات مهنية',
     shortTitle: 'استشارات',
     tagline: 'خبراء في خدمتك',
-    description: 'استشارات قانونية، محاسبة، عقارات، وأعمال — احجز جلسة مع مختص.',
+    description: 'استشارات محاسبية، عقارية، أعمال، وموارد بشرية — احجز جلسة مع مختص.',
     uiProfile: 'appointment-based',
-    defaultTheme: 'midnight',
-    serviceIds: ['legal-consult', 'accounting-consult', 'real-estate-viewing', 'business-consult', 'hr-consult'],
+    defaultTheme: 'slate',
+    serviceIds: ['accounting-consult', 'real-estate-viewing', 'business-consult', 'hr-consult'],
     booking: { type: 'appointment', requiresAddress: false, slotDuration: 60, ctaLabel: 'احجز استشارة' },
   },
   {

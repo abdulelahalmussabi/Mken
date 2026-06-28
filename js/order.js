@@ -9,6 +9,7 @@
   if (!store || !orderStore) return;
 
   var config, activeActivity, activeActivityId, lastSubmittedOrder = null, _dbItems = [];
+  var serviceAutoAdded = false;
   var orderApp = document.getElementById('orderApp');
   var orderDisabled = document.getElementById('orderDisabled');
   var orderSteps = document.getElementById('orderSteps');
@@ -167,6 +168,31 @@
   }
 
   function renderServicesList(services) {
+    var targetServiceId = new URLSearchParams(window.location.search).get('service') || '';
+    if (!serviceAutoAdded && targetServiceId && services && services.length) {
+      var found = services.find(function (s) { return s.id === targetServiceId; });
+      if (found) {
+        serviceAutoAdded = true;
+        orderStore.addToCart(activeActivityId, {
+          id: found.id,
+          title: found.title,
+          icon: found.icon || '🛒',
+          priceLabel: found.priceLabel || '',
+          price: found.price || parseFloat(found.priceLabel) || 0,
+          quantity: 1
+        });
+        var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?activity=" + encodeURIComponent(activeActivityId);
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+
+        setTimeout(function () {
+          renderCart();
+          showPanel('panelCart');
+          setStep(2);
+        }, 100);
+        return;
+      }
+    }
+
     if (!services || !services.length) {
       orderProducts.innerHTML = '<p class="admin-hint" style="grid-column: 1/-1; text-align: center; padding: 20px;">لا توجد منتجات متوفرة حالياً في المتجر.</p>';
       return;

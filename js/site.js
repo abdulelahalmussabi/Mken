@@ -202,7 +202,7 @@
       var bookCfg = act.booking || {};
       ctaBooking.textContent = orderCfg.ctaLabel || bookCfg.ctaLabel || 'احجز الآن';
       var globalBooking = config.booking && config.booking.enabled !== false;
-      if (profile.showOrder) {
+      if (profile.id === 'order-based') {
         ctaBooking.href = 'order.html?activity=' + encodeURIComponent(activeActivityId);
       } else if (profile.showBooking && globalBooking) {
         ctaBooking.href = bookCfg.portalUrl || ('book.html?activity=' + encodeURIComponent(activeActivityId));

@@ -8,6 +8,10 @@
   var STORAGE_KEY = 'mken_platform_config';
   var ADMIN_KEY = 'mken_platform_admin';
   var CONFIG_URL = 'data/config.json';
+
+  function getStorageKey() {
+    return _currentTenantSlug ? (STORAGE_KEY + '_' + _currentTenantSlug) : STORAGE_KEY;
+  }
   var DEFAULT_PHONE = '966543530333';
 
   var DEFAULT_EMAILS = {
@@ -701,7 +705,7 @@
 
   function loadFromStorage() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(getStorageKey());
       if (raw) return normalizeConfig(JSON.parse(raw));
     } catch (e) { /* ignore */ }
     return null;
@@ -832,26 +836,34 @@
       .then(function (s) { return pickConfig(s, localCfg); })
       .catch(function () { return localCfg || normalizeConfig(null); })
       .then(function (cfg) {
-        if (!(cfg.supabase && cfg.supabase.url && cfg.supabase.key)) {
-          return fetch('/api/v1/auth/supabase-config')
-            .then(function (res) {
-              if (!res.ok) throw new Error('Failed to fetch config');
-              return res.json();
-            })
-            .then(function (sbEnv) {
-              if (sbEnv && sbEnv.enabled && sbEnv.supabaseUrl && sbEnv.supabaseKey) {
+        // Always check database environment parameters from the backend API
+        return fetch('/api/v1/auth/supabase-config')
+          .then(function (res) {
+            if (!res.ok) throw new Error('Failed to fetch config');
+            return res.json();
+          })
+          .then(function (sbEnv) {
+            if (sbEnv) {
+              if (sbEnv.enabled && sbEnv.supabaseUrl && sbEnv.supabaseKey) {
                 if (!cfg.supabase) cfg.supabase = {};
                 cfg.supabase.url = sbEnv.supabaseUrl;
                 cfg.supabase.key = sbEnv.supabaseKey;
                 cfg.supabase.enabled = true;
+              } else if (!sbEnv.enabled) {
+                // If database is not configured in server environment, disable it in frontend client
+                if (cfg.supabase) {
+                  cfg.supabase.enabled = false;
+                  cfg.supabase.url = '';
+                  cfg.supabase.key = '';
+                }
               }
-              return cfg;
-            })
-            .catch(function () {
-              return cfg;
-            });
-        }
-        return cfg;
+            }
+            return cfg;
+          })
+          .catch(function () {
+            // Graceful fallback for standalone self-hosted environments where API functions are not deployed
+            return cfg;
+          });
       })
       .then(function (cfg) {
         var dbEnabled = (cfg.supabase && cfg.supabase.enabled) || _currentTenantSlug;
@@ -933,18 +945,19 @@
     _config = normalizeConfig(config);
     _config.updatedAt = new Date().toISOString();
     _source = 'local';
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_config));
+    localStorage.setItem(getStorageKey(), JSON.stringify(_config));
     applyTheme(_config.theme);
 
     var promise = Promise.resolve(_config);
-    if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
+    var adminPin = sessionStorage.getItem('mken_admin_pin');
+    if (window.MkenSupabaseDb && (adminPin || window.MkenSupabaseDb.isConfigured())) {
       promise = window.MkenSupabaseDb.saveConfig(_config, _currentTenantSlug)
         .then(function () {
-          _source = 'supabase';
+          _source = adminPin ? 'local-api' : 'supabase';
           return _config;
         })
         .catch(function (err) {
-          console.error('Failed to save config to Supabase', err);
+          console.error('Failed to save config', err);
           throw err;
         });
     }
@@ -1115,7 +1128,22 @@
 
   function applyThemeEarly() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var tenant = _currentTenantSlug;
+      if (!tenant) {
+        var urlParams = new URLSearchParams(window.location.search);
+        tenant = urlParams.get('tenant') || urlParams.get('client');
+        if (!tenant) {
+          tenant = detectTenantFromHostname();
+        }
+        if (tenant) {
+          tenant = tenant.trim().toLowerCase();
+          if (tenant === 'almahrusa') {
+            tenant = 'almahrosa';
+          }
+        }
+      }
+      var key = tenant ? (STORAGE_KEY + '_' + tenant) : STORAGE_KEY;
+      var raw = localStorage.getItem(key);
       if (!raw) return;
       var cfg = JSON.parse(raw);
       if (cfg.theme && VALID_THEMES.indexOf(cfg.theme) !== -1) {
@@ -1125,7 +1153,6 @@
   }
 
   window.MkenServicesStore = {
-    STORAGE_KEY: STORAGE_KEY,
     CONFIG_URL: CONFIG_URL,
     DEFAULT_CONFIG: DEFAULT_CONFIG,
     DEFAULT_PHONE: DEFAULT_PHONE,
@@ -1193,4 +1220,9 @@
     SAAS_TIERS: SAAS_TIERS,
     getSaaSPlan: getSaaSPlan,
   };
+  Object.defineProperty(window.MkenServicesStore, 'STORAGE_KEY', {
+    get: getStorageKey,
+    configurable: true,
+    enumerable: true
+  });
 })();

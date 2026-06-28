@@ -7,6 +7,16 @@
   var store = window.MkenServicesStore;
   if (!store) return;
 
+  function getApiKeysStorageKey() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    return tenantSlug ? ('mken_mken_apikeys_' + tenantSlug) : 'mken_mken_apikeys';
+  }
+
+  function getInvoicesStorageKey() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    return tenantSlug ? ('mken_mken_invoices_' + tenantSlug) : 'mken_mken_invoices';
+  }
+
   var apiKeysList = document.getElementById('apiKeysList');
   var generateApiKeyBtn = document.getElementById('generateApiKeyBtn');
   var saasInvoicesList = document.getElementById('saasInvoicesList');
@@ -80,7 +90,7 @@
 
   function loadLocalApiKeys() {
     try {
-      var raw = localStorage.getItem('mken_mken_apikeys');
+      var raw = localStorage.getItem(getApiKeysStorageKey());
       _apiKeys = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _apiKeys = [];
@@ -159,7 +169,7 @@
         });
     } else {
       _apiKeys.push(keyObj);
-      localStorage.setItem('mken_mken_apikeys', JSON.stringify(_apiKeys));
+      localStorage.setItem(getApiKeysStorageKey(), JSON.stringify(_apiKeys));
       toast('تم التوليد والحفظ محلياً بنجاح');
       renderApiKeys();
     }
@@ -177,7 +187,7 @@
         });
     } else {
       _apiKeys = _apiKeys.filter(function (k) { return k.id !== id; });
-      localStorage.setItem('mken_mken_apikeys', JSON.stringify(_apiKeys));
+      localStorage.setItem(getApiKeysStorageKey(), JSON.stringify(_apiKeys));
       toast('تم الإلغاء محلياً');
       renderApiKeys();
     }
@@ -194,7 +204,7 @@
       window.MkenSupabaseDb.fetchInvoices(tenantSlug)
         .then(function (invoices) {
           _invoices = invoices;
-          localStorage.setItem('mken_mken_invoices', JSON.stringify(invoices));
+          localStorage.setItem(getInvoicesStorageKey(), JSON.stringify(invoices));
           renderInvoices();
         })
         .catch(function (err) {
@@ -208,7 +218,7 @@
 
   function loadLocalInvoices() {
     try {
-      var raw = localStorage.getItem('mken_mken_invoices');
+      var raw = localStorage.getItem(getInvoicesStorageKey());
       _invoices = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _invoices = [];
@@ -269,7 +279,7 @@
     var masterPublishableKey = '';
     try {
       // Moyasar key is loaded from MkenServicesStore configurations
-      var raw = localStorage.getItem('mken_platform_config');
+      var raw = localStorage.getItem(store.STORAGE_KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
         // Fallback to local storage config or use the public publishable key configured in database
@@ -375,7 +385,7 @@
     } else {
       // Local fallback
       _invoices.unshift(invoice);
-      localStorage.setItem('mken_mken_invoices', JSON.stringify(_invoices));
+      localStorage.setItem(getInvoicesStorageKey(), JSON.stringify(_invoices));
       store.renewSubscription(tenantSlug, months)
         .then(function () {
           toast('تم الدفع والتجديد محلياً بنجاح!');
@@ -428,7 +438,7 @@
           window.MkenSupabaseDb.saveInvoice(invoice, tenantSlug).then(loadInvoices);
         } else {
           _invoices.unshift(invoice);
-          localStorage.setItem('mken_mken_invoices', JSON.stringify(_invoices));
+          localStorage.setItem(getInvoicesStorageKey(), JSON.stringify(_invoices));
           renderInvoices();
         }
 
@@ -536,7 +546,9 @@
     if (googleBusinessDisconnected) googleBusinessDisconnected.hidden = true;
     if (googleBusinessConnected) googleBusinessConnected.hidden = true;
 
-    fetch('/api/google-business/locations?tenant=' + encodeURIComponent(tenantSlug))
+    getGbpAiAuthHeaders().then(function (headers) {
+      return fetch('/api/google-business/locations?tenant=' + encodeURIComponent(tenantSlug), { headers: headers });
+    })
       .then(function (res) {
         return res.json().then(function (data) {
           if (!res.ok) throw new Error(data.error || 'فشل جلب إعدادات الربط');
@@ -604,7 +616,9 @@
       googleBusinessConnectBtn.textContent = 'جاري توليد الرابط...';
     }
 
-    fetch('/api/google-business/auth-url?tenant=' + encodeURIComponent(tenantSlug))
+    getGbpAiAuthHeaders().then(function (headers) {
+      return fetch('/api/google-business/auth-url?tenant=' + encodeURIComponent(tenantSlug), { headers: headers });
+    })
       .then(function (res) {
         if (!res.ok) throw new Error('فشل توليد رابط الربط');
         return res.json();
@@ -642,14 +656,16 @@
       googleBusinessUpdateBtn.textContent = 'جاري التحديث...';
     }
 
-    fetch('/api/google-business/update-website', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenant: tenantSlug,
-        locationId: locId,
-        websiteUrl: websiteUrl
-      })
+    getGbpAiAuthHeaders().then(function (headers) {
+      return fetch('/api/google-business/update-website', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          tenant: tenantSlug,
+          locationId: locId,
+          websiteUrl: websiteUrl
+        })
+      });
     })
       .then(function (res) {
         return res.json().then(function (data) {
@@ -682,13 +698,15 @@
       googleBusinessDisconnectBtn.textContent = 'جاري إلغاء الربط...';
     }
 
-    fetch('/api/google-business/update-website', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenant: tenantSlug,
-        action: 'disconnect'
-      })
+    getGbpAiAuthHeaders().then(function (headers) {
+      return fetch('/api/google-business/update-website', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          tenant: tenantSlug,
+          action: 'disconnect'
+        })
+      });
     })
       .then(function (res) {
         if (!res.ok) throw new Error('فشل إلغاء الربط');
@@ -738,14 +756,16 @@
       googleBusinessSyncServicesBtn.textContent = 'جاري المزامنة...';
     }
 
-    fetch('/api/google-business/sync-services', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenant: tenantSlug,
-        locationId: locId,
-        services: servicesPayload
-      })
+    getGbpAiAuthHeaders().then(function (headers) {
+      return fetch('/api/google-business/sync-services', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          tenant: tenantSlug,
+          locationId: locId,
+          services: servicesPayload
+        })
+      });
     })
       .then(function (res) {
         return res.json().then(function (data) {
@@ -832,14 +852,16 @@
     store.saveConfig(cfg)
       .then(function() {
         updateReviewLinkDisplay(reviewUrl);
-        return fetch('/api/google-business/update-website', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tenant: tenantSlug,
-            locationId: locId,
-            websiteUrl: store.buildTenantSiteUrl(tenantSlug)
-          })
+        return getGbpAiAuthHeaders().then(function (headers) {
+          return fetch('/api/google-business/update-website', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+              tenant: tenantSlug,
+              locationId: locId,
+              websiteUrl: store.buildTenantSiteUrl(tenantSlug)
+            })
+          });
         });
       })
       .then(function(res) {

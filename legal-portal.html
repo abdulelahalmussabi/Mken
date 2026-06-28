@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <script src="js/theme-early.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e3d59">
+  <title>بوابة المكتب القانوني — إدارة القضايا</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/platform.css">
+  <link rel="stylesheet" href="css/legal-portal.css">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+</head>
+<body class="lp-body">
+
+  <header class="lp-header">
+    <div class="container lp-header__inner">
+      <a href="index.html" class="lp-logo" aria-label="العودة للصفحة الرئيسية">
+        <span class="lp-logo__symbol" id="firmAvatar">⚖️</span>
+        <div class="lp-logo__text">
+          <span class="lp-logo__title" id="firmNameDisp">المكتب القانوني</span>
+          <span class="lp-logo__subtitle">بوابة إدارة القضايا والاستشارات</span>
+        </div>
+      </a>
+      <nav class="nav" id="nav">
+        <a href="index.html">الرئيسية</a>
+        <a href="index.html#services">الخدمات القانونية</a>
+        <a href="admin.html">الإدارة</a>
+      </nav>
+      <a href="#" class="btn btn--primary lp-header__cta" id="firmWhatsappCta" target="_blank" rel="noopener">📱 تواصل مع المكتب</a>
+    </div>
+  </header>
+
+  <section class="lp-hero">
+    <div class="lp-hero__pattern"></div>
+    <div class="container">
+      <span class="lp-hero__badge">⚖️ بوابة قانونية موثوقة</span>
+      <h1>تابع قضيتك واستشاراتك <span id="firmHeroName">في مكان واحد</span></h1>
+      <p>بوابتك الرسمية لمتابعة حالة قضيتك، الجلسات القادمة، والمستجدات — بسرية مهنية تامة.</p>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="lp-view-switch">
+      <button type="button" class="lp-switch-btn lp-switch-btn--active" id="btnViewClient">
+        <span>👤</span> بوابة الموكّل
+      </button>
+      <button type="button" class="lp-switch-btn" id="btnViewLawyer">
+        <span>🔑</span> لوحة تحكم المحامي
+      </button>
+    </div>
+  </div>
+
+  <main class="container lp-main">
+
+    <!-- ============ واجهة الموكّل ============ -->
+    <div id="viewClient">
+      <div class="lp-grid lp-grid--2">
+
+        <div class="lp-card">
+          <h3 class="lp-card__title"><span class="lp-card__icon">🔎</span> الاستعلام عن حالة قضية</h3>
+          <p class="lp-muted">أدخل رقم القضية ورقم جوالك المسجّل لدى المكتب للاطلاع على آخر المستجدات.</p>
+          <form id="lookupForm" class="lp-form">
+            <div class="lp-input-group">
+              <label for="lookupNumber">رقم القضية</label>
+              <input type="text" id="lookupNumber" class="lp-input" required placeholder="مثال: LM-2026-014" dir="ltr">
+            </div>
+            <div class="lp-input-group">
+              <label for="lookupPhone">رقم الجوال المسجّل</label>
+              <input type="tel" id="lookupPhone" class="lp-input" required placeholder="05xxxxxxxx" dir="ltr">
+            </div>
+            <button type="submit" class="lp-btn">عرض حالة القضية</button>
+          </form>
+        </div>
+
+        <div class="lp-card">
+          <h3 class="lp-card__title"><span class="lp-card__icon">📅</span> طلب استشارة جديدة</h3>
+          <p class="lp-muted">احجز استشارة قانونية أولية مع المكتب مباشرة عبر الواتساب.</p>
+          <div id="clientServices" class="lp-chips"></div>
+          <div id="clientLawyerBooking" class="lp-lawyer-book"></div>
+          <a href="book.html?activity=legal&calendar=1" id="clientCalendarCta" class="lp-btn" style="margin-top:16px;">📅 احجز استشارة (تقويم — أي محامٍ)</a>
+          <a href="#" id="clientBookCta" class="lp-btn lp-btn--gold" target="_blank" rel="noopener" style="margin-top:10px;">📱 احجز عبر الواتساب</a>
+        </div>
+
+      </div>
+
+      <!-- نتيجة الاستعلام -->
+      <div id="lookupResult" class="lp-card lp-result" style="display:none; margin-top:24px;"></div>
+    </div>
+
+    <!-- ============ لوحة تحكم المحامي ============ -->
+    <div id="viewLawyer" style="display:none;">
+
+      <!-- ملخص إحصائي -->
+      <div class="lp-stats" id="lawyerStats"></div>
+
+      <!-- الجدول الموحّد لمواعيد جميع المحامين -->
+      <div class="lp-card">
+        <div class="lp-card__head">
+          <h3 class="lp-card__title"><span class="lp-card__icon">📆</span> الجدول الموحّد للمواعيد القادمة</h3>
+          <select id="scheduleFilter" class="lp-input" style="max-width:200px;">
+            <option value="all">كل المحامين</option>
+          </select>
+        </div>
+        <div class="lp-table-wrap">
+          <table class="lp-table">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>الموكّل</th>
+                <th>رقم القضية</th>
+                <th>النوع</th>
+                <th>المحامي</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleBody">
+              <tr><td colspan="6" class="lp-empty">لا توجد مواعيد قادمة.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="lp-grid lp-grid--sidebar">
+
+        <!-- العمود الرئيسي: القضايا -->
+        <div>
+          <div class="lp-card">
+            <div class="lp-card__head">
+              <h3 class="lp-card__title"><span class="lp-card__icon">📁</span> سجل القضايا والملفات</h3>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="lp-btn lp-btn--sm lp-btn--ghost" id="btnSyncBookings" title="إنشاء/تحديث ملفات الموكّلين من حجوزات التقويم">🔄 مزامنة الحجوزات</button>
+                <button type="button" class="lp-btn lp-btn--sm" id="btnAddMatter">➕ قضية جديدة</button>
+              </div>
+            </div>
+            <div class="lp-toolbar">
+              <input type="search" id="matterSearch" class="lp-input" placeholder="بحث بالاسم أو رقم القضية...">
+              <select id="matterLawyerFilter" class="lp-input">
+                <option value="all">كل المحامين</option>
+              </select>
+              <select id="matterFilter" class="lp-input">
+                <option value="all">كل الحالات</option>
+                <option value="new">جديدة</option>
+                <option value="in_progress">قيد النظر</option>
+                <option value="postponed">مؤجلة</option>
+                <option value="settled">تسوية/صلح</option>
+                <option value="won">منتهية لصالح الموكّل</option>
+                <option value="lost">منتهية</option>
+                <option value="closed">مغلقة</option>
+              </select>
+            </div>
+            <div class="lp-table-wrap">
+              <table class="lp-table">
+                <thead>
+                  <tr>
+                    <th>رقم القضية</th>
+                    <th>الموكّل</th>
+                    <th>النوع</th>
+                    <th>المحامي</th>
+                    <th>الحالة</th>
+                    <th>الجلسة القادمة</th>
+                    <th>إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="mattersBody">
+                  <tr><td colspan="7" class="lp-empty">لا توجد قضايا مسجّلة بعد.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- العمود الجانبي: المحامون + إعدادات المكتب -->
+        <div>
+          <div class="lp-card">
+            <h3 class="lp-card__title"><span class="lp-card__icon">👨‍⚖️</span> فريق المحامين</h3>
+            <div id="lawyersList" class="lp-lawyers"></div>
+            <form id="lawyerForm" class="lp-form" style="margin-top:14px; border-top:1px solid var(--lp-border); padding-top:14px;">
+              <input type="hidden" id="lawyerId">
+              <div class="lp-input-group">
+                <label for="lawyerName">اسم المحامي *</label>
+                <input type="text" id="lawyerName" class="lp-input" placeholder="أ. ...">
+              </div>
+              <div class="lp-input-group">
+                <label for="lawyerSpecialty">التخصص</label>
+                <input type="text" id="lawyerSpecialty" class="lp-input" placeholder="عمالي / تجاري / أحوال شخصية">
+              </div>
+              <div class="lp-input-group">
+                <label for="lawyerPhone">جوال المحامي (واتساب)</label>
+                <input type="tel" id="lawyerPhone" class="lp-input" dir="ltr" placeholder="05xxxxxxxx">
+              </div>
+              <div class="lp-input-group">
+                <label for="lawyerColor">اللون المميّز</label>
+                <input type="color" id="lawyerColor" class="lp-input" value="#1e3d59" style="height:42px; padding:4px;">
+              </div>
+              <div class="lp-input-group">
+                <label for="lawyerPin">رمز دخول بوابة الموظفين (4 أرقام)</label>
+                <input type="text" id="lawyerPin" class="lp-input" dir="ltr" inputmode="numeric" maxlength="4" placeholder="مثال: 1990">
+                <small class="lp-muted" style="display:block; margin-top:4px;">يُستخدم لدخول المحامي إلى <b>staff.html</b> لعرض مواعيده الخاصة.</small>
+              </div>
+              <button type="submit" class="lp-btn lp-btn--sm" style="width:100%;" id="lawyerSubmitBtn">➕ إضافة محامٍ</button>
+            </form>
+          </div>
+
+          <div class="lp-card">
+            <h3 class="lp-card__title"><span class="lp-card__icon">🏛️</span> بيانات المكتب</h3>
+            <form id="firmForm" class="lp-form">
+              <div class="lp-input-group">
+                <label for="firmNameInput">اسم المكتب / المحامي</label>
+                <input type="text" id="firmNameInput" class="lp-input" placeholder="مكتب ... للمحاماة">
+              </div>
+              <div class="lp-input-group">
+                <label for="firmAvatarInput">رمز/إيموجي المكتب</label>
+                <input type="text" id="firmAvatarInput" class="lp-input" maxlength="2" placeholder="⚖️">
+              </div>
+              <div class="lp-input-group">
+                <label for="firmPhoneInput">جوال المكتب (واتساب)</label>
+                <input type="tel" id="firmPhoneInput" class="lp-input" placeholder="9665xxxxxxxx" dir="ltr">
+              </div>
+              <div class="lp-input-group">
+                <label for="firmBioInput">نبذة مختصرة</label>
+                <textarea id="firmBioInput" class="lp-input" rows="2" placeholder="رخصة محاماة رقم ..."></textarea>
+              </div>
+              <button type="submit" class="lp-btn">💾 حفظ بيانات المكتب</button>
+            </form>
+          </div>
+
+          <div class="lp-card">
+            <h3 class="lp-card__title"><span class="lp-card__icon">🔐</span> الرمز السري</h3>
+            <form id="pinChangeForm" class="lp-form">
+              <div class="lp-input-group">
+                <label for="newPinInput">رمز جديد (4 أرقام)</label>
+                <input type="password" id="newPinInput" class="lp-input" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="••••" dir="ltr">
+              </div>
+              <button type="submit" class="lp-btn lp-btn--outline">تحديث الرمز السري</button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- نافذة الرمز السري -->
+  <div class="lp-modal" id="pinModal">
+    <div class="lp-modal__card lp-modal__card--sm">
+      <div style="font-size:3rem;">🔐</div>
+      <h3>تسجيل دخول المحامي</h3>
+      <p class="lp-muted">أدخل الرمز السري للوصول إلى لوحة إدارة القضايا (الافتراضي: 1234).</p>
+      <form id="pinForm" class="lp-form">
+        <input type="password" id="pinInput" class="lp-input lp-input--center" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="••••" dir="ltr" autocomplete="current-password">
+        <button type="submit" class="lp-btn" style="width:100%;">دخول</button>
+        <p id="pinError" class="lp-error" style="display:none;">الرمز السري غير صحيح.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- نافذة قضية (إضافة/تعديل) -->
+  <div class="lp-modal" id="matterModal">
+    <div class="lp-modal__card">
+      <div class="lp-modal__head">
+        <h3 id="matterModalTitle">قضية جديدة</h3>
+        <button type="button" class="lp-modal__close" id="matterModalClose">✕</button>
+      </div>
+      <form id="matterForm" class="lp-form lp-form--grid">
+        <input type="hidden" id="matterId">
+        <div class="lp-input-group">
+          <label for="mClientName">اسم الموكّل *</label>
+          <input type="text" id="mClientName" class="lp-input" required>
+        </div>
+        <div class="lp-input-group">
+          <label for="mClientPhone">جوال الموكّل *</label>
+          <input type="tel" id="mClientPhone" class="lp-input" required dir="ltr" placeholder="05xxxxxxxx">
+        </div>
+        <div class="lp-input-group">
+          <label for="mType">نوع القضية / الخدمة</label>
+          <select id="mType" class="lp-input"></select>
+        </div>
+        <div class="lp-input-group">
+          <label for="mLawyer">المحامي المسؤول</label>
+          <select id="mLawyer" class="lp-input"></select>
+        </div>
+        <div class="lp-input-group">
+          <label for="mCourt">المحكمة / الجهة</label>
+          <input type="text" id="mCourt" class="lp-input" placeholder="مثال: المحكمة العمالية بجدة">
+        </div>
+        <div class="lp-input-group">
+          <label for="mStatus">الحالة</label>
+          <select id="mStatus" class="lp-input">
+            <option value="new">جديدة</option>
+            <option value="in_progress">قيد النظر</option>
+            <option value="postponed">مؤجلة</option>
+            <option value="settled">تسوية/صلح</option>
+            <option value="won">منتهية لصالح الموكّل</option>
+            <option value="lost">منتهية</option>
+            <option value="closed">مغلقة</option>
+          </select>
+        </div>
+        <div class="lp-input-group">
+          <label for="mNextSession">تاريخ الجلسة القادمة</label>
+          <input type="date" id="mNextSession" class="lp-input" dir="ltr">
+        </div>
+        <div class="lp-input-group">
+          <label for="mFeeTotal">إجمالي الأتعاب (ر.س)</label>
+          <input type="number" id="mFeeTotal" class="lp-input" min="0" step="0.01" dir="ltr">
+        </div>
+        <div class="lp-input-group">
+          <label for="mFeePaid">المدفوع (ر.س)</label>
+          <input type="number" id="mFeePaid" class="lp-input" min="0" step="0.01" dir="ltr">
+        </div>
+        <div class="lp-input-group lp-input-group--full">
+          <label for="mNotes">ملاحظات / موضوع القضية</label>
+          <textarea id="mNotes" class="lp-input" rows="2"></textarea>
+        </div>
+        <div class="lp-input-group lp-input-group--full">
+          <button type="submit" class="lp-btn" style="width:100%;">💾 حفظ القضية</button>
+        </div>
+      </form>
+
+      <!-- الجدول الزمني للقضية -->
+      <div id="timelineSection" class="lp-timeline-wrap" style="display:none;">
+        <h4 class="lp-card__title" style="margin-top:18px;"><span class="lp-card__icon">🕓</span> سجل المستجدات</h4>
+        <form id="timelineForm" class="lp-timeline-form">
+          <input type="text" id="timelineText" class="lp-input" placeholder="أضف تحديثاً (مثال: تم تأجيل الجلسة لتقديم مذكرة)...">
+          <button type="submit" class="lp-btn lp-btn--sm">إضافة</button>
+        </form>
+        <ul class="lp-timeline" id="timelineList"></ul>
+      </div>
+
+      <!-- فواتير الأتعاب (ZATCA) -->
+      <div id="invoicesSection" class="lp-invoices-wrap" style="display:none;">
+        <h4 class="lp-card__title" style="margin-top:18px;"><span class="lp-card__icon">🧾</span> فواتير الأتعاب (متوافقة مع ZATCA)</h4>
+        <form id="invoiceForm" class="lp-invoice-form">
+          <div class="lp-input-group">
+            <label for="invAmount">قيمة الأتعاب قبل الضريبة (ر.س) *</label>
+            <input type="number" id="invAmount" class="lp-input" min="0" step="0.01" dir="ltr" placeholder="0.00">
+          </div>
+          <div class="lp-input-group">
+            <label for="invDesc">وصف الخدمة</label>
+            <input type="text" id="invDesc" class="lp-input" placeholder="أتعاب محاماة عن القضية ...">
+          </div>
+          <div class="lp-invoice-form__hint lp-muted">سيُضاف 15% ضريبة قيمة مضافة تلقائياً. عند تفعيل ربط ZATCA للمنشأة سيتم إبلاغ الفاتورة للهيئة تلقائياً.</div>
+          <button type="submit" class="lp-btn lp-btn--sm" id="invoiceSubmitBtn">🧾 إصدار فاتورة</button>
+        </form>
+        <div id="invoicesList" class="lp-invoices"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-toast" id="lpToast"><span>⚖️</span> <span id="toastMessage">تم الحفظ بنجاح</span></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/activities-catalog.js"></script>
+  <script src="js/services-catalog.js"></script>
+  <script src="js/social-catalog.js"></script>
+  <script src="js/emails-catalog.js"></script>
+  <script src="js/themes-catalog.js"></script>
+  <script src="js/content-resolver.js"></script>
+  <script src="js/ui-profiles/registry.js"></script>
+  <script src="js/services-store.js"></script>
+  <script src="js/supabase-db.js"></script>
+  <script src="js/booking-store.js"></script>
+  <script src="js/legal-portal.js"></script>
+
+</body>
+</html>

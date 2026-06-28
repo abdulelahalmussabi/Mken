@@ -1,7 +1,8 @@
 {
   "enabledActivities": [
     "tech-digital",
-    "it-support"
+    "it-support",
+    "legal"
   ],
   "enabled": [
     "web-design",
@@ -13,7 +14,15 @@
     "branding",
     "ecommerce",
     "computer",
-    "laptop-repair"
+    "laptop-repair",
+    "legal-consult",
+    "contract-drafting",
+    "contract-review",
+    "corporate-legal",
+    "labor-dispute",
+    "family-law",
+    "litigation-rep",
+    "arbitration"
   ],
   "featuredActivity": "tech-digital",
   "featured": "web-design",

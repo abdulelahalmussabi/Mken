@@ -71,6 +71,33 @@
     return new URLSearchParams(window.location.search).get('activity') || '';
   }
 
+  function isCalendarMode() {
+    return new URLSearchParams(window.location.search).get('calendar') === '1';
+  }
+
+  function getRequestedLawyer() {
+    var qs = new URLSearchParams(window.location.search);
+    var id = qs.get('lawyer') || '';
+    if (!id) return null;
+    var name = qs.get('lawyerName') || '';
+    var staffId = qs.get('staffId') || '';
+    if (!name || !staffId) {
+      var slug = (store.getCurrentTenantSlug && store.getCurrentTenantSlug()) || 'default';
+      try {
+        var raw = localStorage.getItem('mken_legal_practice_' + slug);
+        if (raw) {
+          var lp = JSON.parse(raw);
+          var l = (lp.lawyers || []).find(function (x) { return x.id === id; });
+          if (l) {
+            if (!name) name = l.name;
+            if (!staffId && l.staffId) staffId = l.staffId;
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return { id: id, name: name, staffId: staffId || null };
+  }
+
   function getEffectiveBooking() {
     return store.getBookingForActivity(activeActivityId, config);
   }
@@ -183,6 +210,10 @@
 
   function renderActivityNav() {
     if (!activityNav) return;
+    if (isCalendarMode()) {
+      activityNav.hidden = true;
+      return;
+    }
     var acts = store.getBookableActivities();
     if (acts.length <= 1) {
       activityNav.hidden = true;
@@ -627,6 +658,11 @@
     var district = (document.getElementById('customerDistrict').value || '').trim();
     var address = (document.getElementById('customerAddress') && document.getElementById('customerAddress').value || '').trim();
     var notes = document.getElementById('customerNotes').value.trim();
+    var requestedLawyer = getRequestedLawyer();
+    if (requestedLawyer) {
+      var lawyerLine = 'المحامي المطلوب: ' + (requestedLawyer.name || requestedLawyer.id) + ' [محامي#' + requestedLawyer.id + ']';
+      notes = notes ? (notes + '\n' + lawyerLine) : lawyerLine;
+    }
     var meetingContact = (document.getElementById('meetingContact') && document.getElementById('meetingContact').value || '').trim();
     var deliveryMode = getResolvedDeliveryMode();
     var partySizeEl = document.getElementById('partySize');
@@ -702,6 +738,7 @@
         phone: phone,
         district: district,
         locationAddress: address,
+        staffId: requestedLawyer && requestedLawyer.staffId ? requestedLawyer.staffId : null,
         partySize: partySize,
         nights: nights,
         stayUnit: selectedService.stayUnit || (needsMonths() ? 'month' : 'night'),
@@ -767,6 +804,7 @@
       phone: phone,
       district: district,
       locationAddress: address,
+      staffId: requestedLawyer && requestedLawyer.staffId ? requestedLawyer.staffId : null,
       deliveryMode: deliveryMode,
       meetingContact: meetingContact,
       venueNote: deliveryMode === 'in_person' ? store.getVenueNote(config) : '',
@@ -896,9 +934,10 @@
     appointments = bookingStore.getActiveAppointments();
 
     var param = parseActivityParam();
+    var calendarMode = isCalendarMode();
     if (param) {
       var portalUrl = store.getActivityBookingPortalUrl(param, config);
-      if (portalUrl) {
+      if (portalUrl && !calendarMode) {
         window.location.replace(portalUrl);
         return;
       }
@@ -909,7 +948,8 @@
     if (featuredId && store.getActivityBookingPortalUrl(featuredId, config)) featuredId = '';
     activeActivityId = param || featuredId || (bookable[0] && bookable[0].id);
 
-    if (bookable.length && bookable.every(function (a) { return a.id !== activeActivityId; })) {
+    // في وضع التقويم المباشر نحترم النشاط المطلوب حتى لو كان له بوابة مخصصة
+    if (!(calendarMode && param) && bookable.length && bookable.every(function (a) { return a.id !== activeActivityId; })) {
       activeActivityId = bookable[0].id;
     }
 

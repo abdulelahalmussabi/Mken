@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
+const { handleCors } = require('../_lib/cors');
 
 // Helper to determine step for login/register
 function getStep(req) {
@@ -42,7 +43,10 @@ async function handleLoginChallenge(req, res) {
 
   const challenge = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + 5 * 60 * 1000;
-  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey();
+  if (!secret) {
+    return res.status(500).json({ error: 'Database service key is not configured' });
+  }
   const hmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staff.id)
     .digest('hex');
@@ -88,7 +92,10 @@ async function handleLoginVerify(req, res) {
     return res.status(404).json({ error: 'Staff member not found or inactive' });
   }
 
-  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey();
+  if (!secret) {
+    return res.status(500).json({ error: 'Database service key is not configured' });
+  }
   const expectedHmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staff.id)
     .digest('hex');
@@ -152,7 +159,10 @@ async function handleRegisterChallenge(req, res) {
 
   const challenge = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Date.now() + 5 * 60 * 1000;
-  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey();
+  if (!secret) {
+    return res.status(500).json({ error: 'Database service key is not configured' });
+  }
   const hmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staffId)
     .digest('hex');
@@ -188,7 +198,10 @@ async function handleRegisterVerify(req, res) {
     return res.status(400).json({ error: 'Missing verification fields' });
   }
 
-  const secret = sbEnv.getSupabaseServiceKey() || 'mken_auth_fallback_secret';
+  const secret = sbEnv.getSupabaseServiceKey();
+  if (!secret) {
+    return res.status(500).json({ error: 'Database service key is not configured' });
+  }
   const expectedHmac = crypto.createHmac('sha256', secret)
     .update(challenge + ':' + expiresAt + ':' + staffId)
     .digest('hex');
@@ -220,9 +233,32 @@ async function handleRegisterVerify(req, res) {
 // ─── ADMIN LOGIN AND CLIENT OPERATIONS ───
 async function handleAdminOperations(req, res) {
   const pin = (req.body && req.body.pin) || req.query.pin || req.headers['x-admin-pin'];
-  const expectedPin = process.env.ADMIN_PIN || 'mken2026';
+  const expectedPin = process.env.ADMIN_PIN;
 
-  if (!pin || (pin.trim() !== expectedPin && pin.trim() !== 'mken2026')) {
+  if (!expectedPin) {
+    console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
+    return res.status(500).json({ success: false, error: 'تكوين الخادم غير مكتمل: لم يتم إعداد رمز الدخول الرئيسي.' });
+  }
+
+  const crypto = require('crypto');
+  const safeCompare = (a, b) => {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const aHash = crypto.createHash('sha256').update(a.trim()).digest();
+    const bHash = crypto.createHash('sha256').update(b.trim()).digest();
+    return crypto.timingSafeEqual(aHash, bHash);
+  };
+
+  const { isRateLimited } = require('../_lib/rate-limit');
+  const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
+  const rateLimitKey = 'admin_login_failed:' + ip;
+
+  const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
+  if (checkBlock.limited) {
+    return res.status(429).json({ success: false, error: `تم تجاوز الحد الأقصى للمحاولات الخاطئة. الرجاء الانتظار ${checkBlock.retryAfterSec} ثانية.` });
+  }
+
+  if (!pin || !safeCompare(pin, expectedPin)) {
+    isRateLimited(rateLimitKey, 5, 60000, true);
     return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر' });
   }
 
@@ -230,6 +266,39 @@ async function handleAdminOperations(req, res) {
 
   if (action === 'login') {
     return res.status(200).json({ success: true });
+  }
+
+  // Intercept save-config if Supabase is not configured (local fallback)
+  if (action === 'save-config') {
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const supabaseServiceKey = sbEnv.getSupabaseServiceKey();
+    if (!supabaseUrl || !supabaseServiceKey) {
+      const { configData, tenantSlug } = req.body || {};
+      if (!configData || !tenantSlug) {
+        return res.status(400).json({ error: 'Missing configData or tenantSlug' });
+      }
+
+      const slugClean = tenantSlug.trim().toLowerCase();
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const tenantFilePath = path.join(__dirname, '..', '..', 'data', 'tenants', `${slugClean}.json`);
+        
+        console.log(`Local fallback: Saving config to ${tenantFilePath}`);
+        
+        const dir = path.dirname(tenantFilePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        fs.writeFileSync(tenantFilePath, JSON.stringify(configData, null, 2), 'utf8');
+        
+        return res.status(200).json({ success: true, localSaved: true });
+      } catch (fileErr) {
+        console.error('Failed to save config locally:', fileErr.message);
+        return res.status(500).json({ error: 'Failed to save config locally: ' + fileErr.message });
+      }
+    }
   }
 
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -245,20 +314,161 @@ async function handleAdminOperations(req, res) {
   if (action === 'list-clients') {
     const { data, error } = await supabase
       .from('mken_saas_clients')
-      .select('*')
+      .select('id, tenant_slug, business_name, email, phone, civil_registry_number, commercial_registry_number, tax_number, security_attachment, has_security_attachment, subscription_status, subscription_tier, subscription_start, subscription_end, created_at, updated_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
     return res.status(200).json({ success: true, clients: data });
   }
 
+  if (action === 'save-config') {
+    const { configData, tenantSlug } = req.body || {};
+    if (!configData || !tenantSlug) {
+      return res.status(400).json({ error: 'Missing configData or tenantSlug' });
+    }
+
+    const slugClean = tenantSlug.trim().toLowerCase();
+
+    // Check if client exists
+    const { data: clientData, error: clientErr } = await supabase
+      .from('mken_saas_clients')
+      .select('id')
+      .eq('tenant_slug', slugClean)
+      .maybeSingle();
+
+    if (clientErr) throw clientErr;
+
+    let result;
+    if (!clientData) {
+      // If client not found, try to insert
+      const oneYear = new Date();
+      oneYear.setFullYear(oneYear.getFullYear() + 1);
+      const insertRes = await supabase
+        .from('mken_saas_clients')
+        .insert({
+          tenant_slug: slugClean,
+          business_name: (configData.brand && configData.brand.name) || 'منشأة جديدة',
+          email: slugClean + '@mken.com',
+          phone: configData.phone || '966543530333',
+          subscription_end: oneYear.toISOString(),
+          config_data: configData,
+          subscription_status: 'active'
+        });
+      if (insertRes.error) throw insertRes.error;
+      result = insertRes.data;
+    } else {
+      // Update existing client
+      const updateRes = await supabase
+        .from('mken_saas_clients')
+        .update({
+          config_data: configData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_slug', slugClean);
+      if (updateRes.error) throw updateRes.error;
+      result = updateRes.data;
+    }
+
+    return res.status(200).json({ success: true, data: result });
+  }
+
+  if (action === 'get-client-contract') {
+    const { tenantSlug } = req.body || req.query || {};
+    if (!tenantSlug) {
+      return res.status(400).json({ error: 'مطلوب معرّف العميل (tenantSlug)' });
+    }
+    const slugClean = tenantSlug.trim().toLowerCase();
+    const { data: client, error } = await supabase
+      .from('mken_saas_clients')
+      .select('id, tenant_slug, business_name, email, phone, civil_registry_number, commercial_registry_number, tax_number, security_attachment, has_security_attachment, subscription_status, subscription_tier, subscription_start, subscription_end, config_data, created_at, updated_at')
+      .eq('tenant_slug', slugClean)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!client) {
+      return res.status(404).json({ error: 'العميل غير موجود' });
+    }
+
+    // Sanitize config_data if it exists to prevent credentials leakage
+    if (client.config_data && typeof client.config_data === 'object') {
+      const clean = JSON.parse(JSON.stringify(client.config_data));
+      if (clean.whatsappApi && typeof clean.whatsappApi === 'object') {
+        delete clean.whatsappApi.token;
+        delete clean.whatsappApi.whatsappToken;
+        delete clean.whatsappApi.apiKey;
+        delete clean.whatsappApi.apiToken;
+        delete clean.whatsappApi.secret;
+        delete clean.whatsappApi.url;
+      }
+      if (clean.payment && typeof clean.payment === 'object') {
+        delete clean.payment.secretKey;
+        delete clean.payment.secret_key;
+        delete clean.payment.secret;
+        delete clean.payment.publishableKey;
+        delete clean.payment.publishable;
+      }
+      if (clean.zatca && typeof clean.zatca === 'object') {
+        delete clean.zatca.privateKey;
+        delete clean.zatca.certificate;
+        delete clean.zatca.secret;
+      }
+      client.config_data = clean;
+    }
+
+    return res.status(200).json({ success: true, client: client });
+  }
+
+  if (action === 'verify-coach-pin') {
+    const { tenantSlug, pin, coachingType } = req.body || req.query || {};
+    if (!tenantSlug || !pin || !coachingType) {
+      return res.status(400).json({ error: 'Missing tenantSlug, pin, or coachingType' });
+    }
+
+    const { isRateLimited } = require('../_lib/rate-limit');
+    const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
+    const rateLimitKey = 'coach_login_failed:' + ip;
+
+    const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
+    if (checkBlock.limited) {
+      return res.status(429).json({ success: false, error: `تم تجاوز الحد الأقصى للمحاولات الخاطئة. الرجاء الانتظار ${checkBlock.retryAfterSec} ثانية.` });
+    }
+
+    const slugClean = tenantSlug.trim().toLowerCase();
+    const { data: client, error } = await supabase
+      .from('mken_saas_clients')
+      .select('config_data')
+      .eq('tenant_slug', slugClean)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!client) {
+      return res.status(404).json({ error: 'العميل غير موجود' });
+    }
+
+    const config = client.config_data || {};
+    const coachingConfig = config[coachingType] || {};
+    const expectedPin = String(coachingConfig.coachPin || '1234').trim();
+    const cleanEnteredPin = String(pin).trim();
+
+    const aHash = crypto.createHash('sha256').update(cleanEnteredPin).digest();
+    const bHash = crypto.createHash('sha256').update(expectedPin).digest();
+    const isMatch = crypto.timingSafeEqual(aHash, bHash);
+
+    if (!isMatch) {
+      isRateLimited(rateLimitKey, 5, 60000, true);
+    }
+
+    return res.status(200).json({ success: isMatch });
+  }
+
   if (action === 'register-client') {
     const { 
       tenantSlug, businessName, email, password, phone, subscription_tier,
-      enabledActivities, enabledServices, customFeatures
+      enabledActivities, enabledServices, customFeatures,
+      civilRegistryNumber, commercialRegistryNumber, taxNumber, securityAttachment
     } = req.body || {};
-    if (!tenantSlug || !businessName || !email || !password || !phone) {
-      return res.status(400).json({ error: 'كافة الحقول مطلوبة لتسجيل العميل' });
+    if (!tenantSlug || !businessName || !email || !password || !phone || !civilRegistryNumber || !commercialRegistryNumber) {
+      return res.status(400).json({ error: 'كافة الحقول الأساسية ورقم السجل المدني والتجاري مطلوبة لتسجيل العميل' });
     }
 
     const slugClean = tenantSlug.trim().toLowerCase();
@@ -323,6 +533,11 @@ async function handleAdminOperations(req, res) {
         business_name: businessName.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        civil_registry_number: civilRegistryNumber.trim(),
+        commercial_registry_number: commercialRegistryNumber.trim(),
+        tax_number: taxNumber ? taxNumber.trim() : null,
+        security_attachment: securityAttachment ? securityAttachment.trim() : null,
+        has_security_attachment: !!securityAttachment,
         subscription_end: oneYear.toISOString(),
         config_data: defaultTenantConfig,
         subscription_status: 'active',
@@ -493,26 +708,27 @@ async function handleAdminOperations(req, res) {
 
 // ─── MAIN HANDLER ───
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Pin'
-  );
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const supabaseUrl = sbEnv.getSupabaseUrl();
-  const supabaseKey = sbEnv.getSupabaseServiceKey();
-  if (!supabaseUrl || !supabaseKey) {
-    return res.status(500).json({ error: 'Database configuration error' });
-  }
+  if (handleCors(req, res)) return;
 
   // Parse custom routing parameter "type"
-  const type = req.query.type || '';
+  let type = (req.query && req.query.type) || '';
+  if (!type) {
+    const url = req.url || '';
+    if (url.indexOf('supabase-config') !== -1) {
+      type = 'supabase-config';
+    } else if (url.indexOf('admin-login') !== -1) {
+      type = 'admin-login';
+    }
+  }
+
+  // Only enforce database environment configuration on routes that strictly require it
+  if (type !== 'supabase-config' && type !== 'admin-login') {
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const supabaseKey = sbEnv.getSupabaseServiceKey();
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ error: 'Database configuration error' });
+    }
+  }
 
   try {
     if (type === 'supabase-config') {
@@ -520,7 +736,7 @@ module.exports = async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
       }
       return res.status(200).json({
-        supabaseUrl,
+        supabaseUrl: sbEnv.getSupabaseUrl(),
         supabaseKey: sbEnv.getSupabaseAnonKey(),
         enabled: sbEnv.hasSupabaseClientConfig(),
       });

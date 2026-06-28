@@ -1,5 +1,5 @@
 /**
- * أتمتة رسائل الواتساب والتذكيرات — منصة رونق
+ * أتمتة رسائل الواتساب والتذكيرات — منصة مكن
  */
 (function () {
   'use strict';
@@ -300,6 +300,8 @@
     }
 
 
+    var store = window.MkenServicesStore;
+    var tenantSlug = store ? store.getCurrentTenantSlug() : 'default';
     var proxyUrl = '/api/webhook-proxy';
     return fetch(proxyUrl, {
       method: 'POST',
@@ -309,7 +311,8 @@
       body: JSON.stringify({
         url: targetUrl,
         headers: headers,
-        body: payload
+        body: payload,
+        tenant: tenantSlug
       })
     }).then(function (res) {
       if (!res.ok) {
@@ -344,6 +347,8 @@
       payload.imageUrl = imageUrl;
     }
 
+    var store = window.MkenServicesStore;
+    var tenantSlug = store ? store.getCurrentTenantSlug() : 'default';
     var proxyUrl = '/api/webhook-proxy';
     return fetch(proxyUrl, {
       method: 'POST',
@@ -351,7 +356,8 @@
       body: JSON.stringify({
         url: webhookUrl,
         headers: headers,
-        body: payload
+        body: payload,
+        tenant: tenantSlug
       })
     }).then(function (res) {
       if (!res.ok) throw new Error('Custom Webhook error: HTTP Status ' + res.status);

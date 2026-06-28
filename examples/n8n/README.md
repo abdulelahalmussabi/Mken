@@ -1,4 +1,4 @@
-# n8n Workflows — منصة مكِّن / رونق
+# n8n Workflows — منصة مكن
 
 ## الملفات
 

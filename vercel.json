@@ -24,7 +24,23 @@
     { "source": "/api/v1/auth/register-challenge", "destination": "/api/v1/auth?type=register&step=challenge" },
     { "source": "/api/v1/auth/register-verify", "destination": "/api/v1/auth?type=register&step=verify" },
     { "source": "/api/v1/auth/admin-login", "destination": "/api/v1/auth?type=admin-login" },
-    { "source": "/api/v1/auth/supabase-config", "destination": "/api/v1/auth?type=supabase-config" }
+    { "source": "/api/v1/auth/supabase-config", "destination": "/api/v1/auth?type=supabase-config" },
+    { "source": "/api/license/activate", "destination": "/api/license?action=activate" },
+    { "source": "/api/license/verify", "destination": "/api/license?action=verify" },
+    { "source": "/api/license/deactivate", "destination": "/api/license?action=deactivate" },
+    { "source": "/api/license/issue", "destination": "/api/license?action=issue" },
+    { "source": "/api/license/list", "destination": "/api/license?action=list" },
+    { "source": "/api/license/revoke", "destination": "/api/license?action=revoke" },
+    { "source": "/api/license/suspend", "destination": "/api/license?action=suspend" },
+    { "source": "/api/license/resume", "destination": "/api/license?action=resume" },
+    { "source": "/api/license-checkout/config", "destination": "/api/license-checkout?action=config" },
+    { "source": "/api/license-checkout/status", "destination": "/api/license-checkout?action=status" },
+    { "source": "/api/lite-sync/push", "destination": "/api/lite-sync?action=push" },
+    { "source": "/api/lite-sync/pull", "destination": "/api/lite-sync?action=pull" },
+    { "source": "/admin", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/license-admin.html" },
+    { "source": "/admin", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/license-admin.html" },
+    { "source": "/", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/pricing.html" },
+    { "source": "/", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/pricing.html" }
   ],
   "headers": [
     {

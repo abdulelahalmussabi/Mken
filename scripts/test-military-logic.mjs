@@ -35,7 +35,7 @@ function run() {
     fetch: () => Promise.resolve({
       ok: true,
       json: () => Promise.resolve({
-        brand: { name: 'رونق' },
+        brand: { name: 'مكن' },
         enabledActivities: ['military-tailoring', 'tailoring']
       })
     }),
@@ -111,7 +111,7 @@ function run() {
   assert(landForces.consumption_rate_per_thobe === 4.0, 'Land forces consumption rate should be 4.0');
 
   // 3. Verify order store WhatsApp message generation and masking
-  const message = orderStore.buildCartWhatsAppMessage('رونق', payload);
+  const message = orderStore.buildCartWhatsAppMessage('مكن', payload);
   console.log('Generated WhatsApp Message Preview:\n');
   console.log(message);
   console.log('\n----------------------------------------\n');

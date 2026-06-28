@@ -1015,7 +1015,7 @@
           <div class="admin-field">
             <label for="paymentCurrency">العملة الافتراضية</label>
             <select id="paymentCurrency" class="admin-input">
-              <option value="SAR">SAR — ريال سعودي</option>
+              <option value="&#x20C1;">&#x20C1; — ريال سعودي</option>
               <option value="AED">AED — درهم إماراتي</option>
               <option value="BHD">BHD — دينار بحريني</option>
               <option value="KWD">KWD — دينار كويتي</option>
@@ -1046,7 +1046,14 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_access_token TEXT;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;
 ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;
-ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'basic';</textarea>
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'basic';
+
+-- إضافة أعمدة البيانات الرسمية والعقود الرقمية لجدول العملاء
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS civil_registry_number TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS commercial_registry_number TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS tax_number TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS security_attachment TEXT;
+ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment BOOLEAN DEFAULT FALSE;</textarea>
           </div>
           <div class="admin-backup">
             <button type="button" id="supabaseCopyUpgradeSqlBtn" class="btn btn--outline" style="width:100%">نسخ أمر التحديث</button>
@@ -1689,6 +1696,30 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DE
                 <input type="tel" id="adminRegPhone" class="admin-input" placeholder="9665XXXXXXXX" dir="ltr" required>
               </div>
 
+              <div class="admin-field">
+                <label for="adminRegCivilRegistry">رقم السجل المدني (للممثل القانوني) *</label>
+                <input type="text" id="adminRegCivilRegistry" class="admin-input" placeholder="مثال: 1012345678" dir="ltr" required pattern="^[0-9]{10}$">
+                <small class="admin-field__hint">يجب أن يتكون من 10 أرقام.</small>
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegCROrFreelance">رقم السجل التجاري أو وثيقة العمل الحر *</label>
+                <input type="text" id="adminRegCROrFreelance" class="admin-input" placeholder="مثال: 7051816481 أو FL-123456" required>
+                <small class="admin-field__hint">السجل التجاري (مثل: 7051816481) أو رمز وثيقة العمل الحر.</small>
+              </div>
+
+              <div class="admin-field">
+                <label for="adminRegVatNumber">الرقم الضريبي (إن وجد)</label>
+                <input type="text" id="adminRegVatNumber" class="admin-input" placeholder="مثال: 311234567800003" dir="ltr" pattern="^[0-9]{15}$">
+                <small class="admin-field__hint">يجب أن يتكون من 15 رقمًا (اختياري).</small>
+              </div>
+
+              <div class="admin-field" id="adminRegSecurityAttachmentField" style="display: none;">
+                <label for="adminRegSecurityAttachment">المرفق الأمني للعقد (رقم أو رابط) *</label>
+                <input type="text" id="adminRegSecurityAttachment" class="admin-input" placeholder="مثال: تصريح أمني رقم 1234 أو رابط المستند">
+                <small class="admin-field__hint" style="color: #e67e22;">مطلوب عند تفعيل نشاط الأمن والمراقبة.</small>
+              </div>
+
               <!-- الأنشطة التجارية المفعلة -->
               <div class="admin-field" style="margin-top: 15px;">
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">الأنشطة التجارية المتاحة للحساب *</label>
@@ -2283,6 +2314,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS subscription_tier TEXT DE
   <script src="js/content-templates/fitness.js"></script>
   <script src="js/content-templates/veterinary.js"></script>
   <script src="js/content-templates/restaurant.js"></script>
+  <script src="js/content-templates/legal.js"></script>
   <script src="js/content-templates/consulting.js"></script>
   <script src="js/content-templates/photography.js"></script>
   <script src="js/content-templates/tutoring.js"></script>

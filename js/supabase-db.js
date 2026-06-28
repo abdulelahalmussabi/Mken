@@ -1,5 +1,5 @@
 /**
- * وسيط الاتصال بقاعدة بيانات Supabase — منصة رونق
+ * وسيط الاتصال بقاعدة بيانات Supabase — منصة مكن
  */
 (function () {
   'use strict';
@@ -217,55 +217,92 @@
 
     var slug = tenantSlug || 'default';
     return client
-      .from('mken_saas_clients')
-      .select('*')
-      .eq('tenant_slug', slug)
-      .maybeSingle()
+      .rpc('mken_get_public_config', { p_tenant_slug: slug })
       .then(function (res) {
-        if (res.error) {
-          // Fallback to old table if new table does not exist yet
+        if (res.error || !res.data) {
+          // Fallback to table query if RPC is not available
           return client
-            .from('mken_config')
-            .select('config_data')
-            .eq('id', 1)
+            .from('mken_saas_clients')
+            .select('*')
+            .eq('tenant_slug', slug)
             .maybeSingle()
-            .then(function (oldRes) {
-              if (oldRes.error) throw oldRes.error;
-              return oldRes.data ? oldRes.data.config_data : null;
+            .then(function (tblRes) {
+              if (tblRes.error) {
+                // Fallback to old table if new table does not exist yet
+                return client
+                  .from('mken_config')
+                  .select('config_data')
+                  .eq('id', 1)
+                  .maybeSingle()
+                  .then(function (oldRes) {
+                    if (oldRes.error) throw oldRes.error;
+                    return oldRes.data ? oldRes.data.config_data : null;
+                  });
+              }
+              if (!tblRes.data) return null;
+              
+              var data = tblRes.data.config_data || {};
+              
+              if (slug !== 'default') {
+                if (!data.brand) {
+                  data.brand = {
+                    name: tblRes.data.business_name || '',
+                    tagline: 'مرحباً بك في موقعنا',
+                    logo: ''
+                  };
+                } else if (!data.brand.name || data.brand.name === 'مكن' || data.brand.name === 'رونق') {
+                  data.brand.name = tblRes.data.business_name || data.brand.name || '';
+                }
+                
+                if (!data.phone || data.phone === '966543530333') {
+                  data.phone = tblRes.data.phone || data.phone || '';
+                }
+              }
+
+              var originalSub = data.subscription || {};
+              data.subscription = {
+                status: tblRes.data.subscription_status,
+                start: tblRes.data.subscription_start,
+                end: tblRes.data.subscription_end,
+                businessName: tblRes.data.business_name,
+                email: tblRes.data.email,
+                phone: tblRes.data.phone,
+                tenantSlug: tblRes.data.tenant_slug,
+                tier: tblRes.data.subscription_tier || 'basic',
+                customFeatures: originalSub.customFeatures || null
+              };
+              return data;
             });
         }
-        if (!res.data) return null;
         
-        var data = res.data.config_data || {};
+        var data = res.data;
         
-        // FOOLPROOF OVERRIDE: If this is a custom tenant and the brand name is "مكن" or empty,
-        // force it to use the tenant's registered business name and phone number.
         if (slug !== 'default') {
           if (!data.brand) {
             data.brand = {
-              name: res.data.business_name || '',
+              name: data.business_name || '',
               tagline: 'مرحباً بك في موقعنا',
               logo: ''
             };
-          } else if (!data.brand.name || data.brand.name === 'مكن') {
-            data.brand.name = res.data.business_name || data.brand.name || '';
+          } else if (!data.brand.name || data.brand.name === 'مكن' || data.brand.name === 'رونق') {
+            data.brand.name = data.business_name || data.brand.name || '';
           }
           
           if (!data.phone || data.phone === '966543530333') {
-            data.phone = res.data.phone || data.phone || '';
+            data.phone = data.phone || '';
           }
         }
 
         var originalSub = data.subscription || {};
         data.subscription = {
-          status: res.data.subscription_status,
-          start: res.data.subscription_start,
-          end: res.data.subscription_end,
-          businessName: res.data.business_name,
-          email: res.data.email,
-          phone: res.data.phone,
-          tenantSlug: res.data.tenant_slug,
-          tier: res.data.subscription_tier || 'basic',
+          status: data.subscription_status,
+          start: null,
+          end: data.subscription_end,
+          businessName: data.business_name,
+          email: data.email,
+          phone: data.phone,
+          tenantSlug: data.tenant_slug,
+          tier: data.subscription_tier || 'basic',
           customFeatures: originalSub.customFeatures || null
         };
         return data;
@@ -273,10 +310,39 @@
   }
 
   function saveConfig(configData, tenantSlug) {
+    var slug = tenantSlug || 'default';
+    var adminPin = sessionStorage.getItem('mken_admin_pin');
+
+    // If logged in via PIN (local/admin pin)
+    if (adminPin) {
+      return fetch('/api/v1/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: adminPin,
+          action: 'save-config',
+          tenantSlug: slug,
+          configData: configData
+        })
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().then(function (err) {
+            throw new Error(err.error || 'Failed to save config via API');
+          });
+        }
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data || !data.success) {
+          throw new Error('Failed to save config via API');
+        }
+        return configData;
+      });
+    }
+
     var client = getClient();
     if (!client) return Promise.reject(new Error('Supabase not configured'));
-
-    var slug = tenantSlug || 'default';
 
     return client
       .from('mken_saas_clients')
@@ -333,7 +399,8 @@
       }
     }
 
-    var targetTable = user ? 'mken_appointments' : 'mken_public_appointments';
+    var adminPin = sessionStorage.getItem('mken_admin_pin');
+    var targetTable = (user || adminPin) ? 'mken_appointments' : 'mken_public_appointments';
 
     return client
       .from(targetTable)
@@ -369,6 +436,7 @@
       district: row.district || '',
       locationAddress: row.location_address || '',
       notes: row.notes || '',
+      staffId: row.staff_id || null,
       partySize: row.party_size,
       nights: row.nights,
       stayUnit: row.stay_unit || '',
@@ -403,6 +471,7 @@
         district: apt.district,
         location_address: apt.locationAddress,
         notes: apt.notes,
+        staff_id: apt.staffId || null,
         party_size: apt.partySize,
         nights: apt.nights,
         stay_unit: apt.stayUnit || null,
@@ -441,6 +510,7 @@
         district: apt.district,
         location_address: apt.locationAddress,
         notes: apt.notes,
+        staff_id: apt.staffId || null,
         party_size: apt.partySize,
         nights: apt.nights,
         stay_unit: apt.stayUnit || null,
@@ -863,10 +933,23 @@
     var client = getClient();
     var cacheKey = 'mken_cache_inventory';
     var slug = tenantSlug || 'default';
+    var adminPin = sessionStorage.getItem('mken_admin_pin');
 
     if (client && navigator.onLine) {
+      var user = null;
+      if (client.auth) {
+        if (client.auth.user) {
+          user = client.auth.user();
+        } else if (client.auth.getUser) {
+          var session = client.auth.session ? client.auth.session() : null;
+          user = session ? session.user : null;
+        }
+      }
+      var isAuthorized = !!(adminPin || user);
+      var targetSource = isAuthorized ? 'mken_inventory_items' : 'mken_public_inventory_items';
+
       return client
-        .from('mken_inventory_items')
+        .from(targetSource)
         .select('*')
         .eq('tenant_slug', slug)
         .order('name', { ascending: true })
@@ -1509,6 +1592,11 @@
       '    business_name TEXT NOT NULL,',
       '    email TEXT UNIQUE NOT NULL,',
       '    phone TEXT NOT NULL,',
+      '    civil_registry_number TEXT,',
+      '    commercial_registry_number TEXT,',
+      '    tax_number TEXT,',
+      '    security_attachment TEXT,',
+      '    has_security_attachment BOOLEAN DEFAULT FALSE,',
       '    subscription_status TEXT DEFAULT \'active\',',
       '    subscription_tier TEXT DEFAULT \'basic\',',
       '    subscription_start TIMESTAMPTZ DEFAULT NOW(),',
@@ -1787,6 +1875,7 @@
       'DROP POLICY IF EXISTS "Allow public read staff devices" ON mken_staff_devices;',
       'DROP POLICY IF EXISTS "Allow public read on clients" ON mken_saas_clients;',
       'DROP POLICY IF EXISTS "Allow public insert on clients" ON mken_saas_clients;',
+      'DROP POLICY IF EXISTS "Allow public update on clients" ON mken_saas_clients;',
       'DROP POLICY IF EXISTS "Allow owner manage client" ON mken_saas_clients;',
       'DROP POLICY IF EXISTS "Allow public insert on appointments" ON mken_appointments;',
       'DROP POLICY IF EXISTS "Allow owner manage appointments" ON mken_appointments;',
@@ -1819,8 +1908,6 @@
       'ALTER TABLE mken_customers ENABLE ROW LEVEL SECURITY;',
       '',
       '-- 11. سياسات الأمان لجدول العملاء mken_saas_clients',
-      'CREATE POLICY "Allow public read on clients" ON mken_saas_clients FOR SELECT USING (true);',
-      'CREATE POLICY "Allow public insert on clients" ON mken_saas_clients FOR INSERT WITH CHECK (true);',
       'CREATE POLICY "Allow owner manage client" ON mken_saas_clients FOR ALL TO authenticated ',
       '  USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);',
       '',
@@ -1851,7 +1938,6 @@
       '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_whatsapp_logs.tenant_slug LIMIT 1));',
       '',
       '-- 16c. سياسات الأمان للمخزون والمنتجات',
-      'CREATE POLICY "Allow public read inventory items" ON mken_inventory_items FOR SELECT USING (true);',
       'CREATE POLICY "Allow owner manage inventory items" ON mken_inventory_items FOR ALL TO authenticated ',
       '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_items.tenant_slug LIMIT 1));',
       '',
@@ -1880,6 +1966,67 @@
       '  SELECT id, tenant_slug, activity_id, service_id, date, time, status FROM mken_appointments;',
       'GRANT SELECT ON mken_public_appointments TO anon;',
       'GRANT SELECT ON mken_public_appointments TO authenticated;',
+      '',
+      '-- 17b. إنشاء منظر عام للمخزون لا يعرض سعر التكلفة cost_price',
+      'CREATE OR REPLACE VIEW mken_public_inventory_items AS ',
+      '  SELECT id, tenant_slug, name, sku, barcode, sell_price, quantity, min_stock_alert, image_url, created_at, updated_at FROM mken_inventory_items;',
+      'GRANT SELECT ON mken_public_inventory_items TO anon;',
+      'GRANT SELECT ON mken_public_inventory_items TO authenticated;',
+      '',
+      '-- 17c. دالة جلب الإعدادات العامة الآمنة للمستأجر',
+      'DROP FUNCTION IF EXISTS mken_get_public_config(text);',
+      'CREATE OR REPLACE FUNCTION mken_get_public_config(p_tenant_slug text) ',
+      'RETURNS jsonb SECURITY DEFINER AS $$',
+      'DECLARE',
+      '    v_config jsonb;',
+      '    v_business_name text;',
+      '    v_phone text;',
+      '    v_sub_status text;',
+      '    v_sub_end text;',
+      '    v_sub_tier text;',
+      '    v_email text;',
+      '    v_result jsonb;',
+      'BEGIN',
+      '    SELECT config_data, business_name, phone, subscription_status, subscription_end, subscription_tier, email ',
+      '    INTO v_config, v_business_name, v_phone, v_sub_status, v_sub_end, v_sub_tier, v_email ',
+      '    FROM public.mken_saas_clients ',
+      '    WHERE tenant_slug = p_tenant_slug;',
+      '    IF NOT FOUND THEN',
+      '        RETURN NULL;',
+      '    END IF;',
+      '    v_result := jsonb_build_object(',
+      '        \'brand\', COALESCE(v_config->\'brand\', jsonb_build_object(\'name\', v_business_name, \'tagline\', \'مرحباً بك في موقعنا\', \'logo\', \'\')),',
+      '        \'theme\', COALESCE(v_config->\'theme\', jsonb_build_object()),',
+      '        \'phone\', v_phone,',
+      '        \'payment\', jsonb_build_object(',
+      '            \'enabled\', COALESCE((v_config->\'payment\'->>\'enabled\')::boolean, false),',
+      '            \'provider\', COALESCE(v_config->\'payment\'->>\'provider\', \'moyasar\'),',
+      '            \'publishableKey\', COALESCE(v_config->\'payment\'->>\'publishableKey\', \'\'),',
+      '            \'requirePayment\', COALESCE((v_config->\'payment\'->>\'requirePayment\')::boolean, false),',
+      '            \'sandbox\', COALESCE((v_config->\'payment\'->>\'sandbox\')::boolean, true),',
+      '            \'currency\', COALESCE(v_config->\'payment\'->>\'currency\', \'SAR\')',
+      '        ),',
+      '        \'whatsappApi\', jsonb_build_object(',
+      '            \'enabled\', COALESCE((v_config->\'whatsappApi\'->>\'enabled\')::boolean, false),',
+      '            \'provider\', COALESCE(v_config->\'whatsappApi\'->>\'provider\', \'none\'),',
+      '            \'sendConfirmation\', COALESCE((v_config->\'whatsappApi\'->>\'sendConfirmation\')::boolean, true),',
+      '            \'sendReminder\', COALESCE((v_config->\'whatsappApi\'->>\'sendReminder\')::boolean, true)',
+      '        ),',
+      '        \'enabledActivities\', COALESCE(v_config->\'enabledActivities\', \'[]\'::jsonb),',
+      '        \'booking\', COALESCE(v_config->\'booking\', jsonb_build_object()),',
+      '        \'hockeyCoaching\', COALESCE(v_config->\'hockeyCoaching\', jsonb_build_object()) - \'coachPin\',',
+      '        \'footballCoaching\', COALESCE(v_config->\'footballCoaching\', jsonb_build_object()) - \'coachPin\',',
+      '        \'business_name\', v_business_name,',
+      '        \'email\', v_email,',
+      '        \'subscription_status\', v_sub_status,',
+      '        \'subscription_end\', v_sub_end,',
+      '        \'subscription_tier\', v_sub_tier',
+      '    );',
+      '    RETURN v_result;',
+      'END;',
+      '$$ LANGUAGE plpgsql;',
+      'GRANT EXECUTE ON FUNCTION mken_get_public_config(text) TO anon;',
+      'GRANT EXECUTE ON FUNCTION mken_get_public_config(text) TO authenticated;',
       '',
       '-- 18. دالة التحقق من رمز PIN للموظفين بشكل آمن',
       'DROP FUNCTION IF EXISTS verify_staff_pin(text, text, text);',

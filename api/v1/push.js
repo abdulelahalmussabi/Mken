@@ -1,12 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
 const pushLib = require('../_lib/web-push');
-
-function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-}
+const { handleCors } = require('../_lib/cors');
 
 function getAction(req) {
   var url = req.url || '';
@@ -103,11 +98,7 @@ async function handleTest(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  cors(res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handleCors(req, res, 'POST, OPTIONS')) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });

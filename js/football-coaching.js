@@ -95,6 +95,31 @@
     return String(pin || '1234').replace(/\D/g, '').slice(0, 4) || '1234';
   }
 
+  function verifyCoachPinOnServer(pin) {
+    var tenantSlug = currentTenantSlug || 'default';
+    if (db && typeof db.isConfigured === 'function' && db.isConfigured()) {
+      return fetch('/api/v1/auth/admin-login?action=verify-coach-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantSlug: tenantSlug,
+          pin: pin,
+          coachingType: CONFIG_KEY
+        })
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Network error');
+        return res.json();
+      })
+      .then(function (data) {
+        return !!data.success;
+      });
+    } else {
+      var localPin = getCoachPin();
+      return Promise.resolve(pin === localPin);
+    }
+  }
+
   function esc(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   }
@@ -191,7 +216,7 @@
       coachAvatar.textContent = coachingData.coachAvatar || '⚽';
     }
 
-    // تحديث بيانات الهيدر في الأعلى ببيانات الكوتش بدلاً من منصة رونق
+    // تحديث بيانات الهيدر في الأعلى ببيانات الكوتش بدلاً من منصة مكن
     var logoTitle = document.querySelector('.hockey-logo__title');
     if (logoTitle) {
       logoTitle.textContent = coachingData.coachName;
@@ -813,18 +838,27 @@
             updatePinDots();
 
             if (enteredPin.length === 4) {
-              // التحقق من الرمز PIN (الافتراضي هو 1234 أو PIN الكوتش)
+              // التحقق من الرمز PIN عبر الخادم
               setTimeout(function () {
-                if (enteredPin === getCoachPin()) {
-                  isCoachAuthenticated = true;
-                  closePinModal();
-                  showCoachView();
-                  showToast('تم تسجيل دخول المدرب بنجاح! ⚽');
-                } else {
-                  enteredPin = '';
-                  updatePinDots();
-                  showToast('الرمز السري غير صحيح! يرجى المحاولة مرة أخرى.', true);
-                }
+                var pinToVerify = enteredPin;
+                verifyCoachPinOnServer(pinToVerify)
+                  .then(function (isValid) {
+                    if (isValid) {
+                      isCoachAuthenticated = true;
+                      closePinModal();
+                      showCoachView();
+                      showToast('تم تسجيل دخول المدرب بنجاح! ⚽');
+                    } else {
+                      enteredPin = '';
+                      updatePinDots();
+                      showToast('الرمز السري غير صحيح! يرجى المحاولة مرة أخرى.', true);
+                    }
+                  })
+                  .catch(function (err) {
+                    enteredPin = '';
+                    updatePinDots();
+                    showToast('خطأ في التحقق: ' + err.message, true);
+                  });
               }, 200);
             }
           }

@@ -8,6 +8,52 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+function verifyTwilioSignature(req, authToken) {
+  const signature = req.headers['x-twilio-signature'];
+  if (!signature) return false;
+
+  const crypto = require('crypto');
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const host = req.headers.host;
+  
+  // Twilio signature uses the request URL as seen by the server
+  // Wait: req.url might have a leading slash, check how it is constructed
+  const fullUrl = protocol + '://' + host + req.url;
+
+  const params = req.body || {};
+  const sortedKeys = Object.keys(params).sort();
+  let dataStr = fullUrl;
+  for (const key of sortedKeys) {
+    dataStr += key + params[key];
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha1', authToken)
+    .update(dataStr)
+    .digest('base64');
+
+  return signature === expectedSignature;
+}
+
+function verifyMetaSignature(req, appSecret) {
+  const signatureHeader = req.headers['x-hub-signature-256'];
+  if (!signatureHeader) return false;
+
+  const parts = signatureHeader.split('=');
+  if (parts.length !== 2 || parts[0] !== 'sha256') return false;
+
+  const signature = parts[1];
+  const crypto = require('crypto');
+  
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  const expectedSignature = crypto
+    .createHmac('sha256', appSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  return signature === expectedSignature;
+}
+
 module.exports = async function handler(req, res) {
   // 1. Meta / Facebook Webhook GET Verification
   if (req.method === 'GET') {
@@ -15,12 +61,12 @@ module.exports = async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    // We can verify with a static token or return challenge
-    if (mode === 'subscribe') {
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+    if (mode === 'subscribe' && token === verifyToken) {
       console.log('Webhook verified successfully!');
       return res.status(200).send(challenge);
     }
-    return res.status(400).send('Invalid GET verification request');
+    return res.status(403).send('Forbidden: Token mismatch');
   }
 
   if (req.method !== 'POST') {
@@ -31,6 +77,53 @@ module.exports = async function handler(req, res) {
   const supabase = getSupabase();
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase credentials missing' });
+  }
+
+  // Fetch Tenant Configuration early to authenticate the signature
+  let clientRow;
+  try {
+    const { data } = await supabase
+      .from('mken_saas_clients')
+      .select('config_data')
+      .eq('tenant_slug', tenantSlug)
+      .maybeSingle();
+    clientRow = data;
+  } catch (dbErr) {
+    console.error('Database error fetching tenant config:', dbErr);
+  }
+
+  if (!clientRow || !clientRow.config_data) {
+    return res.status(200).json({ status: 'ignored', message: 'Tenant config not found' });
+  }
+
+  const config = clientRow.config_data;
+  const wa = config.whatsappApi || {};
+
+  if (!wa.enabled || wa.provider === 'none') {
+    return res.status(200).json({ status: 'ignored', message: 'WhatsApp API not enabled for tenant' });
+  }
+
+  // Enforce Signature Verification based on provider
+  if (wa.provider === 'twilio') {
+    const twilioAuthToken = wa.token;
+    if (twilioAuthToken) {
+      if (!verifyTwilioSignature(req, twilioAuthToken)) {
+        console.warn(`Twilio signature verification failed for tenant ${tenantSlug}`);
+        return res.status(403).json({ error: 'Forbidden: Invalid Twilio signature' });
+      }
+    } else {
+      console.warn(`Twilio Auth Token not configured for tenant ${tenantSlug}, bypassing signature check`);
+    }
+  } else if (wa.provider === 'whatsapp_business') {
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (appSecret) {
+      if (!verifyMetaSignature(req, appSecret)) {
+        console.warn(`Meta signature verification failed for tenant ${tenantSlug}`);
+        return res.status(403).json({ error: 'Forbidden: Invalid Meta signature' });
+      }
+    } else {
+      console.warn(`WHATSAPP_APP_SECRET environment variable not configured on server, bypassing signature check`);
+    }
   }
 
   try {
@@ -80,7 +173,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ status: 'ignored', message: 'Invalid phone number format' });
     }
 
-    // 2. Log Inbound Message to CRM Log History
+    // Log Inbound Message to CRM Log History
     await supabase.from('mken_whatsapp_logs').insert({
       tenant_slug: tenantSlug,
       phone: cleanPhoneStr,
@@ -90,24 +183,6 @@ module.exports = async function handler(req, res) {
       event_type: 'inbound',
       created_at: new Date().toISOString()
     });
-
-    // 3. Fetch Tenant Configuration
-    const { data: clientRow } = await supabase
-      .from('mken_saas_clients')
-      .select('config_data')
-      .eq('tenant_slug', tenantSlug)
-      .maybeSingle();
-
-    if (!clientRow || !clientRow.config_data) {
-      return res.status(200).json({ status: 'ignored', message: 'Tenant config not found' });
-    }
-
-    const config = clientRow.config_data;
-    const wa = config.whatsappApi || {};
-
-    if (!wa.enabled || wa.provider === 'none') {
-      return res.status(200).json({ status: 'ignored', message: 'WhatsApp API not enabled for tenant' });
-    }
 
     // 4. Chatbot Command Parsing
     const cleanedMsg = bodyText.toLowerCase().trim();

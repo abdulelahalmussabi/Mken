@@ -1167,17 +1167,9 @@
             submitBtn.disabled = false;
             submitBtn.textContent = 'دخول';
           }
-          // Fallback to client-side PIN check if the API is not available (static server)
-          if (enteredPin === 'mken2026') {
-            store.setAdminLoggedIn(true);
-            sessionStorage.setItem('mken_admin_pin', enteredPin);
-            showAdmin();
-            showToast('تم تسجيل الدخول محلياً (بيئة تطوير)');
-          } else {
-            if (loginError) {
-              loginError.textContent = 'رمز الدخول PIN غير صحيح أو الخادم غير متصل';
-              loginError.hidden = false;
-            }
+          if (loginError) {
+            loginError.textContent = 'رمز الدخول PIN غير صحيح أو الخادم غير متصل';
+            loginError.hidden = false;
           }
         });
       } else {

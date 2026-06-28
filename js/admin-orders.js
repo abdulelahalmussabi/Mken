@@ -359,9 +359,13 @@
       });
     } else {
       // Local fallback
+      var tenantSlug = store.getCurrentTenantSlug() || 'default';
+      var itemsKey = 'mken_inventory_items_' + tenantSlug;
+      var txKey = 'mken_inventory_transactions_' + tenantSlug;
+
       var localItems = [];
       try {
-        localItems = JSON.parse(localStorage.getItem('mken_inventory_items') || '[]');
+        localItems = JSON.parse(localStorage.getItem(itemsKey) || '[]');
       } catch (e) {}
 
       deductions.forEach(function (d) {
@@ -380,7 +384,7 @@
           
           var localTx = [];
           try {
-            localTx = JSON.parse(localStorage.getItem('mken_inventory_transactions') || '[]');
+            localTx = JSON.parse(localStorage.getItem(txKey) || '[]');
           } catch (e) {}
           localTx.push({
             itemId: targetItem.id,
@@ -390,10 +394,10 @@
             notes: 'استهلاك تلقائي: ' + d.notes + ' لطلب تفصيل رقم ' + order.id,
             createdAt: new Date().toISOString()
           });
-          localStorage.setItem('mken_inventory_transactions', JSON.stringify(localTx));
+          localStorage.setItem(txKey, JSON.stringify(localTx));
         }
       });
-      localStorage.setItem('mken_inventory_items', JSON.stringify(localItems));
+      localStorage.setItem(itemsKey, JSON.stringify(localItems));
     }
   }
 

@@ -7,6 +7,7 @@ window.MkenUiProfiles = {
     sections: ['hero', 'stats', 'features', 'services', 'brands', 'about', 'process', 'faq', 'contact'],
     showServiceArea: true,
     showBooking: true,
+    showOrder: true,
     bookingType: 'field-visit',
   },
   'project-based': {
@@ -14,6 +15,7 @@ window.MkenUiProfiles = {
     sections: ['hero', 'stats', 'features', 'services', 'portfolio', 'about', 'process', 'faq', 'contact'],
     showServiceArea: false,
     showBooking: true,
+    showOrder: true,
     bookingType: 'consultation',
   },
   'appointment-based': {
@@ -21,6 +23,7 @@ window.MkenUiProfiles = {
     sections: ['hero', 'stats', 'features', 'services', 'about', 'process', 'faq', 'contact'],
     showServiceArea: false,
     showBooking: true,
+    showOrder: true,
     bookingType: 'appointment',
   },
   'order-based': {
@@ -48,6 +51,7 @@ window.MkenContentRegistry = {
   fitness: function () { return window.MkenContentFitness; },
   veterinary: function () { return window.MkenContentVeterinary; },
   restaurant: function () { return window.MkenContentRestaurant; },
+  legal: function () { return window.MkenContentLegal; },
   consulting: function () { return window.MkenContentConsulting; },
   photography: function () { return window.MkenContentPhotography; },
   tutoring: function () { return window.MkenContentTutoring; },

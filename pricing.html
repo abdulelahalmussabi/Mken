@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mken Lite — باقات واشتراكات مكن لايت</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Moyasar Assets -->
+  <link rel="stylesheet" href="https://cdn.moyasar.com/mpf/1.14.0/moyasar.css">
+  <script src="https://cdn.moyasar.com/mpf/1.14.0/moyasar.js"></script>
+
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --primary: #0ea5e9;
+      --primary-hover: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --line: #334155;
+      --green: #10b981;
+      --popular: #0369a1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans Arabic', "Segoe UI", Tahoma, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+      padding-top: 20px;
+    }
+
+    header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 30%, var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Cycle Switch */
+    .switch-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .switch-btn {
+      background: #1e293b;
+      border: 1px solid var(--line);
+      color: var(--text-muted);
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    .switch-btn:first-child {
+      border-radius: 0 12px 12px 0;
+      border-left: none;
+    }
+
+    .switch-btn:last-child {
+      border-radius: 12px 0 0 12px;
+    }
+
+    .switch-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+    }
+
+    /* Plans Grid */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .plan {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 40px 30px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .plan:hover {
+      transform: translateY(-8px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .plan.popular {
+      border: 2px solid var(--primary);
+      box-shadow: 0 10px 25px rgba(14, 165, 233, 0.15);
+      background: linear-gradient(180deg, var(--surface) 0%, rgba(30, 41, 59, 0.95) 100%);
+    }
+
+    .plan.popular::before {
+      content: 'الأكثر شعبية';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: #fff;
+      padding: 4px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+    }
+
+    .plan h3 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .plan .price {
+      font-size: 38px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .plan .price small {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .plan ul.feat {
+      list-style: none;
+      margin-bottom: 35px;
+      flex-grow: 1;
+    }
+
+    .plan ul.feat li {
+      position: relative;
+      padding-right: 28px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .plan ul.feat li::before {
+      content: '✓';
+      position: absolute;
+      right: 0;
+      top: 0;
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .plan .btn {
+      background: transparent;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      width: 100%;
+      transition: all 0.3s ease;
+    }
+
+    .plan:hover .btn, .plan.popular .btn {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .plan.popular:hover .btn {
+      background: var(--primary-hover);
+    }
+
+    /* Overlay Checkout Modal */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 480px;
+      padding: 30px;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .modal h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .modal p.sub {
+      font-size: 14px;
+      color: var(--primary);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .form-group input {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--line);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .form-err {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .btn.block {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      background: var(--primary);
+      color: #fff;
+      transition: background 0.3s ease;
+    }
+
+    .btn.block:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Moyasar Form Adjustments */
+    #moyasar-form {
+      margin-top: 20px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: auto;
+      padding: 30px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="container">
+    <header>
+      <h1>مكن لايت — رخص التشغيل والاشتراكات</h1>
+      <p>اختر باقتك المفضلة لتفعيل تطبيق Mken Lite والبدء في تشغيل فواتيرك ومخازنك بالكامل بدون إنترنت.</p>
+    </header>
+
+    <div class="switch-wrap">
+      <button class="switch-btn active" id="cycleAnnual" onclick="Pricing.setCycle('annual')">اشتراك سنوي</button>
+      <button class="switch-btn" id="cyclePerpetual" onclick="Pricing.setCycle('perpetual')">رخصة مدى الحياة (دائمة)</button>
+    </div>
+
+    <div class="plans-grid" id="plans">
+      <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">جاري تحميل الباقات...</div>
+    </div>
+  </div>
+
+  <!-- Checkout Overlay -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="Pricing.close()">×</button>
+      <h2 id="checkoutTitle">تفعيل الاشتراك</h2>
+      <p class="sub" id="checkoutSub">تفاصيل الفاتورة</p>
+      
+      <div class="form-err" id="formErr"></div>
+
+      <div class="form-group">
+        <label for="c_name">اسم المنشأة / العميل *</label>
+        <input type="text" id="c_name" placeholder="مثال: متجر مكن التجاري">
+      </div>
+      <div class="form-group">
+        <label for="c_phone">رقم الجوال لتلقي المفتاح *</label>
+        <input type="tel" id="c_phone" placeholder="05XXXXXXXX">
+      </div>
+      <div class="form-group">
+        <label for="c_email">البريد الإلكتروني (اختياري)</label>
+        <input type="email" id="c_email" placeholder="client@mken.live">
+      </div>
+      <div class="form-group">
+        <label for="c_cr_number">رقم السجل التجاري أو وثيقة العمل الحر *</label>
+        <input type="text" id="c_cr_number" placeholder="مثال: 7051816481 أو FL-123456" required>
+      </div>
+      <div class="form-group">
+        <label for="c_tax_number">الرقم الضريبي (إن وجد)</label>
+        <input type="text" id="c_tax_number" placeholder="مثال: 311234567800003" pattern="^[0-9]{15}$">
+        <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">مكون من 15 رقماً (اختياري لمن لا يملك رقم ضريبي).</small>
+      </div>
+
+      <button class="btn block" id="proceedBtn" onclick="Pricing.proceed()">الانتقال للدفع الآمن</button>
+      
+      <!-- Moyasar injection here -->
+      <div id="moyasar-form"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>بشراء ترخيص التشغيل، أنت توافق على شروط وأحكام الخدمة وسياسة الحماية لـ Mken Lite.</p>
+    <p>© مكن. جميع الحقوق محفوظة.</p>
+  </div>
+
+  <script src="js/pricing.js"></script>
+</body>
+</html>

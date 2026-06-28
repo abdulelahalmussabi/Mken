@@ -797,13 +797,64 @@ window.MkenServicesCatalog = [
     svg: '<path d="M12 32c0-8 6-14 12-14s12 6 12 14" stroke="currentColor" stroke-width="2"/>',
   },
 
-  /* ─── استشارات مهنية ─── */
+  /* ─── المحاماة والاستشارات القانونية ─── */
   {
-    id: 'legal-consult', activityId: 'consulting', icon: '⚖️', title: 'استشارة قانونية', shortTitle: 'قانون',
-    description: 'محامٍ مختص — عقود، قضايا، واستشارات.', slotDuration: 60, featured: true,
-    features: ['مراجعة عقود', 'استشارة قضية', 'سرية تامة'], category: 'قانون',
+    id: 'legal-consult', activityId: 'legal', icon: '⚖️', title: 'استشارة قانونية', shortTitle: 'استشارة',
+    description: 'جلسة مع محامٍ مرخّص — رأي قانوني في عقد أو قضية أو نزاع.', slotDuration: 60, featured: true,
+    deliveryMode: 'hybrid',
+    features: ['رأي قانوني موثّق', 'حضوري أو عن بُعد', 'سرية مهنية تامة'], category: 'استشارات',
     svg: '<path d="M12 36h24M16 36V16l8-8 8 8v20" stroke="currentColor" stroke-width="2"/>',
   },
+  {
+    id: 'contract-drafting', activityId: 'legal', icon: '📝', title: 'صياغة العقود', shortTitle: 'صياغة عقد',
+    description: 'إعداد عقود ومذكرات نظامية مخصّصة — تجارية، عمل، إيجار، وشراكة.', slotDuration: 60,
+    deliveryMode: 'remote',
+    features: ['صياغة نظامية دقيقة', 'بنود حماية الحقوق', 'تسليم إلكتروني'], category: 'عقود',
+    svg: '<rect x="12" y="8" width="24" height="32" rx="2" stroke="currentColor" stroke-width="2"/><path d="M18 18h12M18 24h12M18 30h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  },
+  {
+    id: 'contract-review', activityId: 'legal', icon: '🔍', title: 'مراجعة وتدقيق العقود', shortTitle: 'مراجعة عقد',
+    description: 'تدقيق عقد قائم وكشف المخاطر والثغرات قبل التوقيع.', slotDuration: 45,
+    deliveryMode: 'remote',
+    features: ['كشف المخاطر', 'ملاحظات تعديل', 'توصية نظامية'], category: 'عقود',
+    svg: '<circle cx="22" cy="22" r="10" stroke="currentColor" stroke-width="2"/><path d="M30 30l8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  },
+  {
+    id: 'corporate-legal', activityId: 'legal', icon: '🏛️', title: 'خدمات الشركات والحوكمة', shortTitle: 'شركات',
+    description: 'تأسيس الكيانات، عقود التأسيس، الحوكمة، والامتثال النظامي.', slotDuration: 60,
+    deliveryMode: 'hybrid',
+    features: ['تأسيس وتعديل الكيانات', 'لوائح الحوكمة', 'الامتثال النظامي'], category: 'شركات',
+    svg: '<path d="M8 36h32M12 36V20M20 36V20M28 36V20M36 36V20M24 8l16 8H8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  },
+  {
+    id: 'labor-dispute', activityId: 'legal', icon: '👷', title: 'القضايا العمالية', shortTitle: 'عمالي',
+    description: 'تمثيل ومتابعة المنازعات العمالية أمام الجهات المختصة.', slotDuration: 60,
+    deliveryMode: 'hybrid',
+    features: ['دراسة الحالة العمالية', 'تمثيل أمام اللجان', 'متابعة إجرائية'], category: 'تقاضٍ',
+    svg: '<circle cx="24" cy="14" r="6" stroke="currentColor" stroke-width="2"/><path d="M12 38c0-8 5-14 12-14s12 6 12 14" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'family-law', activityId: 'legal', icon: '👨‍👩‍👧', title: 'قضايا الأحوال الشخصية', shortTitle: 'أحوال شخصية',
+    description: 'الحضانة، النفقة، الطلاق، والمواريث — متابعة نظامية بسرية.', slotDuration: 60,
+    deliveryMode: 'hybrid',
+    features: ['استشارة سرية', 'صياغة الطلبات', 'متابعة أمام المحكمة'], category: 'تقاضٍ',
+    svg: '<circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="16" r="5" stroke="currentColor" stroke-width="2"/><path d="M8 38c0-7 4-12 8-12M40 38c0-7-4-12-8-12" stroke="currentColor" stroke-width="2"/>',
+  },
+  {
+    id: 'litigation-rep', activityId: 'legal', icon: '⚖️', title: 'الترافع والتمثيل القضائي', shortTitle: 'ترافع',
+    description: 'تمثيلك أمام المحاكم والدوائر بمحامٍ مرخّص وفق نظام المحاماة.', slotDuration: 60, requiresAddress: false,
+    deliveryMode: 'in_person',
+    features: ['مذكرات دفاع', 'حضور الجلسات', 'متابعة التنفيذ'], category: 'تقاضٍ',
+    svg: '<path d="M24 6v30M14 36h20M10 16l8-4 4 8-8 4zM38 16l-8-4-4 8 8 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  },
+  {
+    id: 'arbitration', activityId: 'legal', icon: '🤝', title: 'التحكيم وفض المنازعات', shortTitle: 'تحكيم',
+    description: 'تسوية النزاعات عبر التحكيم والوساطة بعيداً عن إجراءات التقاضي.', slotDuration: 60,
+    deliveryMode: 'hybrid',
+    features: ['وساطة وتسوية', 'تمثيل في التحكيم', 'اتفاقيات صلح'], category: 'تقاضٍ',
+    svg: '<path d="M14 14l20 20M34 14L14 34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="2"/>',
+  },
+  /* ─── استشارات مهنية ─── */
   {
     id: 'accounting-consult', activityId: 'consulting', icon: '📊', title: 'استشارة محاسبية', shortTitle: 'محاسبة',
     description: 'محاسب قانوني — ضرائب، زكاة، وقوائم مالية.', slotDuration: 60,

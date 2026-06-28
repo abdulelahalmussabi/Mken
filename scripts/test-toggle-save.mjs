@@ -13,7 +13,21 @@ async function run() {
     console.error('[Browser Page Error]:', err.stack || err.message);
   });
 
-  const url = 'https://almahrusa.mken.live/admin.html';
+  page.on('request', request => {
+    const url = request.url();
+    if (url.includes('/api/')) {
+      console.log(`[Network Request]: ${request.method()} ${url}`);
+    }
+  });
+
+  page.on('response', response => {
+    const url = response.url();
+    if (url.includes('/api/')) {
+      console.log(`[Network Response]: ${response.status()} ${url}`);
+    }
+  });
+
+  const url = 'http://localhost:8080/admin.html?tenant=almahrosa';
   console.log(`Loading URL: ${url}`);
 
   try {
@@ -46,9 +60,8 @@ async function run() {
     });
     console.log('Checked services before toggle:', checkedBefore);
 
-    // We will toggle one of the services. Let's toggle 'family-suite' or 'suite-room'.
-    // We will find the checkbox with value="suite-room" or "family-suite".
-    console.log('Toggling standard-room or suite-room...');
+    // We will toggle 'suite-room'.
+    console.log('Toggling suite-room...');
     const targetCheckbox = page.locator('.admin-service__check[value="suite-room"]');
     const isChecked = await targetCheckbox.isChecked();
     console.log(`suite-room checked status before click: ${isChecked}`);
@@ -76,15 +89,20 @@ async function run() {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    // Login again
-    console.log('Logging in again...');
-    await page.selectOption('#loginAuthType', 'local');
-    await page.fill('#pinInput', 'mken2026');
-    await page.click('#loginSubmitBtn');
-    await page.waitForSelector('#adminView:not([hidden])', { timeout: 10000 });
+    // Check if we need to login
+    const loginVisible = await page.locator('#loginAuthType').isVisible();
+    if (loginVisible) {
+      console.log('Logging in again...');
+      await page.selectOption('#loginAuthType', 'local');
+      await page.fill('#pinInput', 'mken2026');
+      await page.click('#loginSubmitBtn');
+      await page.waitForSelector('#adminView:not([hidden])', { timeout: 10000 });
+    } else {
+      console.log('Already logged in after reload.');
+    }
     
     await page.click('button[data-tab="activities"]');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
     const checkedAfter = await page.evaluate(() => {
       const checks = document.querySelectorAll('.admin-service__check');

@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
+const licenseIssue = require('./_lib/license-issue');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -65,6 +66,30 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Missing appointment_id in payment metadata' });
       }
 
+      // Fetch appointment to check idempotency and price
+      const { data: apt, error: aptErr } = await supabase
+        .from('mken_appointments')
+        .select('payment_amount, payment_status, payment_id')
+        .eq('id', appointment_id)
+        .maybeSingle();
+
+      if (aptErr) throw aptErr;
+      if (!apt) {
+        return res.status(400).json({ error: 'Appointment not found in database' });
+      }
+
+      // Idempotency check:
+      if (apt.payment_status === 'paid' && apt.payment_id === paymentId) {
+        return res.status(200).json({ success: true, message: 'Already processed', type: 'booking', id: appointment_id });
+      }
+
+      // Price verification:
+      const expectedAmount = Number(apt.payment_amount);
+      if (Math.abs(paymentAmount - expectedAmount) > 0.01) {
+        console.error(`Price discrepancy for booking ${appointment_id}: paid ${paymentAmount}, expected ${expectedAmount}`);
+        return res.status(400).json({ error: 'Payment amount mismatch' });
+      }
+
       console.log(`Processing paid booking: ${appointment_id} for tenant: ${slug}`);
 
       // Update appointment in Supabase
@@ -84,7 +109,7 @@ module.exports = async function handler(req, res) {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const apt = data[0];
+        const aptData = data[0];
         // Fetch tenant WhatsApp settings
         const { data: tenant } = await supabase
           .from('mken_saas_clients')
@@ -94,7 +119,7 @@ module.exports = async function handler(req, res) {
 
         const config = tenant ? tenant.config_data : null;
         if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          await sendServerWhatsApp(apt, 'booking', config, supabase, slug);
+          await sendServerWhatsApp(aptData, 'booking', config, supabase, slug);
         }
       }
 
@@ -103,6 +128,30 @@ module.exports = async function handler(req, res) {
     } else if (resolvedType === 'order') {
       if (!order_id) {
         return res.status(400).json({ error: 'Missing order_id in payment metadata' });
+      }
+
+      // Fetch order to check idempotency and price
+      const { data: ord, error: ordErr } = await supabase
+        .from('mken_orders')
+        .select('payment_amount, payment_status, payment_id')
+        .eq('id', order_id)
+        .maybeSingle();
+
+      if (ordErr) throw ordErr;
+      if (!ord) {
+        return res.status(400).json({ error: 'Order not found in database' });
+      }
+
+      // Idempotency check:
+      if (ord.payment_status === 'paid' && ord.payment_id === paymentId) {
+        return res.status(200).json({ success: true, message: 'Already processed', type: 'order', id: order_id });
+      }
+
+      // Price verification:
+      const expectedAmount = Number(ord.payment_amount);
+      if (Math.abs(paymentAmount - expectedAmount) > 0.01) {
+        console.error(`Price discrepancy for order ${order_id}: paid ${paymentAmount}, expected ${expectedAmount}`);
+        return res.status(400).json({ error: 'Payment amount mismatch' });
       }
 
       console.log(`Processing paid order: ${order_id} for tenant: ${slug}`);
@@ -124,7 +173,7 @@ module.exports = async function handler(req, res) {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const ord = data[0];
+        const ordData = data[0];
         // Fetch tenant WhatsApp settings
         const { data: tenant } = await supabase
           .from('mken_saas_clients')
@@ -134,7 +183,7 @@ module.exports = async function handler(req, res) {
 
         const config = tenant ? tenant.config_data : null;
         if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          await sendServerWhatsApp(ord, 'order', config, supabase, slug);
+          await sendServerWhatsApp(ordData, 'order', config, supabase, slug);
         }
       }
 
@@ -144,6 +193,32 @@ module.exports = async function handler(req, res) {
       const { tenant_slug, months } = metadata || {};
       const slug = tenant_slug || 'default';
       const renewMonths = parseInt(months, 10) || 12;
+
+      // Idempotency check for SaaS renewal:
+      const { data: existingInvoice, error: invErr } = await supabase
+        .from('mken_saas_invoices')
+        .select('id')
+        .eq('payment_id', paymentId)
+        .maybeSingle();
+
+      if (invErr) throw invErr;
+      if (existingInvoice) {
+        console.log(`SaaS renewal payment ${paymentId} has already been processed.`);
+        return res.status(200).json({ success: true, message: 'Already processed', type: 'saas_billing', tenant: slug });
+      }
+
+      // Price verification for SaaS renewal:
+      const getSaaSPrice = (m) => {
+        if (m === 1) return 99;
+        if (m === 3) return 249;
+        if (m === 6) return 449;
+        return 799; // 12 months default
+      };
+      const expectedSaaSPrice = getSaaSPrice(renewMonths);
+      if (Math.abs(paymentAmount - expectedSaaSPrice) > 0.01) {
+        console.error(`Price discrepancy for SaaS billing for tenant ${slug}: paid ${paymentAmount}, expected ${expectedSaaSPrice}`);
+        return res.status(400).json({ error: 'Payment amount mismatch for SaaS subscription' });
+      }
 
       console.log(`Processing SaaS renewal: ${slug} for ${renewMonths} months`);
 
@@ -248,6 +323,80 @@ module.exports = async function handler(req, res) {
       }
 
       return res.status(200).json({ success: true, type: 'saas_billing', tenant: slug });
+
+    } else if (resolvedType === 'mken_lite_license') {
+      const md = metadata || {};
+      const plan = md.plan || 'Lite';
+      const billingCycle = md.billing_cycle || md.billingCycle || 'annual';
+
+      // فحص التكرار (idempotency) عبر معرّف الدفعة
+      const { data: existingLic, error: exErr } = await supabase
+        .from('mken_licenses').select('license_key').eq('payment_id', paymentId).maybeSingle();
+      if (exErr) throw exErr;
+      if (existingLic) {
+        return res.status(200).json({ success: true, message: 'Already processed', type: 'mken_lite_license', licenseKey: existingLic.license_key });
+      }
+
+      // التحقق من المبلغ
+      const expected = licenseIssue.priceFor(plan, billingCycle);
+      if (Math.abs(paymentAmount - expected) > 0.01) {
+        console.error(`Price discrepancy for Mken Lite license: paid ${paymentAmount}, expected ${expected}`);
+        return res.status(400).json({ error: 'Payment amount mismatch for Mken Lite license' });
+      }
+
+      // إصدار الترخيص آلياً
+      const lic = await licenseIssue.issueLicense(supabase, {
+        plan: plan,
+        billingCycle: billingCycle,
+        months: md.months,
+        maxDevices: md.max_devices || md.maxDevices,
+        customerName: md.customer_name || md.customerName,
+        phone: md.phone,
+        email: md.email,
+        crNumber: md.commercial_registry_number || md.cr_number || md.crNumber,
+        taxNumber: md.tax_number || md.taxNumber,
+        paymentId: paymentId,
+        source: 'moyasar',
+        notes: 'Moyasar ' + paymentId
+      });
+
+      // تسجيل الحدث
+      try {
+        await supabase.from('mken_license_events').insert({
+          license_key: lic.license_key, type: 'issued',
+          detail: { plan: plan, billingCycle: billingCycle, paymentId: paymentId, via: 'moyasar' }
+        });
+      } catch (e) { /* تجاهل */ }
+
+      // إرسال المفتاح للعميل عبر واتساب (إعدادات الحساب الرئيسي)
+      try {
+        const customerPhone = cleanPhone(md.phone);
+        if (customerPhone) {
+          const { data: defaultTenant } = await supabase
+            .from('mken_saas_clients').select('config_data').eq('tenant_slug', 'default').maybeSingle();
+          const waConfig = (defaultTenant && defaultTenant.config_data && defaultTenant.config_data.whatsappApi) || {};
+          if (waConfig.enabled) {
+            const expiryText = lic.expires_at ? new Date(lic.expires_at).toLocaleDateString('ar-EG') : 'رخصة دائمة';
+            const msg = [
+              'تم تفعيل اشتراكك في Mken Lite بنجاح! 🎉',
+              '━━━━━━━━━━━━━━',
+              'الباقة: ' + lic.plan,
+              'مفتاح الترخيص:',
+              lic.license_key,
+              'عدد الأجهزة: ' + lic.max_devices,
+              'الصلاحية حتى: ' + expiryText,
+              '━━━━━━━━━━━━━━',
+              'افتح التطبيق ← الإعدادات ← الترخيص، وألصق المفتاح للتفعيل وربطه بجهازك.',
+              'شكراً لثقتك بمكن!'
+            ].join('\n');
+            await sendRawServerWhatsApp(customerPhone, msg, null, waConfig, supabase, 'default');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to send Mken Lite license WhatsApp:', e.message);
+      }
+
+      return res.status(200).json({ success: true, type: 'mken_lite_license', licenseKey: lic.license_key });
 
     } else {
       return res.status(200).json({ status: 'ignored', reason: 'Unrecognized metadata type or fields' });

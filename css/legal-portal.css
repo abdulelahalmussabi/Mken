@@ -1,0 +1,414 @@
+/* بوابة المكتب القانوني — تصميم مستقل (navy/gold) */
+:root {
+  --lp-navy: #1e3d59;
+  --lp-navy-dark: #152b3e;
+  --lp-gold: #c5a880;
+  --lp-gold-soft: #e8dcc7;
+  --lp-green: #17b978;
+  --lp-bg: #f0f2f5;
+  --lp-card: #ffffff;
+  --lp-border: #e1e5ea;
+  --lp-text: #222831;
+  --lp-muted: #6b7682;
+}
+
+.lp-body {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  background: var(--lp-bg);
+  color: var(--lp-text);
+  margin: 0;
+}
+
+/* الهيدر */
+.lp-header {
+  background: var(--lp-navy);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+.lp-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+}
+.lp-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+.lp-logo__symbol {
+  font-size: 1.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--lp-gold);
+  width: 50px; height: 50px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+}
+.lp-logo__text { display: flex; flex-direction: column; }
+.lp-logo__title { font-weight: 700; font-size: 1.05rem; }
+.lp-logo__subtitle { font-size: 0.72rem; color: var(--lp-gold-soft); }
+.lp-header .nav a { color: #e8ecef; }
+.lp-header__cta {
+  background: var(--lp-gold) !important;
+  color: var(--lp-navy-dark) !important;
+  border-color: var(--lp-gold) !important;
+  font-weight: 700;
+}
+
+/* الهيرو */
+.lp-hero {
+  position: relative;
+  background: linear-gradient(135deg, var(--lp-navy) 0%, var(--lp-navy-dark) 100%);
+  color: #fff;
+  padding: 54px 0 70px;
+  overflow: hidden;
+  text-align: center;
+}
+.lp-hero__pattern {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(197, 168, 128, 0.18) 1px, transparent 0);
+  background-size: 26px 26px;
+  opacity: 0.5;
+}
+.lp-hero .container { position: relative; z-index: 2; }
+.lp-hero__badge {
+  display: inline-block;
+  background: rgba(197, 168, 128, 0.16);
+  border: 1px solid var(--lp-gold);
+  color: var(--lp-gold-soft);
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 0.82rem;
+  margin-bottom: 16px;
+}
+.lp-hero h1 { font-size: 2rem; margin: 0 0 12px; font-weight: 700; }
+.lp-hero h1 span { color: var(--lp-gold); }
+.lp-hero p { max-width: 620px; margin: 0 auto; color: #cdd6df; font-size: 1.02rem; }
+
+/* مبدّل الواجهات */
+.lp-view-switch {
+  display: flex;
+  gap: 10px;
+  background: var(--lp-card);
+  padding: 8px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(30, 61, 89, 0.12);
+  max-width: 560px;
+  margin: -34px auto 0;
+  position: relative;
+  z-index: 5;
+}
+.lp-switch-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--lp-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.lp-switch-btn--active { background: var(--lp-navy); color: #fff; }
+
+.lp-main { padding: 32px 0 60px; }
+
+/* الشبكات */
+.lp-grid { display: grid; gap: 22px; }
+.lp-grid--2 { grid-template-columns: 1fr 1fr; }
+.lp-grid--sidebar { grid-template-columns: 1fr 340px; align-items: start; }
+@media (max-width: 860px) {
+  .lp-grid--2, .lp-grid--sidebar { grid-template-columns: 1fr; }
+}
+
+/* البطاقات */
+.lp-card {
+  background: var(--lp-card);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  margin-bottom: 22px;
+}
+.lp-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lp-card__title {
+  font-size: 1.05rem;
+  color: var(--lp-navy);
+  margin: 0 0 14px;
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700;
+}
+.lp-card__head .lp-card__title { margin-bottom: 0; }
+.lp-card__icon { font-size: 1.2rem; }
+.lp-muted { color: var(--lp-muted); font-size: 0.88rem; margin: 0 0 14px; line-height: 1.6; }
+
+/* النماذج */
+.lp-form { display: block; }
+.lp-form--grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.lp-input-group { margin-bottom: 14px; display: flex; flex-direction: column; }
+.lp-input-group--full { grid-column: 1 / -1; }
+.lp-input-group label { font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; color: var(--lp-navy); }
+.lp-input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--lp-border);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  background: #fbfcfd;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.lp-input:focus { outline: none; border-color: var(--lp-navy); background: #fff; }
+.lp-input--center { text-align: center; letter-spacing: 8px; font-size: 1.3rem; }
+textarea.lp-input { resize: vertical; }
+
+/* الأزرار */
+.lp-btn {
+  background: var(--lp-navy);
+  color: #fff;
+  border: 1px solid var(--lp-navy);
+  padding: 11px 18px;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+.lp-btn:hover { background: var(--lp-navy-dark); }
+.lp-btn--gold { background: var(--lp-gold); border-color: var(--lp-gold); color: var(--lp-navy-dark); width: 100%; }
+.lp-btn--gold:hover { background: #b89868; }
+.lp-btn--outline { background: transparent; color: var(--lp-navy); }
+.lp-btn--outline:hover { background: var(--lp-bg); }
+.lp-btn--sm { padding: 8px 13px; font-size: 0.82rem; }
+.lp-btn--ghost { background: transparent; border: 1px solid var(--lp-border); color: var(--lp-text); }
+.lp-btn--danger { background: #fff; border: 1px solid #e74c3c; color: #e74c3c; }
+
+/* الإحصاءات */
+.lp-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+@media (max-width: 700px) { .lp-stats { grid-template-columns: repeat(2, 1fr); } }
+.lp-stat {
+  background: var(--lp-card);
+  border: 1px solid var(--lp-border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border-top: 3px solid var(--lp-gold);
+}
+.lp-stat__num { font-size: 1.7rem; font-weight: 700; color: var(--lp-navy); }
+.lp-stat__label { font-size: 0.78rem; color: var(--lp-muted); margin-top: 2px; }
+
+/* شريط الأدوات */
+.lp-toolbar { display: flex; gap: 10px; margin: 14px 0; }
+.lp-toolbar .lp-input { flex: 1; margin: 0; }
+.lp-toolbar select.lp-input { max-width: 180px; }
+
+/* الجدول */
+.lp-table-wrap { overflow-x: auto; }
+.lp-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.lp-table th, .lp-table td { padding: 11px 10px; text-align: right; border-bottom: 1px solid var(--lp-border); }
+.lp-table th { color: var(--lp-muted); font-weight: 600; font-size: 0.8rem; }
+.lp-table tbody tr:hover { background: #fafbfc; }
+.lp-empty { text-align: center; color: var(--lp-muted); padding: 26px 0 !important; }
+.lp-row-actions { display: flex; gap: 6px; }
+.lp-icon-btn {
+  border: 1px solid var(--lp-border);
+  background: #fff;
+  border-radius: 7px;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.lp-icon-btn:hover { background: var(--lp-bg); }
+
+/* الشارات */
+.lp-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lp-badge--new { background: #e3f0ff; color: #1e5fa8; }
+.lp-badge--in_progress { background: #fff4e0; color: #b9770e; }
+.lp-badge--postponed { background: #f3e8ff; color: #7e3ea8; }
+.lp-badge--settled { background: #e7f7ef; color: #178a5a; }
+.lp-badge--won { background: #e7f7ef; color: #0f7a45; }
+.lp-badge--lost { background: #fdeaea; color: #c0392b; }
+.lp-badge--closed { background: #eceff2; color: #5a6672; }
+
+/* فريق المحامين */
+.lp-lawyers { display: flex; flex-direction: column; gap: 8px; }
+.lp-lawyer {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--lp-border);
+  border-radius: 9px;
+  background: #fbfcfd;
+}
+.lp-lawyer__dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
+.lp-lawyer__info { flex: 1; min-width: 0; }
+.lp-lawyer__name { font-weight: 600; font-size: 0.88rem; }
+.lp-lawyer__spec { font-size: 0.74rem; color: var(--lp-muted); }
+.lp-lawyer__actions { display: flex; gap: 4px; }
+.lp-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 2px 9px; border-radius: 20px;
+  background: var(--lp-bg); color: var(--lp-navy);
+}
+.lp-pill__dot { width: 8px; height: 8px; border-radius: 50%; }
+.lp-pill--none { background: #f3f4f6; color: var(--lp-muted); }
+
+/* حجز مع محامٍ محدّد */
+.lp-lawyer-book { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.lp-lawyer-book__title { font-size: 0.82rem; font-weight: 600; color: var(--lp-navy); margin: 4px 0; }
+.lp-lawyer-book a {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--lp-border);
+  border-radius: 9px;
+  text-decoration: none;
+  color: var(--lp-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  background: #fbfcfd;
+  transition: background 0.2s;
+}
+.lp-lawyer-book a:hover { background: var(--lp-bg); }
+.lp-lawyer-book__dot { width: 10px; height: 10px; border-radius: 50%; }
+.lp-lawyer-book__spec { font-weight: 400; color: var(--lp-muted); font-size: 0.76rem; }
+
+/* الرقائق */
+.lp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.lp-chip {
+  background: var(--lp-gold-soft);
+  color: var(--lp-navy-dark);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
+
+/* نتيجة الاستعلام */
+.lp-result__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.lp-result__num { font-weight: 700; color: var(--lp-navy); font-size: 1.1rem; }
+.lp-meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; margin: 14px 0; }
+.lp-meta { font-size: 0.88rem; }
+.lp-meta b { color: var(--lp-muted); font-weight: 600; }
+
+/* الجدول الزمني */
+.lp-timeline-form { display: flex; gap: 8px; margin: 10px 0 14px; }
+.lp-timeline-form .lp-input { flex: 1; }
+.lp-timeline { list-style: none; padding: 0; margin: 0; }
+.lp-timeline li {
+  position: relative;
+  padding: 0 18px 16px;
+  border-right: 2px solid var(--lp-gold-soft);
+  margin-right: 6px;
+}
+.lp-timeline li::before {
+  content: '';
+  position: absolute;
+  right: -7px; top: 4px;
+  width: 12px; height: 12px;
+  background: var(--lp-gold);
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+.lp-timeline__date { font-size: 0.74rem; color: var(--lp-muted); }
+.lp-timeline__text { font-size: 0.9rem; margin-top: 2px; }
+.lp-timeline__del { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 0.78rem; }
+
+/* النوافذ */
+.lp-modal {
+  position: fixed; inset: 0;
+  background: rgba(21, 43, 62, 0.72);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: 18px;
+}
+.lp-modal--open { display: flex; }
+.lp-modal__card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 26px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+.lp-modal__card--sm { max-width: 380px; text-align: center; }
+.lp-modal__card h3 { color: var(--lp-navy); margin: 8px 0; }
+.lp-modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.lp-modal__head h3 { margin: 0; }
+.lp-modal__close {
+  border: none; background: var(--lp-bg);
+  width: 34px; height: 34px; border-radius: 8px;
+  cursor: pointer; font-size: 1rem;
+}
+.lp-error { color: #e74c3c; font-weight: 600; margin-top: 10px; font-size: 0.85rem; }
+
+/* التوست */
+.lp-toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(140%);
+  background: var(--lp-navy);
+  color: #fff;
+  padding: 13px 22px;
+  border-radius: 30px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.9rem;
+  z-index: 1100;
+  transition: transform 0.3s ease;
+}
+.lp-toast--show { transform: translateX(-50%) translateY(0); }
+
+/* شارة ربط المحامي بنظام الموظفين */
+.lp-lawyer__staff {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.68rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px; margin-top: 3px;
+}
+.lp-lawyer__staff--on { background: #e7f7ed; color: #1c7a43; }
+.lp-lawyer__staff--off { background: #fdeaea; color: #b23b3b; }
+.lp-btn--staff {
+  background: var(--lp-gold, #c8a24a); color: #2a2200;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-size: 0.7rem; font-weight: 700; padding: 4px 8px; margin-top: 4px;
+}
+
+/* فواتير الأتعاب */
+.lp-invoices-wrap { border-top: 1px solid var(--lp-border); margin-top: 14px; padding-top: 8px; }
+.lp-invoice-form {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  align-items: end; margin: 10px 0 14px;
+}
+.lp-invoice-form__hint { grid-column: 1 / -1; font-size: 0.78rem; }
+.lp-invoice-form .lp-btn { grid-column: 1 / -1; }
+.lp-invoices { display: flex; flex-direction: column; gap: 8px; }
+.lp-invoice {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--lp-bg); border: 1px solid var(--lp-border);
+  border-radius: 10px; padding: 10px 12px; flex-wrap: wrap;
+}
+.lp-invoice__num { font-weight: 700; color: var(--lp-navy); font-size: 0.85rem; }
+.lp-invoice__amount { font-weight: 700; }
+.lp-invoice__status { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.lp-invoice__status--reported { background: #e7f7ed; color: #1c7a43; }
+.lp-invoice__status--local { background: #fff4e0; color: #9a6a13; }
+.lp-invoice__status--failed { background: #fdeaea; color: #b23b3b; }
+.lp-invoice__actions { display: flex; gap: 6px; }
+@media (max-width: 560px) { .lp-invoice-form { grid-template-columns: 1fr; } }

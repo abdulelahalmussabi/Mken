@@ -1,11 +1,21 @@
 /**
- * إدارة المواعيد — منصة رونق (data/appointments.json + localStorage)
+ * إدارة المواعيد — منصة مكن (data/appointments.json + localStorage)
  */
 (function () {
   'use strict';
 
   var STORAGE_KEY = 'mken_platform_appointments';
   var PENDING_KEY = 'mken_platform_pending';
+
+  function getStorageKey() {
+    var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+    return tenantSlug ? (STORAGE_KEY + '_' + tenantSlug) : STORAGE_KEY;
+  }
+
+  function getPendingKey() {
+    var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+    return tenantSlug ? (PENDING_KEY + '_' + tenantSlug) : PENDING_KEY;
+  }
   var APPOINTMENTS_URL = 'data/appointments.json';
 
   var _data = null;
@@ -58,6 +68,7 @@
       phone: (raw.phone || '').trim(),
       district: (raw.district || '').trim(),
       locationAddress: (raw.locationAddress || '').trim(),
+      staffId: raw.staffId || null,
       deliveryMode: (raw.deliveryMode || '').trim(),
       meetingContact: (raw.meetingContact || '').trim(),
       venueNote: (raw.venueNote || '').trim(),
@@ -90,7 +101,7 @@
 
   function loadFromStorage() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(getStorageKey());
       if (raw) return normalizeData(JSON.parse(raw));
     } catch (e) { /* ignore */ }
     return null;
@@ -185,7 +196,7 @@
     _data = normalizeData(data);
     _data.updatedAt = new Date().toISOString();
     _source = 'local';
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_data));
+    localStorage.setItem(getStorageKey(), JSON.stringify(_data));
     
     if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
@@ -291,7 +302,7 @@
 
   function getPendingRequests() {
     try {
-      return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      return JSON.parse(localStorage.getItem(getPendingKey()) || '[]');
     } catch (e) {
       return [];
     }
@@ -301,7 +312,7 @@
     var list = getPendingRequests().filter(function (r) {
       return r.id !== id;
     });
-    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    localStorage.setItem(getPendingKey(), JSON.stringify(list));
     return list;
   }
 
@@ -496,6 +507,7 @@
       phone: request.phone || '',
       district: request.district || '',
       locationAddress: request.locationAddress || '',
+      staffId: request.staffId || null,
       deliveryMode: request.deliveryMode || '',
       meetingContact: request.meetingContact || '',
       venueNote: request.venueNote || '',
@@ -514,12 +526,12 @@
     };
 
     try {
-      var list = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+      var list = JSON.parse(localStorage.getItem(getPendingKey()) || '[]');
       list.push(Object.assign({}, apt, {
         activityTitle: request.activityTitle || '',
         serviceTitle: request.serviceTitle || '',
       }));
-      localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+      localStorage.setItem(getPendingKey(), JSON.stringify(list));
     } catch (e) {
       console.warn('Failed to save pending request to localStorage', e);
     }
@@ -698,7 +710,6 @@
   }
 
   window.MkenBookingStore = {
-    STORAGE_KEY: STORAGE_KEY,
     APPOINTMENTS_URL: APPOINTMENTS_URL,
     AR_MONTHS: AR_MONTHS,
     AR_DAYS: AR_DAYS,
@@ -748,4 +759,14 @@
     generateId: generateId,
     parseDateISO: parseDateISO,
   };
+  Object.defineProperty(window.MkenBookingStore, 'STORAGE_KEY', {
+    get: getStorageKey,
+    configurable: true,
+    enumerable: true
+  });
+  Object.defineProperty(window.MkenBookingStore, 'PENDING_KEY', {
+    get: getPendingKey,
+    configurable: true,
+    enumerable: true
+  });
 })();

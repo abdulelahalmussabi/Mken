@@ -1671,9 +1671,9 @@
     }
   },
   "supabase": {
-    "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrY2Fha2V4enhxZWJ3anlodGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk0ODksImV4cCI6MjA5MjYxNTQ4OX0.oPm_IWfrmqzau1Pir7Afr6qAJNaa0sIhH4MICcYhhv8",
-    "url": "https://wkcaakexzxqebwjyhtan.supabase.co",
-    "enabled": true
+    "key": "",
+    "url": "",
+    "enabled": false
   },
   "heroFocus": "standard-room",
   "heroImage": "",

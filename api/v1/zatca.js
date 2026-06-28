@@ -1,6 +1,46 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const sbEnv = require('../_lib/supabase-env');
+const { handleCors } = require('../_lib/cors');
+
+function getEncryptionKey() {
+  const secret = process.env.ZATCA_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_KEY || 'mken_zatca_fallback_secure_key_123';
+  return crypto.pbkdf2Sync(secret, 'mken_salt', 10000, 32, 'sha256');
+}
+
+function encrypt(text) {
+  if (!text) return '';
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag().toString('hex');
+  return iv.toString('hex') + ':' + authTag + ':' + encrypted;
+}
+
+function decrypt(ciphertext) {
+  if (!ciphertext) return '';
+  if (!ciphertext.includes(':')) {
+    return ciphertext;
+  }
+  try {
+    const parts = ciphertext.split(':');
+    if (parts.length !== 3) return ciphertext;
+    const iv = Buffer.from(parts[0], 'hex');
+    const authTag = Buffer.from(parts[1], 'hex');
+    const encrypted = parts[2];
+    const key = getEncryptionKey();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    console.error('Failed to decrypt ZATCA secret:', err.message);
+    return ciphertext;
+  }
+}
 
 // Helper to encode DER length
 function derLength(len) {
@@ -169,10 +209,10 @@ function generateInvoiceXml(invoice, tenantConfig) {
     <cac:InvoiceLine>
         <cbc:ID>${index + 1}</cbc:ID>
         <cbc:InvoicedQuantity unitCode="PCE">${qty}</cbc:InvoicedQuantity>
-        <cbc:LineExtensionAmount currencyID="SAR">${itemSubtotal.toFixed(2)}</cbc:LineExtensionAmount>
+        <cbc:LineExtensionAmount currencyID="⃁">${itemSubtotal.toFixed(2)}</cbc:LineExtensionAmount>
         <cac:TaxTotal>
-            <cbc:TaxAmount currencyID="SAR">${itemTax.toFixed(2)}</cbc:TaxAmount>
-            <cbc:RoundingAmount currencyID="SAR">${itemTotal.toFixed(2)}</cbc:RoundingAmount>
+            <cbc:TaxAmount currencyID="⃁">${itemTax.toFixed(2)}</cbc:TaxAmount>
+            <cbc:RoundingAmount currencyID="⃁">${itemTotal.toFixed(2)}</cbc:RoundingAmount>
         </cac:TaxTotal>
         <cac:Item>
             <cbc:Name>${item.name}</cbc:Name>
@@ -185,7 +225,7 @@ function generateInvoiceXml(invoice, tenantConfig) {
             </cac:ClassifiedTaxCategory>
         </cac:Item>
         <cac:Price>
-            <cbc:PriceAmount currencyID="SAR">${price.toFixed(2)}</cbc:PriceAmount>
+            <cbc:PriceAmount currencyID="⃁">${price.toFixed(2)}</cbc:PriceAmount>
         </cac:Price>
     </cac:InvoiceLine>`;
   });
@@ -204,8 +244,8 @@ function generateInvoiceXml(invoice, tenantConfig) {
     <cbc:IssueDate>${date}</cbc:IssueDate>
     <cbc:IssueTime>${time}</cbc:IssueTime>
     <cbc:InvoiceTypeCode name="0100000">388</cbc:InvoiceTypeCode>
-    <cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode>
-    <cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode>
+    <cbc:DocumentCurrencyCode>⃁</cbc:DocumentCurrencyCode>
+    <cbc:TaxCurrencyCode>⃁</cbc:TaxCurrencyCode>
     <cac:AdditionalDocumentReference>
         <cbc:ID>ICV</cbc:ID>
         <cbc:UUID>${invoice.icv || 1}</cbc:UUID>
@@ -257,10 +297,10 @@ function generateInvoiceXml(invoice, tenantConfig) {
         <cbc:PaymentMeansCode>10</cbc:PaymentMeansCode>
     </cac:PaymentMeans>
     <cac:TaxTotal>
-        <cbc:TaxAmount currencyID="SAR">${tax.toFixed(2)}</cbc:TaxAmount>
+        <cbc:TaxAmount currencyID="⃁">${tax.toFixed(2)}</cbc:TaxAmount>
         <cac:TaxSubtotal>
-            <cbc:TaxableAmount currencyID="SAR">${subtotal.toFixed(2)}</cbc:TaxableAmount>
-            <cbc:TaxAmount currencyID="SAR">${tax.toFixed(2)}</cbc:TaxAmount>
+            <cbc:TaxableAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:TaxableAmount>
+            <cbc:TaxAmount currencyID="⃁">${tax.toFixed(2)}</cbc:TaxAmount>
             <cac:TaxCategory>
                 <cbc:ID>S</cbc:ID>
                 <cbc:Percent>15.00</cbc:Percent>
@@ -271,33 +311,31 @@ function generateInvoiceXml(invoice, tenantConfig) {
         </cac:TaxSubtotal>
     </cac:TaxTotal>
     <cac:LegalMonetaryTotal>
-        <cbc:LineExtensionAmount currencyID="SAR">${subtotal.toFixed(2)}</cbc:LineExtensionAmount>
-        <cbc:TaxExclusiveAmount currencyID="SAR">${subtotal.toFixed(2)}</cbc:TaxExclusiveAmount>
-        <cbc:TaxInclusiveAmount currencyID="SAR">${total.toFixed(2)}</cbc:TaxInclusiveAmount>
-        <cbc:AllowanceTotalAmount currencyID="SAR">${Number(invoice.discount || 0).toFixed(2)}</cbc:AllowanceTotalAmount>
-        <cbc:PayableAmount currencyID="SAR">${total.toFixed(2)}</cbc:PayableAmount>
+        <cbc:LineExtensionAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="⃁">${total.toFixed(2)}</cbc:TaxInclusiveAmount>
+        <cbc:AllowanceTotalAmount currencyID="⃁">${Number(invoice.discount || 0).toFixed(2)}</cbc:AllowanceTotalAmount>
+        <cbc:PayableAmount currencyID="⃁">${total.toFixed(2)}</cbc:PayableAmount>
     </cac:LegalMonetaryTotal>
     ${itemsXml}
 </Invoice>`;
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Pin'
-  );
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handleCors(req, res)) return;
 
   const pin = (req.body && req.body.pin) || (req.query && req.query.pin) || req.headers['x-admin-pin'];
-  const expectedPin = process.env.ADMIN_PIN || 'mken2026';
+  const expectedPin = process.env.ADMIN_PIN;
 
-  if (!pin || (pin.trim() !== expectedPin && pin.trim() !== 'mken2026')) {
+  if (!expectedPin) {
+    console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
+    return res.status(500).json({ success: false, error: 'Server configuration error: ADMIN_PIN not set' });
+  }
+
+  const cleanPin = String(pin || '').trim();
+  const aHash = crypto.createHash('sha256').update(cleanPin).digest();
+  const bHash = crypto.createHash('sha256').update(expectedPin.trim()).digest();
+  if (!pin || !crypto.timingSafeEqual(aHash, bHash)) {
     return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر لدخول إعدادات الزكاة' });
   }
 
@@ -458,10 +496,10 @@ module.exports = async function handler(req, res) {
         district: district || 'الورود',
         onboardingDate: new Date().toISOString(),
         publicKey: publicKey,
-        privateKey: privateKey,
+        privateKey: encrypt(privateKey),
         csr: csrPem,
-        certificate: prodCert,
-        secret: prodSecret,
+        certificate: encrypt(prodCert),
+        secret: encrypt(prodSecret),
         complianceRequestId: complianceRequestId,
         isSimulated: isSimulated
       };
@@ -510,11 +548,16 @@ module.exports = async function handler(req, res) {
       }
 
       const config = clientRow.config_data || {};
-      const zatca = config.zatcaConfig;
+      const zatca = config.zatcaConfig ? Object.assign({}, config.zatcaConfig) : null;
 
       if (!zatca || !zatca.active) {
         return res.status(400).json({ success: false, error: 'ZATCA integration is not configured or active for this tenant' });
       }
+
+      // Decrypt credentials
+      zatca.privateKey = decrypt(zatca.privateKey);
+      zatca.certificate = decrypt(zatca.certificate);
+      zatca.secret = decrypt(zatca.secret);
 
       const xmlContent = generateInvoiceXml(invoice, zatca);
       const xmlHash = crypto.createHash('sha256').update(xmlContent).digest('hex');
@@ -574,8 +617,14 @@ module.exports = async function handler(req, res) {
             zatcaStatus = 'FAILED';
           }
         } catch (err) {
-          zatcaStatus = 'REPORTED';
-          zatcaResponse = { success: true, message: 'Invoice reported (Simulation Mode)', warning: err.message };
+          return res.status(400).json({
+            success: false,
+            zatcaStatus: 'FAILED',
+            zatcaUuid: invoiceUuid,
+            zatcaXmlHash: xmlHash,
+            zatcaQrCode: qrCodeBase64,
+            response: { success: false, error: err.message }
+          });
         }
       }
 

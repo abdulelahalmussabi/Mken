@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عقد تقديم خدمات منصة مكن الرقمية (SaaS)</title>
+  <!-- Google Fonts: Amiri for classic legal look, Tajawal for modern interface -->
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-primary: #1e3d59;
+      --color-secondary: #17b978;
+      --color-gold: #c5a880;
+      --color-text: #222831;
+      --color-border: #d3d6db;
+      --color-bg-light: #f7f9fa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Amiri', serif;
+      background-color: #f0f2f5;
+      color: var(--color-text);
+      margin: 0;
+      padding: 40px 20px;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    /* أزرار التحكم العلوي */
+    .no-print-toolbar {
+      max-width: 900px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    .no-print-toolbar button {
+      background-color: var(--color-primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .no-print-toolbar button:hover {
+      background-color: #152b3e;
+    }
+
+    .no-print-toolbar button.btn-secondary {
+      background-color: #7f8c8d;
+    }
+
+    .no-print-toolbar button.btn-secondary:hover {
+      background-color: #636e72;
+    }
+
+    /* حاوي مستند العقد الفعلي */
+    .contract-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 60px 50px;
+      border: 4px double var(--color-gold);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* العلامة المائية في الخلفية */
+    .contract-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-15deg);
+      font-size: 14rem;
+      font-weight: 900;
+      color: rgba(30, 61, 89, 0.025);
+      user-select: none;
+      pointer-events: none;
+      z-index: 1;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    .contract-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--color-gold);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .contract-header__logo {
+      text-align: right;
+    }
+
+    .contract-header__logo h1 {
+      margin: 0;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--color-primary);
+    }
+
+    .contract-header__logo p {
+      margin: 5px 0 0 0;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 13px;
+      color: #7f8c8d;
+      letter-spacing: 1px;
+    }
+
+    .contract-header__title {
+      text-align: center;
+    }
+
+    .contract-header__title h2 {
+      margin: 0;
+      font-size: 26px;
+      color: var(--color-primary);
+      font-weight: bold;
+    }
+
+    .contract-header__title p {
+      margin: 5px 0 0 0;
+      font-size: 15px;
+      color: #555;
+    }
+
+    .contract-header__meta {
+      text-align: left;
+      font-size: 13px;
+      font-family: 'Tajawal', sans-serif;
+      line-height: 1.5;
+    }
+
+    /* أقسام العقد */
+    .contract-section {
+      margin-bottom: 25px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .contract-section h3 {
+      font-family: 'Tajawal', sans-serif;
+      font-size: 18px;
+      color: var(--color-primary);
+      border-right: 4px solid var(--color-gold);
+      padding-right: 10px;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
+    .contract-parties {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 25px;
+    }
+
+    .party-card {
+      background-color: var(--color-bg-light);
+      border: 1px solid var(--color-border);
+      padding: 15px 20px;
+      border-radius: 6px;
+    }
+
+    .party-title {
+      font-family: 'Tajawal', sans-serif;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-top: 0;
+      margin-bottom: 10px;
+      border-bottom: 1px dashed var(--color-border);
+      padding-bottom: 5px;
+      font-size: 15px;
+    }
+
+    .party-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .party-card ul li {
+      margin-bottom: 5px;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    .party-card ul li strong {
+      color: #333;
+    }
+
+    /* شروط بنود العقد */
+    .clause-list {
+      padding-right: 20px;
+      margin: 0;
+    }
+
+    .clause-list li {
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+
+    .clause-list li strong {
+      font-family: 'Tajawal', sans-serif;
+      color: var(--color-primary);
+    }
+
+    /* الملحق الأمني للأنشطة الأمنية */
+    .security-annex {
+      background: #fffcf4;
+      border: 2px dashed #f39c12;
+      padding: 20px;
+      border-radius: 6px;
+      margin-top: 25px;
+    }
+
+    .security-annex h4 {
+      font-family: 'Tajawal', sans-serif;
+      color: #d35400;
+      margin-top: 0;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* قائمة الخدمات المفعلة */
+    .services-badge-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    .service-badge {
+      background: #e8ecef;
+      color: #2c3e50;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* التوقيعات والأختام */
+    .signatures-section {
+      margin-top: 45px;
+      border-top: 1px solid var(--color-border);
+      padding-top: 30px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .signature-box {
+      text-align: center;
+    }
+
+    .signature-title {
+      font-family: 'Tajawal', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--color-primary);
+      margin-bottom: 50px;
+    }
+
+    .signature-line {
+      width: 70%;
+      margin: 0 auto;
+      border-bottom: 1px solid #7f8c8d;
+    }
+
+    .signature-box img.stamp-placeholder {
+      max-width: 110px;
+      opacity: 0.15;
+      margin-top: -35px;
+      margin-bottom: 5px;
+    }
+
+    .qr-verification {
+      text-align: center;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 11px;
+      color: #7f8c8d;
+      line-height: 1.4;
+    }
+
+    .qr-verification img {
+      border: 1px solid var(--color-border);
+      padding: 4px;
+      border-radius: 4px;
+      background: white;
+      margin-bottom: 6px;
+      width: 100px;
+      height: 100px;
+    }
+
+    /* شاشات الخطأ والتحقق من PIN */
+    .pin-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(30, 61, 89, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    .pin-modal {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .pin-modal h3 {
+      margin-top: 0;
+      color: var(--color-primary);
+    }
+
+    .pin-modal p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    .pin-modal input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: 5px;
+      text-align: center;
+      margin-bottom: 15px;
+      letter-spacing: 4px;
+    }
+
+    .pin-modal button {
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      padding: 10px 25px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .error-container {
+      max-width: 600px;
+      margin: 100px auto;
+      background: white;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      font-family: 'Tajawal', sans-serif;
+      border-top: 5px solid #e74c3c;
+    }
+
+    .error-container h2 {
+      color: #e74c3c;
+      margin-top: 0;
+    }
+
+    /* تحسينات الطباعة */
+    @media print {
+      body {
+        background-color: #fff;
+        padding: 0;
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .no-print-toolbar {
+        display: none !important;
+      }
+
+      .contract-container {
+        border: none;
+        box-shadow: none;
+        padding: 20px 10px;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      .contract-container {
+        page-break-after: avoid;
+      }
+
+      .signatures-section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- شريط الأدوات العلوي (يختفي في الطباعة) -->
+  <div class="no-print-toolbar" id="toolbar" style="display: none;">
+    <div>
+      <span style="font-weight: 500; font-size: 14px; color: #555;">عقد العميل: <strong id="toolbarSlug">...</strong></span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button type="button" class="btn-secondary" onclick="window.close()">إغلاق النافذة</button>
+      <button type="button" onclick="window.print()">🖨️ طباعة العقد (PDF)</button>
+    </div>
+  </div>
+
+  <!-- نافذة طلب الرمز السري Master PIN -->
+  <div class="pin-modal-overlay" id="pinOverlay" style="display: none;">
+    <div class="pin-modal">
+      <h3>🔐 قفل أمان المستند</h3>
+      <p>الرجاء إدخال الرمز السري الرئيسي للمنصة لتأكيد هويتك وعرض بيانات العقد الرقمي.</p>
+      <form id="pinForm">
+        <input type="password" id="pinInput" placeholder="••••" required autocomplete="current-password">
+        <button type="submit">تأكيد وعرض المستند</button>
+      </form>
+      <p id="pinError" style="color: #e74c3c; margin-top: 10px; font-weight: 500; display: none;">الرمز السري غير صحيح.</p>
+    </div>
+  </div>
+
+  <!-- لوحة الخطأ العام -->
+  <div class="error-container" id="errorBlock" style="display: none;">
+    <h2 id="errorTitle">عذراً، فشل تحميل العقد</h2>
+    <p id="errorMsg">لم نتمكن من العثور على بيانات المستأجر المحدد أو انتهت صلاحية الجلسة.</p>
+    <button type="button" style="background:var(--color-primary); color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;" onclick="location.reload()">إعادة المحاولة</button>
+  </div>
+
+  <!-- مستند العقد الفعلي -->
+  <div class="contract-container" id="contractBlock" style="display: none;">
+    <div class="contract-watermark">مكّن</div>
+    
+    <div class="contract-header">
+      <div class="contract-header__logo">
+        <h1>مكِّن</h1>
+        <p>MKEN PLATFORM</p>
+      </div>
+      <div class="contract-header__title">
+        <h2>عقد تقديم خدمات الأنظمة السحابية (SaaS)</h2>
+        <p>اتفاقية مستوى الخدمة الرقمية والربط الفني</p>
+      </div>
+      <div class="contract-header__meta">
+        <div><strong>رقم العقد:</strong> <span id="contractNumber">MKEN-2026-...</span></div>
+        <div><strong>تاريخ العقد:</strong> <span id="contractDate">...</span></div>
+        <div><strong>حالة العقد:</strong> <span style="color:var(--color-secondary); font-weight:bold;">ساري المفعول</span></div>
+      </div>
+    </div>
+
+    <!-- التمهيد -->
+    <div class="contract-section">
+      <h3>تمهيد</h3>
+      <p style="text-align: justify; margin: 0;">
+        إنه في يوم <span id="contractDay">...</span> الموافق <span id="contractHijriDate">...</span>، تم الاتفاق والارتباط الفني والبرمجي بالتراضي بين كل من أطراف هذا العقد للبدء الفوري في العمل وتقديم الدعم والخدمات التقنية للمستودعات السحابية واستضافة المواقع وفق الشروط والالتزامات المبينة أدناه:
+      </p>
+    </div>
+
+    <!-- أطراف العقد -->
+    <div class="contract-section">
+      <h3>أطراف العقد</h3>
+      <div class="contract-parties">
+        
+        <!-- الطرف الأول -->
+        <div class="party-card">
+          <div class="party-title">الطرف الأول (مقدم الخدمة):</div>
+          <ul>
+            <li><strong>الاسم:</strong> مؤسسة عبدالإله علي المصعبي التجارية</li>
+            <li><strong>الرقم الموحد (س.ت):</strong> 7051816481</li>
+            <li><strong>نوع الكيان:</strong> مؤسسة تجارية فردية (نشط)</li>
+            <li><strong>البريد الرسمي:</strong> info@mken.live</li>
+            <li><strong>الموقع:</strong> المملكة العربية السعودية</li>
+          </ul>
+        </div>
+
+        <!-- الطرف الثاني -->
+        <div class="party-card">
+          <div class="party-title">الطرف الثاني (المشترك / المستفيد):</div>
+          <ul>
+            <li><strong>المنشأة/الموقع:</strong> <span id="p2BusinessName">...</span></li>
+            <li><strong>السجل التجاري/العمل الحر:</strong> <span id="p2CrNumber">...</span></li>
+            <li><strong>رقم السجل المدني:</strong> <span id="p2CivilRegistry">...</span></li>
+            <li><strong>الرقم الضريبي:</strong> <span id="p2TaxNumber">غير مسجل</span></li>
+            <li><strong>الجوال والبريد:</strong> <span id="p2Contact">...</span></li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- موضوع العقد والخدمات المفعلة -->
+    <div class="contract-section">
+      <h3>موضوع العقد والخدمات المشتركة</h3>
+      <p style="margin-top:0; margin-bottom:10px; text-align:justify;">
+        بموجب هذا العقد، يمنح الطرف الأول للطرف الثاني ترخيصاً رقمياً سحابياً للانتفاع بخدمات منصة **كن** وإطلاق واجهة الويب الخاصة به على المعرف الفرعي المخصص (<code id="p2Slug">...</code>) مع تمكين الأنشطة والأنظمة التالية:
+      </p>
+      <div style="background: var(--color-bg-light); padding:15px; border-radius:6px; border:1px solid var(--color-border);">
+        <div><strong>الأنشطة التجارية المرخصة والمفعلة للحساب:</strong></div>
+        <div class="services-badge-container" id="p2Activities">
+          <!-- الأنشطة المفعلة -->
+        </div>
+        <div style="margin-top: 15px;"><strong>الأنظمة والمميزات التقنية الإضافية المشتركة:</strong></div>
+        <div class="services-badge-container" id="p2Features">
+          <!-- الميزات التقنية المفعلة -->
+        </div>
+      </div>
+    </div>
+
+    <!-- الالتزامات والبنود العامة -->
+    <div class="contract-section">
+      <h3>البنود والشروط العامة</h3>
+      <ol class="clause-list">
+        <li>
+          <strong>استضافة البيانات والسيادة الرقمية (STC Cloud):</strong> يقر الطرف الأول ويلتزم بأن جميع المواقع والخوادم وقواعد البيانات المخصصة للطرف الثاني يتم استضافتها وتشغيلها بالكامل داخل المملكة العربية السعودية عبر مراكز بيانات **STC Cloud (شركة الاتصالات السعودية السحابية)**، وذلك ضماناً لأقصى درجات حماية البيانات والسيادة السيبرانية، وتوافقاً مع التشريعات المنظمة لهيئة الاتصالات والفضاء والتقنية والجهات الأمنية المختصة.
+        </li>
+        <li>
+          <strong>ملكية البيانات والخصوصية:</strong> تعود ملكية كافة البيانات المخزنة من حجوزات وعملاء وفواتير وحركات مستودعات للطرف الثاني بالكامل، ويلتزم الطرف الأول بالمحافظة التامة على سرية هذه البيانات وعدم إفشائها أو مشاركتها مع أي طرف ثالث إلا بأمر قضائي رسمي من الجهات الحكومية بالمملكة.
+        </li>
+        <li>
+          <strong>استمرارية الخدمة والصيانة:</strong> يلتزم الطرف الأول بالحفاظ على استقرار وخدمة المنصة بنسبة تشغيل لا تقل عن 99.5%، وإجراء التحديثات الدورية والأمنية للخوادم دون التأثير على سير العمليات التجارية للطرف الثاني.
+        </li>
+        <li>
+          <strong>مسؤولية المحتوى والاستخدام:</strong> يتحمل الطرف الثاني المسؤولية القانونية الكاملة عن كافة المنتجات والأسعار والخدمات المعروضة في موقعه، والالتزام بالقوانين المعمول بها في وزارة التجارة وهيئة الزكاة والضريبة والجمارك (بما في ذلك اشتراطات الفوترة الإلكترونية المرحلة الثانية).
+        </li>
+      </ol>
+    </div>
+
+    <!-- الملحق الأمني للأنشطة الأمنية (يظهر ديناميكياً) -->
+    <div class="security-annex" id="securityAnnex" style="display: none;">
+      <h4>🛡️ الملحق الأمني للأنشطة الأمنية وأنظمة المراقبة (خاص بالطرف الثاني)</h4>
+      <p style="margin: 0; text-align: justify; font-size:15px; line-height:1.6;">
+        حيث أن الطرف الثاني يمارس نشاط **الأمن والمراقبة (CCTV & Security Systems)** المرخص، فإنه يلتزم التزاماً قطعياً بالضوابط الأمنية المنظمة الصادرة عن وزارة الداخلية والجهات الأمنية بالمملكة العربية السعودية، ويشمل ذلك:
+        <br>1. الالتزام الفني واللوجستي بالمعايير الفنية لتركيب وتشغيل وصيانة كاميرات وأنظمة المراقبة الأمنية وعدم انتهاك الخصوصية الفردية.
+        <br>2. حفظ بيانات التصاريح الأمنية والمرفقات الأمنية للعقود (المرفق الأمني المرفق بالرقم المرجعي: <strong id="p2SecurityRef">...</strong>) وتوفيرها للجهات التنظيمية عند الطلب.
+        <br>3. الإقرار بأن استضافة البيانات على خوادم **STC Cloud** تفي بكافة متطلبات الأمن السيبراني للأنشطة الحساسة والرقابية في المملكة.
+      </p>
+    </div>
+
+    <!-- الملحق القانوني لنشاط المحاماة (يظهر ديناميكياً) -->
+    <div class="security-annex" id="legalAnnex" style="display: none; background:#f4f8ff; border-color:#1e3d59;">
+      <h4 style="color:#1e3d59;">⚖️ الملحق القانوني لنشاط المحاماة والاستشارات القانونية (خاص بالطرف الثاني)</h4>
+      <p style="margin: 0; text-align: justify; font-size:15px; line-height:1.6;">
+        حيث أن الطرف الثاني يمارس نشاط **المحاماة والاستشارات القانونية**، فإنه يقرّ ويلتزم بما يلي:
+        <br>1. الالتزام التام بأحكام **نظام المحاماة** ولائحته التنفيذية الصادرة في المملكة العربية السعودية، وأن تقديم خدمات الترافع والتمثيل القضائي يتم حصراً عبر محامٍ مرخّص ومقيّد لدى وزارة العدل.
+        <br>2. الالتزام بـ**السرية المهنية** المطلقة تجاه بيانات وموكّلي الطرف الثاني، وعدم مسؤولية الطرف الأول (منصة مكن) عن مضمون الاستشارات أو نتائج القضايا، إذ يقتصر دوره على توفير المنصة التقنية وحفظ البيانات.
+        <br>3. عدم تضمين أي وعود أو ضمانات بنتائج القضايا في المحتوى التسويقي، التزاماً بأخلاقيات مهنة المحاماة.
+        <br>4. تحمّل الطرف الثاني وحده المسؤولية النظامية الكاملة عن صحة تراخيصه المهنية وما يقدّمه من خدمات قانونية عبر المنصة.
+      </p>
+    </div>
+
+    <!-- القيمة المالية والتجديد -->
+    <div class="contract-section" style="margin-top:30px;">
+      <h3>القيمة المالية والاشتراك</h3>
+      <p style="margin:0; text-align:justify;">
+        اتفق الطرفان على قيمة الاشتراك الإجمالية بحسب الباقة المختارة **(<span id="p2Tier">...</span>)** وقيمتها **(<span id="p2Price">...</span> ر.س)** مدفوعة بشكل دوري، على أن يسري هذا الاشتراك حتى تاريخ نهاية الصلاحية المحدد بـ **<span id="p2EndDate">...</span>**، ويتم تجديد العقد تلقائياً عند قيام الطرف الثاني بسداد مستحقات التجديد إلكترونياً.
+      </p>
+    </div>
+
+    <!-- التوقيع الرقمي والختم -->
+    <div class="signatures-section">
+      
+      <!-- توقيع الطرف الأول -->
+      <div class="signature-box">
+        <div class="signature-title">الطرف الأول (منصة مكن)</div>
+        <!-- خريطة مبسطة للختم الرسمي -->
+        <div style="position: relative; height: 80px; display: flex; align-items: center; justify-content: center;">
+          <div style="border: 2px solid rgba(30, 61, 89, 0.4); border-radius: 50%; width: 90px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 8px; color: rgba(30, 61, 89, 0.6); font-family: 'Tajawal', sans-serif; transform: rotate(-5deg); pointer-events: none; background: rgba(30,61,89,0.01);">
+            <div style="font-weight: bold; font-size: 10px;">منصة مكن</div>
+            <div>رقم موحد</div>
+            <div style="font-weight:bold;">7051816481</div>
+            <div style="font-size:7px;">ختم رقمي معتمد</div>
+          </div>
+        </div>
+        <div style="margin-top: 15px; font-size: 13px; font-family: 'Tajawal', sans-serif; color: #555;">الممثل المفوض: عبدالإله علي المصعبي</div>
+      </div>
+
+      <!-- التحقق بالـ QR Code -->
+      <div class="signature-box qr-verification">
+        <img id="contractQrCode" src="" alt="رمز التحقق من العقد">
+        <div>رمز التحقق الرقمي المعتمد</div>
+        <div>امسح الرمز للتأكد من صحة العقد</div>
+      </div>
+
+      <!-- توقيع الطرف الثاني -->
+      <div class="signature-box">
+        <div class="signature-title">الطرف الثاني (المشترك)</div>
+        <div style="height: 80px; display: flex; align-items: center; justify-content: center;">
+          <span style="font-style: italic; color: #7f8c8d; font-size: 14px; font-family: 'Tajawal', sans-serif;">توقيع رقمي موثق بالنظام</span>
+        </div>
+        <div style="margin-top: 15px; font-size: 13px; font-family: 'Tajawal', sans-serif; color: #555;">الاسم: <span id="p2OwnerName">...</span></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var urlParams = new URLSearchParams(window.location.search);
+      var tenantSlug = urlParams.get('tenant');
+      var pin = urlParams.get('pin') || sessionStorage.getItem('mken_admin_pin');
+
+      var toolbar = document.getElementById('toolbar');
+      var toolbarSlug = document.getElementById('toolbarSlug');
+      var pinOverlay = document.getElementById('pinOverlay');
+      var pinForm = document.getElementById('pinForm');
+      var pinInput = document.getElementById('pinInput');
+      var pinError = document.getElementById('pinError');
+      var errorBlock = document.getElementById('errorBlock');
+      var errorTitle = document.getElementById('errorTitle');
+      var errorMsg = document.getElementById('errorMsg');
+      var contractBlock = document.getElementById('contractBlock');
+
+      // تهيئة الأرقام والتواريخ
+      function formatDate(isoString) {
+        if (!isoString) return '...';
+        try {
+          var d = new Date(isoString);
+          if (isNaN(d.getTime())) return isoString;
+          return d.toLocaleDateString('ar-SA');
+        } catch (e) {
+          return isoString;
+        }
+      }
+
+      function getHijriDate(isoString) {
+        if (!isoString) return '...';
+        try {
+          var d = new Date(isoString);
+          if (isNaN(d.getTime())) return '...';
+          return d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+        } catch (e) {
+          return '...';
+        }
+      }
+
+      function getDayName(isoString) {
+        if (!isoString) return '...';
+        try {
+          var d = new Date(isoString);
+          if (isNaN(d.getTime())) return '...';
+          return d.toLocaleDateString('ar-SA', { weekday: 'long' });
+        } catch (e) {
+          return '...';
+        }
+      }
+
+      // إذا لم يتوفر السلج
+      if (!tenantSlug) {
+        showError('خطأ في الرابط', 'لم يتم تحديد معرّف العميل (tenant slug) في عنوان الرابط.');
+        return;
+      }
+
+      // إذا لم يتوفر الرمز السري، اطلبه
+      if (!pin) {
+        pinOverlay.style.display = 'flex';
+        pinInput.focus();
+        pinForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var pVal = pinInput.value.trim();
+          if (pVal) {
+            verifyPinAndLoad(pVal);
+          }
+        });
+      } else {
+        loadContractData(pin);
+      }
+
+      function verifyPinAndLoad(submittedPin) {
+        pinError.style.display = 'none';
+        
+        // التحقق من صحة PIN بمكالمة خفيفة للـ API
+        fetch('/api/v1/auth/admin-login?action=login', {
+          method: 'GET',
+          headers: {
+            'X-Admin-Pin': submittedPin
+          }
+        })
+        .then(function (res) {
+          if (!res.ok) throw new Error('Wrong PIN');
+          return res.json();
+        })
+        .then(function (data) {
+          if (data && data.success) {
+            sessionStorage.setItem('mken_admin_pin', submittedPin);
+            pinOverlay.style.display = 'none';
+            loadContractData(submittedPin);
+          } else {
+            throw new Error();
+          }
+        })
+        .catch(function () {
+          pinError.style.display = 'block';
+          pinInput.value = '';
+          pinInput.focus();
+        });
+      }
+
+      function loadContractData(verifiedPin) {
+        fetch('/api/v1/auth/admin-login?action=get-client-contract&tenantSlug=' + encodeURIComponent(tenantSlug), {
+          method: 'GET',
+          headers: {
+            'X-Admin-Pin': verifiedPin
+          }
+        })
+        .then(function (res) {
+          if (!res.ok) {
+            throw new Error('تعذر تحميل بيانات العقد. قد يكون الرمز السري غير صحيح أو أن العميل غير موجود.');
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          if (data && data.success && data.client) {
+            renderContract(data.client);
+          } else {
+            throw new Error((data && data.error) || 'فشل جلب تفاصيل العقد.');
+          }
+        })
+        .catch(function (err) {
+          console.error(err);
+          showError('خطأ في تحميل المستند', err.message);
+        });
+      }
+
+      function showError(title, msg) {
+        pinOverlay.style.display = 'none';
+        contractBlock.style.display = 'none';
+        toolbar.style.display = 'none';
+        
+        errorTitle.textContent = title;
+        errorMsg.textContent = msg;
+        errorBlock.style.display = 'block';
+      }
+
+      function renderContract(client) {
+        // إعداد رقم العقد والتواريخ
+        var contractId = 'MKEN-' + client.created_at.substring(0, 10).replace(/-/g, '') + '-' + client.id.substring(0, 4).toUpperCase();
+        document.getElementById('contractNumber').textContent = contractId;
+        
+        var dateVal = client.created_at;
+        document.getElementById('contractDate').textContent = formatDate(dateVal);
+        document.getElementById('contractDay').textContent = getDayName(dateVal);
+        document.getElementById('contractHijriDate').textContent = getHijriDate(dateVal);
+
+        // بيانات الطرف الثاني
+        document.getElementById('p2BusinessName').textContent = client.business_name || '...';
+        document.getElementById('p2CrNumber').textContent = client.commercial_registry_number || 'غير مسجل';
+        document.getElementById('p2CivilRegistry').textContent = client.civil_registry_number || 'غير مسجل';
+        document.getElementById('p2TaxNumber').textContent = client.tax_number || 'غير خاضع للضريبة / غير مسجل';
+        document.getElementById('p2Contact').textContent = client.phone + ' | ' + client.email;
+        document.getElementById('p2Slug').textContent = client.tenant_slug + '.mken.live';
+        document.getElementById('p2OwnerName').textContent = client.business_name;
+
+        // الباقة والأسعار
+        var tier = client.subscription_tier || 'basic';
+        var tierText = 'الأساسية (Basic)';
+        var priceText = '99';
+        
+        if (tier === 'growth') {
+          tierText = 'المتقدمة (Growth)';
+          priceText = '299';
+        } else if (tier === 'unlimited') {
+          tierText = 'الاحترافية (Unlimited)';
+          priceText = '599';
+        } else if (tier === 'custom') {
+          tierText = 'المخصصة (Custom)';
+          // حساب التسعير التفاعلي بناء على الخدمات المفعلة في config_data
+          var base = 99;
+          var cfg = client.config_data || {};
+          var actsCount = (cfg.enabledActivities || []).length;
+          var customMonthly = base;
+          if (actsCount > 1) {
+            customMonthly += (actsCount - 1) * 29;
+          }
+          if (cfg.booking && cfg.booking.enabled) customMonthly += 49;
+          if (cfg.config_data && cfg.config_data.enabledServices && cfg.config_data.enabledServices.indexOf('commerce') !== -1) customMonthly += 99;
+          if (cfg.whatsappApi && cfg.whatsappApi.enabled) customMonthly += 149;
+          // check config_data.subscription.customFeatures
+          if (cfg.subscription && cfg.subscription.customFeatures) {
+            var feats = cfg.subscription.customFeatures;
+            customMonthly = base;
+            if (actsCount > 1) customMonthly += (actsCount - 1) * 29;
+            if (feats.hasBooking) customMonthly += 49;
+            if (feats.hasCommerce) customMonthly += 99;
+            if (feats.hasWhatsApp) customMonthly += 149;
+            if (feats.hasInvoices) customMonthly += 199;
+          }
+          priceText = customMonthly;
+        }
+        
+        document.getElementById('p2Tier').textContent = tierText;
+        document.getElementById('p2Price').textContent = priceText;
+        document.getElementById('p2EndDate').textContent = formatDate(client.subscription_end);
+
+        // إخراج الأنشطة التجارية
+        var activitiesContainer = document.getElementById('p2Activities');
+        activitiesContainer.innerHTML = '';
+        var enabledActs = (client.config_data && client.config_data.enabledActivities) || [];
+        
+        // الأنشطة العربية التوضيحية
+        var activityMap = {
+          'barber-salon': '💈 صالونات الحلاقة والتجميل',
+          'car-care': '🚗 مغاسل وخدمات السيارات',
+          'healthcare': '🏥 خدمات الرعاية الطبية',
+          'spa-wellness': '🧖 سبا ومساج ولياقة',
+          'fitness': '🏋️ صالات رياضية ولياقة بدنية',
+          'veterinary': '🐾 العيادات البيطرية والحيوانات',
+          'restaurant': '🍽️ المطاعم والكافيهات',
+          'legal': '⚖️ المحاماة والاستشارات القانونية',
+          'consulting': '💼 الاستشارات المهنية والأعمال',
+          'photography': '📸 استوديوهات التصوير الفوتوغرافي',
+          'tutoring': '📚 الدروس الخصوصية والتعليم',
+          'maintenance': '🔧 خدمات التشغيل والصيانة والترميم',
+          'it-support': '🖥️ دعم الحاسب والشبكات وتقنية المعلومات',
+          'cleaning': '🧹 خدمات النظافة والتعقيم والصيانة المنزلية',
+          'renovation': '🎨 تشطيب وديكور وتصميم داخلي',
+          'security': '🛡️ الأمن والمراقبة وأنظمة الكاميرات والـ CCTV',
+          'tech-digital': '💻 التقنية الرقمية وتطوير البرمجيات والتطبيقات',
+          'training': '🎓 التدريب والتطوير والتأهيل المهني',
+          'hotels': '🏨 الفنادق والشقق المفروشة والضيافة',
+          'travel': '✈️ السفر والسياحة والرحلات',
+          'events': '🎉 تنظيم الفعاليات والمناسبات والأنشطة',
+          'commerce': '🛒 التجارة الإلكترونية ومبيعات التجزئة'
+        };
+
+        enabledActs.forEach(function (actId) {
+          var span = document.createElement('span');
+          span.className = 'service-badge';
+          span.textContent = activityMap[actId] || actId;
+          activitiesContainer.appendChild(span);
+        });
+
+        // إخراج المميزات الإضافية
+        var featuresContainer = document.getElementById('p2Features');
+        featuresContainer.innerHTML = '';
+        var cfgData = client.config_data || {};
+        
+        var featuresList = [];
+        if (cfgData.booking && cfgData.booking.enabled) featuresList.push('📅 نظام حجز الجدولة والمواعيد');
+        if (cfgData.subscription && cfgData.subscription.customFeatures && cfgData.subscription.customFeatures.hasCommerce) {
+          featuresList.push('🛒 منصة وسلة المتجر الإلكتروني');
+        } else if (enabledActs.indexOf('commerce') !== -1) {
+          featuresList.push('🛒 منصة وسلة المتجر الإلكتروني');
+        }
+        if (cfgData.whatsappApi && cfgData.whatsappApi.enabled) featuresList.push('💬 نظام أتمتة وتنبيهات الواتساب CRM');
+        if (cfgData.subscription && cfgData.subscription.customFeatures && cfgData.subscription.customFeatures.hasInvoices) {
+          featuresList.push('🧾 الفواتير الإلكترونية ZATCA وإدارة المخازن');
+        }
+
+        if (featuresList.length === 0) {
+          featuresList.push('⚙️ الباقة الأساسية الافتراضية');
+        }
+
+        featuresList.forEach(function (feat) {
+          var span = document.createElement('span');
+          span.className = 'service-badge';
+          span.textContent = feat;
+          featuresContainer.appendChild(span);
+        });
+
+        // التحقق من الملحق الأمني (إذا تم تفعيل نشاط الأمن والمراقبة)
+        var securityAnnex = document.getElementById('securityAnnex');
+        var isSecurityActive = enabledActs.indexOf('security') !== -1;
+        if (isSecurityActive) {
+          securityAnnex.style.display = 'block';
+          document.getElementById('p2SecurityRef').textContent = client.security_attachment || 'معتمد آلياً بالنظام';
+        } else {
+          securityAnnex.style.display = 'none';
+        }
+
+        // التحقق من الملحق القانوني (إذا تم تفعيل نشاط المحاماة)
+        var legalAnnex = document.getElementById('legalAnnex');
+        if (legalAnnex) {
+          legalAnnex.style.display = enabledActs.indexOf('legal') !== -1 ? 'block' : 'none';
+        }
+
+        // توليد رمز الـ QR
+        var currentUrl = window.location.origin + window.location.pathname + '?tenant=' + encodeURIComponent(client.tenant_slug);
+        var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(currentUrl);
+        document.getElementById('contractQrCode').src = qrUrl;
+
+        // إظهار المحتوى والتولبار
+        contractBlock.style.display = 'block';
+        document.getElementById('toolbarSlug').textContent = client.tenant_slug;
+        toolbar.style.display = 'flex';
+      }
+
+    })();
+  </script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
+const { handleCors } = require('../_lib/cors');
 
 async function authenticateApiKey(req, res) {
   const authHeader = req.headers.authorization;
@@ -77,18 +78,7 @@ function mapRowToAppointment(row) {
 }
 
 module.exports = async function handler(req, res) {
-  // CORS support
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (handleCors(req, res)) return;
 
   const auth = await authenticateApiKey(req, res);
   if (!auth) return; // Response is already sent by authenticateApiKey

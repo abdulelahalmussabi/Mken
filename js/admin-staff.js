@@ -16,6 +16,11 @@
   var _staffList = [];
   var editingId = null;
 
+  function getStorageKey() {
+    var tenantSlug = store.getCurrentTenantSlug();
+    return tenantSlug ? ('mken_mken_staff_' + tenantSlug) : 'mken_mken_staff';
+  }
+
   function toast(msg, type) {
     if (window.MkenAdminToast) window.MkenAdminToast(msg, type);
   }
@@ -34,7 +39,7 @@
       return window.MkenSupabaseDb.fetchStaff(tenantSlug)
         .then(function (dbStaff) {
           _staffList = dbStaff;
-          localStorage.setItem('mken_mken_staff', JSON.stringify(dbStaff));
+          localStorage.setItem(getStorageKey(), JSON.stringify(dbStaff));
           renderStaff();
         })
         .catch(function (err) {
@@ -49,7 +54,7 @@
 
   function loadLocalStaff() {
     try {
-      var raw = localStorage.getItem('mken_mken_staff');
+      var raw = localStorage.getItem(getStorageKey());
       _staffList = raw ? JSON.parse(raw) : [];
     } catch (e) {
       _staffList = [];
@@ -161,7 +166,7 @@
         });
     } else {
       _staffList = _staffList.filter(function (s) { return s.id !== id; });
-      localStorage.setItem('mken_mken_staff', JSON.stringify(_staffList));
+      localStorage.setItem(getStorageKey(), JSON.stringify(_staffList));
       toast('تم الحذف محلياً');
       renderStaff();
     }
@@ -221,7 +226,7 @@
         return member;
       });
       if (!found) _staffList.push(member);
-      localStorage.setItem('mken_mken_staff', JSON.stringify(_staffList));
+      localStorage.setItem(getStorageKey(), JSON.stringify(_staffList));
       toast('تم الحفظ محلياً بنجاح');
       closeModal();
       renderStaff();

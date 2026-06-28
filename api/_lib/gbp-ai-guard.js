@@ -11,9 +11,14 @@ function normalizeTenantSlug(tenant) {
 
 function isValidAdminPin(pin) {
   if (!pin || typeof pin !== 'string') return false;
+  const expected = process.env.ADMIN_PIN;
+  if (!expected) return false;
+
+  const crypto = require('crypto');
   const trimmed = pin.trim();
-  const expected = process.env.ADMIN_PIN || 'mken2026';
-  return trimmed === expected || trimmed === 'mken2026';
+  const aHash = crypto.createHash('sha256').update(trimmed).digest();
+  const bHash = crypto.createHash('sha256').update(expected.trim()).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
 }
 
 function getBearerToken(req) {
@@ -85,7 +90,7 @@ function checkRateLimit(tenantSlug, action) {
 
 async function authorizeGbpAiRequest(req, res, action) {
   const body = req.body || {};
-  const tenantSlug = normalizeTenantSlug(body.tenant);
+  const tenantSlug = normalizeTenantSlug(body.tenant || req.query.tenant);
   if (!tenantSlug) {
     res.status(400).json({ error: 'tenant is required' });
     return null;

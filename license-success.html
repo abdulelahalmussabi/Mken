@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mken Lite — تم تفعيل الترخيص بنجاح</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #1e293b;
+      --primary: #0ea5e9;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --line: #334155;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans Arabic', "Segoe UI", Tahoma, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 520px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .icon-wrap {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 40px;
+    }
+
+    .icon-wrap.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 2px solid var(--green);
+      animation: pulseGreen 2s infinite;
+    }
+
+    .icon-wrap.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--red);
+      border: 2px solid var(--red);
+    }
+
+    .icon-wrap.loading {
+      background: rgba(14, 165, 233, 0.15);
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    p.desc {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    /* Key Box */
+    .key-container {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px dashed var(--primary);
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin-bottom: 30px;
+      display: none;
+      position: relative;
+    }
+
+    .key-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .key-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #fff;
+      font-family: monospace;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      width: 100%;
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+    }
+
+    .btn.primary:hover {
+      background: #38bdf8;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--text);
+      margin-top: 12px;
+    }
+
+    .btn.ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Instructions */
+    .instructions {
+      text-align: right;
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-right: 4px solid var(--primary);
+      display: none;
+    }
+
+    .instructions h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .instructions ol {
+      margin-right: 20px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    .instructions ol li {
+      margin-bottom: 8px;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulseGreen {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="icon-wrap loading" id="statusIcon"></div>
+    
+    <h1 id="statusTitle">جاري معالجة الدفعة...</h1>
+    <p class="desc" id="statusDesc">نحن نتحقق من دفعتك من خلال Moyasar ونقوم بإصدار مفتاح الترخيص الآمن الخاص بك. قد يستغرق هذا بضع ثوانٍ.</p>
+
+    <!-- Key rendering block -->
+    <div class="key-container" id="keyContainer">
+      <span class="key-label">مفتاح الترخيص الخاص بك</span>
+      <div class="key-value" id="licenseKey">MKEN-XXXX-XXXX-XXXX</div>
+    </div>
+
+    <!-- Instructions block -->
+    <div class="instructions" id="instructions">
+      <h3>كيفية تفعيل التطبيق:</h3>
+      <ol>
+        <li>انسخ مفتاح الترخيص الموضح أعلاه.</li>
+        <li>افتح تطبيق <strong>Mken Lite</strong> على جهازك.</li>
+        <li>انتقل إلى <strong>الإعدادات</strong> من القائمة الجانبية.</li>
+        <li>اختر تبويب <strong>الترخيص والحماية</strong>.</li>
+        <li>ألصق المفتاح في الحقل المخصص واضغط على <strong>تفعيل</strong>.</li>
+      </ol>
+    </div>
+
+    <button class="btn primary" id="actionBtn" style="display:none;" onclick="copyKey()">نسخ مفتاح الترخيص</button>
+    <a href="/pricing.html" class="btn ghost" id="backBtn" style="display:none;">العودة للتسعير</a>
+  </div>
+
+  <div class="toast" id="toast">تم النسخ بنجاح!</div>
+
+  <script>
+    let licenseKeyString = '';
+    let retryCount = 0;
+    const maxRetries = 6;
+
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    function showToast() {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    function copyKey() {
+      if (!licenseKeyString) return;
+      navigator.clipboard.writeText(licenseKeyString).then(() => {
+        showToast();
+      }).catch(err => {
+        console.error('Failed to copy key: ', err);
+      });
+    }
+
+    function checkStatus() {
+      const paymentId = getQueryParam('id') || getQueryParam('payment_id');
+      const status = getQueryParam('status');
+
+      if (!paymentId) {
+        renderError('رقم عملية الدفع غير موجود في الرابط. يرجى الرجوع لصفحة التسعير أو التواصل مع الدعم.');
+        return;
+      }
+
+      if (status && status !== 'paid' && status !== 'captured') {
+        renderError('عملية الدفع لم تكتمل بنجاح. حالة الدفعة: ' + status);
+        return;
+      }
+
+      fetch(`/api/license-checkout/status?paymentId=${encodeURIComponent(paymentId)}`)
+        .then(res => {
+          if (!res.ok) throw new Error('خطأ في الاتصال بالخادم');
+          return res.json();
+        })
+        .then(data => {
+          if (data.paid && data.issued) {
+            renderSuccess(data.licenseKey, data.plan);
+          } else if (data.paid && !data.issued) {
+            // Paid but webhook didn't insert the license row yet
+            if (retryCount < maxRetries) {
+              retryCount++;
+              setTimeout(checkStatus, 2500);
+            } else {
+              renderDelayNotice(paymentId);
+            }
+          } else {
+            renderError('الدفع غير مؤكد بعد. حالة الدفع: ' + (data.status || 'معلق'));
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(checkStatus, 3000);
+          } else {
+            renderError('حدث خطأ في الاتصال بالخادم أثناء التحقق من الدفع: ' + err.message);
+          }
+        });
+    }
+
+    function renderSuccess(key, plan) {
+      licenseKeyString = key;
+      
+      const icon = document.getElementById('statusIcon');
+      icon.className = 'icon-wrap success';
+      icon.innerHTML = '✓';
+
+      document.getElementById('statusTitle').textContent = 'تم الدفع وتفعيل الترخيص بنجاح!';
+      document.getElementById('statusDesc').innerHTML = `شكراً لثقتك بمكن لايت. تم إصدار ترخيص التشغيل بنجاح لباقة <strong>${plan}</strong>.`;
+      
+      document.getElementById('licenseKey').textContent = key;
+      document.getElementById('keyContainer').style.display = 'block';
+      document.getElementById('instructions').style.display = 'block';
+      
+      const actionBtn = document.getElementById('actionBtn');
+      actionBtn.style.display = 'block';
+      actionBtn.textContent = 'نسخ مفتاح الترخيص';
+      
+      document.getElementById('backBtn').style.display = 'block';
+      document.getElementById('backBtn').textContent = 'الذهاب للرئيسية';
+      document.getElementById('backBtn').href = '/';
+    }
+
+    function renderError(msg) {
+      const icon = document.getElementById('statusIcon');
+      icon.className = 'icon-wrap error';
+      icon.innerHTML = '✕';
+
+      document.getElementById('statusTitle').textContent = 'عذراً، فشلت العملية';
+      document.getElementById('statusDesc').textContent = msg;
+      
+      document.getElementById('keyContainer').style.display = 'none';
+      document.getElementById('instructions').style.display = 'none';
+      document.getElementById('actionBtn').style.display = 'none';
+      
+      const backBtn = document.getElementById('backBtn');
+      backBtn.style.display = 'block';
+      backBtn.textContent = 'العودة للتسعير وحاول مجدداً';
+      backBtn.href = '/pricing.html';
+    }
+
+    function renderDelayNotice(paymentId) {
+      const icon = document.getElementById('statusIcon');
+      icon.className = 'icon-wrap success';
+      icon.innerHTML = '✓';
+
+      document.getElementById('statusTitle').textContent = 'تم الدفع وجاري إصدار المفتاح...';
+      document.getElementById('statusDesc').innerHTML = `لقد تم تأكيد دفعتك بنجاح للعملية <strong>${paymentId}</strong>. يبدو أن هناك تأخراً بسيطاً في إصدار المفتاح، يرجى الاحتفاظ بهذه الصفحة وتحديثها بعد لحظات، أو التواصل مع الدعم الفني وتزويدهم برقم الدفعة.`;
+      
+      document.getElementById('keyContainer').style.display = 'none';
+      document.getElementById('instructions').style.display = 'none';
+      document.getElementById('actionBtn').style.display = 'none';
+      
+      const backBtn = document.getElementById('backBtn');
+      backBtn.style.display = 'block';
+      backBtn.textContent = 'تحديث التحقق الآن';
+      backBtn.onclick = function() {
+        retryCount = 0;
+        checkStatus();
+      };
+      backBtn.href = 'javascript:void(0)';
+    }
+
+    document.addEventListener('DOMContentLoaded', checkStatus);
+  </script>
+</body>
+</html>

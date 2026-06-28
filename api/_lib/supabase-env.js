@@ -3,7 +3,12 @@
 function pickEnvValue(names) {
   for (var i = 0; i < names.length; i++) {
     var val = process.env[names[i]];
-    if (val && String(val).trim()) return String(val).trim();
+    if (val) {
+      var cleaned = String(val).trim().replace(/^['"]|['"]$/g, '').trim();
+      if (cleaned && cleaned !== 'undefined' && cleaned !== 'null') {
+        return cleaned;
+      }
+    }
   }
   return '';
 }
@@ -40,7 +45,7 @@ function getSupabaseServiceKey() {
   return pickEnvValue([
     'SUPABASE_SERVICE_ROLE_KEY',
     'SUPABASE_SERVICE_KEY',
-  ]) || pickByPrefix('sb_secret_') || getSupabaseAnonKey();
+  ]) || pickByPrefix('sb_secret_');
 }
 
 function hasSupabaseClientConfig() {

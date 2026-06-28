@@ -7,12 +7,19 @@
   var STORAGE_KEY = 'mken_platform_orders';
   var CART_PREFIX = 'mken_platform_cart_';
 
+  function getStorageKey() {
+    var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+    return tenantSlug ? (STORAGE_KEY + '_' + tenantSlug) : STORAGE_KEY;
+  }
+
   function generateId() {
     return 'ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
   }
 
   function cartStorageKey(activityId) {
-    return CART_PREFIX + (activityId || 'default');
+    var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
+    var suffix = tenantSlug ? '_' + tenantSlug : '';
+    return CART_PREFIX + (activityId || 'default') + suffix;
   }
 
   function getCart(activityId) {
@@ -75,7 +82,7 @@
 
   function getOrders() {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return JSON.parse(localStorage.getItem(getStorageKey()) || '[]');
     } catch (e) {
       return [];
     }
@@ -91,7 +98,7 @@
         paymentStatus: 'unpaid',
       }, order);
       list.push(newOrder);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      localStorage.setItem(getStorageKey(), JSON.stringify(list));
 
       if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
         var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
@@ -107,7 +114,7 @@
 
   function saveOrdersBulk(orders) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders || []));
+      localStorage.setItem(getStorageKey(), JSON.stringify(orders || []));
       if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
         var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
         window.MkenSupabaseDb.saveOrdersBulk(orders, tenantSlug).catch(function (err) {
@@ -132,7 +139,7 @@
         return updatedOrder;
       });
       if (!found) return null;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      localStorage.setItem(getStorageKey(), JSON.stringify(list));
 
       if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured() && updatedOrder) {
         var tenantSlug = window.MkenServicesStore ? window.MkenServicesStore.getCurrentTenantSlug() : null;
@@ -149,7 +156,7 @@
   function removeOrder(id) {
     try {
       var list = getOrders().filter(function (o) { return o.id !== id; });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      localStorage.setItem(getStorageKey(), JSON.stringify(list));
 
       if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
         window.MkenSupabaseDb.deleteOrder(id).catch(function (err) {
@@ -273,7 +280,6 @@
   }
 
   window.MkenOrderStore = {
-    STORAGE_KEY: STORAGE_KEY,
     getCart: getCart,
     saveCart: saveCart,
     cartCount: cartCount,
@@ -289,4 +295,9 @@
     buildWhatsAppMessage: buildWhatsAppMessage,
     buildCartWhatsAppMessage: buildCartWhatsAppMessage,
   };
+  Object.defineProperty(window.MkenOrderStore, 'STORAGE_KEY', {
+    get: getStorageKey,
+    configurable: true,
+    enumerable: true
+  });
 })();
