@@ -312,13 +312,45 @@ async function handleAdminOperations(req, res) {
   });
 
   if (action === 'list-clients') {
-    const { data, error } = await supabase
+    let data;
+    let databaseUpgradeRequired = false;
+
+    const resQuery = await supabase
       .from('mken_saas_clients')
       .select('id, tenant_slug, business_name, email, phone, civil_registry_number, commercial_registry_number, tax_number, security_attachment, has_security_attachment, subscription_status, subscription_tier, subscription_start, subscription_end, created_at, updated_at')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return res.status(200).json({ success: true, clients: data });
+    if (resQuery.error) {
+      const errMessage = resQuery.error.message || '';
+      if (resQuery.error.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+        console.warn('Database columns missing, running fallback client list query...');
+        databaseUpgradeRequired = true;
+
+        const fallbackQuery = await supabase
+          .from('mken_saas_clients')
+          .select('id, tenant_slug, business_name, email, phone, subscription_status, subscription_end, created_at, updated_at')
+          .order('created_at', { ascending: false });
+
+        if (fallbackQuery.error) throw fallbackQuery.error;
+        
+        data = (fallbackQuery.data || []).map(c => ({
+          ...c,
+          civil_registry_number: null,
+          commercial_registry_number: null,
+          tax_number: null,
+          security_attachment: null,
+          has_security_attachment: false,
+          subscription_tier: 'basic',
+          subscription_start: c.created_at
+        }));
+      } else {
+        throw resQuery.error;
+      }
+    } else {
+      data = resQuery.data;
+    }
+
+    return res.status(200).json({ success: true, clients: data, databaseUpgradeRequired });
   }
 
   if (action === 'save-config') {
@@ -378,13 +410,41 @@ async function handleAdminOperations(req, res) {
       return res.status(400).json({ error: 'مطلوب معرّف العميل (tenantSlug)' });
     }
     const slugClean = tenantSlug.trim().toLowerCase();
-    const { data: client, error } = await supabase
+    let client;
+    const resQuery = await supabase
       .from('mken_saas_clients')
       .select('id, tenant_slug, business_name, email, phone, civil_registry_number, commercial_registry_number, tax_number, security_attachment, has_security_attachment, subscription_status, subscription_tier, subscription_start, subscription_end, config_data, created_at, updated_at')
       .eq('tenant_slug', slugClean)
       .maybeSingle();
 
-    if (error) throw error;
+    if (resQuery.error) {
+      const errMessage = resQuery.error.message || '';
+      if (resQuery.error.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+        const fallbackQuery = await supabase
+          .from('mken_saas_clients')
+          .select('id, tenant_slug, business_name, email, phone, config_data, subscription_status, subscription_end, created_at, updated_at')
+          .eq('tenant_slug', slugClean)
+          .maybeSingle();
+
+        if (fallbackQuery.error) throw fallbackQuery.error;
+
+        client = fallbackQuery.data ? {
+          ...fallbackQuery.data,
+          civil_registry_number: null,
+          commercial_registry_number: null,
+          tax_number: null,
+          security_attachment: null,
+          has_security_attachment: false,
+          subscription_tier: 'basic',
+          subscription_start: fallbackQuery.data.created_at
+        } : null;
+      } else {
+        throw resQuery.error;
+      }
+    } else {
+      client = resQuery.data;
+    }
+
     if (!client) {
       return res.status(404).json({ error: 'العميل غير موجود' });
     }
@@ -525,30 +585,53 @@ async function handleAdminOperations(req, res) {
       customFeatures: customFeatures || null
     };
 
-    const { data: clientData, error: clientErr } = await supabase
+    const insertObj = {
+      tenant_slug: slugClean,
+      owner_id: user.id,
+      business_name: businessName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      subscription_end: oneYear.toISOString(),
+      config_data: defaultTenantConfig,
+      subscription_status: 'active'
+    };
+
+    let clientData;
+    const insertRes = await supabase
       .from('mken_saas_clients')
       .insert({
-        tenant_slug: slugClean,
-        owner_id: user.id,
-        business_name: businessName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
+        ...insertObj,
         civil_registry_number: civilRegistryNumber.trim(),
         commercial_registry_number: commercialRegistryNumber.trim(),
         tax_number: taxNumber ? taxNumber.trim() : null,
         security_attachment: securityAttachment ? securityAttachment.trim() : null,
         has_security_attachment: !!securityAttachment,
-        subscription_end: oneYear.toISOString(),
-        config_data: defaultTenantConfig,
-        subscription_status: 'active',
         subscription_tier: subscription_tier || 'basic'
       })
       .select()
       .single();
 
-    if (clientErr) {
-      await supabase.auth.admin.deleteUser(user.id);
-      throw clientErr;
+    if (insertRes.error) {
+      const errMessage = insertRes.error.message || '';
+      if (insertRes.error.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+        console.warn('Database columns missing during registration, running fallback insert...');
+        const fallbackInsert = await supabase
+          .from('mken_saas_clients')
+          .insert(insertObj)
+          .select()
+          .single();
+
+        if (fallbackInsert.error) {
+          await supabase.auth.admin.deleteUser(user.id);
+          throw fallbackInsert.error;
+        }
+        clientData = fallbackInsert.data;
+      } else {
+        await supabase.auth.admin.deleteUser(user.id);
+        throw insertRes.error;
+      }
+    } else {
+      clientData = insertRes.data;
     }
 
     return res.status(200).json({ success: true, client: clientData });
@@ -560,13 +643,33 @@ async function handleAdminOperations(req, res) {
       return res.status(400).json({ error: 'مطلوب معرّف العميل وعدد الأشهر المراد إضافتها' });
     }
 
-    const { data: client, error: fetchErr } = await supabase
+    let client;
+    const resQuery = await supabase
       .from('mken_saas_clients')
       .select('subscription_end, phone, business_name, subscription_tier')
       .eq('tenant_slug', tenantSlug)
       .single();
 
-    if (fetchErr) throw fetchErr;
+    if (resQuery.error) {
+      const errMessage = resQuery.error.message || '';
+      if (resQuery.error.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+        const fallbackQuery = await supabase
+          .from('mken_saas_clients')
+          .select('subscription_end, phone, business_name')
+          .eq('tenant_slug', tenantSlug)
+          .single();
+
+        if (fallbackQuery.error) throw fallbackQuery.error;
+        client = fallbackQuery.data ? {
+          ...fallbackQuery.data,
+          subscription_tier: 'basic'
+        } : null;
+      } else {
+        throw resQuery.error;
+      }
+    } else {
+      client = resQuery.data;
+    }
 
     let currentEnd = new Date(client.subscription_end);
     if (isNaN(currentEnd.getTime()) || currentEnd < new Date()) {
@@ -671,8 +774,64 @@ async function handleAdminOperations(req, res) {
       .update({ subscription_tier: tier, updated_at: new Date().toISOString() })
       .eq('tenant_slug', tenantSlug);
 
-    if (updateErr) throw updateErr;
+    if (updateErr) {
+      const errMessage = updateErr.message || '';
+      if (updateErr.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+        return res.status(400).json({ error: 'مطلوب ترقية قاعدة البيانات (SQL Upgrade) لتغيير الباقة.' });
+      }
+      throw updateErr;
+    }
     return res.status(200).json({ success: true, tier: tier });
+  }
+
+  if (action === 'reset-client-password') {
+    const { tenantSlug, newPassword } = req.body || {};
+    if (!tenantSlug || !newPassword) {
+      return res.status(400).json({ error: 'مطلوب معرّف العميل وكلمة المرور الجديدة' });
+    }
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+    }
+
+    const slugClean = tenantSlug.trim().toLowerCase();
+    const { data: client, error: fetchErr } = await supabase
+      .from('mken_saas_clients')
+      .select('owner_id, email')
+      .eq('tenant_slug', slugClean)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!client) {
+      return res.status(404).json({ error: 'العميل غير موجود' });
+    }
+
+    // Existing auth user: update the password instantly (no email needed)
+    if (client.owner_id) {
+      const { error: updErr } = await supabase.auth.admin.updateUserById(client.owner_id, {
+        password: String(newPassword),
+      });
+      if (updErr) throw updErr;
+      return res.status(200).json({ success: true, email: client.email, created: false });
+    }
+
+    // Legacy client without a login account: create one and link it
+    if (!client.email) {
+      return res.status(400).json({ error: 'لا يوجد بريد إلكتروني مسجّل لهذا العميل لإنشاء حساب دخول.' });
+    }
+    const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+      email: client.email,
+      password: String(newPassword),
+      email_confirm: true,
+    });
+    if (createErr) throw createErr;
+
+    const { error: linkErr } = await supabase
+      .from('mken_saas_clients')
+      .update({ owner_id: created.user.id, updated_at: new Date().toISOString() })
+      .eq('tenant_slug', slugClean);
+    if (linkErr) throw linkErr;
+
+    return res.status(200).json({ success: true, email: client.email, created: true });
   }
 
   if (action === 'delete-client') {

@@ -72,6 +72,33 @@
       if (data && data.success) {
         _clients = data.clients || [];
         renderClients();
+
+        // Show/hide database upgrade warning banner
+        var warningBanner = document.getElementById('databaseUpgradeWarningBanner');
+        if (data.databaseUpgradeRequired) {
+          if (!warningBanner) {
+            warningBanner = document.createElement('div');
+            warningBanner.id = 'databaseUpgradeWarningBanner';
+            warningBanner.style.padding = '12px';
+            warningBanner.style.marginBottom = '15px';
+            warningBanner.style.borderRadius = 'var(--radius, 8px)';
+            warningBanner.style.backgroundColor = '#fff3cd';
+            warningBanner.style.border = '1px solid #ffeeba';
+            warningBanner.style.color = '#856404';
+            warningBanner.style.fontSize = '0.85rem';
+            warningBanner.style.lineHeight = '1.5';
+            warningBanner.innerHTML = '⚠️ <strong>تنبيه بقاعدة البيانات:</strong> الأعمدة الجديدة الخاصة بالعقود الرقمية والبيانات الرسمية غير موجودة في قاعدة بيانات Supabase الحالية. تم تفعيل وضع التوافق التلقائي للوحة الإدارة. يرجى الذهاب إلى تبويب <strong>الربط والأتمتة</strong> وتشغيل كود SQL Upgrade لتفعيل الميزات الجديدة بالكامل.';
+            
+            var tableWrapper = adminClientsList.closest('div');
+            if (tableWrapper) {
+              tableWrapper.parentNode.insertBefore(warningBanner, tableWrapper);
+            }
+          } else {
+            warningBanner.style.display = 'block';
+          }
+        } else if (warningBanner) {
+          warningBanner.style.display = 'none';
+        }
       } else {
         throw new Error(data.error || 'حدث خطأ غير معروف.');
       }
@@ -160,6 +187,7 @@
         '    <div style="display:inline-flex; gap:6px;">' +
         '      <button type="button" class="btn btn--outline btn--sm" data-extend-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem;">➕ تمديد</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-tier-slug="' + esc(c.tenant_slug) + '" data-current-tier="' + esc(c.subscription_tier || 'basic') + '" style="padding:4px 10px; font-size:0.78rem;">⚙️ الباقة</button>' +
+        '      <button type="button" class="btn btn--outline btn--sm" data-password-slug="' + esc(c.tenant_slug) + '" data-password-email="' + esc(c.email) + '" style="padding:4px 10px; font-size:0.78rem; color:#16a085; border-color:#16a08530;">🔑 كلمة المرور</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-contract-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem; color:#2980b9; border-color:#2980b930;">📄 العقد</button>' +
         '      <button type="button" class="btn btn--outline btn--sm" data-delete-slug="' + esc(c.tenant_slug) + '" style="padding:4px 10px; font-size:0.78rem; color:#e74c3c; border-color:#e74c3c20;">🗑️ حذف</button>' +
         '    </div>' +
@@ -210,6 +238,15 @@
           }
           changeClientTier(slug, newTier);
         }
+      });
+    });
+
+    adminClientsList.querySelectorAll('[data-password-slug]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        resetClientPassword(
+          btn.getAttribute('data-password-slug'),
+          btn.getAttribute('data-password-email')
+        );
       });
     });
 
@@ -322,6 +359,57 @@
       } else {
         throw new Error(data.error || 'حدث خطأ أثناء تغيير الباقة.');
       }
+    })
+    .catch(function (err) {
+      toast(err.message, 'error');
+    });
+  }
+
+  function resetClientPassword(tenantSlug, email) {
+    var label = email || tenantSlug;
+    var newPass = prompt(
+      'تعيين كلمة مرور جديدة للعميل (' + label + '):\n' +
+      'يتم التحديث فوراً دون الحاجة لأي بريد إلكتروني.\n' +
+      'أدخل كلمة مرور لا تقل عن 6 أحرف:'
+    );
+    if (newPass === null) return;
+    newPass = String(newPass).trim();
+    if (newPass.length < 6) {
+      alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل.');
+      return;
+    }
+
+    var pin = getPin();
+
+    fetch('/api/v1/auth/admin-login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        pin: pin,
+        action: 'reset-client-password',
+        tenantSlug: tenantSlug,
+        newPassword: newPass
+      })
+    })
+    .then(function (res) {
+      if (res.status === 401) {
+        sessionStorage.removeItem('mken_admin_pin');
+        throw new Error('الرمز السري الرئيسي غير صحيح أو انتهت الجلسة.');
+      }
+      return res.json().then(function (data) {
+        if (!res.ok || !data.success) {
+          throw new Error((data && data.error) || 'فشل تعيين كلمة المرور.');
+        }
+        return data;
+      });
+    })
+    .then(function (data) {
+      var base = data.created
+        ? 'تم إنشاء حساب دخول للعميل وتعيين كلمة المرور بنجاح! 🔑'
+        : 'تم تحديث كلمة مرور العميل بنجاح! 🔑';
+      toast(base + (data.email ? ' (' + data.email + ')' : ''));
     })
     .catch(function (err) {
       toast(err.message, 'error');
