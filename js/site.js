@@ -465,6 +465,21 @@
     }
   }
 
+  function renderDemoBanner() {
+    if (store.getCurrentTenantSlug() !== 'demo') return;
+    if (document.getElementById('mkenDemoBanner')) return;
+    var banner = document.createElement('div');
+    banner.id = 'mkenDemoBanner';
+    banner.setAttribute('role', 'note');
+    banner.innerHTML =
+      '🎯 <strong>عرض تجريبي حي</strong> — مثال لصالون على مكن. ' +
+      '<a href="https://mken.live/signup.html" style="color:#fff;font-weight:600;text-decoration:underline;">جرّب 14 يوماً مجاناً</a>';
+    banner.style.cssText =
+      'background:linear-gradient(90deg,#0ea5e9,#0369a1);color:#fff;text-align:center;' +
+      'padding:10px 16px;font-size:0.88rem;position:relative;z-index:200;';
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+
   function renderAll() {
     config = store.loadConfig();
     activities = store.getEnabledActivities();
@@ -473,6 +488,7 @@
       activeActivityId = activities[0].id;
     }
     applyBrand();
+    renderDemoBanner();
 
     // Dynamic header links visibility based on features availability
     var hasBookable = store.getBookableActivities && store.getBookableActivities().length > 0;

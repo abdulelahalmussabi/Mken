@@ -52,8 +52,8 @@ module.exports = async function handler(req, res) {
       const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
       const sentReminders = Array.isArray(tenant.reminders_sent) ? tenant.reminders_sent : [];
 
-      if (timeDiff <= 0 && tenant.subscription_status === 'active') {
-        log(`Tenant ${tenant.tenant_slug} subscription expired. Resetting profile to default.`);
+      if (timeDiff <= 0 && (tenant.subscription_status === 'active' || tenant.subscription_status === 'trial')) {
+        log(`Tenant ${tenant.tenant_slug} subscription expired (status: ${tenant.subscription_status}). Resetting profile to default.`);
         
         const savedConfig = tenant.config_data || {};
         const expiredConfig = {
@@ -95,6 +95,29 @@ module.exports = async function handler(req, res) {
             log(`Expiration alert sent to ${tenant.tenant_slug} (${tenant.phone})`);
           } catch (e) {
             log(`Failed to send expiration message to tenant ${tenant.tenant_slug}: ${e.message}`);
+          }
+        }
+        continue;
+      }
+
+      if (tenant.subscription_status === 'trial' && daysDiff > 0) {
+        const trialReminderDays = [7, 3, 1];
+        for (let ti = 0; ti < trialReminderDays.length; ti++) {
+          const d = trialReminderDays[ti];
+          const key = 'trial_' + d;
+          if (daysDiff === d && sentReminders.indexOf(key) === -1) {
+            log(`Sending trial reminder (${d} days left) to tenant ${tenant.tenant_slug}`);
+            const trialMsg = `تذكير تجربتك المجانية — مكن 🔔\nمرحباً ${tenant.business_name}،\nبقي ${d} ${d === 1 ? 'يوم' : 'أيام'} على انتهاء تجربتك المجانية (14 يوم).\nأكمل ربط الزكاة وواتساب CRM الآن، أو رقِّ باقتك للاستمرار:\nhttps://license.mken.live`;
+            try {
+              await sendWhatsAppMessage(tenant.phone, trialMsg, 'trial_reminder', null, masterConfig, supabase, tenant.tenant_slug);
+              sentReminders.push(key);
+              await supabase
+                .from('mken_saas_clients')
+                .update({ reminders_sent: sentReminders, updated_at: new Date().toISOString() })
+                .eq('id', tenant.id);
+            } catch (e) {
+              log(`Failed to send trial reminder to ${tenant.tenant_slug}: ${e.message}`);
+            }
           }
         }
         continue;

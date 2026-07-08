@@ -32,9 +32,6 @@
     }
     if (tenantSlug) {
       tenantSlug = tenantSlug.trim().toLowerCase();
-      if (tenantSlug === 'almahrusa') {
-        tenantSlug = 'almahrosa';
-      }
     }
     return tenantSlug || null;
   }

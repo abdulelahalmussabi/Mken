@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مكن — جرّب 14 يوماً مجاناً</title>
+  <meta name="description" content="أنشئ موقعك وفواتيرك وواتساب CRM — تجربة مجانية 14 يوماً، باقة نمو.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/mken-logo.png">
+  <link rel="stylesheet" href="css/landing.css">
+  <style>
+    .signup-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .signup-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--lp-surface);
+      border: 1px solid var(--lp-line);
+      border-radius: 16px;
+      padding: 32px;
+    }
+    .signup-card h1 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .signup-card .sub {
+      text-align: center;
+      color: var(--lp-muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+    .signup-field { margin-bottom: 16px; }
+    .signup-field label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      color: var(--lp-muted);
+    }
+    .signup-field input,
+    .signup-field select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--lp-line);
+      background: var(--lp-bg);
+      color: var(--lp-text);
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    .signup-field input[dir="ltr"] { text-align: left; }
+    .signup-hint {
+      font-size: 0.78rem;
+      color: var(--lp-muted);
+      margin-top: 4px;
+    }
+    .signup-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .signup-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6ee7b7;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+      display: none;
+      text-align: center;
+    }
+    .signup-success a { color: #6ee7b7; font-weight: 600; }
+    .signup-submit { width: 100%; margin-top: 8px; }
+    .signup-back {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: var(--lp-muted);
+      font-size: 0.88rem;
+    }
+    .trial-badge {
+      display: block;
+      text-align: center;
+      background: rgba(14, 165, 233, 0.15);
+      color: var(--lp-primary);
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="signup-wrap">
+    <div class="signup-card">
+      <a href="landing.html" class="lp-logo" style="justify-content:center;margin-bottom:20px;">
+        <img src="assets/mken-logo.png" alt="مكن" width="36" height="36">
+        <span>مكن</span>
+      </a>
+      <h1>ابدأ تجربتك المجانية</h1>
+      <p class="sub">14 يوماً · باقة نمو · فواتير + واتساب CRM</p>
+      <span class="trial-badge">بدون بطاقة ائتمان — يمكنك الإلغاء في أي وقت</span>
+
+      <div id="signupError" class="signup-error" role="alert"></div>
+      <div id="signupSuccess" class="signup-success" role="status"></div>
+
+      <form id="signupForm">
+        <div class="signup-field">
+          <label for="businessName">اسم المنشأة *</label>
+          <input type="text" id="businessName" required placeholder="مثال: صالون النخبة">
+        </div>
+        <div class="signup-field">
+          <label for="tenantSlug">رابط موقعك *</label>
+          <input type="text" id="tenantSlug" required dir="ltr" pattern="^[a-z0-9-]+$" placeholder="anas-salon" autocomplete="off">
+          <p class="signup-hint">سيصبح: <span id="slugPreview">اسمك</span>.mken.live</p>
+        </div>
+        <div class="signup-field">
+          <label for="activityId">نوع النشاط *</label>
+          <select id="activityId" required>
+            <option value="barber-salon">💈 صالون حلاقة وتجميل</option>
+            <option value="commerce">🛒 متجر / تجارة</option>
+            <option value="tech-digital" selected>💻 خدمات رقمية وتقنية</option>
+            <option value="healthcare">🏥 خدمات طبية</option>
+            <option value="restaurant">🍽️ مطعم / كافيه</option>
+            <option value="consulting">⚖️ استشارات مهنية</option>
+            <option value="car-care">🚗 مغسلة سيارات</option>
+            <option value="cleaning">🧹 نظافة وتعقيم</option>
+          </select>
+        </div>
+        <div class="signup-field">
+          <label for="email">البريد الإلكتروني *</label>
+          <input type="email" id="email" required dir="ltr" placeholder="you@example.com">
+        </div>
+        <div class="signup-field">
+          <label for="phone">جوال واتساب *</label>
+          <input type="tel" id="phone" required dir="ltr" placeholder="9665XXXXXXXX">
+        </div>
+        <div class="signup-field">
+          <label for="password">كلمة المرور *</label>
+          <input type="password" id="password" required minlength="6" placeholder="6 أحرف على الأقل">
+        </div>
+        <button type="submit" id="signupSubmit" class="lp-btn lp-btn--primary lp-btn--lg signup-submit">إنشاء الحساب والبدء</button>
+      </form>
+
+      <a href="landing.html" class="signup-back">← العودة للصفحة الرئيسية</a>
+    </div>
+  </div>
+
+  <script src="js/signup.js"></script>
+</body>
+</html>

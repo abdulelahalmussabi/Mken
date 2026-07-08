@@ -443,8 +443,9 @@
 
   function getOrderableActivities() {
     return getEnabledActivities().filter(function (act) {
+      if (getActivityBookingPortalUrl(act.id)) return false;
       var profile = window.MkenUiProfile && window.MkenUiProfile.get(act.uiProfile);
-      return profile && profile.showOrder;
+      return profile && profile.showOrder && getEnabledServicesByActivity(act.id).length > 0;
     });
   }
 
@@ -463,6 +464,58 @@
   }
 
   function getClientDefaults(slug) {
+    if (slug === 'demo') {
+      return {
+        brand: {
+          name: 'صالون النخبة',
+          tagline: 'مثال حي لمنصة مكن — فواتير ZATCA · واتساب CRM · حجز أونلاين',
+          logo: '',
+        },
+        enabledActivities: ['barber-salon'],
+        enabled: ['mens-haircut', 'beard-grooming', 'kids-haircut', 'home-barber'],
+        featuredActivity: 'barber-salon',
+        featured: 'mens-haircut',
+        heroFocus: 'mens-haircut',
+        theme: 'terracotta',
+        phone: '966543530333',
+        social: {
+          whatsapp: { enabled: true, value: '966543530333' },
+          instagram: { enabled: true, value: 'mken_live' },
+          twitter: { enabled: false, value: '' },
+          facebook: { enabled: false, value: '' },
+          tiktok: { enabled: false, value: '' },
+          linkedin: { enabled: false, value: '' },
+        },
+        emails: {
+          inquiries: { enabled: true, value: 'demo@mken.live' },
+          sales: { enabled: true, value: 'sales@mken.live' },
+          support: { enabled: true, value: 'CS@mken.live' },
+        },
+        heroImage: 'assets/mken-hero.png',
+        activities: {},
+        services: {},
+        booking: Object.assign({}, DEFAULT_BOOKING, {
+          workingHours: { start: '10:00', end: '22:00' },
+          maxPerSlot: 2,
+        }),
+        serviceArea: Object.assign({}, DEFAULT_SERVICE_AREA, {
+          enabled: true,
+          displayOnHomepage: true,
+          city: 'الرياض',
+          center: { lat: 24.7136, lng: 46.6753 },
+          radiusKm: 20,
+          coverageNote: 'نخدم أحياء الرياض — حي النخيل، العليا، الملز، واليرموك',
+          showAsFullCity: false,
+        }),
+        push: Object.assign({}, DEFAULT_PUSH),
+        supabase: Object.assign({}, DEFAULT_SUPABASE),
+        saas: { baseDomain: 'mken.live', useSubdomains: true },
+        whatsappApi: Object.assign({}, DEFAULT_WHATSAPP_API, { enabled: true }),
+        payment: Object.assign({}, DEFAULT_PAYMENT),
+        updatedAt: null,
+      };
+    }
+
     if (slug === 'almahrosa' || slug === 'almahrusa') {
       return {
         brand: {
@@ -711,16 +764,32 @@
     return null;
   }
 
-  function fetchServerConfig() {
-    var url = CONFIG_URL;
-    if (_currentTenantSlug) {
-      url = 'data/tenants/' + _currentTenantSlug + '.json';
-    }
-    return fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
+  /** ملفات tenant بديلة لتهجئة قديمة (almahrosa → almahrusa) */
+  var TENANT_CONFIG_ALIASES = {
+    almahrosa: 'almahrusa'
+  };
+
+  function fetchTenantConfigJson(slug) {
+    return fetch('data/tenants/' + slug + '.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (res) {
-        if (!res.ok) {
-          throw new Error('not found');
-        }
+        if (res.ok) return res.json();
+        var alt = TENANT_CONFIG_ALIASES[slug];
+        if (!alt) throw new Error('not found');
+        return fetch('data/tenants/' + alt + '.json?t=' + Date.now(), { cache: 'no-store' })
+          .then(function (res2) {
+            if (!res2.ok) throw new Error('not found');
+            return res2.json();
+          });
+      });
+  }
+
+  function fetchServerConfig() {
+    if (_currentTenantSlug) {
+      return fetchTenantConfigJson(_currentTenantSlug).then(normalizeConfig);
+    }
+    return fetch(CONFIG_URL + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('not found');
         return res.json();
       })
       .then(normalizeConfig);
@@ -821,10 +890,6 @@
     _currentTenantSlug = tenantSlug || null;
     if (_currentTenantSlug) {
       _currentTenantSlug = _currentTenantSlug.trim().toLowerCase();
-      // Normalize common spelling variants
-      if (_currentTenantSlug === 'almahrusa') {
-        _currentTenantSlug = 'almahrosa';
-      }
     }
 
     var localCfg = loadFromStorage();
@@ -884,7 +949,8 @@
                 // Check subscription status
                 if (dbCfg.subscription) {
                   var sub = dbCfg.subscription;
-                  var isExpired = sub.status === 'expired' || (sub.end && new Date(sub.end) < new Date());
+                  var isExpired = sub.status === 'expired' ||
+                    ((sub.status === 'active' || sub.status === 'trial') && sub.end && new Date(sub.end) < new Date());
                   if (isExpired) {
                     // Reset to default settings in-memory
                     var expiredCfg = normalizeConfig({

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
+const trialSub = require('../_lib/trial-subscription');
 
 // Helper to determine step for login/register
 function getStep(req) {
@@ -865,6 +866,128 @@ async function handleAdminOperations(req, res) {
   return res.status(400).json({ error: 'العملية المطلوبة غير مدعومة' });
 }
 
+/** تسجيل تجريبي عام — 14 يوم، باقة نمو، بدون PIN إداري */
+async function handleRegisterTrial(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const { tenantSlug, businessName, email, password, phone, activityId } = req.body || {};
+  if (!tenantSlug || !businessName || !email || !password || !phone) {
+    return res.status(400).json({ error: 'جميع الحقول الأساسية مطلوبة' });
+  }
+
+  const slugClean = tenantSlug.trim().toLowerCase();
+  if (!/^[a-z0-9-]+$/.test(slugClean) || slugClean.length < 3) {
+    return res.status(400).json({ error: 'رابط الموقع: أحرف إنجليزية صغيرة وأرقام وشرطات فقط (3 أحرف على الأقل)' });
+  }
+
+  const reserved = ['default', 'demo', 'admin', 'api', 'www', 'license', 'licenses', 'mken'];
+  if (reserved.indexOf(slugClean) !== -1) {
+    return res.status(400).json({ error: 'هذا المعرّف محجوز، اختر اسماً آخر' });
+  }
+
+  if (String(password).length < 6) {
+    return res.status(400).json({ error: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' });
+  }
+
+  const supabase = createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
+
+  const { data: existing, error: checkErr } = await supabase
+    .from('mken_saas_clients')
+    .select('id')
+    .eq('tenant_slug', slugClean)
+    .maybeSingle();
+
+  if (checkErr) throw checkErr;
+  if (existing) {
+    return res.status(400).json({ error: 'معرّف الرابط محجوز لعميل آخر، اختر اسماً آخر.' });
+  }
+
+  const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+    email: email.trim(),
+    password: password,
+    email_confirm: true,
+  });
+
+  if (authErr) {
+    return res.status(400).json({ error: authErr.message || 'فشل إنشاء حساب المستخدم' });
+  }
+
+  const user = authData.user;
+  const now = new Date();
+  const trialEnd = trialSub.trialEndDate(now);
+  const configData = trialSub.buildTrialTenantConfig({
+    businessName: businessName.trim(),
+    phone: phone.trim(),
+    activityId: activityId || 'tech-digital',
+  });
+
+  const insertObj = {
+    tenant_slug: slugClean,
+    owner_id: user.id,
+    business_name: businessName.trim(),
+    email: email.trim(),
+    phone: phone.trim(),
+    subscription_start: now.toISOString(),
+    subscription_end: trialEnd.toISOString(),
+    config_data: configData,
+    subscription_status: 'trial',
+    subscription_tier: 'growth',
+  };
+
+  let clientData;
+  const insertRes = await supabase
+    .from('mken_saas_clients')
+    .insert(insertObj)
+    .select()
+    .single();
+
+  if (insertRes.error) {
+    const errMessage = insertRes.error.message || '';
+    if (insertRes.error.code === '42703' || errMessage.includes('column') || errMessage.includes('does not exist')) {
+      const fallbackObj = {
+        tenant_slug: slugClean,
+        owner_id: user.id,
+        business_name: businessName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        subscription_end: trialEnd.toISOString(),
+        config_data: configData,
+        subscription_status: 'trial',
+      };
+      const fallbackInsert = await supabase
+        .from('mken_saas_clients')
+        .insert(fallbackObj)
+        .select()
+        .single();
+
+      if (fallbackInsert.error) {
+        await supabase.auth.admin.deleteUser(user.id);
+        throw fallbackInsert.error;
+      }
+      clientData = fallbackInsert.data;
+    } else {
+      await supabase.auth.admin.deleteUser(user.id);
+      throw insertRes.error;
+    }
+  } else {
+    clientData = insertRes.data;
+  }
+
+  const siteUrl = 'https://' + slugClean + '.mken.live/';
+  const adminUrl = siteUrl + 'admin.html';
+
+  return res.status(200).json({
+    success: true,
+    client: clientData,
+    trialDays: trialSub.TRIAL_DAYS,
+    trialEndsAt: trialEnd.toISOString(),
+    siteUrl: siteUrl,
+    adminUrl: adminUrl,
+  });
+}
+
 // ─── MAIN HANDLER ───
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -875,6 +998,8 @@ module.exports = async function handler(req, res) {
     const url = req.url || '';
     if (url.indexOf('supabase-config') !== -1) {
       type = 'supabase-config';
+    } else if (url.indexOf('register-trial') !== -1) {
+      type = 'register-trial';
     } else if (url.indexOf('admin-login') !== -1) {
       type = 'admin-login';
     }
@@ -899,6 +1024,13 @@ module.exports = async function handler(req, res) {
         supabaseKey: sbEnv.getSupabaseAnonKey(),
         enabled: sbEnv.hasSupabaseClientConfig(),
       });
+    }
+
+    if (type === 'register-trial') {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method Not Allowed' });
+      }
+      return await handleRegisterTrial(req, res);
     }
 
     if (type === 'admin-login') {

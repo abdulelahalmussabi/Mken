@@ -1972,9 +1972,18 @@
     } else if (store.isAdminLoggedIn()) {
       showAdmin();
       startWhatsappAutomationPolling();
+      if (new URLSearchParams(window.location.search).get('welcome') === 'trial') {
+        showToast('مرحباً! تجربتك المجانية 14 يوماً — ابدأ بربط الزكاة وتفعيل واتساب CRM', 'success');
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
     } else {
       showLogin();
       updateTenantUrlHints('your-slug');
+      if (new URLSearchParams(window.location.search).get('welcome') === 'trial' && loginCardDesc) {
+        loginCardDesc.textContent = 'تم إنشاء حسابك! سجّل الدخول ببريدك وكلمة المرور لبدء التجربة المجانية (14 يوماً).';
+      }
     }
   });
 })();

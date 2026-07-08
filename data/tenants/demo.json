@@ -1,0 +1,189 @@
+{
+  "brand": {
+    "name": "صالون النخبة",
+    "tagline": "مثال حي لمنصة مكن — فواتير ZATCA · واتساب CRM · حجز أونلاين",
+    "logo": ""
+  },
+  "enabledActivities": ["barber-salon"],
+  "enabled": ["mens-haircut", "beard-grooming", "kids-haircut", "home-barber"],
+  "featuredActivity": "barber-salon",
+  "featured": "mens-haircut",
+  "heroFocus": "mens-haircut",
+  "theme": "terracotta",
+  "phone": "966543530333",
+  "social": {
+    "whatsapp": { "enabled": true, "value": "966543530333" },
+    "instagram": { "enabled": true, "value": "mken_live" },
+    "twitter": { "enabled": false, "value": "" },
+    "facebook": { "enabled": false, "value": "" },
+    "tiktok": { "enabled": false, "value": "" },
+    "linkedin": { "enabled": false, "value": "" }
+  },
+  "emails": {
+    "inquiries": { "enabled": true, "value": "demo@mken.live" },
+    "sales": { "enabled": true, "value": "sales@mken.live" },
+    "support": { "enabled": true, "value": "CS@mken.live" }
+  },
+  "heroImage": "assets/mken-hero.png",
+  "activities": {
+    "barber-salon": {
+      "icon": "💈",
+      "title": "صالون حلاقة وتجميل",
+      "shortTitle": "صالون",
+      "tagline": "احجز موعدك",
+      "description": "حلاقة رجالية، عناية باللحية، وحلاقة أطفال — حجز أونلاين وتأكيد واتساب فوري.",
+      "booking": { "ctaLabel": "احجز موعدك" },
+      "content": {
+        "hero": {
+          "titleAccent": "احجز وادخل بدون انتظار",
+          "desc": "في {brand} نوفّر حلاقة احترافية، عناية باللحية، وخدمة منزلية — مع فواتير معتمدة من الزكاة وردود واتساب ذكية.",
+          "badgeSingle": "خدمة الصالون المتوفرة",
+          "badgeMulti": "خدمات الصالون المتوفرة"
+        },
+        "stats": [
+          { "num": "+800", "label": "موعد شهرياً" },
+          { "num": "15 د", "label": "متوسط الانتظار" },
+          { "num": "4.9", "label": "تقييم العملاء" },
+          { "num": "7/7", "label": "مواعيد مسائية" }
+        ],
+        "features": [
+          { "icon": "📅", "text": "حجز أونلاين" },
+          { "icon": "🧾", "text": "فواتير ZATCA" },
+          { "icon": "💬", "text": "واتساب CRM" },
+          { "icon": "📍", "text": "خرائط Google" },
+          { "icon": "🏠", "text": "حلاقة منزلية" }
+        ],
+        "about": {
+          "title": "صالونك الرقمي المتكامل",
+          "paragraphs": [
+            "{brand} — مثال حي يوضح كيف تبدو منشأتك على مكن: موقع احترافي، حجز مواعيد، وفوترة إلكترونية متوافقة مع هيئة الزكاة.",
+            "جرّب الحجز، تصفح الخدمات، وتواصل عبر واتساب — كل ذلك جاهز لصاحب المحل الناشئ في السعودية."
+          ],
+          "checks": [
+            "حجز أونلاين 24/7",
+            "فواتير QR معتمدة",
+            "ردود واتساب آلية",
+            "حلاقون محترفون",
+            "حلاقة منزلية",
+            "أسعار واضحة"
+          ],
+          "cards": [
+            { "icon": "🧾", "title": "فوترة ذكية", "desc": "فاتورة ZATCA بضغطة واحدة" },
+            { "icon": "💬", "title": "واتساب CRM", "desc": "رد تلقائي على الأسعار والمواعيد" }
+          ]
+        },
+        "process": {
+          "title": "موعدك في ثلاث خطوات",
+          "subtitle": "احجز، تأكيد واتساب، واستمتع بالخدمة",
+          "steps": [
+            { "num": "١", "title": "احجز أونلاين", "desc": "اختر الخدمة والوقت من صفحة الحجز." },
+            { "num": "٢", "title": "تأكيد واتساب", "desc": "يصلك تأكيد فوري عبر واتساب CRM." },
+            { "num": "٣", "title": "احضر في موعدك", "desc": "ادخل مباشرة — مقعدك محجوز." }
+          ]
+        },
+        "faq": [
+          { "q": "هل هذا موقع حقيقي؟", "a": "هذا عرض تجريبي (demo) لمنصة مكن — يمكنك نسخ نفس التجربة لنشاطك خلال دقائق." },
+          { "q": "هل الفواتير متوافقة مع الزكاة؟", "a": "نعم — مكن يولّد فواتير إلكترونية متوافقة مع مرحلة II للفوترة." },
+          { "q": "كيف أبدأ تجربتي المجانية؟", "a": "من mken.live/signup.html — 14 يوماً مجاناً، باقة نمو." },
+          { "q": "هل يمكن الحجز الآن؟", "a": "نعم، جرّب صفحة الحجز — المواعيد المتاحة خلال 14 يوماً القادمة." }
+        ],
+        "contact": {
+          "title": "ابدأ مشروعك على مكن",
+          "desc": "هذا العرض الحي لـ {brand}. جرّب الحجز أو راسلنا على واتساب لمعرفة كيف نجهّز نشاطك."
+        },
+        "seo": {
+          "titleSuffix": "صالون حلاقة — الرياض",
+          "defaultKeywords": ["صالون حلاقة الرياض", "حجز صالون", "فواتير ZATCA", "مكن demo"]
+        }
+      }
+    }
+  },
+  "services": {
+    "mens-haircut": {
+      "icon": "💈",
+      "title": "حلاقة رجالية",
+      "shortTitle": "حلاقة",
+      "description": "قص شعر احترافي — كلاسيكي أو عصري، مع غسيل وتصفيف.",
+      "category": "حلاقة",
+      "priceLabel": "من 45 ر.س",
+      "features": ["قص شعر", "غسيل وتصفيف", "استشارة ستايل", "بدون انتظار"]
+    },
+    "beard-grooming": {
+      "icon": "🧔",
+      "title": "عناية باللحية",
+      "shortTitle": "لحية",
+      "description": "تهذيب وتشكيل اللحية — حلاقة بالموس مع زيوت طبيعية.",
+      "category": "حلاقة",
+      "priceLabel": "من 35 ر.س",
+      "features": ["تهذيب وتشكيل", "حلاقة بالموس", "زيوت وترطيب", "بخار وجه"]
+    },
+    "kids-haircut": {
+      "icon": "👦",
+      "title": "حلاقة أطفال",
+      "shortTitle": "أطفال",
+      "description": "قص شعر للأطفال في بيئة مريحة مع حلاقين محترفين.",
+      "category": "حلاقة",
+      "priceLabel": "من 30 ر.س",
+      "features": ["بيئة مريحة", "قص سريع", "أسلوب عصري", "مواعيد مرنة"]
+    },
+    "home-barber": {
+      "icon": "🏠",
+      "title": "حلاقة منزلية",
+      "shortTitle": "منزلية",
+      "description": "حلاق يصل إلى منزلك — للرجال والأطفال والمناسبات.",
+      "category": "حلاقة",
+      "priceLabel": "من 120 ر.س",
+      "features": ["حلاقة في منزلك", "معدات معقمة", "مواعيد مرنة", "للفلل والمناسبات"]
+    }
+  },
+  "booking": {
+    "enabled": true,
+    "slotDuration": 30,
+    "advanceDays": 14,
+    "workingDays": [0, 1, 2, 3, 4, 5, 6],
+    "workingHours": { "start": "10:00", "end": "22:00" },
+    "maxPerSlot": 2,
+    "reminders": {
+      "enabled": true,
+      "hoursBefore": [24, 2],
+      "windowMinutes": 60
+    }
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "الرياض",
+    "center": { "lat": 24.7136, "lng": 46.6753 },
+    "radiusKm": 20,
+    "coverageNote": "نخدم أحياء الرياض — حي النخيل، العليا، الملز، واليرموك",
+    "showAsFullCity": false
+  },
+  "push": { "enabled": false, "vapidPublicKey": "" },
+  "supabase": { "enabled": false, "url": "", "key": "" },
+  "saas": { "baseDomain": "mken.live", "useSubdomains": true },
+  "whatsappApi": {
+    "enabled": true,
+    "provider": "custom",
+    "url": "",
+    "instanceId": "",
+    "token": "",
+    "sendConfirmation": true,
+    "sendReminder": true
+  },
+  "payment": {
+    "enabled": false,
+    "provider": "moyasar",
+    "publishableKey": "",
+    "requirePayment": false,
+    "sandbox": true,
+    "currency": "SAR"
+  },
+  "subscription": {
+    "tier": "growth",
+    "status": "active",
+    "tenantSlug": "demo",
+    "businessName": "صالون النخبة",
+    "isDemo": true
+  },
+  "updatedAt": "2026-07-07T21:00:00.000Z"
+}

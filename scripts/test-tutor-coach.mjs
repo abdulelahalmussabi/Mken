@@ -4,7 +4,7 @@
  */
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:8080';
+const BASE = 'http://test.localhost:8080';
 
 async function run() {
   const browser = await chromium.launch({ headless: true });
@@ -25,6 +25,7 @@ async function run() {
       if (cfg.enabled.indexOf(id) === -1) cfg.enabled.push(id);
     });
     localStorage.setItem('mken_platform_config', JSON.stringify(cfg));
+    localStorage.setItem('mken_platform_config_test', JSON.stringify(cfg));
   });
 
   await page.reload();
