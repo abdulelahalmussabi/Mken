@@ -17,7 +17,11 @@
   function getWhatsAppConfig(config) {
     var store = window.MkenServicesStore;
     var cfg = config || (store && store.loadConfig()) || {};
-    return cfg.whatsappApi || { enabled: false, provider: 'none' };
+    var wa = Object.assign({ enabled: false, provider: 'none' }, cfg.whatsappApi || {});
+    if (!wa.phoneNumberId && wa.provider === 'whatsapp_business' && wa.instanceId) {
+      wa.phoneNumberId = wa.instanceId;
+    }
+    return wa;
   }
 
   function reminderLeadText(hoursBefore) {
