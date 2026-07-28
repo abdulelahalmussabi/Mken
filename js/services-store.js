@@ -75,11 +75,20 @@
     provider: 'none',
     url: '',
     instanceId: '',
+    phoneNumberId: '',
     token: '',
     accountSid: '',
     fromNumber: '',
+    templateName: '',
+    languageCode: 'ar',
     sendConfirmation: true,
     sendReminder: true,
+    sendOrderConfirmation: true,
+    sendQrCode: false,
+    sendOwnerAlert: false,
+    ownerAlertPhone: '',
+    useMetaTemplateComponents: false,
+    templates: {},
   };
 
   var DEFAULT_PAYMENT = {
@@ -648,16 +657,39 @@
     })(cfg.supabase);
     cfg.whatsappApi = (function (raw) {
       var incoming = raw || {};
+      var templatesIn = incoming.templates && typeof incoming.templates === 'object' ? incoming.templates : {};
+      var phoneNumberId = typeof incoming.phoneNumberId === 'string' ? incoming.phoneNumberId.trim() : '';
+      var instanceId = typeof incoming.instanceId === 'string' ? incoming.instanceId.trim() : '';
+      // WhatsApp Cloud API stores Phone Number ID in phoneNumberId; keep a fallback for older saves.
+      if (!phoneNumberId && incoming.provider === 'whatsapp_business' && instanceId) {
+        phoneNumberId = instanceId;
+      }
       return {
         enabled: incoming.enabled === true,
         provider: typeof incoming.provider === 'string' ? incoming.provider.trim() : 'none',
         url: typeof incoming.url === 'string' ? incoming.url.trim() : '',
-        instanceId: typeof incoming.instanceId === 'string' ? incoming.instanceId.trim() : '',
+        instanceId: instanceId,
+        phoneNumberId: phoneNumberId,
         token: typeof incoming.token === 'string' ? incoming.token.trim() : '',
         accountSid: typeof incoming.accountSid === 'string' ? incoming.accountSid.trim() : '',
         fromNumber: typeof incoming.fromNumber === 'string' ? incoming.fromNumber.trim() : '',
+        templateName: typeof incoming.templateName === 'string' ? incoming.templateName.trim() : '',
+        languageCode: typeof incoming.languageCode === 'string' ? incoming.languageCode.trim() : 'ar',
         sendConfirmation: incoming.sendConfirmation !== false,
         sendReminder: incoming.sendReminder !== false,
+        sendOrderConfirmation: incoming.sendOrderConfirmation !== false,
+        sendQrCode: incoming.sendQrCode === true,
+        sendOwnerAlert: incoming.sendOwnerAlert === true,
+        ownerAlertPhone: typeof incoming.ownerAlertPhone === 'string' ? incoming.ownerAlertPhone.trim() : '',
+        useMetaTemplateComponents: incoming.useMetaTemplateComponents === true,
+        templates: {
+          confirmation: typeof templatesIn.confirmation === 'string' ? templatesIn.confirmation : '',
+          reminder: typeof templatesIn.reminder === 'string' ? templatesIn.reminder : '',
+          cancellation: typeof templatesIn.cancellation === 'string' ? templatesIn.cancellation : '',
+          reschedule: typeof templatesIn.reschedule === 'string' ? templatesIn.reschedule : '',
+          order_confirmation: typeof templatesIn.order_confirmation === 'string' ? templatesIn.order_confirmation : ''
+        },
+        gateway: incoming.gateway && typeof incoming.gateway === 'object' ? incoming.gateway : undefined
       };
     })(cfg.whatsappApi);
     cfg.payment = (function (raw) {

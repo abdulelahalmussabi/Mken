@@ -521,7 +521,7 @@
       if (wa.provider === 'twilio') {
         instInput.value = wa.accountSid || '';
       } else if (wa.provider === 'whatsapp_business') {
-        instInput.value = wa.phoneNumberId || '';
+        instInput.value = wa.phoneNumberId || wa.instanceId || '';
       } else {
         instInput.value = wa.instanceId || '';
       }
@@ -1002,7 +1002,11 @@
         enabled: waEnabled ? waEnabled.checked : (current.whatsappApi && current.whatsappApi.enabled),
         provider: providerVal,
         url: waUrl ? waUrl.value.trim() : (current.whatsappApi && current.whatsappApi.url),
-        instanceId: providerVal === 'ultramsg' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.instanceId),
+        instanceId: providerVal === 'ultramsg' && waInst
+          ? waInst.value.trim()
+          : (providerVal === 'whatsapp_business' && waInst
+            ? waInst.value.trim()
+            : (current.whatsappApi && current.whatsappApi.instanceId)),
         accountSid: providerVal === 'twilio' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.accountSid),
         phoneNumberId: providerVal === 'whatsapp_business' && waInst ? waInst.value.trim() : (current.whatsappApi && current.whatsappApi.phoneNumberId),
         token: waToken ? waToken.value.trim() : (current.whatsappApi && current.whatsappApi.token),
