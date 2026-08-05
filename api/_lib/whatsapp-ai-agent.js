@@ -126,7 +126,10 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
 
   prompt += '## كيف ترد\n';
   prompt += '- اكتب ردك مباشرة كنص عادي يُرسل للعميل في واتساب.\n';
-  prompt += '- لا تكتب JSON، ولا علامات تنصيص حول الرد، ولا أكواد. فقط نص الرسالة.\n\n';
+  prompt += '- لا تكتب JSON، ولا علامات تنصيص حول الرد، ولا أكواد. فقط نص الرسالة.\n';
+  prompt += '- ممنوع استخدام صيغة Markdown (لا نجوم * ولا # ولا عناوين فرعية).\n';
+  prompt += '- ممنوع كتابة عناوين بالإنجليزية مثل "Core Answer" أو "Features".\n';
+  prompt += '- لا تستخدم القوائم النقطية بالنجوم (*) — اكتب جملاً متصلة.\n\n';
 
   prompt += '## معرفتك عن ' + brandName + '\n';
   prompt += tenantContext + '\n\n';
@@ -146,11 +149,19 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
 // ---------- Gemini call ----------
 
 // Models are tried in order; the first that succeeds wins.
-// gemini-2.5-flash returns 404 for some API keys (deprecated/removed), so we
-// cascade to stable, widely-available alternatives. An env override wins first.
+// Stronger/newer models come first because weaker ones (gemini-flash-latest
+// points to a 1.5-era model that ignores Arabic-only instructions and emits
+// English markdown). An env override (GEMINI_MODEL) always wins.
 function getModelCandidates() {
   const override = (process.env.GEMINI_MODEL || '').trim();
-  const list = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash-latest'];
+  const list = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash-preview-05-20',
+    'gemini-2.0-flash-001',
+    'gemini-1.5-flash-latest',
+    'gemini-flash-latest'
+  ];
   return override ? [override].concat(list) : list;
 }
 
@@ -258,6 +269,61 @@ function extractReply(raw) {
   return candidate;
 }
 
+/**
+ * Sanitize the AI reply into clean WhatsApp-friendly Arabic text.
+ * Weak models sometimes emit markdown, English section headers, or bullet
+ * lists even when told not to. We strip those so the customer never sees
+ * raw formatting artifacts.
+ */
+function sanitizeReply(text) {
+  if (!text) return '';
+  let out = text.trim();
+
+  // Extract content from markdown code fences first (keep what's inside)
+  out = out.replace(/```(?:json)?\s*([\s\S]*?)```/g, function (m, inner) {
+    // If the inner content is JSON with a reply field, extract it
+    try {
+      const parsed = JSON.parse(inner.trim());
+      if (parsed && typeof parsed.reply === 'string') return parsed.reply;
+    } catch (e) {}
+    return inner;
+  });
+  out = out.replace(/```/g, '');
+
+  // Remove markdown headers (# Title) — keep the text after the #
+  out = out.replace(/^#{1,6}\s*/gm, '');
+
+  // Remove markdown bullet/number markers at line starts
+  out = out.replace(/^\s*[*\-•]\s+/gm, '');
+  out = out.replace(/^\s*\d+[.)]\s+/gm, '');
+
+  // Remove stray bold/italic markers
+  out = out.replace(/\*\*(.*?)\*\*/g, '$1');
+  out = out.replace(/__(.*?)__/g, '$1');
+  out = out.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '$1');
+
+  // Drop lines that are English-only or English-dominant "section headers".
+  // Keep a line only if it contains Arabic characters OR is a URL/blank.
+  out = out.split('\n').filter(function (line) {
+    const t = line.trim();
+    if (!t) return true; // keep blank lines (will be collapsed later)
+    // Keep lines containing Arabic characters
+    if (/[\u0600-\u06FF]/.test(t)) return true;
+    // Keep URLs
+    if (/^https?:\/\//.test(t)) return true;
+    // Drop everything else (pure English / symbols / headers)
+    return false;
+  }).join('\n');
+
+  // Collapse 3+ newlines into 2
+  out = out.replace(/\n{3,}/g, '\n\n');
+
+  // Trim each line and the whole thing
+  out = out.split('\n').map(function (l) { return l.trim(); }).join('\n').trim();
+
+  return out;
+}
+
 // ---------- Public API ----------
 
 /**
@@ -276,7 +342,7 @@ async function generateAIReply(userMessage, config, tenantSlug, customerPhone, a
 
   try {
     const reply = await callGemini(systemPrompt, userMessage);
-    return reply || '';
+    return sanitizeReply(reply);
   } catch (err) {
     console.error('AI agent error:', err.message);
     return ''; // webhook will fall back to a safe message
