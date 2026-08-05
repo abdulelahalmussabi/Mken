@@ -8,6 +8,15 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
+// Constant-time comparison to avoid timing attacks on signatures/tokens
+function safeEqual(a, b) {
+  const crypto = require('crypto');
+  const aBuf = Buffer.from(String(a));
+  const bBuf = Buffer.from(String(b));
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 function verifyTwilioSignature(req, authToken) {
   const signature = req.headers['x-twilio-signature'];
   if (!signature) return false;
@@ -32,7 +41,7 @@ function verifyTwilioSignature(req, authToken) {
     .update(dataStr)
     .digest('base64');
 
-  return signature === expectedSignature;
+  return safeEqual(signature, expectedSignature);
 }
 
 function verifyMetaSignature(req, appSecret) {
@@ -44,28 +53,70 @@ function verifyMetaSignature(req, appSecret) {
 
   const signature = parts[1];
   const crypto = require('crypto');
-  
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+
+  const rawBody = req.rawBody ? req.rawBody.toString('utf8') : '';
   const expectedSignature = crypto
     .createHmac('sha256', appSecret)
     .update(rawBody)
     .digest('hex');
 
-  return signature === expectedSignature;
+  return safeEqual(signature, expectedSignature);
 }
 
 module.exports = async function handler(req, res) {
+  // Read raw body since we disabled bodyParser.
+  // Resolve to an empty buffer on error/abort so the handler never hangs.
+  const rawBodyBuffer = await new Promise((resolve) => {
+    const chunks = [];
+    let done = false;
+    const finish = (buf) => { if (!done) { done = true; resolve(buf); } };
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => finish(Buffer.concat(chunks)));
+    req.on('error', () => finish(Buffer.alloc(0)));
+    req.on('aborted', () => finish(Buffer.concat(chunks)));
+  });
+  req.rawBody = rawBodyBuffer;
+
+  const rawBodyString = rawBodyBuffer.toString('utf8');
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('application/json')) {
+    try {
+      req.body = JSON.parse(rawBodyString);
+    } catch (e) {
+      req.body = {};
+    }
+  } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    const querystring = require('querystring');
+    req.body = querystring.parse(rawBodyString);
+  } else {
+    req.body = {};
+  }
+
   // 1. Meta / Facebook Webhook GET Verification
   if (req.method === 'GET') {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
+    const tenantSlug = req.query.tenant || req.query.slug || 'default';
 
-    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
-    if (mode === 'subscribe' && token === verifyToken) {
+    // Browser visit without Meta hub.* params — not a verification attempt
+    if (!mode && !token) {
+      return res.status(200).json({
+        ok: true,
+        service: 'mken-whatsapp-webhook',
+        tenant: tenantSlug,
+        message: 'Webhook endpoint is live. Meta will call this URL with hub.mode=subscribe during verification.',
+        verifyTokenHint: 'Use the same value as WHATSAPP_VERIFY_TOKEN on the server (default: mken_verify_token_2026).',
+        note: 'Phone Number ID and Access Token are saved in admin settings — they are separate from the Webhook Verify Token.'
+      });
+    }
+
+    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mken_verify_token_2026';
+    if (mode === 'subscribe' && safeEqual(token, verifyToken)) {
       console.log('Webhook verified successfully!');
       return res.status(200).send(challenge);
     }
+    console.warn('Webhook verify failed', { mode, tokenMatch: !!token && token === verifyToken, hasEnv: !!process.env.WHATSAPP_VERIFY_TOKEN });
     return res.status(403).send('Forbidden: Token mismatch');
   }
 
@@ -188,7 +239,12 @@ module.exports = async function handler(req, res) {
     const cleanedMsg = bodyText.toLowerCase().trim();
     let replyText = '';
 
-    if (cleanedMsg.includes('موعد') || cleanedMsg.includes('حجز') || cleanedMsg.includes('أين') || cleanedMsg.includes('اين')) {
+    if (cleanedMsg.includes('خدمات') || cleanedMsg.includes('خدمه') || cleanedMsg.includes('أسعار') || cleanedMsg.includes('اسعار') || cleanedMsg.includes('كتالوج') || cleanedMsg.includes('عرض')) {
+      // Direct Automated Service & Price Catalog Listing
+      const brandName = (config.brand && config.brand.name) || 'مكِّن';
+      const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
+      replyText = `أهلاً بك في (${brandName}) 🌸\n\nإليك رابط حجز الخدمات والدفع الإلكتروني المباشر:\n🌐 https://${siteDomain}/book.html\n\nأو يمكنك زيارة متجر المنتجات:\n🛒 https://${siteDomain}/order.html\n\nنعدك بتجربة سهلة وسريعة!`;
+    } else if (cleanedMsg.includes('موعد') || cleanedMsg.includes('حجز') || cleanedMsg.includes('أين') || cleanedMsg.includes('اين')) {
       if (cleanedMsg.includes('إلغاء') || cleanedMsg.includes('الغاء') || cleanedMsg.includes('ألغ') || cleanedMsg.includes('الغ')) {
         // Cancel Appointment Command
         const { data: apts } = await supabase
@@ -231,13 +287,15 @@ module.exports = async function handler(req, res) {
           });
           replyText += '\nلإلغاء آخر موعد، أرسل: "إلغاء موعدي".';
         } else {
-          replyText = 'لا توجد مواعيد قادمة نشطة مسجلة برقم جوالك حالياً.';
+          const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
+          replyText = `لا توجد مواعيد نشطة حالياً برقمك.\nيمكنك حجز موعدك الجديد فوراً عبر الرابط:\n🌐 https://${siteDomain}/book.html`;
         }
       }
     } else {
       // Default Welcome/Fallback Message
       const brandName = (config.brand && config.brand.name) || 'مكِّن';
-      replyText = `مرحباً بك في (${brandName})! 🤖\n\n- لمعرفة تفاصيل مواعيدك القادمة، أرسل: "أين موعدي"\n- لإلغاء موعدك الأخير، أرسل: "إلغاء موعدي"`;
+      const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
+      replyText = `مرحباً بك في (${brandName})! 🤖\n\n- للحجز الفوري والدفع: أرسل "خدمات"\n- للاستعلام عن موعدك: أرسل "أين موعدي"\n- لإلغاء الموعد: أرسل "إلغاء موعدي"\n\n🌐 رابط الحجز المباشر:\nhttps://${siteDomain}/book.html`;
     }
 
     // 5. Send Chatbot Response
@@ -394,3 +452,9 @@ function formatTimeArabic(time) {
     return time;
   }
 }
+
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
+};
