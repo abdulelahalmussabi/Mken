@@ -1,4 +1,3 @@
-// Temporary diagnostic — will be deleted after
 module.exports = async function handler(req, res) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'no key' });
