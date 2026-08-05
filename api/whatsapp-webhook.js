@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
+const aiAgent = require('./_lib/whatsapp-ai-agent');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -236,69 +237,77 @@ module.exports = async function handler(req, res) {
       created_at: new Date().toISOString()
     });
 
-    // 4. Chatbot Command Parsing
+    // 4. Smart Reply Engine
+    //    Critical booking operations are handled locally (fast, reliable).
+    //    Everything else goes to the AI sales agent (Gemini).
     const cleanedMsg = bodyText.toLowerCase().trim();
     let replyText = '';
 
-    // Resolve the correct site domain for this tenant.
-    // Priority: config.saas.baseDomain (e.g. "mken.live") > config.domain > "mken.live"
-    // Falls back to subdomain prefix only if a subdomain is explicitly configured.
     const brandName = (config.brand && config.brand.name) || 'مكِّن';
-    const baseDomain = (config.saas && config.saas.baseDomain) || config.domain || 'mken.live';
-    const siteDomain = config.subdomain ? `${config.subdomain}.${baseDomain}` : baseDomain;
+    const siteDomain = aiAgent.resolveSiteDomain(config);
 
-    if (cleanedMsg.includes('خدمات') || cleanedMsg.includes('خدمه') || cleanedMsg.includes('أسعار') || cleanedMsg.includes('اسعار') || cleanedMsg.includes('كتالوج') || cleanedMsg.includes('عرض')) {
-      // Direct Automated Service & Price Catalog Listing
-      replyText = `أهلاً بك في (${brandName}) 🌸\n\nإليك رابط حجز الخدمات والدفع الإلكتروني المباشر:\n🌐 https://${siteDomain}/book.html\n\nأو يمكنك زيارة متجر المنتجات:\n🛒 https://${siteDomain}/order.html\n\nنعدك بتجربة سهلة وسريعة!`;
-    } else if (cleanedMsg.includes('موعد') || cleanedMsg.includes('حجز') || cleanedMsg.includes('أين') || cleanedMsg.includes('اين')) {
-      if (cleanedMsg.includes('إلغاء') || cleanedMsg.includes('الغاء') || cleanedMsg.includes('ألغ') || cleanedMsg.includes('الغ')) {
-        // Cancel Appointment Command
-        const { data: apts } = await supabase
+    // Detect explicit cancel command (must run locally — it mutates the DB)
+    const isCancel = (cleanedMsg.includes('إلغاء') || cleanedMsg.includes('الغاء') || cleanedMsg.includes('ألغ') || cleanedMsg.includes('الغ'))
+      && (cleanedMsg.includes('موعد') || cleanedMsg.includes('حجز'));
+
+    if (isCancel) {
+      // Cancel Appointment Command (local, no AI)
+      const { data: apts } = await supabase
+        .from('mken_appointments')
+        .select('*')
+        .eq('tenant_slug', tenantSlug)
+        .eq('phone', cleanPhoneStr)
+        .in('status', ['confirmed', 'pending'])
+        .order('date', { ascending: false })
+        .order('time', { ascending: false })
+        .limit(1);
+
+      if (apts && apts.length > 0) {
+        const apt = apts[0];
+        await supabase
           .from('mken_appointments')
-          .select('*')
-          .eq('tenant_slug', tenantSlug)
-          .eq('phone', cleanPhoneStr)
-          .in('status', ['confirmed', 'pending'])
-          .order('date', { ascending: false })
-          .order('time', { ascending: false })
-          .limit(1);
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', apt.id);
 
-        if (apts && apts.length > 0) {
-          const apt = apts[0];
-          await supabase
-            .from('mken_appointments')
-            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-            .eq('id', apt.id);
-          
-          replyText = `تم إلغاء موعدك القادم بنجاح.\nالخدمة: ${apt.service_id}\nالتاريخ: ${formatDateArabic(apt.date)} - الوقت: ${formatTimeArabic(apt.time)}\n\nنشكرك لتفهمك!`;
-        } else {
-          replyText = 'عذراً، لم نجد أي موعد نشط ومسجل برقم جوالك حالياً لإلغائه.';
-        }
+        replyText = `تم إلغاء موعدك القادم بنجاح.\nالخدمة: ${apt.service_id}\nالتاريخ: ${formatDateArabic(apt.date)} - الوقت: ${formatTimeArabic(apt.time)}\n\nنشكرك لتفهمك!`;
       } else {
-        // Query Next Active Appointments Command
+        replyText = 'عذراً، لم نجد أي موعد نشط ومسجل برقم جوالك حالياً لإلغائه.';
+      }
+    } else {
+      // Everything else → AI Sales Agent
+      // Pre-fetch the customer's appointments so the agent can answer accurately
+      let appointmentsInfo = null;
+      try {
         const { data: apts } = await supabase
           .from('mken_appointments')
-          .select('*')
+          .select('service_id,date,time,status')
           .eq('tenant_slug', tenantSlug)
           .eq('phone', cleanPhoneStr)
           .in('status', ['confirmed', 'pending'])
           .order('date', { ascending: true })
           .order('time', { ascending: true })
-          .limit(2);
+          .limit(3);
 
         if (apts && apts.length > 0) {
-          replyText = 'مواعيدك القادمة المسجلة لدينا:\n━━━━━━━━━━━━━━\n';
-          apts.forEach((apt, i) => {
-            replyText += `${i + 1}. الخدمة: ${apt.service_id}\nالتاريخ: ${formatDateArabic(apt.date)}\nالوقت: ${formatTimeArabic(apt.time)}\nالحالة: ${apt.status === 'confirmed' ? 'مؤكد' : 'قيد الانتظار'}\n━━━━━━━━━━━━━━\n`;
-          });
-          replyText += '\nلإلغاء آخر موعد، أرسل: "إلغاء موعدي".';
+          appointmentsInfo = apts.map((apt, i) =>
+            (i + 1) + '. ' + apt.service_id + ' — ' + formatDateArabic(apt.date) + ' ' + formatTimeArabic(apt.time)
+            + ' (' + (apt.status === 'confirmed' ? 'مؤكد' : 'قيد الانتظار') + ')'
+          ).join('\n');
         } else {
-          replyText = `لا توجد مواعيد نشطة حالياً برقمك.\nيمكنك حجز موعدك الجديد فوراً عبر الرابط:\n🌐 https://${siteDomain}/book.html`;
+          appointmentsInfo = 'لا توجد مواعيد قادمة مسجلة لهذا العميل.';
         }
+      } catch (e) {
+        // Non-fatal — agent can still reply without appointment context
       }
-    } else {
-      // Default Welcome/Fallback Message
-      replyText = `مرحباً بك في (${brandName})! 🤖\n\n- للحجز الفوري والدفع: أرسل "خدمات"\n- للاستعلام عن موعدك: أرسل "أين موعدي"\n- لإلغاء الموعد: أرسل "إلغاء موعدي"\n\n🌐 رابط الحجز المباشر:\nhttps://${siteDomain}/book.html`;
+
+      let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo);
+
+      if (aiReply && aiReply.trim()) {
+        replyText = aiReply.trim();
+      } else {
+        // Safe fallback if Gemini is unavailable or failed
+        replyText = `مرحباً بك في (${brandName})! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+      }
     }
 
     // 5. Send Chatbot Response
