@@ -136,15 +136,20 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
 
 // ---------- Gemini call ----------
 
+// Models are tried in order; the first that succeeds wins.
+// gemini-2.5-flash returns 404 for some API keys (deprecated/removed), so we
+// cascade to stable, widely-available alternatives. An env override wins first.
+function getModelCandidates() {
+  const override = (process.env.GEMINI_MODEL || '').trim();
+  const list = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest', 'gemini-1.5-flash-latest'];
+  return override ? [override].concat(list) : list;
+}
+
 async function callGemini(systemPrompt, userMessage) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY not configured');
   }
-
-  const model = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
-    + encodeURIComponent(model) + ':generateContent?key=' + apiKey;
 
   const body = {
     system_instruction: {
@@ -157,31 +162,57 @@ async function callGemini(systemPrompt, userMessage) {
     generationConfig: {
       temperature: 0.8,
       topP: 0.95,
-      maxOutputTokens: 300,
+      maxOutputTokens: 400,
     }
   };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  const models = getModelCandidates();
+  let lastErr = null;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error('Gemini API failed (' + response.status + '): ' + errText.slice(0, 200));
+  for (const model of models) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + encodeURIComponent(model) + ':generateContent?key=' + apiKey;
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      lastErr = e;
+      continue;
+    }
+
+    // 404 = model not available for this key; try the next one.
+    if (response.status === 404) {
+      lastErr = new Error('model ' + model + ' not found (404)');
+      continue;
+    }
+
+    if (!response.ok) {
+      const errText = await response.text();
+      lastErr = new Error('Gemini API failed (' + response.status + '): ' + errText.slice(0, 200));
+      // 400/401/403 = auth or request-shape problem; another model won't help.
+      if (response.status === 400 || response.status === 401 || response.status === 403) {
+        break;
+      }
+      continue;
+    }
+
+    const data = await response.json();
+    try {
+      const text = data.candidates[0].content.parts[0].text;
+      console.log('AI agent: success with model', model);
+      return extractReply(text);
+    } catch (e) {
+      lastErr = new Error('Could not parse Gemini response from ' + model);
+      continue;
+    }
   }
 
-  const data = await response.json();
-  let text;
-  try {
-    text = data.candidates[0].content.parts[0].text;
-  } catch (e) {
-    throw new Error('Could not parse Gemini response');
-  }
-
-  // The model is instructed to reply with {"reply":"..."}; extract robustly.
-  return extractReply(text);
+  throw lastErr || new Error('All Gemini models failed');
 }
 
 /**
