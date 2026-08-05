@@ -228,9 +228,9 @@ async function callGemini(systemPrompt, contents) {
     },
     contents: contents,
     generationConfig: {
-      temperature: 0.8,
+      temperature: 0.85,
       topP: 0.95,
-      maxOutputTokens: 400,
+      maxOutputTokens: 1024,
     }
   };
 
