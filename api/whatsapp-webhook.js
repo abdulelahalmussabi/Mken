@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
 const aiAgent = require('./_lib/whatsapp-ai-agent');
+const cannedReplies = require('./_lib/whatsapp-canned-replies');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -325,14 +326,30 @@ module.exports = async function handler(req, res) {
         // Non-fatal — agent can still reply without appointment context
       }
 
-      let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory);
+      // HYBRID REPLY ENGINE:
+      // 1) Try a high-quality canned reply first (fast, reliable, persuasive)
+      // 2) If no canned match, fall through to the AI agent
+      // 3) If AI also fails, use a safe static fallback
+      let cannedReply = null;
+      try {
+        cannedReply = cannedReplies.matchCannedReply(bodyText, config, { conversationHistory, appointmentsInfo });
+      } catch (e) {
+        // Non-fatal — proceed to AI
+      }
 
-      if (aiReply && aiReply.trim()) {
-        replyText = aiReply.trim();
+      if (cannedReply && cannedReply.trim()) {
+        replyText = cannedReply.trim();
       } else {
-        // Safe fallback if Gemini is unavailable or failed.
-        // Always use "مكّن" brand name (not config brand which may be wrong for admin tenant).
-        replyText = `مرحباً بك في مكّن! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+        // No canned match → AI agent
+        let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory);
+
+        if (aiReply && aiReply.trim()) {
+          replyText = aiReply.trim();
+        } else {
+          // Safe fallback if Gemini is unavailable or failed.
+          // Always use "مكّن" brand name (not config brand which may be wrong for admin tenant).
+          replyText = `مرحباً بك في مكّن! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+        }
       }
     }
 
