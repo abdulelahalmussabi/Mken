@@ -46,19 +46,37 @@ function verifyTwilioSignature(req, authToken) {
 
 function verifyMetaSignature(req, appSecret) {
   const signatureHeader = req.headers['x-hub-signature-256'];
-  if (!signatureHeader) return false;
+  if (!signatureHeader) {
+    console.warn('META_SIG_DIAG: no x-hub-signature-256 header present');
+    return false;
+  }
 
   const parts = signatureHeader.split('=');
-  if (parts.length !== 2 || parts[0] !== 'sha256') return false;
+  if (parts.length !== 2 || parts[0] !== 'sha256') {
+    console.warn('META_SIG_DIAG: malformed signature header', { parts: parts.length, algo: parts[0] });
+    return false;
+  }
 
   const signature = parts[1];
   const crypto = require('crypto');
 
-  const rawBody = req.rawBody ? req.rawBody.toString('utf8') : '';
+  const rawBodyBuf = req.rawBody || Buffer.alloc(0);
+  const rawBody = rawBodyBuf.toString('utf8');
   const expectedSignature = crypto
     .createHmac('sha256', appSecret)
     .update(rawBody)
     .digest('hex');
+
+  // Diagnostic: log lengths only (NEVER log secret values)
+  console.warn('META_SIG_DIAG', {
+    receivedSigLen: signature.length,
+    expectedSigLen: expectedSignature.length,
+    rawBodyLen: rawBody.length,
+    rawBodyEmpty: rawBody.length === 0,
+    appSecretLen: appSecret.length,
+    appSecretEmpty: appSecret.length === 0,
+    match: signature === expectedSignature
+  });
 
   return safeEqual(signature, expectedSignature);
 }
