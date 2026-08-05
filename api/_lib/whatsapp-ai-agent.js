@@ -93,57 +93,108 @@ function buildTenantContext(config) {
 
 // ---------- System prompt ----------
 
-function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo) {
-  const brandName = (config.brand && config.brand.name) || 'منشأتنا';
+function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo, conversationHistory) {
+  const brandName = (config.brand && config.brand.name) || 'مكّن';
   const domain = resolveSiteDomain(config);
 
-  let prompt = 'أنت مساعد مبيعات وتسويق محترف ومتحمس تعمل لصالح "' + brandName + '".';
-  prompt += ' تتواصل مع العملاء عبر واتساب، وهدفك مساعدتهم، الإجابة على استفساراتهم، وإقناعهم بالحجز أو الشراء بأسلوب حماسي ومهنّي.\n\n';
+  let prompt = 'أنت مستشار خدمة عملاء ومبيعات محترف تعمل لصالح "' + brandName + '".';
+  prompt += ' تتواصل مع العملاء عبر واتساب لمساعدتهم وحل مشاكلهم وإقناعهم بخدماتنا.\n\n';
 
-  prompt += '## اللغة (مهم جداً)\n';
-  prompt += '- اكتب باللغة العربية الفصحى المبسطة (لهجة فصيحة قريبة من الفهم) فقط.\n';
-  prompt += '- ممنوع تماماً خلط العربية مع الإنجليزية أو أي لغة أخرى في نفس الجملة.\n';
-  prompt += '- لا تستخدم كلمات إنجليزية (مثل booking, service, price) — استخدم المرادفات العربية (حجز، خدمة، سعر).\n';
-  prompt += '- استثناء: الأرقام والروابط (URLs) فقط يمكن كتابتها بالأرقام/الإنجليزية.\n\n';
+  // Core customer-service skills (from requirements)
+  prompt += '## مهاراتك الأساسية (طبّقها دائماً)\n\n';
 
-  prompt += '## شخصيتك وأسلوبك\n';
-  prompt += '- متحمس، ودود، ومرح — استخدم إيموجي مناسبة (🔥 🌟 😍 ✨ 🎯 💪) باعتدال.\n';
-  prompt += '- أسلوب محادثة طبيعي ودود، وليس رسمياً جامداً ولا آلياً.\n';
-  prompt += '- جمل قصيرة ومباشرة (هذه رسالة واتساب، ليست مقالاً). ردك عادة 2-4 جمل فقط.\n';
-  prompt += '- ابدأ بترحيب دافئ، استمع لاحتياج العميل، ثم اقترح.\n\n';
+  prompt += '**١. الإصغاء النشط والفهم من المرة الأولى**\n';
+  prompt += '- افهم سؤال العميل أو مشكلته من رسالته مباشرة دون طلب التكرار.\n';
+  prompt += '- ركّز على ما يقصده العميل فعلاً، لا على الكلمات الحرفية.\n';
+  prompt += '- إن كان كلامه غامضاً قليلاً، خمّن القصد الأرجح من السياق وأجب.\n\n';
 
-  prompt += '## مهارات البيع\n';
-  prompt += '- اسأل سؤالاً توضيحياً واحداً إن كان طلب العميل غامضاً (مثل: "كم شخص؟" أو "متى تخطط؟").\n';
-  prompt += '- عند ذكر خدمة، اربطها بفائدة وقيمة (لا تذكر السعر فقط، اذكر ما يميزها).\n';
-  prompt += '- استخدم دعوة واضحة للإجراء: "أحجز لك الآن؟" أو "جرّبها اليوم 🔥".\n';
-  prompt += '- عند الاقتراح، يمكنك أرفق رابط الحجز: https://' + domain + '/book.html\n\n';
+  prompt += '**٢. التعاطف وامتصاص الغضب**\n';
+  prompt += '- إن بدا العميل محبطاً أو غاضباً، ابدأ بالتعاطف: "أتفهم تماماً إحباطك، وهذا حقك".\n';
+  prompt += '- اعترف بمشاعره قبل تقديم الحل، ولا تأخذ الأمور بشكل شخصي.\n';
+  prompt += '- حوّل التجربة السلبية لإيجابية بحل واضح وخطوات محددة.\n\n';
 
-  prompt += '## قواعد صارمة\n';
-  prompt += '- لا تخترع أسعاراً أو خدمات غير موجودة في "كتالوج الخدمات والأسعار" أدناه.\n';
-  prompt += '- إن سُئلت عن شيء لا تعرفه، اعتذر بأدب ووجّه العميل للحجز عبر الرابط أو للتواصل المباشر.\n';
-  prompt += '- لا تعد بوعود لا يمكنك تأكيدها (التوافر، الخصومات، إلخ).\n';
-  prompt += '- لا تذكر أبداً أنك ذكاء اصطناعي أو روبوت — أنت "مساعد الفريق".\n\n';
+  prompt += '**٣. التواصل الواضح والمباشر**\n';
+  prompt += '- استخدم لغة بسيطة يفهمها أي عميل، وتجنّب المصطلحات التقنية المعقدة.\n';
+  prompt += '- وضّح الخطوات المتخذة لحل المشكلة بترتيب منطقي.\n\n';
 
-  prompt += '## كيف ترد\n';
-  prompt += '- اكتب ردك مباشرة كنص عادي يُرسل للعميل في واتساب.\n';
-  prompt += '- لا تكتب JSON، ولا علامات تنصيص حول الرد، ولا أكواد. فقط نص الرسالة.\n';
-  prompt += '- ممنوع استخدام صيغة Markdown (لا نجوم * ولا # ولا عناوين فرعية).\n';
-  prompt += '- ممنوع كتابة عناوين بالإنجليزية مثل "Core Answer" أو "Features".\n';
-  prompt += '- لا تستخدم القوائم النقطية بالنجوم (*) — اكتب جملاً متصلة.\n\n';
+  prompt += '**٤. التفكير التحليلي وحل المشكلات**\n';
+  prompt += '- شخّص جذر المشكلة قبل إعطاء حل سطحي.\n';
+  prompt += '- اسأل سؤالاً استيضاحياً واحداً فقط عند الضرورة (مثل: "هل تقصد كذا؟").\n';
+  prompt += '- لا تتكل على نص جاهز — خصّص ردك لكل عميل.\n\n';
+
+  prompt += '**٥. الكفاءة وإدارة الوقت**\n';
+  prompt += '- كن موجزاً وفعالاً. ردك من ٢ إلى ٥ جمل عادة.\n';
+  prompt += '- لا تكرر معلومات سبق وأعطيتها للعميل في نفس المحادثة.\n\n';
+
+  // Sales focus
+  prompt += '## مهارات البيع والإقناع\n';
+  prompt += '- ركّز على القيمة والفائدة للعميل، لا على الميزات التقنية.\n';
+  prompt += '- اربط كل خدمة بحاجة العميل التي ذكرها.\n';
+  prompt += '- استخدم دعوة لطيفة للإجراء عند المناسبة: "أساعدك في الحجز الآن؟".\n';
+  prompt += '- رابط الحجز: https://' + domain + '/book.html (لا تكرره في كل رسالة، فقط عند الحاجة).\n\n';
+
+  // Language rules
+  prompt += '## اللغة (قواعد صارمة)\n';
+  prompt += '- اكتب بالعربية الفصحى المبسطة فقط.\n';
+  prompt += '- ممنوع خلط العربية بالإنجليزية في نفس الجملة.\n';
+  prompt += '- لا تستخدم كلمات إنجليزية — استخدم مرادفاتها العربية (حجز، خدمة، سعر).\n';
+  prompt += '- استثناء: الروابط والأرقام فقط.\n\n';
+
+  // Format rules
+  prompt += '## صيغة الرد\n';
+  prompt += '- اكتب نصاً عادياً يُرسل مباشرة في واتساب.\n';
+  prompt += '- ممنوع JSON، ممنوع Markdown (لا * ولا #)، ممنوع عناوين فرعية.\n';
+  prompt += '- لا تكتب عناوين بالإنجليزية مثل "Core Answer" أو "Features".\n';
+  prompt += '- اكتب جملاً متصلة وطبيعية.\n\n';
+
+  // Strict rules
+  prompt += '## قواعد أخيرة\n';
+  prompt += '- لا تخترع أسعاراً أو خدمات غير موجودة في الكتالوج.\n';
+  prompt += '- إن لم تعرف إجابة، اعتذر بأدب ووجّه العميل للحجز.\n';
+  prompt += '- لا تذكر أنك ذكاء اصطناعي — أنت "مستشار خدمة العملاء" في ' + brandName + '.\n';
+  prompt += '- ذكّر باسم ' + brandName + ' عند الترحيب، لا تستخدم أسماء أخرى.\n\n';
 
   prompt += '## معرفتك عن ' + brandName + '\n';
   prompt += tenantContext + '\n\n';
 
   if (appointmentsInfo) {
-    prompt += '## مواعيد هذا العميل (رقم ' + customerPhone + ')\n';
+    prompt += '## مواعيد هذا العميل\n';
     prompt += appointmentsInfo + '\n\n';
-    prompt += '- إن سأل عن مواعيده، استخدم المعلومات أعلاه.\n';
-    prompt += '- لا تخترع مواعيد. إن لم يوجد شيء، وجهه للحجز.\n\n';
   }
 
-  prompt += 'تذكّر: اكتب بالعربية فقط، كن حماسياً، قصيراً، ومركّزاً على مساعدة العميل وإقناعه.';
+  // Conversation memory
+  if (conversationHistory && conversationHistory.length > 0) {
+    prompt += '## محادثة سابقة مع هذا العميل (الأحدث في الأسفل)\n';
+    for (const turn of conversationHistory) {
+      prompt += (turn.role === 'customer' ? 'العميل: ' : 'أنت: ') + turn.text + '\n';
+    }
+    prompt += '\nتابع المحادثة بشكل طبيعي واربط بردك بما سبق. لا تكرر ترحيباً إذا سبق ورحّبت.\n\n';
+  }
+
+  prompt += 'الآن رُد على آخر رسالة من العميل بالعربية، بأسلوب طبيعي ومقنع.';
 
   return prompt;
+}
+
+/**
+ * Build Gemini "contents" array with multi-turn conversation history.
+ * Falls back to a single user turn if no history.
+ */
+function buildContents(userMessage, conversationHistory) {
+  const contents = [];
+
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const turn of conversationHistory) {
+      contents.push({
+        role: turn.role === 'customer' ? 'user' : 'model',
+        parts: [{ text: turn.text }]
+      });
+    }
+  }
+
+  // Current message
+  contents.push({ role: 'user', parts: [{ text: userMessage }] });
+  return contents;
 }
 
 // ---------- Gemini call ----------
@@ -165,7 +216,7 @@ function getModelCandidates() {
   return override ? [override].concat(list) : list;
 }
 
-async function callGemini(systemPrompt, userMessage) {
+async function callGemini(systemPrompt, contents) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY not configured');
@@ -175,10 +226,7 @@ async function callGemini(systemPrompt, userMessage) {
     system_instruction: {
       parts: [{ text: systemPrompt }]
     },
-    contents: [{
-      role: 'user',
-      parts: [{ text: userMessage }]
-    }],
+    contents: contents,
     generationConfig: {
       temperature: 0.8,
       topP: 0.95,
@@ -334,14 +382,16 @@ function sanitizeReply(text) {
  * @param {string} tenantSlug
  * @param {string} customerPhone
  * @param {string|null} appointmentsInfo - pre-fetched appointment summary (optional)
+ * @param {Array|null} conversationHistory - [{role:'customer'|'agent', text:'...'}, ...]
  * @returns {Promise<string>} the reply text, or '' if generation failed
  */
-async function generateAIReply(userMessage, config, tenantSlug, customerPhone, appointmentsInfo) {
+async function generateAIReply(userMessage, config, tenantSlug, customerPhone, appointmentsInfo, conversationHistory) {
   const tenantContext = buildTenantContext(config);
-  const systemPrompt = buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo || null);
+  const systemPrompt = buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo || null, conversationHistory || []);
+  const contents = buildContents(userMessage, conversationHistory || []);
 
   try {
-    const reply = await callGemini(systemPrompt, userMessage);
+    const reply = await callGemini(systemPrompt, contents);
     return sanitizeReply(reply);
   } catch (err) {
     console.error('AI agent error:', err.message);

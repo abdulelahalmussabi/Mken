@@ -237,6 +237,31 @@ module.exports = async function handler(req, res) {
       created_at: new Date().toISOString()
     });
 
+    // Fetch recent conversation history for this customer (memory)
+    let conversationHistory = [];
+    try {
+      const { data: recentLogs } = await supabase
+        .from('mken_whatsapp_logs')
+        .select('event_type, body, created_at')
+        .eq('tenant_slug', tenantSlug)
+        .eq('phone', cleanPhoneStr)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      if (recentLogs && recentLogs.length > 0) {
+        // Reverse to chronological, and exclude the current inbound (just logged)
+        conversationHistory = recentLogs
+          .reverse()
+          .slice(0, -1) // drop the last one (the message we just inserted)
+          .map(r => ({
+            role: r.event_type === 'inbound' ? 'customer' : 'agent',
+            text: r.body
+          }))
+          .filter(t => t.text && t.text.trim());
+      }
+    } catch (e) {
+      // Non-fatal — agent works without memory
+    }
+
     // 4. Smart Reply Engine
     //    Critical booking operations are handled locally (fast, reliable).
     //    Everything else goes to the AI sales agent (Gemini).
@@ -300,13 +325,14 @@ module.exports = async function handler(req, res) {
         // Non-fatal — agent can still reply without appointment context
       }
 
-      let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo);
+      let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory);
 
       if (aiReply && aiReply.trim()) {
         replyText = aiReply.trim();
       } else {
-        // Safe fallback if Gemini is unavailable or failed
-        replyText = `مرحباً بك في (${brandName})! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+        // Safe fallback if Gemini is unavailable or failed.
+        // Always use "مكّن" brand name (not config brand which may be wrong for admin tenant).
+        replyText = `مرحباً بك في مكّن! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
       }
     }
 
