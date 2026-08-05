@@ -240,10 +240,15 @@ module.exports = async function handler(req, res) {
     const cleanedMsg = bodyText.toLowerCase().trim();
     let replyText = '';
 
+    // Resolve the correct site domain for this tenant.
+    // Priority: config.saas.baseDomain (e.g. "mken.live") > config.domain > "mken.live"
+    // Falls back to subdomain prefix only if a subdomain is explicitly configured.
+    const brandName = (config.brand && config.brand.name) || 'مكِّن';
+    const baseDomain = (config.saas && config.saas.baseDomain) || config.domain || 'mken.live';
+    const siteDomain = config.subdomain ? `${config.subdomain}.${baseDomain}` : baseDomain;
+
     if (cleanedMsg.includes('خدمات') || cleanedMsg.includes('خدمه') || cleanedMsg.includes('أسعار') || cleanedMsg.includes('اسعار') || cleanedMsg.includes('كتالوج') || cleanedMsg.includes('عرض')) {
       // Direct Automated Service & Price Catalog Listing
-      const brandName = (config.brand && config.brand.name) || 'مكِّن';
-      const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
       replyText = `أهلاً بك في (${brandName}) 🌸\n\nإليك رابط حجز الخدمات والدفع الإلكتروني المباشر:\n🌐 https://${siteDomain}/book.html\n\nأو يمكنك زيارة متجر المنتجات:\n🛒 https://${siteDomain}/order.html\n\nنعدك بتجربة سهلة وسريعة!`;
     } else if (cleanedMsg.includes('موعد') || cleanedMsg.includes('حجز') || cleanedMsg.includes('أين') || cleanedMsg.includes('اين')) {
       if (cleanedMsg.includes('إلغاء') || cleanedMsg.includes('الغاء') || cleanedMsg.includes('ألغ') || cleanedMsg.includes('الغ')) {
@@ -288,14 +293,11 @@ module.exports = async function handler(req, res) {
           });
           replyText += '\nلإلغاء آخر موعد، أرسل: "إلغاء موعدي".';
         } else {
-          const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
           replyText = `لا توجد مواعيد نشطة حالياً برقمك.\nيمكنك حجز موعدك الجديد فوراً عبر الرابط:\n🌐 https://${siteDomain}/book.html`;
         }
       }
     } else {
       // Default Welcome/Fallback Message
-      const brandName = (config.brand && config.brand.name) || 'مكِّن';
-      const siteDomain = (config.subdomain ? `${config.subdomain}.mken.sa` : 'mken.sa');
       replyText = `مرحباً بك في (${brandName})! 🤖\n\n- للحجز الفوري والدفع: أرسل "خدمات"\n- للاستعلام عن موعدك: أرسل "أين موعدي"\n- لإلغاء الموعد: أرسل "إلغاء موعدي"\n\n🌐 رابط الحجز المباشر:\nhttps://${siteDomain}/book.html`;
     }
 
