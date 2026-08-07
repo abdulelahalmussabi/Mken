@@ -29,6 +29,47 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
   }
 
+  /**
+   * Build the activities checkboxes container, optionally pre-checking
+   * a set of activity IDs (for editing). Uses the activities catalog and
+   * filters to the tenant's enabled activities.
+   */
+  function renderActivityCheckboxes(selectedIds) {
+    var container = document.getElementById('staffActivitiesCheckboxes');
+    if (!container) return;
+
+    var catalog = (window.MkenActivitiesCatalog || []);
+    var config = store.getConfig ? store.getConfig() : null;
+    var enabled = (config && config.enabledActivities) || null;
+
+    // Filter catalog to enabled activities for this tenant
+    var activities = enabled && enabled.length > 0
+      ? catalog.filter(function (a) { return enabled.indexOf(a.id) !== -1; })
+      : catalog;
+
+    if (activities.length === 0) {
+      container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد أنشطة مفعّلة لهذا الحساب.</span>';
+      return;
+    }
+
+    container.innerHTML = activities.map(function (a) {
+      var checked = (selectedIds && selectedIds.indexOf(a.id) !== -1) ? ' checked' : '';
+      var id = 'staffAct_' + a.id;
+      return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">'
+        + '<input type="checkbox" id="' + id + '" value="' + esc(a.id) + '"' + checked + ' style="margin:0;">'
+        + '<span>' + esc(a.icon || '•') + ' ' + esc(a.title || a.id) + '</span>'
+        + '</label>';
+    }).join('');
+  }
+
+  /** Read the checked activity IDs from the checkboxes container. */
+  function getCheckedActivities() {
+    var container = document.getElementById('staffActivitiesCheckboxes');
+    if (!container) return [];
+    var boxes = container.querySelectorAll('input[type="checkbox"]:checked');
+    return Array.prototype.map.call(boxes, function (b) { return b.value; });
+  }
+
   function loadStaff() {
     if (staffListContainer) {
       staffListContainer.innerHTML = '<p class="admin-hint">جاري تحميل الفنيين والموظفين...</p>';
@@ -77,6 +118,7 @@
       '        <th style="padding:12px;">الاسم</th>' +
       '        <th style="padding:12px;">الجوال</th>' +
       '        <th style="padding:12px;">الدور الوظيفي</th>' +
+      '        <th style="padding:12px;">الأنشطة المخوّلة</th>' +
       '        <th style="padding:12px;">رمز PIN</th>' +
       '        <th style="padding:12px;">الحالة</th>' +
       '        <th style="padding:12px; text-align:left;">إجراءات</th>' +
@@ -87,11 +129,21 @@
         var roleText = s.role === 'coordinator' ? 'منسّق مواعيد / مشرف' : 'فني صيانة / منفّذ خدمة';
         var statusColor = s.status === 'active' ? '#2e7d32' : '#c0392b';
         var statusText = s.status === 'active' ? 'نشط' : 'غير نشط';
+        // Build activity labels from catalog
+        var catalog = (window.MkenActivitiesCatalog || []);
+        var actLabels = (s.activities || []).map(function (aid) {
+          var def = catalog.find(function (a) { return a.id === aid; });
+          return def ? (def.icon || '•') + ' ' + (def.shortTitle || def.title || aid) : aid;
+        });
+        var activitiesCell = actLabels.length > 0
+          ? actLabels.join('، ')
+          : '<span style="color:#999; font-size:12px;">— غير محدد —</span>';
         return (
           '      <tr style="border-bottom:1px solid var(--color-border);">' +
           '        <td style="padding:12px; font-weight:bold;">' + esc(s.name) + '</td>' +
           '        <td style="padding:12px;" dir="ltr">' + esc(s.phone) + '</td>' +
           '        <td style="padding:12px;">' + roleText + '</td>' +
+          '        <td style="padding:12px; font-size:12px;">' + activitiesCell + '</td>' +
           '        <td style="padding:12px; font-family:monospace; font-weight:bold;">' + esc(s.pinCode) + '</td>' +
           '        <td style="padding:12px;"><span style="color:' + statusColor + '; font-weight:bold;">● ' + statusText + '</span></td>' +
           '        <td style="padding:12px; text-align:left;">' +
@@ -139,11 +191,13 @@
         document.getElementById('staffRole').value = s.role;
         document.getElementById('staffPin').value = s.pinCode;
         document.getElementById('staffStatus').value = s.status;
+        renderActivityCheckboxes(s.activities || []);
       }
     } else {
       if (staffForm) staffForm.reset();
       document.getElementById('staffRole').value = 'technician';
       document.getElementById('staffStatus').value = 'active';
+      renderActivityCheckboxes([]);
     }
 
     if (staffModal) staffModal.hidden = false;
@@ -207,6 +261,14 @@
     if (window.MkenSupabaseDb && window.MkenSupabaseDb.isConfigured()) {
       var tenantSlug = store.getCurrentTenantSlug();
       window.MkenSupabaseDb.saveStaff(member, tenantSlug)
+        .then(function () {
+          // Save activity links (best-effort, resilient to missing table)
+          var selectedActivities = getCheckedActivities();
+          member.activities = selectedActivities;
+          if (window.MkenSupabaseDb.saveStaffActivities) {
+            return window.MkenSupabaseDb.saveStaffActivities(id, tenantSlug, selectedActivities);
+          }
+        })
         .then(function () {
           toast('تم حفظ بيانات الموظف بنجاح سحابياً');
           closeModal();

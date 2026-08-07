@@ -169,6 +169,8 @@
         promise = savePurchaseInvoice(item.payload, item.tenantSlug, true);
       } else if (item.action === 'saveInventoryItem') {
         promise = saveInventoryItem(item.payload, item.tenantSlug, true);
+      } else if (item.action === 'saveAppointment') {
+        promise = saveAppointment(item.payload, item.tenantSlug, true);
       }
 
       if (promise) {
@@ -223,7 +225,7 @@
           // Fallback to table query if RPC is not available
           return client
             .from('mken_saas_clients')
-            .select('*')
+            .select('tenant_slug, business_name, email, phone, subscription_status, subscription_end, subscription_tier, config_data')
             .eq('tenant_slug', slug)
             .maybeSingle()
             .then(function (tblRes) {
@@ -242,6 +244,18 @@
               if (!tblRes.data) return null;
               
               var data = tblRes.data.config_data || {};
+              
+              // Scrub sensitive API keys and ZATCA secrets in frontend fallback for security
+              if (data.whatsappApi) {
+                delete data.whatsappApi.token;
+                delete data.whatsappApi.instanceId;
+                delete data.whatsappApi.accountSid;
+              }
+              if (data.zatcaConfig) {
+                delete data.zatcaConfig.privateKey;
+                delete data.zatcaConfig.certificate;
+                delete data.zatcaConfig.secret;
+              }
               
               if (slug !== 'default') {
                 if (!data.brand) {
@@ -452,11 +466,21 @@
     };
   }
 
-  function saveAppointment(apt, tenantSlug) {
-    var client = getClient();
-    if (!client) return Promise.reject(new Error('Supabase not configured'));
-
+  function saveAppointment(apt, tenantSlug, isFromSyncQueue) {
     var slug = tenantSlug || apt.tenantSlug || 'default';
+    updateLocalCacheArray('mken_appointments_cache_' + slug, apt);
+
+    if (!navigator.onLine && !isFromSyncQueue) {
+      addToSyncQueue('saveAppointment', apt, slug);
+      return Promise.resolve(apt);
+    }
+
+    var client = getClient();
+    if (!client) {
+      if (!isFromSyncQueue) addToSyncQueue('saveAppointment', apt, slug);
+      return Promise.resolve(apt);
+    }
+
     return client
       .from('mken_appointments')
       .upsert({
@@ -489,6 +513,13 @@
       .then(function (res) {
         if (res.error) throw res.error;
         return apt;
+      })
+      .catch(function (err) {
+        if (!isFromSyncQueue) {
+          addToSyncQueue('saveAppointment', apt, slug);
+          return Promise.resolve(apt);
+        }
+        throw err;
       });
   }
 
@@ -803,7 +834,7 @@
       .order('name', { ascending: true })
       .then(function (res) {
         if (res.error) throw res.error;
-        return (res.data || []).map(function (row) {
+        var staffList = (res.data || []).map(function (row) {
           return {
             id: row.id,
             tenantSlug: row.tenant_slug,
@@ -813,9 +844,32 @@
             role: row.role,
             pinCode: '****',
             status: row.status,
+            availability: row.availability || 'offline',
+            currentChatLoad: row.current_chat_load || 0,
+            activities: [],
             createdAt: row.created_at
           };
         });
+        // Fetch activity links for all staff in this tenant (best-effort;
+        // if the table/columns don't exist yet, return staff without links)
+        return client
+          .from('mken_staff_activities')
+          .select('staff_id, activity_id')
+          .eq('tenant_slug', slug)
+          .then(function (linkRes) {
+            if (linkRes.data) {
+              var linkMap = {};
+              linkRes.data.forEach(function (l) {
+                if (!linkMap[l.staff_id]) linkMap[l.staff_id] = [];
+                linkMap[l.staff_id].push(l.activity_id);
+              });
+              staffList.forEach(function (s) {
+                s.activities = linkMap[s.id] || [];
+              });
+            }
+            return staffList;
+          })
+          .catch(function () { return staffList; });
       });
   }
 
@@ -867,6 +921,78 @@
       .then(function (res) {
         if (res.error) throw res.error;
         return id;
+      });
+  }
+
+  /**
+   * Replace a staff member's activity links (full sync).
+   * Deletes all existing links for the staff, then inserts the new set.
+   * Resilient: if mken_staff_activities doesn't exist, resolves silently.
+   *
+   * @param {string} staffId
+   * @param {string} tenantSlug
+   * @param {string[]} activityIds - full list of activity IDs to link
+   */
+  function saveStaffActivities(staffId, tenantSlug, activityIds) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    var slug = tenantSlug || 'default';
+    var ids = activityIds || [];
+
+    // 1. Delete existing links for this staff
+    return client
+      .from('mken_staff_activities')
+      .delete()
+      .eq('staff_id', staffId)
+      .eq('tenant_slug', slug)
+      .then(function () {
+        if (ids.length === 0) return []; // nothing to insert
+        // 2. Insert new links
+        var rows = ids.map(function (actId) {
+          return {
+            id: 'sact_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+            staff_id: staffId,
+            tenant_slug: slug,
+            activity_id: actId
+          };
+        });
+        return client.from('mken_staff_activities').insert(rows);
+      })
+      .then(function (res) {
+        // Resilient: ignore schema errors (table not created yet)
+        return ids;
+      })
+      .catch(function () {
+        return ids; // best-effort
+      });
+  }
+
+  /**
+   * Update a staff member's availability status and heartbeat.
+   * Called by the staff portal presence mechanism.
+   * Resilient: ignores errors if columns don't exist.
+   *
+   * @param {string} staffId
+   * @param {string} availability - 'online' | 'busy' | 'offline'
+   */
+  function updateStaffAvailability(staffId, availability) {
+    var client = getClient();
+    if (!client) return Promise.reject(new Error('Supabase not configured'));
+
+    return client
+      .from('mken_staff')
+      .update({
+        availability: availability,
+        last_seen_at: new Date().toISOString()
+      })
+      .eq('id', staffId)
+      .then(function (res) {
+        if (res.error) throw res.error;
+        return availability;
+      })
+      .catch(function () {
+        return availability; // best-effort
       });
   }
 
@@ -1909,57 +2035,58 @@
       '',
       '-- 11. سياسات الأمان لجدول العملاء mken_saas_clients',
       'CREATE POLICY "Allow owner manage client" ON mken_saas_clients FOR ALL TO authenticated ',
-      '  USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);',
+      '  USING (auth.uid() = owner_id OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\'))) ',
+      '  WITH CHECK (auth.uid() = owner_id OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 12. سياسات الأمان لجدول المواعيد mken_appointments',
       'CREATE POLICY "Allow public insert on appointments" ON mken_appointments FOR INSERT WITH CHECK (true);',
       'CREATE POLICY "Allow owner manage appointments" ON mken_appointments FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_appointments.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_appointments.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 13. سياسات الأمان لجدول الطلبات mken_orders',
       'CREATE POLICY "Allow public insert on orders" ON mken_orders FOR INSERT WITH CHECK (true);',
       'CREATE POLICY "Allow owner manage orders" ON mken_orders FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_orders.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_orders.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 14. سياسات الأمان لجدول الموظفين mken_staff',
       'CREATE POLICY "Allow owner manage staff" ON mken_staff FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_staff.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_staff.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 15. سياسات الأمان للفواتير mken_saas_invoices',
-      'CREATE POLICY "Allow owner read invoices" ON mken_saas_invoices FOR SELECT TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_saas_invoices.tenant_slug LIMIT 1));',
+      'CREATE POLICY "Allow owner read invoices" ON mken_saas_invoices FOR ALL TO authenticated ',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_saas_invoices.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16. سياسات الأمان لمفاتيح الـ API',
       'CREATE POLICY "Allow owner manage api keys" ON mken_api_keys FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_api_keys.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_api_keys.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16b. سياسات الأمان لسجل رسائل الواتساب',
       'CREATE POLICY "Allow owner manage whatsapp logs" ON mken_whatsapp_logs FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_whatsapp_logs.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_whatsapp_logs.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16c. سياسات الأمان للمخزون والمنتجات',
       'CREATE POLICY "Allow owner manage inventory items" ON mken_inventory_items FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_items.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_items.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16d. سياسات الأمان لفواتير العملاء',
       'CREATE POLICY "Allow owner manage invoices" ON mken_invoices FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_invoices.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_invoices.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16e. سياسات الأمان لحركات المخزن',
       'CREATE POLICY "Allow owner manage inventory transactions" ON mken_inventory_transactions FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_transactions.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_inventory_transactions.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16f. سياسات الأمان لجدول الموردين',
       'CREATE POLICY "Allow owner manage vendors" ON mken_vendors FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_vendors.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_vendors.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16g. سياسات الأمان لفواتير المشتريات',
       'CREATE POLICY "Allow owner manage purchase invoices" ON mken_purchase_invoices FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_purchase_invoices.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_purchase_invoices.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 16h. سياسات الأمان لجدول العملاء',
       'CREATE POLICY "Allow owner manage customers" ON mken_customers FOR ALL TO authenticated ',
-      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_customers.tenant_slug LIMIT 1));',
+      '  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_customers.tenant_slug LIMIT 1) OR (auth.jwt() ->> \'email\' IN (\'admin@mkem.live\', \'admin@mken.live\')));',
       '',
       '-- 17. إنشاء منظر عام للمواعيد لا يعرض معلومات حساسة',
       'CREATE OR REPLACE VIEW mken_public_appointments AS ',
@@ -2161,6 +2288,8 @@
     fetchStaff: fetchStaff,
     saveStaff: saveStaff,
     deleteStaff: deleteStaff,
+    saveStaffActivities: saveStaffActivities,
+    updateStaffAvailability: updateStaffAvailability,
     fetchApiKeys: fetchApiKeys,
     saveApiKey: saveApiKey,
     deleteApiKey: deleteApiKey,
