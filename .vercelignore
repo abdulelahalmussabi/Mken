@@ -1,0 +1,29 @@
+# Files/directories excluded from Vercel deployments.
+# These are dev/test/data files not needed at runtime.
+
+# Scripts (build tools, tests, SQL migrations — not needed in production)
+scripts/
+
+# Local env files
+.env*
+!.env.example
+
+# Database schema dumps (kept in repo, not needed at runtime)
+db/
+
+# n8n workflow definitions (data only)
+data/n8n-*.json
+
+# Documentation and examples
+examples/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.log
+
+# Backup folder
+.backup-stash/
+
+# Misc local-only folders
+مجلد جديد/
