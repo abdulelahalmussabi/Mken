@@ -128,7 +128,8 @@ var KEYWORDS = {
     title: 'مغاسل وعناية السيارات',
     words: ['غسيل سيارة', 'غسيل سيارات', 'مغسلة', 'غسالة سيارات', 'تنظيف سيارة', 'كرف',
       'تلميع', 'شمع', 'واكس', 'wax', 'polish', 'لمعان', 'حماية طلاء', 'حجرة المحرك',
-      'تنظيف داخلي', 'تفصيل', 'detailing', 'تعطير', 'عجلات', 'دواليب', 'رنجات', 'غسيل متنقل']
+      'تنظيف داخلي', 'تفصيل', 'detailing', 'تعطير', 'عجلات', 'دواليب', 'رنجات', 'غسيل متنقل',
+      'غسيل موتور', 'غسيل داخلي', 'كرف سيارات', 'غسيلى', 'غسيلتي']
   },
 
   'healthcare': {
@@ -178,7 +179,14 @@ var CUE_WORDS = {
     'طابعة', 'راوتر', 'واي فاي', 'فيروس', 'كمبيوتري', 'جهازي', 'لابتوبي'],
   'maintenance': ['مكيف', 'سبليت', 'سباكة', 'تسرب', 'خزان', 'صراصير', 'غسالة', 'ثلاجة'],
   'legal': ['محامي', 'قانوني', 'محكمة', 'قضية', 'قضيه', 'طلاق', 'حضانة', 'نفقة', 'عقد',
-    'صياغة', 'احوال شخصية', 'الأحوال الشخصية', 'نزاع عمالي', 'فصل تعسفي']
+    'صياغة', 'احوال شخصية', 'الأحوال الشخصية', 'نزاع عمالي', 'فصل تعسفي'],
+  'car-care': ['كرف', 'مغسلة', 'غسيل سيارة', 'غسيل سيارات', 'تلميع سيارة', 'غسيلى'],
+  'cleaning': ['تنظيف منزل', 'نظافة منزل', 'تنظيف فلل', 'شركة نظافة', 'عاملة نظافة'],
+  'events': ['قاعة اعراس', 'قاعة إعراس', 'قاعة افراح', 'قاعة أفراح', 'تنسيق مناسبات', 'حفلة زفاف'],
+  'healthcare': ['ممرض', 'ممرضة', 'تمريض', 'رعاية منزلية', 'كبار السن', 'علاج طبيعي', 'تحاليل', 'تحليل دم'],
+  'barber-salon': ['حلاقة', 'حلاق', 'قص شعر', 'كوافيرة', 'كوفير', 'صبغ شعر', 'مانيكير', 'باديكير'],
+  'events': ['عرس', 'اعراس', 'أعراس', 'زواج', 'زفاف', 'ملكة', 'قاعة', 'قاعات', 'قاعة افراح', 'قاعة أفراح'],
+  'car-care': ['غسيل سيارة', 'غسيل سياره', 'كرف', 'مغسلة', 'غسيلى', 'تلميع سيارة', 'غسيل موتور']
 };
 
 // WEIGHTS — cue words count more than generic keywords.
@@ -289,6 +297,50 @@ function detectActivity(message, enabledActivities, previousActivityId) {
 }
 
 /**
+ * Detect whether a message asks for an activity that is NOT enabled for the
+ * tenant (out-of-scope request). This is the Strict Data Isolation gate:
+ * if the customer wants something we don't offer, we refuse politely and
+ * fast, without involving the AI model.
+ *
+ * @param {string} message       - the customer's message text
+ * @param {string[]|null} enabledActivities - whitelist of enabled activity IDs
+ * @returns {{activity_id: string, title: string, score: number}|null}
+ *          the detected OUT-OF-SCOPE activity, or null if in-scope/general.
+ */
+function detectOutOfScopeActivity(message, enabledActivities) {
+  if (!message) return null;
+  var messageNorm = normalize(message);
+
+  // If no whitelist given, we can't determine out-of-scope → allow everything
+  if (!enabledActivities || enabledActivities.length === 0) return null;
+
+  // Score EVERY activity in the catalog (including disabled ones)
+  var allIds = Object.keys(KEYWORDS);
+  var enabledSet = {};
+  enabledActivities.forEach(function (id) { enabledSet[id] = true; });
+
+  var scored = allIds.map(function (id) {
+    return {
+      activity_id: id,
+      title: KEYWORDS[id].title,
+      score: scoreActivity(id, messageNorm),
+      enabled: !!enabledSet[id]
+    };
+  }).filter(function (r) { return r.score > 0; })
+    .sort(function (a, b) { return b.score - a.score; });
+
+  if (scored.length === 0) return null;
+
+  var best = scored[0];
+  // Only flag as out-of-scope if the top match is strong AND disabled.
+  // Weak matches (score <= 2) are ambiguous → let the AI handle them.
+  if (!best.enabled && best.score >= 3) {
+    return { activity_id: best.activity_id, title: best.title, score: best.score };
+  }
+  return null;
+}
+
+/**
  * Build a focused knowledge context for ONE activity only (data isolation).
  * Returns service titles/descriptions scoped to the activity, plus any
  * tenant-enabled services that belong to it.
@@ -317,6 +369,7 @@ function buildActivityContext(activityId, config) {
 
 module.exports = {
   detectActivity: detectActivity,
+  detectOutOfScopeActivity: detectOutOfScopeActivity,
   buildActivityContext: buildActivityContext,
   normalize: normalize,
   KEYWORDS: KEYWORDS

@@ -152,7 +152,28 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
   prompt += '- لا تخترع أسعاراً أو خدمات غير موجودة في الكتالوج.\n';
   prompt += '- إن لم تعرف إجابة، اعتذر بأدب ووجّه العميل للحجز.\n';
   prompt += '- لا تذكر أنك ذكاء اصطناعي — أنت "مستشار خدمة العملاء" في ' + brandName + '.\n';
-  prompt += '- ذكّر باسم ' + brandName + ' عند الترحيب، لا تستخدم أسماء أخرى.\n\n';
+  prompt += '- ذكّر باسم ' + brandName + ' عند الترحيب، لا تستخدم أسماء أخرى.\n';
+
+  // CRITICAL: scope the agent to ONLY enabled activities/services.
+  // The agent must refuse anything outside this scope.
+  var enabledActivities = (config.enabledActivities || []);
+  var enabledServices = (config.enabled || []);
+  var router = null;
+  try { router = require('./activity-router'); } catch (e) {}
+
+  if (enabledActivities.length > 0 && router && router.KEYWORDS) {
+    prompt += '\n## الأنشطة المفعّلة لدينا (هذا ما نقدمه فقط)\n';
+    enabledActivities.forEach(function (id) {
+      var def = router.KEYWORDS[id];
+      if (def && def.title) prompt += '• ' + def.title + '\n';
+    });
+    prompt += '\n## قاعدة العزل الصارمة (مهم جداً)\n';
+    prompt += '- أجب العميل فقط عن الخدمات ضمن الأنشطة المفعّلة أعلاه.\n';
+    prompt += '- إن سأل العميل عن خدمة أو نشاط غير مفعّل لدينا (مثل صيانة المنازل، تنظيف، صالون، صحة، فنادق، إلخ)، ';
+    prompt += 'اعتذر بأدب ووضوح: "هذه الخدمة غير متوفرة لدينا حالياً" ثم اعرض عليه الأنشاط المتاحة فقط.\n';
+    prompt += '- ممنوع تماماً اقتراح أو وعد أو مناقشة أي خدمة خارج النطاق المفعّل.\n';
+    prompt += '- لا تحاول حل مشكلة خارج تخصصنا — وجّه العميل لما نقدمه.\n\n';
+  }
 
   prompt += '## معرفتك عن ' + brandName + '\n';
   prompt += tenantContext + '\n\n';

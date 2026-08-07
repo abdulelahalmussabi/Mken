@@ -372,6 +372,34 @@ module.exports = async function handler(req, res) {
         replyText = 'عذراً، لم نجد أي موعد نشط ومسجل برقم جوالك حالياً لإلغائه.';
       }
     } else {
+      // STRICT ISOLATION GATE: detect requests for activities NOT enabled for
+      // this tenant. If the customer asks for something we don't offer, refuse
+      // politely and locally — never send it to the AI model.
+      let outOfScope = null;
+      try {
+        outOfScope = activityRouter.detectOutOfScopeActivity(bodyText, enabledActivities);
+      } catch (e) {}
+
+      if (outOfScope) {
+        // Build a list of enabled activity titles to offer instead
+        let availableTitles = [];
+        try {
+          availableTitles = (enabledActivities || [])
+            .filter(function (id) { return activityRouter.KEYWORDS[id]; })
+            .map(function (id) { return activityRouter.KEYWORDS[id].title; });
+        } catch (e) {}
+
+        let scopeReply = 'عذراً، خدمة "' + outOfScope.title + '" غير متوفرة لدينا حالياً. 🙏\n\n';
+        if (availableTitles.length > 0) {
+          scopeReply += 'نقدم حالياً الخدمات التالية فقط:\n';
+          availableTitles.forEach(function (t) { scopeReply += '• ' + t + '\n'; });
+          scopeReply += '\nسعداء بخدمتك في أي منها! أيها يهمك؟ 😊\n';
+          scopeReply += '🌐 للحجز: https://' + siteDomain + '/book.html';
+        } else {
+          scopeReply += 'تكرم، تواصل معنا لنرشدك للخدمات المتاحة 💚';
+        }
+        replyText = scopeReply;
+      } else {
       // Everything else → AI Sales Agent
       // Pre-fetch the customer's appointments so the agent can answer accurately
       let appointmentsInfo = null;
@@ -423,6 +451,7 @@ module.exports = async function handler(req, res) {
           replyText = `مرحباً بك في مكّن لايف! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
         }
       }
+      } // end out-of-scope else (in-scope → hybrid engine)
     }
 
     // 5. Send Chatbot Response
