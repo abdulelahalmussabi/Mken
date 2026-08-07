@@ -347,8 +347,8 @@ module.exports = async function handler(req, res) {
           replyText = aiReply.trim();
         } else {
           // Safe fallback if Gemini is unavailable or failed.
-          // Always use "مكّن" brand name (not config brand which may be wrong for admin tenant).
-          replyText = `مرحباً بك في مكّن! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+          // Always use "مكّن لايف" brand name (not config brand which may be wrong for admin tenant).
+          replyText = `مرحباً بك في مكّن لايف! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
         }
       }
     }

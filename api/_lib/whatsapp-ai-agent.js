@@ -94,7 +94,7 @@ function buildTenantContext(config) {
 // ---------- System prompt ----------
 
 function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo, conversationHistory) {
-  const brandName = (config.brand && config.brand.name) || 'مكّن';
+  const brandName = (config.brand && config.brand.name) || 'مكّن لايف';
   const domain = resolveSiteDomain(config);
 
   let prompt = 'أنت مستشار خدمة عملاء ومبيعات محترف تعمل لصالح "' + brandName + '".';

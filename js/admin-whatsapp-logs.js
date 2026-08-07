@@ -146,7 +146,7 @@
         'subscription_expired': 'انتهاء اشتراك',
         'test': 'رسالة تجريبية',
         'inbound': 'رسالة واردة',
-        'chatbot_reply': 'رد آلي للبوت',
+        'chatbot_reply': 'أنا سعد مساعدك الذكي 😊',
         'crm_reply': 'رد مباشر (CRM)',
         'marketing_campaign': 'حملة تسويقية'
       }[log.eventType] || log.eventType || 'أخرى';
@@ -433,7 +433,7 @@
         }[msg.eventType] || msg.eventType;
         eventLabel = '<div style="font-size:0.7rem; color:var(--color-primary); font-weight:600; margin-bottom:4px;">📌 ' + esc(eventAr) + '</div>';
       } else if (msg.eventType === 'chatbot_reply') {
-        eventLabel = '<div style="font-size:0.7rem; color:#2e7d32; font-weight:600; margin-bottom:4px;">🤖 رد آلي للبوت</div>';
+        eventLabel = '<div style="font-size:0.7rem; color:#2e7d32; font-weight:600; margin-bottom:4px;">😊 أنا سعد مساعدك الذكي</div>';
       }
 
       var formattedTime = '';

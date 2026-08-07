@@ -19,10 +19,10 @@ function getDomain(config) {
 }
 
 function getBrandName(config) {
-  // Force 'مكّن' for the main platform; allow override for real tenants
-  const raw = (config.brand && config.brand.name) || 'مكّن';
-  // Fix wrong admin-tenant brand names
-  if (/لوحة التحكم|admin|dashboard/i.test(raw)) return 'مكّن';
+  // Force 'مكّن لايف' for the main platform; allow override for real tenants
+  const raw = (config.brand && config.brand.name) || 'مكّن لايف';
+  // Fix wrong admin-tenant brand names → use platform brand
+  if (/لوحة التحكم|admin|dashboard|^مكّن$/i.test(raw)) return 'مكّن لايف';
   return raw;
 }
 
@@ -150,7 +150,7 @@ const INTENTS = [
       const domain = getDomain(config);
       return 'وعليكم السلام ورحمة الله وبركاته! 🌟\n\n'
         + 'أهلاً وسهلاً بك في ' + name + ' — منصتك المتكاملة للنمو الرقمي! 🚀\n\n'
-        + 'أنا مستشارك هنا لمساعدتك. كيف أقدر أخدمك اليوم؟ 😊\n'
+        + 'أنا سعد، مساعدك الذكي 😊 جاهز أساعدك في:\n'
         + '• تصميم موقع أو متجر إلكتروني\n'
         + '• تحسين ظهورك في جوجل (SEO)\n'
         + '• نظام واتساب ذكي للرد على عملائك\n'
