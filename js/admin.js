@@ -839,6 +839,25 @@
       tier = 'unlimited';
     }
 
+    // The main platform tenants (admin, mken) and super-admin always get
+    // every feature regardless of subscription tier — they ARE the platform.
+    var slug = '';
+    try {
+      if (window.MkenServicesStore && typeof window.MkenServicesStore.getCurrentTenantSlug === 'function') {
+        slug = (window.MkenServicesStore.getCurrentTenantSlug() || '').toLowerCase();
+      }
+    } catch (e) {}
+    var isPlatformTenant = slug === 'admin' || slug === 'mken' || slug === 'default';
+    var isSuperAdmin = false;
+    try {
+      if (window.MkenAdminAuth && typeof window.MkenAdminAuth.isSuperAdmin === 'function') {
+        isSuperAdmin = !!window.MkenAdminAuth.isSuperAdmin();
+      }
+    } catch (e) {}
+    if (isPlatformTenant || isSuperAdmin) {
+      tier = 'unlimited';
+    }
+
     var hasWhatsApp = tier === 'growth' || tier === 'unlimited';
     var hasCommerce = tier === 'growth' || tier === 'unlimited';
     var hasInvoices = tier === 'unlimited';
