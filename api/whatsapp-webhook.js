@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
 const aiAgent = require('./_lib/whatsapp-ai-agent');
 const cannedReplies = require('./_lib/whatsapp-canned-replies');
+const activityRouter = require('./_lib/activity-router');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -227,32 +228,103 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ status: 'ignored', message: 'Invalid phone number format' });
     }
 
-    // Log Inbound Message to CRM Log History
-    await supabase.from('mken_whatsapp_logs').insert({
-      tenant_slug: tenantSlug,
-      phone: cleanPhoneStr,
-      body: bodyText,
-      provider: provider,
-      status: 'received',
-      event_type: 'inbound',
-      created_at: new Date().toISOString()
-    });
+    // === ACTIVITY DETECTION (Phase 1: keyword rules) ===
+    // Determine which business activity this conversation is about, so we can
+    // isolate context + memory per activity (Strict Data Isolation).
+    const enabledActivities = (config.enabledActivities || null);
+    let detectedActivity = null;
+    let previousActivityId = null;
+    try {
+      // Peek at the previous activity for this customer (continuity)
+      const { data: prevLog } = await supabase
+        .from('mken_whatsapp_logs')
+        .select('activity_id')
+        .eq('tenant_slug', tenantSlug)
+        .eq('phone', cleanPhoneStr)
+        .not('activity_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (prevLog && prevLog.activity_id) {
+        previousActivityId = prevLog.activity_id;
+      }
+    } catch (e) {
+      // activity_id column may not exist yet — non-fatal
+    }
 
-    // Fetch recent conversation history for this customer (memory)
+    try {
+      detectedActivity = activityRouter.detectActivity(bodyText, enabledActivities, previousActivityId);
+    } catch (e) {
+      // Non-fatal — treat as general conversation
+    }
+    const activityId = detectedActivity ? detectedActivity.activity_id : null;
+
+    // Log Inbound Message to CRM Log History (with activity_id when known)
+    try {
+      await supabase.from('mken_whatsapp_logs').insert({
+        tenant_slug: tenantSlug,
+        phone: cleanPhoneStr,
+        body: bodyText,
+        provider: provider,
+        status: 'received',
+        event_type: 'inbound',
+        activity_id: activityId,
+        created_at: new Date().toISOString()
+      });
+    } catch (e) {
+      // activity_id column may be missing on older DBs — retry without it
+      try {
+        await supabase.from('mken_whatsapp_logs').insert({
+          tenant_slug: tenantSlug,
+          phone: cleanPhoneStr,
+          body: bodyText,
+          provider: provider,
+          status: 'received',
+          event_type: 'inbound',
+          created_at: new Date().toISOString()
+        });
+      } catch (e2) {
+        // Logging is best-effort; never block the reply on it
+      }
+    }
+
+    // Fetch recent conversation history for this customer (memory),
+    // SCOPED to the same activity when one was detected (isolation).
     let conversationHistory = [];
     try {
-      const { data: recentLogs } = await supabase
+      let query = supabase
         .from('mken_whatsapp_logs')
-        .select('event_type, body, created_at')
+        .select('event_type, body, activity_id, created_at')
         .eq('tenant_slug', tenantSlug)
         .eq('phone', cleanPhoneStr)
         .order('created_at', { ascending: false })
-        .limit(6);
-      if (recentLogs && recentLogs.length > 0) {
-        // Reverse to chronological, and exclude the current inbound (just logged)
-        conversationHistory = recentLogs
+        .limit(8);
+
+      // If we have an activity, prefer messages from that activity; otherwise
+      // fall back to all recent messages.
+      if (activityId) {
+        query = query.eq('activity_id', activityId);
+      }
+
+      const { data: recentLogs, error } = await query;
+      if (!error && recentLogs && recentLogs.length > 0) {
+        // If activity-scoping returned too few, supplement with recent general
+        let logsToUse = recentLogs;
+        if (activityId && recentLogs.length < 3) {
+          const { data: extra } = await supabase
+            .from('mken_whatsapp_logs')
+            .select('event_type, body, activity_id, created_at')
+            .eq('tenant_slug', tenantSlug)
+            .eq('phone', cleanPhoneStr)
+            .order('created_at', { ascending: false })
+            .limit(8);
+          if (extra) {
+            logsToUse = extra;
+          }
+        }
+        conversationHistory = logsToUse
           .reverse()
-          .slice(0, -1) // drop the last one (the message we just inserted)
+          .slice(0, -1) // drop the just-inserted current message
           .map(r => ({
             role: r.event_type === 'inbound' ? 'customer' : 'agent',
             text: r.body
@@ -340,8 +412,8 @@ module.exports = async function handler(req, res) {
       if (cannedReply && cannedReply.trim()) {
         replyText = cannedReply.trim();
       } else {
-        // No canned match → AI agent
-        let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory);
+        // No canned match → AI agent (with activity-scoped context)
+        let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory, activityId);
 
         if (aiReply && aiReply.trim()) {
           replyText = aiReply.trim();

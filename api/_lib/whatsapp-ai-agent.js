@@ -93,7 +93,7 @@ function buildTenantContext(config) {
 
 // ---------- System prompt ----------
 
-function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo, conversationHistory) {
+function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo, conversationHistory, activityId) {
   const brandName = (config.brand && config.brand.name) || 'مكّن لايف';
   const domain = resolveSiteDomain(config);
 
@@ -156,6 +156,22 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
 
   prompt += '## معرفتك عن ' + brandName + '\n';
   prompt += tenantContext + '\n\n';
+
+  // Activity-scoped context (Strict Data Isolation): when an activity is
+  // detected, the agent must answer ONLY within that activity's domain and
+  // never reference services/knowledge from other activities.
+  if (activityId) {
+    var activityContext = '';
+    try {
+      const router = require('./activity-router');
+      activityContext = router.buildActivityContext(activityId, config);
+    } catch (e) {}
+    if (activityContext) {
+      prompt += activityContext + '\n\n';
+      prompt += 'مهم: هذه المحادثة ضمن نشاط محدد. أجب العميل فقط عن خدمات هذا النشاط، ';
+      prompt += 'ولا تذكر أو تقترح خدمات من أنشطة أخرى.\n\n';
+    }
+  }
 
   if (appointmentsInfo) {
     prompt += '## مواعيد هذا العميل\n';
@@ -383,11 +399,12 @@ function sanitizeReply(text) {
  * @param {string} customerPhone
  * @param {string|null} appointmentsInfo - pre-fetched appointment summary (optional)
  * @param {Array|null} conversationHistory - [{role:'customer'|'agent', text:'...'}, ...]
+ * @param {string|null} activityId - detected business activity for context isolation
  * @returns {Promise<string>} the reply text, or '' if generation failed
  */
-async function generateAIReply(userMessage, config, tenantSlug, customerPhone, appointmentsInfo, conversationHistory) {
+async function generateAIReply(userMessage, config, tenantSlug, customerPhone, appointmentsInfo, conversationHistory, activityId) {
   const tenantContext = buildTenantContext(config);
-  const systemPrompt = buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo || null, conversationHistory || []);
+  const systemPrompt = buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo || null, conversationHistory || [], activityId || null);
   const contents = buildContents(userMessage, conversationHistory || []);
 
   try {
