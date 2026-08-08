@@ -5,7 +5,7 @@
   'use strict';
 
   var store = window.MkenServicesStore;
-  if (!store) return;
+  if (!store) { console.error('[admin-staff] MkenServicesStore not loaded — aborting'); return; }
 
   var staffListContainer = document.getElementById('adminStaffList');
   var staffModal = document.getElementById('staffModal');
@@ -379,7 +379,8 @@
   }
 
   function bindEvents() {
-    if (addStaffBtn) addStaffBtn.addEventListener('click', function () { openModal(null); });
+    console.log('[admin-staff] bindEvents called, addStaffBtn:', !!addStaffBtn, 'staffModal:', !!staffModal);
+    if (addStaffBtn) addStaffBtn.addEventListener('click', function () { console.log('[admin-staff] addStaffBtn clicked'); openModal(null); });
     if (staffModalCancel) staffModalCancel.addEventListener('click', closeModal);
     if (staffForm) staffForm.addEventListener('submit', handleFormSubmit);
 
@@ -398,4 +399,5 @@
   };
 
   bindEvents();
+  console.log('[admin-staff] IIFE completed successfully, MkenAdminStaff exposed:', !!window.MkenAdminStaff);
 })();
