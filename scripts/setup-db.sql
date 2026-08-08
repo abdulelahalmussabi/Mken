@@ -505,3 +505,36 @@ ALTER TABLE mken_staff ADD COLUMN IF NOT EXISTS availability TEXT DEFAULT 'offli
 ALTER TABLE mken_staff ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 ALTER TABLE mken_staff ADD COLUMN IF NOT EXISTS current_chat_load INTEGER DEFAULT 0;
 
+-- =====================================================================
+-- Phase 3: conversation sessions + human handoff state machine
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS mken_conversation_sessions (
+    id TEXT PRIMARY KEY,
+    tenant_slug TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    activity_id TEXT,
+    status TEXT DEFAULT 'bot',       -- 'bot' | 'handoff' | 'human' | 'closed'
+    assigned_staff_id TEXT REFERENCES mken_staff(id) ON DELETE SET NULL,
+    summary TEXT,                    -- conversation summary passed to the human agent
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    closed_at TIMESTAMPTZ
+);
+
+-- One active session per (tenant, phone). Enforced via partial unique index.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_session_active_unique
+  ON mken_conversation_sessions (tenant_slug, phone)
+  WHERE status IN ('bot', 'handoff', 'human');
+
+-- Fast lookup for the active session of a customer.
+CREATE INDEX IF NOT EXISTS idx_session_lookup
+  ON mken_conversation_sessions (tenant_slug, phone, status);
+
+ALTER TABLE mken_conversation_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "Allow owner manage sessions"
+  ON mken_conversation_sessions FOR ALL TO authenticated
+  USING (auth.uid() = (SELECT owner_id FROM mken_saas_clients WHERE tenant_slug = mken_conversation_sessions.tenant_slug LIMIT 1)
+         OR (auth.jwt() ->> 'email' IN ('admin@mkem.live', 'admin@mken.live')));
+
+

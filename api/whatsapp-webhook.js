@@ -3,6 +3,7 @@ const sbEnv = require('./_lib/supabase-env');
 const aiAgent = require('./_lib/whatsapp-ai-agent');
 const cannedReplies = require('./_lib/whatsapp-canned-replies');
 const activityRouter = require('./_lib/activity-router');
+const handoffEngine = require('./_lib/handoff-engine');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -335,7 +336,24 @@ module.exports = async function handler(req, res) {
       // Non-fatal — agent works without memory
     }
 
-    // 4. Smart Reply Engine
+    // 4. Conversation Session State Machine (Phase 3: human handoff)
+    //    Load or create the active session for this customer.
+    let session = null;
+    try {
+      session = await handoffEngine.getOrCreateSession(supabase, tenantSlug, cleanPhoneStr, activityId);
+    } catch (e) {
+      // Non-fatal — if sessions table is missing, bot works normally
+    }
+
+    // If the session is already transferred to a human, the BOT DOES NOT REPLY.
+    // The message is logged (done above) and routed to the human agent only.
+    if (session && session.status === 'human') {
+      // Optionally notify the assigned staff (could be push notification later)
+      // For now, just acknowledge silently — the human handles it.
+      return res.status(200).json({ status: 'success', message: 'Routed to human agent', sessionId: session.id });
+    }
+
+    // 5. Smart Reply Engine
     //    Critical booking operations are handled locally (fast, reliable).
     //    Everything else goes to the AI sales agent (Gemini).
     const cleanedMsg = bodyText.toLowerCase().trim();
@@ -343,6 +361,21 @@ module.exports = async function handler(req, res) {
 
     const brandName = (config.brand && config.brand.name) || 'مكِّن';
     const siteDomain = aiAgent.resolveSiteDomain(config);
+
+    // Check for explicit human handoff request ("I want a human agent")
+    if (session && handoffEngine.isHandoffRequested(bodyText)) {
+      const result = await handoffEngine.attemptHandoff(supabase, session);
+      if (result.success && result.staff) {
+        replyText = handoffEngine.buildHandoffSuccessMessage(result.staff.name, brandName);
+      } else {
+        replyText = handoffEngine.buildHandoffFailMessage(result.reason);
+      }
+      // Skip the rest of the reply engine — handoff is the response
+      if (replyText) {
+        await sendServerWhatsAppReply(cleanPhoneStr, replyText, wa, supabase, tenantSlug);
+      }
+      return res.status(200).json({ status: 'success', message: 'Handoff processed', handoff: result.success });
+    }
 
     // Detect explicit cancel command (must run locally — it mutates the DB)
     const isCancel = (cleanedMsg.includes('إلغاء') || cleanedMsg.includes('الغاء') || cleanedMsg.includes('ألغ') || cleanedMsg.includes('الغ'))
