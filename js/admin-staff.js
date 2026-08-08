@@ -30,36 +30,86 @@
   }
 
   /**
-   * Build the activities checkboxes container, optionally pre-checking
-   * a set of activity IDs (for editing). Uses the activities catalog and
-   * filters to the tenant's enabled activities.
+   * Build the activities checkboxes container showing the tenant's ENABLED
+   * sub-services, grouped under their parent activities. Optionally
+   * pre-checks a set of activity IDs (for editing).
+   *
+   * We display sub-services (config.enabled[]) for precise selection, but
+   * each checkbox's value is the parent ACTIVITY_ID — because the staff
+   * linking schema keys on activity_id (used by the handoff engine).
+   * Checking any sub-service marks the staff as authorized for its parent
+   * activity.
    */
   function renderActivityCheckboxes(selectedIds) {
     var container = document.getElementById('staffActivitiesCheckboxes');
     if (!container) return;
 
-    var catalog = (window.MkenActivitiesCatalog || []);
+    var activitiesCatalog = (window.MkenActivitiesCatalog || []);
+    var servicesCatalog = (window.MkenServicesCatalog || []);
     var config = store.getConfig ? store.getConfig() : null;
-    var enabled = (config && config.enabledActivities) || null;
+    var enabledServices = (config && config.enabled) || null;
+    var enabledActivities = (config && config.enabledActivities) || null;
 
-    // Filter catalog to enabled activities for this tenant
-    var activities = enabled && enabled.length > 0
-      ? catalog.filter(function (a) { return enabled.indexOf(a.id) !== -1; })
-      : catalog;
+    // Determine which activities to show: those that have at least one
+    // enabled sub-service, OR (fallback) the enabledActivities whitelist.
+    var visibleActivityIds = [];
 
-    if (activities.length === 0) {
-      container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد أنشطة مفعّلة لهذا الحساب.</span>';
+    if (enabledServices && enabledServices.length > 0 && servicesCatalog.length > 0) {
+      // Map each enabled service → its parent activity
+      var seen = {};
+      enabledServices.forEach(function (sid) {
+        var svc = servicesCatalog.find(function (s) { return s.id === sid; });
+        if (svc && svc.activityId && !seen[svc.activityId]) {
+          seen[svc.activityId] = true;
+          visibleActivityIds.push(svc.activityId);
+        }
+      });
+    } else if (enabledActivities && enabledActivities.length > 0) {
+      // Fallback: show enabled parent activities directly
+      visibleActivityIds = enabledActivities.slice();
+    } else {
+      // Last resort: show all activities from catalog
+      visibleActivityIds = activitiesCatalog.map(function (a) { return a.id; });
+    }
+
+    if (visibleActivityIds.length === 0) {
+      container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد خدمات مفعّلة لهذا الحساب.</span>';
       return;
     }
 
-    container.innerHTML = activities.map(function (a) {
-      var checked = (selectedIds && selectedIds.indexOf(a.id) !== -1) ? ' checked' : '';
-      var id = 'staffAct_' + a.id;
-      return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">'
-        + '<input type="checkbox" id="' + id + '" value="' + esc(a.id) + '"' + checked + ' style="margin:0;">'
-        + '<span>' + esc(a.icon || '•') + ' ' + esc(a.title || a.id) + '</span>'
-        + '</label>';
-    }).join('');
+    // Build grouped HTML: for each visible activity, list its enabled services.
+    var html = '';
+    visibleActivityIds.forEach(function (actId) {
+      var actDef = activitiesCatalog.find(function (a) { return a.id === actId; });
+      var actTitle = actDef ? ((actDef.icon || '•') + ' ' + (actDef.shortTitle || actDef.title || actId)) : actId;
+      var isChecked = (selectedIds && selectedIds.indexOf(actId) !== -1);
+
+      // Find enabled sub-services belonging to this activity
+      var subServices = servicesCatalog.filter(function (s) {
+        return s.activityId === actId && (!enabledServices || enabledServices.indexOf(s.id) !== -1);
+      });
+
+      // Activity header (acts as a checkbox for the whole activity)
+      html += '<div style="margin-bottom:8px;padding:6px 8px;background:rgba(0,0,0,0.04);border-radius:6px;">';
+      html += '<label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:'
+        + (subServices.length > 0 ? '4px' : '0') + ';">';
+      html += '<input type="checkbox" id="staffAct_' + esc(actId) + '" value="' + esc(actId) + '"'
+        + (isChecked ? ' checked' : '') + ' style="margin:0;">';
+      html += '<span>' + esc(actTitle) + '</span>';
+      html += '</label>';
+
+      // Sub-services as read-only hints (visual clarity, value still = activity id)
+      if (subServices.length > 0) {
+        html += '<div style="padding-right:22px;font-size:11px;color:#666;line-height:1.7;">';
+        html += subServices.map(function (s) {
+          return esc(s.icon || '▪') + ' ' + esc(s.title || s.id);
+        }).join('، ');
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+
+    container.innerHTML = html;
   }
 
   /** Read the checked activity IDs from the checkboxes container. */
@@ -67,7 +117,13 @@
     var container = document.getElementById('staffActivitiesCheckboxes');
     if (!container) return [];
     var boxes = container.querySelectorAll('input[type="checkbox"]:checked');
-    return Array.prototype.map.call(boxes, function (b) { return b.value; });
+    // Deduplicate (each checkbox value is an activity_id)
+    var seen = {};
+    var result = [];
+    Array.prototype.forEach.call(boxes, function (b) {
+      if (!seen[b.value]) { seen[b.value] = true; result.push(b.value); }
+    });
+    return result;
   }
 
   function loadStaff() {
