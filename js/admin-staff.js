@@ -46,7 +46,10 @@
 
     var activitiesCatalog = (window.MkenActivitiesCatalog || []);
     var servicesCatalog = (window.MkenServicesCatalog || []);
-    var config = store.getConfig ? store.getConfig() : null;
+    var config = null;
+    try {
+      config = (store.loadConfig ? store.loadConfig() : (store.getConfig ? store.getConfig() : null));
+    } catch (e) {}
     var enabledServices = (config && config.enabled) || null;
     var enabledActivities = (config && config.enabledActivities) || null;
 
