@@ -41,8 +41,6 @@
     { "source": "/api/license/resume", "destination": "/api/license?action=resume" },
     { "source": "/api/license-checkout/config", "destination": "/api/license?action=checkout-config" },
     { "source": "/api/license-checkout/status", "destination": "/api/license?action=checkout-status" },
-    { "source": "/api/lite-sync/push", "destination": "/api/lite-sync?action=push" },
-    { "source": "/api/lite-sync/pull", "destination": "/api/lite-sync?action=pull" },
     { "source": "/", "has": [{ "type": "host", "value": "mken.live" }], "destination": "/landing.html" },
     { "source": "/", "has": [{ "type": "host", "value": "www.mken.live" }], "destination": "/landing.html" },
     { "source": "/admin", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/license-admin.html" },

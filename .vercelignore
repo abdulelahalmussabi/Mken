@@ -25,5 +25,8 @@ Thumbs.db
 # Backup folder
 .backup-stash/
 
+# Experimental/scaffold API files moved out of api/ (would exceed function limit)
+_experimental-api/
+
 # Misc local-only folders
 مجلد جديد/
