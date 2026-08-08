@@ -78,14 +78,14 @@
       enabledActivities = store.DEFAULT_CONFIG.enabledActivities.slice();
     }
 
-    if (visibleActivityIds.length === 0) {
+    if (enabledActivities.length === 0) {
       container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد خدمات مفعّلة لهذا الحساب.</span>';
       return;
     }
 
     // Build grouped HTML: for each visible activity, list its enabled services.
     var html = '';
-    visibleActivityIds.forEach(function (actId) {
+    enabledActivities.forEach(function (actId) {
       var actDef = activitiesCatalog.find(function (a) { return a.id === actId; });
       var actTitle = actDef ? ((actDef.icon || '•') + ' ' + (actDef.shortTitle || actDef.title || actId)) : actId;
       var isChecked = (selectedIds && selectedIds.indexOf(actId) !== -1);
