@@ -50,30 +50,12 @@
     try {
       config = (store.loadConfig ? store.loadConfig() : (store.getConfig ? store.getConfig() : null));
     } catch (e) {}
-    var enabledServices = (config && config.enabled) || null;
-    var enabledActivities = (config && config.enabledActivities) || null;
+    var enabledServices = (config && config.enabled) || [];
+    var enabledActivities = (config && config.enabledActivities) || [];
 
-    // Determine which activities to show: those that have at least one
-    // enabled sub-service, OR (fallback) the enabledActivities whitelist.
-    var visibleActivityIds = [];
-
-    if (enabledServices && enabledServices.length > 0 && servicesCatalog.length > 0) {
-      // Map each enabled service → its parent activity
-      var seen = {};
-      enabledServices.forEach(function (sid) {
-        var svc = servicesCatalog.find(function (s) { return s.id === sid; });
-        if (svc && svc.activityId && !seen[svc.activityId]) {
-          seen[svc.activityId] = true;
-          visibleActivityIds.push(svc.activityId);
-        }
-      });
-    } else if (enabledActivities && enabledActivities.length > 0) {
-      // Fallback: show enabled parent activities directly
-      visibleActivityIds = enabledActivities.slice();
-    } else {
-      // Last resort: show all activities from catalog
-      visibleActivityIds = activitiesCatalog.map(function (a) { return a.id; });
-    }
+    // Show ONLY the tenant's enabled activities (the authoritative whitelist).
+    // Do NOT fall back to showing all catalog activities — that was the bug.
+    var visibleActivityIds = enabledActivities.slice();
 
     if (visibleActivityIds.length === 0) {
       container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد خدمات مفعّلة لهذا الحساب.</span>';
