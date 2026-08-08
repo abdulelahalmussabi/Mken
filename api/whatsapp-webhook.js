@@ -342,7 +342,7 @@ module.exports = async function handler(req, res) {
     try {
       session = await handoffEngine.getOrCreateSession(supabase, tenantSlug, cleanPhoneStr, activityId);
     } catch (e) {
-      // Non-fatal — if sessions table is missing, bot works normally
+      console.warn('SESSION_DIAG: getOrCreateSession failed:', e.message);
     }
 
     // If the session is already transferred to a human, the BOT DOES NOT REPLY.
@@ -363,18 +363,34 @@ module.exports = async function handler(req, res) {
     const siteDomain = aiAgent.resolveSiteDomain(config);
 
     // Check for explicit human handoff request ("I want a human agent")
-    if (session && handoffEngine.isHandoffRequested(bodyText)) {
-      const result = await handoffEngine.attemptHandoff(supabase, session);
-      if (result.success && result.staff) {
-        replyText = handoffEngine.buildHandoffSuccessMessage(result.staff.name, brandName);
+    const wantsHuman = handoffEngine.isHandoffRequested(bodyText);
+    console.log('HANDOFF_DIAG: wantsHuman=' + wantsHuman + ' hasSession=' + !!session + ' activityId=' + activityId);
+    if (wantsHuman) {
+      // Ensure we have a session even if getOrCreateSession failed earlier
+      if (!session) {
+        try {
+          session = await handoffEngine.getOrCreateSession(supabase, tenantSlug, cleanPhoneStr, activityId);
+        } catch (e) {
+          console.warn('HANDOFF_DIAG: session creation retry failed:', e.message);
+        }
+      }
+      if (session) {
+        const result = await handoffEngine.attemptHandoff(supabase, session);
+        console.log('HANDOFF_DIAG: result=', JSON.stringify({ success: result.success, reason: result.reason, staffName: result.staff ? result.staff.name : null }));
+        if (result.success && result.staff) {
+          replyText = handoffEngine.buildHandoffSuccessMessage(result.staff.name, brandName);
+        } else {
+          replyText = handoffEngine.buildHandoffFailMessage(result.reason);
+        }
       } else {
-        replyText = handoffEngine.buildHandoffFailMessage(result.reason);
+        // No session table — respond with graceful fallback
+        replyText = handoffEngine.buildHandoffFailMessage('no_session_table');
       }
       // Skip the rest of the reply engine — handoff is the response
       if (replyText) {
         await sendServerWhatsAppReply(cleanPhoneStr, replyText, wa, supabase, tenantSlug);
       }
-      return res.status(200).json({ status: 'success', message: 'Handoff processed', handoff: result.success });
+      return res.status(200).json({ status: 'success', message: 'Handoff processed', handoff: !!(session) });
     }
 
     // Detect explicit cancel command (must run locally — it mutates the DB)

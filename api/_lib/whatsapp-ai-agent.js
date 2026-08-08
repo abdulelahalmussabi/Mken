@@ -33,8 +33,14 @@ function buildTenantContext(config) {
   const brand = config.brand || {};
   const domain = resolveSiteDomain(config);
 
+  // Fix wrong admin-tenant brand names (same logic as buildSystemPrompt)
+  var displayName = brand.name || 'مكّن لايف';
+  if (/لوحة التحكم|admin|dashboard|تحكم عامة/i.test(displayName)) {
+    displayName = 'مكّن لايف';
+  }
+
   lines.push('### معلومات المنشأة');
-  if (brand.name) lines.push('- الاسم: ' + brand.name);
+  lines.push('- الاسم: ' + displayName);
   if (brand.tagline) lines.push('- الوصف: ' + brand.tagline);
   if (config.phone) lines.push('- رقم التواصل: ' + config.phone);
   if (config.serviceArea) {
@@ -94,7 +100,14 @@ function buildTenantContext(config) {
 // ---------- System prompt ----------
 
 function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInfo, conversationHistory, activityId) {
-  const brandName = (config.brand && config.brand.name) || 'مكّن لايف';
+  // Resolve brand name, fixing wrong admin-tenant names (same logic as
+  // canned-replies getBrandName). The admin tenant's config.brand.name is
+  // "لوحة التحكم العامة" which must never appear in customer-facing replies.
+  var rawBrand = (config.brand && config.brand.name) || 'مكّن لايف';
+  var brandName = rawBrand;
+  if (/لوحة التحكم|admin|dashboard|تحكم عامة/i.test(rawBrand)) {
+    brandName = 'مكّن لايف';
+  }
   const domain = resolveSiteDomain(config);
 
   let prompt = 'أنت مستشار خدمة عملاء ومبيعات محترف تعمل لصالح "' + brandName + '".';
