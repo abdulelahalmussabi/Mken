@@ -50,32 +50,32 @@
     try {
       config = (store.loadConfig ? store.loadConfig() : (store.getConfig ? store.getConfig() : null));
     } catch (e) {}
-    var enabledServices = (config && config.enabled) || [];
-    var enabledActivities = (config && config.enabledActivities) || [];
 
-    // DIAGNOSTIC (temporary): show the actual config values so we can see
-    // what loadConfig returns for this tenant.
-    console.log('[STAFF-DIAG] config keys:', config ? Object.keys(config).join(',') : 'NULL');
-    console.log('[STAFF-DIAG] enabledActivities:', JSON.stringify(enabledActivities));
-    console.log('[STAFF-DIAG] enabled (services):', JSON.stringify(enabledServices));
-    console.log('[STAFF-DIAG] activitiesCatalog length:', activitiesCatalog.length);
-    console.log('[STAFF-DIAG] servicesCatalog length:', servicesCatalog.length);
+    // Resolve enabled activities. The Supabase config for the admin tenant
+    // often lacks enabledActivities/enabled arrays, so we cascade:
+    //   1. config.enabledActivities (if populated)
+    //   2. derive from config.enabled sub-services
+    //   3. store.DEFAULT_CONFIG.enabledActivities (the platform defaults)
+    var enabledActivities = (config && config.enabledActivities && config.enabledActivities.length > 0)
+      ? config.enabledActivities.slice()
+      : [];
+    var enabledServices = (config && config.enabled && config.enabled.length > 0)
+      ? config.enabled.slice()
+      : (store.DEFAULT_CONFIG && store.DEFAULT_CONFIG.enabled) || [];
 
-    // Show ONLY the tenant's enabled activities. If enabledActivities is empty
-    // but enabled (services) is populated, derive activities from services.
-    var visibleActivityIds = [];
-    if (enabledActivities.length > 0) {
-      visibleActivityIds = enabledActivities.slice();
-    } else if (enabledServices.length > 0 && servicesCatalog.length > 0) {
-      // Derive parent activities from enabled sub-services
+    if (enabledActivities.length === 0 && enabledServices.length > 0 && servicesCatalog.length > 0) {
       var seen = {};
       enabledServices.forEach(function (sid) {
         var svc = servicesCatalog.find(function (s) { return s.id === sid; });
         if (svc && svc.activityId && !seen[svc.activityId]) {
           seen[svc.activityId] = true;
-          visibleActivityIds.push(svc.activityId);
+          enabledActivities.push(svc.activityId);
         }
       });
+    }
+
+    if (enabledActivities.length === 0 && store.DEFAULT_CONFIG && store.DEFAULT_CONFIG.enabledActivities) {
+      enabledActivities = store.DEFAULT_CONFIG.enabledActivities.slice();
     }
 
     if (visibleActivityIds.length === 0) {
