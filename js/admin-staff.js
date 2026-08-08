@@ -53,9 +53,30 @@
     var enabledServices = (config && config.enabled) || [];
     var enabledActivities = (config && config.enabledActivities) || [];
 
-    // Show ONLY the tenant's enabled activities (the authoritative whitelist).
-    // Do NOT fall back to showing all catalog activities — that was the bug.
-    var visibleActivityIds = enabledActivities.slice();
+    // DIAGNOSTIC (temporary): show the actual config values so we can see
+    // what loadConfig returns for this tenant.
+    console.log('[STAFF-DIAG] config keys:', config ? Object.keys(config).join(',') : 'NULL');
+    console.log('[STAFF-DIAG] enabledActivities:', JSON.stringify(enabledActivities));
+    console.log('[STAFF-DIAG] enabled (services):', JSON.stringify(enabledServices));
+    console.log('[STAFF-DIAG] activitiesCatalog length:', activitiesCatalog.length);
+    console.log('[STAFF-DIAG] servicesCatalog length:', servicesCatalog.length);
+
+    // Show ONLY the tenant's enabled activities. If enabledActivities is empty
+    // but enabled (services) is populated, derive activities from services.
+    var visibleActivityIds = [];
+    if (enabledActivities.length > 0) {
+      visibleActivityIds = enabledActivities.slice();
+    } else if (enabledServices.length > 0 && servicesCatalog.length > 0) {
+      // Derive parent activities from enabled sub-services
+      var seen = {};
+      enabledServices.forEach(function (sid) {
+        var svc = servicesCatalog.find(function (s) { return s.id === sid; });
+        if (svc && svc.activityId && !seen[svc.activityId]) {
+          seen[svc.activityId] = true;
+          visibleActivityIds.push(svc.activityId);
+        }
+      });
+    }
 
     if (visibleActivityIds.length === 0) {
       container.innerHTML = '<span class="admin-hint" style="font-size:12px;">لا توجد خدمات مفعّلة لهذا الحساب.</span>';
