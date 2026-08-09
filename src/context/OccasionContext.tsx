@@ -170,15 +170,18 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isMounted, setIsMounted] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsMounted(true);
-    try {
-      const saved = localStorage.getItem("mkn_occasion");
-      if (saved && SAUDI_OCCASIONS[saved as OccasionId]) {
-        setActiveOccasionState(saved as OccasionId);
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+      try {
+        const saved = localStorage.getItem("mkn_occasion");
+        if (saved && SAUDI_OCCASIONS[saved as OccasionId]) {
+          setActiveOccasionState(saved as OccasionId);
+        }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const setOccasion = (id: OccasionId) => {
