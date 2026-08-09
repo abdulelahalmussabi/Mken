@@ -11,6 +11,16 @@
       "source": "/dashboard/theme",
       "destination": "/dashboard/themes",
       "permanent": true
+    },
+    {
+      "source": "/book.html",
+      "destination": "/book",
+      "permanent": true
+    },
+    {
+      "source": "/almahrusa",
+      "destination": "/subscriber/almahrusa",
+      "permanent": true
     }
   ]
 }

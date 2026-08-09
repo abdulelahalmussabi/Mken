@@ -37,6 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebarLinks = [
     { name: "نظرة عامة", href: "/dashboard", icon: LayoutDashboard },
     { name: "طلبات المحلات", href: "/dashboard/requests", icon: Store },
+    { name: "موقع المشترك (مجموعة المحروسة) 🏢", href: "/subscriber/almahrusa", icon: Store },
+    { name: "صفحة حجز المواعيد 📅", href: "/book?tenant=almahrusa", icon: Palette },
     { name: "مركز الرسائل", href: "/dashboard/messages", icon: MessageSquare },
     { name: "ثيمات المناسبات 🇸🇦", href: "/dashboard/themes", icon: Palette },
     { name: "الملف الشخصي", href: "/dashboard/profile", icon: User },

@@ -13,6 +13,24 @@ const nextConfig: NextConfig = {
         destination: "/dashboard/themes",
         permanent: true,
       },
+      {
+        source: "/book.html",
+        destination: "/book",
+        permanent: true,
+      },
+      {
+        source: "/almahrusa",
+        destination: "/subscriber/almahrusa",
+        permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/book.html",
+        destination: "/book",
+      },
     ];
   },
 };
