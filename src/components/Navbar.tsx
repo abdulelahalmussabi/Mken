@@ -26,6 +26,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "الرئيسية", href: "/" },
     { name: "خدماتنا", href: "/#services" },
+    { name: "الثيمات والمناسبات 🇸🇦", href: "/themes" },
     { name: "لماذا مكّن؟", href: "/#features" },
     { name: "تواصل معنا", href: "/#contact" },
   ];

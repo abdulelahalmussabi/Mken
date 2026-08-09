@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import React, { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useOccasion, SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
