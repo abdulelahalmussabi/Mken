@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   async redirects() {
     return [
       {
@@ -21,6 +22,11 @@ const nextConfig: NextConfig = {
       {
         source: "/almahrusa",
         destination: "/subscriber/almahrusa",
+        permanent: true,
+      },
+      {
+        source: "/demo",
+        destination: "/subscriber/demo",
         permanent: true,
       },
     ];
