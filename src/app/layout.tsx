@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
+import { OccasionProvider } from "@/context/OccasionContext";
+import { OccasionBanner } from "@/components/occasions/OccasionBanner";
+import { OccasionParticleCanvas } from "@/components/occasions/OccasionParticleCanvas";
+import { OccasionShowcaseModal } from "@/components/occasions/OccasionShowcaseModal";
+import { OccasionFloatingButton } from "@/components/occasions/OccasionFloatingButton";
 import Toast from "@/components/Toast";
 
 const cairo = Cairo({
@@ -11,8 +16,8 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "مكّن | تصدر نتائج محركات البحث المحلية لمجالك في السعودية",
-  description: "المنصة الأولى المخصصة لأصحاب المحلات والأنشطة التجارية في المملكة العربية السعودية لتحسين الظهور في خرائط Google وجلب المزيد من الزبائن المحليين.",
+  title: "منصة مكّن | حزمة واجهات المناسبات السعودية وخدمات Local SEO",
+  description: "المنصة الأولى المخصصة لأصحاب المحلات والأنشطة التجارية في المملكة العربية السعودية لتحسين الظهور في خرائط Google بحزمة واجهات تفاعلية للمناسبات الوطنية والدينية.",
 };
 
 export default function RootLayout({
@@ -22,10 +27,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" dir="rtl" className={`${cairo.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans bg-[#090d16] text-slate-100 selection:bg-orange-500 selection:text-white">
+      <body className="min-h-full flex flex-col font-sans bg-theme-main text-slate-100 selection:bg-amber-500 selection:text-slate-950 transition-colors duration-500">
         <AppProvider>
-          {children}
-          <Toast />
+          <OccasionProvider>
+            <OccasionBanner />
+            <OccasionParticleCanvas />
+            {children}
+            <OccasionFloatingButton />
+            <OccasionShowcaseModal />
+            <Toast />
+          </OccasionProvider>
         </AppProvider>
       </body>
     </html>

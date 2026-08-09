@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   ChevronLeft,
+  Palette,
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -37,11 +38,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "نظرة عامة", href: "/dashboard", icon: LayoutDashboard },
     { name: "طلبات المحلات", href: "/dashboard/requests", icon: Store },
     { name: "مركز الرسائل", href: "/dashboard/messages", icon: MessageSquare },
+    { name: "ثيمات المناسبات 🇸🇦", href: "/dashboard/themes", icon: Palette },
     { name: "الملف الشخصي", href: "/dashboard/profile", icon: User },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-theme-main text-slate-100 font-sans transition-colors duration-500">
       <Navbar />
 
       {/* Main Container */}

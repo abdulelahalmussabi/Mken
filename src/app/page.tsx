@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import ServiceDetailModal from "@/components/ServiceDetailModal";
 import { ServiceItem } from "@/types/database";
 import { useApp } from "@/context/AppContext";
+import { useOccasion } from "@/context/OccasionContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,7 +28,9 @@ import {
   Sparkles,
   BarChart3,
   PhoneCall,
-  Clock,
+  Gift,
+  Copy,
+  Check,
 } from "lucide-react";
 
 // Services Data
@@ -91,7 +94,9 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 export default function HomePage() {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [submittingContact, setSubmittingContact] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
   const { addContactMessage } = useApp();
+  const { activeOccasion, occasionDetails, openModal, copyCoupon } = useOccasion();
 
   const {
     register,
@@ -114,28 +119,48 @@ export default function HomePage() {
     }
   };
 
+  const handleCopyCoupon = () => {
+    copyCoupon(occasionDetails.couponCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 3000);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-theme-main text-slate-100 font-sans transition-colors duration-500">
       <Navbar />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32 border-b border-slate-800/60">
         {/* Glowing Background Orbs */}
-        <div className="absolute top-1/4 right-10 w-96 h-96 bg-orange-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div
+          className="absolute top-1/4 right-10 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-30 transition-colors duration-500"
+          style={{ backgroundColor: occasionDetails.accentColor }}
+        />
         <div className="absolute bottom-10 left-10 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Right Hero Content */}
             <div className="lg:col-span-7 space-y-6 text-right">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-950/60 border border-orange-500/30 text-orange-300 text-xs font-bold shadow-lg shadow-orange-950/30">
-                <Sparkles className="w-4 h-4 text-orange-400" />
-                المنصة الأولى المخصصة للسوق السعودي 🇸🇦
+              {/* Occasion Active Pill Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold shadow-lg">
+                <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "8s" }} />
+                <span>
+                  {activeOccasion === "none"
+                    ? "المنصة الأولى المخصصة للسوق السعودي 🇸🇦"
+                    : `${occasionDetails.name} — ${occasionDetails.slogan}`}
+                </span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
                 اجعل محلك{" "}
-                <span className="bg-gradient-to-r from-orange-400 via-amber-400 to-orange-500 bg-clip-text text-transparent underline decoration-orange-500/40 decoration-wavy underline-offset-8">
+                <span
+                  className="bg-clip-text text-transparent underline underline-offset-8 decoration-wavy transition-colors duration-500"
+                  style={{
+                    backgroundImage: `linear-gradient(to right, ${occasionDetails.accentColor}, #fbbf24, ${occasionDetails.accentColor})`,
+                    textDecorationColor: occasionDetails.accentColor,
+                  }}
+                >
                   الخيار الأول
                 </span>{" "}
                 في منطقتك
@@ -145,100 +170,120 @@ export default function HomePage() {
                 نساعد أصحاب المحلات والمتاجر في المملكة العربية السعودية على تصدر خرائط Google ونتائج البحث المحلية، لجلب المزيد من اتصالات العملاء والزيارات المباشرة لفرعك يومياً.
               </p>
 
+              {/* Occasion Coupon Highlight Box */}
+              {activeOccasion !== "none" && (
+                <div className={`p-4 rounded-2xl border ${occasionDetails.badgeBg} flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-900/60 rounded-xl border border-white/20">
+                      <Gift className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-100">عرض {occasionDetails.shortName}</div>
+                      <div className="text-xs text-slate-300">{occasionDetails.discountText}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleCopyCoupon}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 rounded-xl text-xs font-bold text-amber-300 transition-colors"
+                    >
+                      <code>{occasionDetails.couponCode}</code>
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* CTAs */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link
-                  href="/auth"
-                  className="flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-[1.02] transition-all cursor-pointer text-center"
+                  href="/register"
+                  className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-slate-950 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 text-center"
+                  style={{ backgroundColor: occasionDetails.accentColor }}
                 >
-                  <span>قدم طلبك الآن مجاناً</span>
+                  <span>قدم طلب تحسين محلك الآن</span>
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
-                <a
-                  href="#services"
-                  className="flex items-center justify-center gap-2 px-7 py-4 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 font-bold text-base rounded-2xl transition-all text-center"
+
+                <button
+                  onClick={openModal}
+                  className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-2xl text-slate-200 text-sm font-bold transition-all"
                 >
-                  استكشف خدماتنا
-                </a>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>دراسة واجهات المناسبات 🇸🇦</span>
+                </button>
               </div>
 
-              {/* Feature Trust Badges */}
-              <div className="pt-6 grid grid-cols-3 gap-4 border-t border-slate-800/80">
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-white flex items-center gap-1">
-                    +300%
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-xs text-slate-400">زيادة اتصالات الخريطة</div>
+              {/* Trust Indicators */}
+              <div className="pt-4 flex items-center gap-6 text-xs text-slate-400">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>نتائج مضمونة 100%</span>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-white flex items-center gap-1">
-                    +50k
-                    <PhoneCall className="w-4 h-4 text-orange-400" />
-                  </div>
-                  <div className="text-xs text-slate-400">طلب عميل شهرياً</div>
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>تنفيذ خلال 48 ساعة</span>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-white flex items-center gap-1">
-                    100%
-                    <ShieldCheck className="w-4 h-4 text-sky-400" />
-                  </div>
-                  <div className="text-xs text-slate-400">ضمان النتائج والسلاسة</div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-sky-400" />
+                  <span>+500 محل سعودي</span>
                 </div>
               </div>
             </div>
 
-            {/* Left Interactive Mock Display */}
+            {/* Left Hero Interactive Card */}
             <div className="lg:col-span-5 relative">
-              <div className="relative p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="relative mx-auto max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-6">
+                {/* Mock Google Maps Card Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold">
-                      <MapPin className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                      <MapPin className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-100 text-sm">نتائج خرائط Google</h3>
-                      <p className="text-xs text-slate-400">الترتيب في حي العليا، الرياض</p>
+                      <h3 className="font-bold text-sm text-white">معاينة الظهور في الخريطة</h3>
+                      <p className="text-xs text-slate-400">الترتيب في نطاق الرياض/جدة</p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[11px] font-bold rounded-full">
+                  <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-extrabold">
                     #1 الترتيب الأول
                   </span>
                 </div>
 
-                {/* Simulated Maps Result Cards */}
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-950/40 to-slate-900 border border-orange-500/40 shadow-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-100 text-sm">متجرك التجاري (مُحسّن بواسطة مكّن)</span>
-                      <div className="flex items-center gap-1 text-xs font-bold text-amber-400">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        4.9 (148 تقييم)
-                      </div>
+                {/* Mock Search Result Item */}
+                <div className="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-base text-slate-100">مخبز وم محمصة الأجواد 🥐</h4>
+                      <p className="text-xs text-slate-400">شارع العليا العام • مفتوح الآن</p>
                     </div>
-                    <p className="text-xs text-slate-300">مخبز ومحمصة قهوة اختصاصية • مفتوح الآن</p>
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="px-2.5 py-1 bg-orange-500 text-white font-bold text-[10px] rounded-lg">
-                        الموقع الرئيسي
-                      </span>
-                      <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        زيادة 120 اتصال هذا الأسبوع
-                      </span>
+                    <div className="flex items-center gap-1 text-amber-400 font-bold text-xs bg-amber-400/10 px-2 py-1 rounded-lg">
+                      <Star className="w-3.5 h-3.5 fill-amber-400" />
+                      4.9 (240 تقييم)
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-slate-950/50 border border-slate-800/80 opacity-50 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-400 text-xs">منافس مجاور (غير مُحسّن)</span>
-                      <span className="text-xs text-slate-500">4.1 (12 تقييم)</span>
+                  <div className="text-xs text-slate-300 bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span>الظهور في كلمة: &quot;أفضل مخبز حساوي&quot;</span>
+                    <span className="text-emerald-400 font-bold">زائد 420% زيارات</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 text-center text-xs font-semibold">
+                    <div className="p-2 bg-slate-900 rounded-xl text-slate-300 border border-slate-800">
+                      <PhoneCall className="w-3.5 h-3.5 text-amber-400 mx-auto mb-1" />
+                      اتصال مباشر
+                    </div>
+                    <div className="p-2 bg-slate-900 rounded-xl text-slate-300 border border-slate-800">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
+                      الاتجاهات للفرع
                     </div>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-orange-400 shrink-0" />
-                  <span>لوحة تحكم خفيفة ومباشرة تسمح لك بمتابعة نتائج طلبك وتحديثات الفريق لحظة بلحظة.</span>
+                {/* Occasion Interactive Slogan Footer */}
+                <div className="pt-2 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>ثيم المناسبة النشط: <strong className="text-white">{occasionDetails.name}</strong></span>
                 </div>
               </div>
             </div>
@@ -247,238 +292,195 @@ export default function HomePage() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-20 bg-slate-950/80 border-b border-slate-800/60">
+      <section id="services" className="py-20 bg-slate-950/60 border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center max-w-3xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-orange-400 text-xs font-bold">
-              <Zap className="w-4 h-4" />
-              خدمات موجهة لرفع المبيعات
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-              خدمات سريعة لتصدر محركات البحث المحلية
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              <span>خدماتنا المتخصصة</span>
             </h2>
-            <p className="text-slate-400 text-base">
-              اختر الخدمة المناسبة لنشاطك التجاري وابدأ في استقبال الزبائن الجدد فوراً.
+            <h3 className="text-3xl sm:text-4xl font-extrabold text-white">
+              كل ما يحتاجه محلك لتصدر نتائج البحث والخرائط
+            </h3>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              نقدم حلولاً متكاملة ومصممة خصيصاً للتوافق مع خوارزميات Google المحلية والجمهور السعودي.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {SERVICES_DATA.map((srv) => (
+            {SERVICES_DATA.map((service) => (
               <div
-                key={srv.id}
-                className="group relative p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-orange-500/50 hover:bg-slate-900/90 transition-all duration-300 flex flex-col justify-between space-y-6 shadow-xl"
+                key={service.id}
+                className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600/30 to-amber-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform">
-                      {srv.iconName === "MapPin" && <MapPin className="w-6 h-6" />}
-                      {srv.iconName === "Search" && <Search className="w-6 h-6" />}
-                      {srv.iconName === "Star" && <Star className="w-6 h-6" />}
+                    <div
+                      className="w-12 h-12 rounded-2xl text-slate-950 flex items-center justify-center font-bold shadow-lg"
+                      style={{ backgroundColor: occasionDetails.accentColor }}
+                    >
+                      {service.iconName === "MapPin" && <MapPin className="w-6 h-6" />}
+                      {service.iconName === "Search" && <Search className="w-6 h-6" />}
+                      {service.iconName === "Star" && <Star className="w-6 h-6" />}
                     </div>
-                    {srv.badge && (
-                      <span className="px-3 py-1 bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold rounded-full">
-                        {srv.badge}
-                      </span>
-                    )}
+                    <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-semibold border border-slate-700">
+                      {service.badge}
+                    </span>
                   </div>
 
-                  <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors">
-                    {srv.title}
-                  </h3>
-
-                  <p className="text-slate-400 text-sm leading-relaxed">{srv.shortDesc}</p>
-
-                  <ul className="space-y-2 pt-2 border-t border-slate-800/80">
-                    {srv.features.slice(0, 3).map((feat, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-xs text-slate-300">
-                        <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                    {service.title}
+                  </h4>
+                  <p className="text-slate-400 text-sm leading-relaxed">{service.shortDesc}</p>
                 </div>
 
-                <div className="pt-4 flex items-center justify-between border-t border-slate-800/60">
-                  <button
-                    onClick={() => setSelectedService(srv)}
-                    className="text-xs font-bold text-orange-400 hover:text-orange-300 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>تفاصيل الخدمة</span>
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                  </button>
-
-                  <Link
-                    href="/auth"
-                    className="px-4 py-2 bg-orange-500/10 hover:bg-orange-500 hover:text-white text-orange-400 font-bold text-xs rounded-xl border border-orange-500/30 transition-all"
-                  >
-                    طلب الخدمة
-                  </Link>
-                </div>
+                <button
+                  onClick={() => setSelectedService(service)}
+                  className="w-full py-3 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                >
+                  <span>عرض تفاصيل الخدمة</span>
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-[#090d16] border-b border-slate-800/60">
+      {/* Why Choose MKN Section */}
+      <section id="features" className="py-20 border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          <div className="text-center max-w-3xl mx-auto space-y-4">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">لماذا منصة مكّن؟</h2>
-            <p className="text-slate-400 text-base">
-              صُممت المنصة خصيصاً لتناسب احتياجات السوق السعودي وتضمن لك تجربة سلسة وتواصل مباشر مع المنفذين.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold">
-                <Users className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-slate-100 text-base">فريق سعودي خبير</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                معرفة دقيقة بطبيعة الأحياء والمناطق في مدن المملكة وسلوك البحث المحلي للزبائن.
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6 text-right">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+                لماذا تختار منصة &quot;مكّن&quot; لإدارة محلك على الخريطة؟
+              </h2>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                نجمع بين الخبرة التقنية العميقة في SEO المحلي وفهم سلوك العميل في المملكة لتقديم نتائج سريعة وملموسة.
               </p>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">متوافق 100% مع السياسات المحلية والسعودية</h3>
+                    <p className="text-xs text-slate-400 mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                  <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
+                    <p className="text-xs text-slate-400 mt-1">إمكانية تفعيل واجهات احتفالية لم المحل في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                  <div className="p-2 bg-sky-500/20 text-sky-400 rounded-xl shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
+                    <p className="text-xs text-slate-400 mt-1">نظام تواصل متكامل يربط صاحب المحل بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <MessageSquare className="w-5 h-5" />
+            {/* Feature Image / Graphic */}
+            <div className="p-8 bg-slate-900/90 border border-slate-800 rounded-3xl space-y-6 shadow-2xl">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <h3 className="font-bold text-base text-white">إحصائيات التأثير المحقق</h3>
+                <span className="text-xs text-amber-400 font-bold">تقرير النمو 2026</span>
               </div>
-              <h3 className="font-bold text-slate-100 text-base">مراسلة مباشرة لكل طلب</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                نظام محادثة نصية خاص بكل طلب يتيح لك التواصل المباشر مع المسؤول ومتابعة المستجدات.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-1">
+                  <div className="text-3xl font-extrabold text-amber-400">+350%</div>
+                  <div className="text-xs text-slate-400">زيادة الاتصالات المباشرة</div>
+                </div>
+                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-1">
+                  <div className="text-3xl font-extrabold text-emerald-400">4.9 / 5</div>
+                  <div className="text-xs text-slate-400">متوسط رضا أصحاب المحلات</div>
+                </div>
               </div>
-              <h3 className="font-bold text-slate-100 text-base">أمان وخصوصية</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                بيانات محلك ومحادثاتك محمية بآلية RLS وقواعد أمان عالية عبر قاعدة بيانات Supabase.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
+              <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+                <span className="text-slate-300">سرعة بدء تنفيذ الطلب:</span>
+                <span className="text-emerald-400 font-bold">خلال 24 ساعة من التقديم</span>
               </div>
-              <h3 className="font-bold text-slate-100 text-base">سرعة وتحديث مستمر</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                متابعة دقيقة لحالة طلبك من (قيد الانتظار) إلى (قيد التنفيذ) حتى الاعتماد النهائي.
-              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Contact Form Section */}
-      <section id="contact" className="py-20 bg-slate-950 border-b border-slate-800/60">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl space-y-8">
-            <div className="text-center space-y-3">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-950/60 border border-orange-500/30 text-orange-300 text-xs font-bold">
-                <MessageSquare className="w-4 h-4 text-orange-400" />
-                تواصل مباشر
+      {/* Contact Section */}
+      <section id="contact" className="py-20 bg-slate-950/80">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-3">
+            <h2 className="text-3xl font-extrabold text-white">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
+            <p className="text-slate-400 text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300">الاسم الكامل</label>
+                <input
+                  {...register("name")}
+                  type="text"
+                  placeholder="عبدالرحمن الشمري"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                />
+                {errors.name && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name.message}</p>}
               </div>
-              <h2 className="text-3xl font-extrabold text-white">هل لديك استفسار قبل البدء؟</h2>
-              <p className="text-slate-400 text-sm max-w-md mx-auto">
-                اكتب رسالتك وسيتواصل معك فريق الاستشارات في مكّن خلال ساعات عمل قليلة.
-              </p>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300">البريد الإلكتروني</label>
+                <input
+                  {...register("email")}
+                  type="email"
+                  placeholder="name@company.sa"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                />
+                {errors.email && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email.message}</p>}
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit(onContactSubmit)} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label htmlFor="name" className="block text-xs font-bold text-slate-300 mb-1.5">
-                    الاسم الكامل <span className="text-orange-500">*</span>
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    placeholder="أدخل اسمك الكريم"
-                    {...register("name")}
-                    disabled={submittingContact}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
-                  />
-                  {errors.name && (
-                    <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-300">تفاصيل المحل أو الاستفسار</label>
+              <textarea
+                {...register("message")}
+                rows={4}
+                placeholder="أذكر اسم محلك ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+              />
+              {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
+            </div>
 
-                <div>
-                  <label htmlFor="email" className="block text-xs font-bold text-slate-300 mb-1.5">
-                    البريد الإلكتروني <span className="text-orange-500">*</span>
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    placeholder="name@domain.com"
-                    {...register("email")}
-                    disabled={submittingContact}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
-                  />
-                  {errors.email && (
-                    <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-xs font-bold text-slate-300 mb-1.5">
-                  الرسالة <span className="text-orange-500">*</span>
-                </label>
-                <textarea
-                  id="message"
-                  rows={4}
-                  placeholder="اكتب استفسارك أو تفاصيل نشاطك التجاري هنا..."
-                  {...register("message")}
-                  disabled={submittingContact}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm resize-none"
-                />
-                {errors.message && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {errors.message.message}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingContact}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-orange-500/20 disabled:opacity-50 cursor-pointer transition-all"
-              >
-                {submittingContact ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    جاري الإرسال...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    إرسال الرسالة
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+            <button
+              type="submit"
+              disabled={submittingContact}
+              className="w-full py-4 font-bold text-slate-950 rounded-xl shadow-xl transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
+              style={{ backgroundColor: occasionDetails.accentColor }}
+            >
+              {submittingContact ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <span>إرسال الرسالة للفريق</span>
+            </button>
+          </form>
         </div>
       </section>
 
       {/* Service Detail Modal */}
-      <ServiceDetailModal
-        service={selectedService}
-        onClose={() => setSelectedService(null)}
-      />
+      {selectedService && (
+        <ServiceDetailModal
+          service={selectedService}
+          onClose={() => setSelectedService(null)}
+        />
+      )}
 
       <Footer />
     </div>
