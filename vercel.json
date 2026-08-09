@@ -1,0 +1,16 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/dashboarc/:path*",
+      "destination": "/dashboard/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard/theme",
+      "destination": "/dashboard/themes",
+      "permanent": true
+    }
+  ]
+}
