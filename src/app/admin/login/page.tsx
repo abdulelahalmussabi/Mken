@@ -7,7 +7,7 @@ import { useAdmin } from "@/context/AdminContext";
 import { Shield, Eye, EyeOff, LogIn, ArrowRight } from "lucide-react";
 
 export default function AdminLoginPage() {
-  const { loginAdmin, isAdmin } = useAdmin();
+  const { loginAdmin, isAdmin, session } = useAdmin();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -16,12 +16,29 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Pre-fill client email if passed in URL query (e.g. /admin/login?client=almahrusa)
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const clientSlug = params.get("client");
+      if (clientSlug) {
+        if (clientSlug === "almahrusa") setEmail("almahrusa@mken.live");
+        else if (clientSlug === "demo") setEmail("demo@mken.live");
+        else setEmail(`${clientSlug}@mken.live`);
+      }
+    }
+  }, []);
+
   // Already logged in
   React.useEffect(() => {
     if (isAdmin) {
-      router.push("/admin");
+      if (session?.role === "client") {
+        router.push("/admin/client");
+      } else {
+        router.push("/admin");
+      }
     }
-  }, [isAdmin, router]);
+  }, [isAdmin, session, router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +48,8 @@ export default function AdminLoginPage() {
     setTimeout(() => {
       const result = loginAdmin(email.trim(), password);
       if (result.success) {
-        router.push("/admin");
+        const isSuper = email.trim().toLowerCase() === "admin@mken.live";
+        router.push(isSuper ? "/admin" : "/admin/client");
       } else {
         setError(result.message);
         setLoading(false);
