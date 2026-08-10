@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export type OccasionId =
   | "none"
@@ -160,22 +161,49 @@ interface OccasionContextType {
   closeModal: () => void;
   copyCoupon: (code: string) => void;
   isMounted: boolean;
+  isAdminControlled: boolean; // true if theme is set by admin
+  currentSlug: string | null;
 }
 
 const OccasionContext = createContext<OccasionContextType | undefined>(undefined);
 
 export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeOccasion, setActiveOccasionState] = useState<OccasionId>("national_day");
+  const pathname = usePathname();
+
+  const [userOccasion, setUserOccasionState] = useState<OccasionId>("national_day");
   const [showModal, setShowModal] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  // Read admin state from localStorage directly (to avoid circular imports)
+  const [adminGlobalTheme, setAdminGlobalTheme] = useState<OccasionId>("national_day");
+  const [adminClients, setAdminClients] = useState<Array<{ slug: string; theme: string }>>([]);
+
+  // Auto-detect current slug from pathname
+  const currentSlug = (() => {
+    const subscriberMatch = pathname?.match(/^\/subscriber\/([^/]+)/);
+    const storeMatch = pathname?.match(/^\/store\/([^/]+)/);
+    return subscriberMatch?.[1] || storeMatch?.[1] || null;
+  })();
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsMounted(true);
       try {
+        // Load user preference
         const saved = localStorage.getItem("mkn_occasion");
         if (saved && SAUDI_OCCASIONS[saved as OccasionId]) {
-          setActiveOccasionState(saved as OccasionId);
+          setUserOccasionState(saved as OccasionId);
+        }
+        // Load admin global theme
+        const adminTheme = localStorage.getItem("mkn_admin_global_theme") as OccasionId;
+        if (adminTheme && SAUDI_OCCASIONS[adminTheme]) {
+          setAdminGlobalTheme(adminTheme);
+        }
+        // Load admin client themes
+        const adminClientsData = localStorage.getItem("mkn_admin_clients");
+        if (adminClientsData) {
+          const parsed = JSON.parse(adminClientsData);
+          setAdminClients(parsed.map((c: { slug: string; theme: string }) => ({ slug: c.slug, theme: c.theme })));
         }
       } catch {
         // fallback
@@ -184,8 +212,49 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => clearTimeout(timer);
   }, []);
 
+  // Poll admin settings every 2s to reflect Super Admin changes in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const adminTheme = localStorage.getItem("mkn_admin_global_theme") as OccasionId;
+        if (adminTheme && SAUDI_OCCASIONS[adminTheme]) {
+          setAdminGlobalTheme(adminTheme);
+        }
+        const adminClientsData = localStorage.getItem("mkn_admin_clients");
+        if (adminClientsData) {
+          const parsed = JSON.parse(adminClientsData);
+          setAdminClients(parsed.map((c: { slug: string; theme: string }) => ({ slug: c.slug, theme: c.theme })));
+        }
+      } catch {
+        // ignore
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Determine active occasion with priority system:
+  // 1. Client-specific theme (if on subscriber/store page)
+  // 2. Admin global theme
+  // 3. User preference (localStorage)
+  const activeOccasion: OccasionId = (() => {
+    if (currentSlug) {
+      const clientData = adminClients.find((c) => c.slug === currentSlug);
+      if (clientData?.theme && SAUDI_OCCASIONS[clientData.theme as OccasionId]) {
+        return clientData.theme as OccasionId;
+      }
+    }
+    if (adminGlobalTheme && adminGlobalTheme !== "none") {
+      return adminGlobalTheme;
+    }
+    return userOccasion;
+  })();
+
+  const isAdminControlled =
+    (!!currentSlug && !!adminClients.find((c) => c.slug === currentSlug)?.theme) ||
+    (adminGlobalTheme !== "none" && !currentSlug);
+
   const setOccasion = (id: OccasionId) => {
-    setActiveOccasionState(id);
+    setUserOccasionState(id);
     try {
       localStorage.setItem("mkn_occasion", id);
     } catch {
@@ -230,6 +299,8 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         closeModal,
         copyCoupon,
         isMounted,
+        isAdminControlled,
+        currentSlug,
       }}
     >
       {children}

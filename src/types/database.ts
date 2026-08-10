@@ -44,3 +44,27 @@ export interface ServiceItem {
   iconName: 'MapPin' | 'Search' | 'Star' | 'BarChart3' | 'TrendingUp';
   badge?: string;
 }
+
+// Admin Types
+export type ClientType = 'hotel' | 'salon' | 'restaurant' | 'cafe' | 'other';
+
+export interface ClientRecord {
+  slug: string;
+  name: string;
+  tagline: string;
+  subtitle: string;
+  type: ClientType;
+  phone: string;
+  whatsapp: string;
+  email?: string;
+  location: string;
+  rating: string;
+  reviewsCount: string;
+  heroImage: string;
+  demoNotice: string;
+  adminEmail: string;
+  adminPassword: string;
+  theme: string; // OccasionId
+  active: boolean;
+  createdAt: string;
+}

@@ -4,6 +4,7 @@ import React, { useState, use } from "react";
 import Link from "next/link";
 import { useOccasion } from "@/context/OccasionContext";
 import { useApp } from "@/context/AppContext";
+import { useAdmin } from "@/context/AdminContext";
 import {
   Building2,
   Bed,
@@ -107,10 +108,15 @@ export default function SubscriberStorefrontPage({
   const resolvedParams = use(params);
   const slug = resolvedParams.slug?.toLowerCase() || "almahrusa";
 
-  const isSalon = slug === "demo" || slug === "salon" || slug === "barber";
-
   const { activeOccasion, occasionDetails, openModal } = useOccasion();
   const { showToast } = useApp();
+  const { clients } = useAdmin();
+
+  // Try to get client data from AdminContext (dynamic)
+  const adminClient = clients.find((c) => c.slug === slug);
+  const isSalon = adminClient
+    ? adminClient.type === "salon"
+    : slug === "demo" || slug === "salon" || slug === "barber";
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showAppBanner, setShowAppBanner] = useState<boolean>(true);
@@ -126,8 +132,23 @@ export default function SubscriberStorefrontPage({
 
   const currentServices = isSalon ? SALON_SERVICES : HOTEL_SERVICES;
 
-  // Store Metadata
-  const storeInfo = isSalon
+  // Store Metadata — dynamic from AdminContext, with hardcoded fallback
+  const storeInfo = adminClient
+    ? {
+        name: adminClient.name,
+        tagline: adminClient.tagline || "احجز وادخل بدون انتظار",
+        subtitle: adminClient.subtitle || "",
+        location: adminClient.location || "المملكة العربية السعودية",
+        phone: adminClient.phone || "0500000000",
+        whatsapp: adminClient.whatsapp || "966500000000",
+        rating: adminClient.rating || "4.9",
+        reviewsCount: adminClient.reviewsCount || "0 تقييم",
+        heroImage:
+          adminClient.heroImage ||
+          "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+        demoNotice: adminClient.demoNotice || `✨ عرض تجريبي — ${adminClient.name} على منصة مكّن`,
+      }
+    : isSalon
     ? {
         name: "صالون النخبة",
         tagline: "احجز وادخل بدون انتظار",
