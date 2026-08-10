@@ -129,6 +129,29 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  // Initial server sync
+  useEffect(() => {
+    fetch("/api/clients")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.clients && data.clients.length > 0) {
+          setClients((prev) => {
+            // Merge server clients with existing local clients
+            const merged = [...data.clients];
+            prev.forEach((localC) => {
+              if (!merged.some((m) => m.slug === localC.slug)) {
+                merged.push(localC);
+              }
+            });
+            return merged;
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback to local state if offline or API error
+      });
+  }, []);
+
   // Persist changes
   useEffect(() => {
     if (session) {
@@ -205,8 +228,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setClientTheme = useCallback(
     (slug: string, theme: OccasionId) => {
-      // Super admin can set any client's theme
-      // Client admin can only set their own
       const canEdit =
         session?.role === "super" ||
         (session?.role === "client" && session.clientSlug === slug);
@@ -215,6 +236,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setClients((prev) =>
         prev.map((c) => (c.slug === slug ? { ...c, theme } : c))
       );
+
+      // Persist to server API
+      fetch(`/api/clients/${slug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme }),
+      }).catch(() => {});
     },
     [session]
   );
@@ -223,10 +251,14 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addClient = useCallback(
     (client: ClientRecord) => {
       if (session?.role !== "super") return;
-      setClients((prev) => [
-        ...prev.filter((c) => c.slug !== client.slug),
-        { ...client, createdAt: new Date().toISOString() },
-      ]);
+      const newClient = { ...client, createdAt: new Date().toISOString() };
+      setClients((prev) => [...prev.filter((c) => c.slug !== client.slug), newClient]);
+
+      fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newClient),
+      }).catch(() => {});
     },
     [session]
   );
@@ -237,9 +269,17 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         session?.role === "super" ||
         (session?.role === "client" && session.clientSlug === slug);
       if (!canEdit) return;
+
       setClients((prev) =>
         prev.map((c) => (c.slug === slug ? { ...c, ...updates } : c))
       );
+
+      // Persist to server API
+      fetch(`/api/clients/${slug}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }).catch(() => {});
     },
     [session]
   );
