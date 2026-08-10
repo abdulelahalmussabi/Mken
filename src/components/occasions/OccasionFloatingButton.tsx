@@ -2,12 +2,14 @@
 
 import React from "react";
 import { useOccasion } from "@/context/OccasionContext";
+import { useAdmin } from "@/context/AdminContext";
 import { Palette, Sparkles } from "lucide-react";
 
 export const OccasionFloatingButton: React.FC = () => {
   const { occasionDetails, openModal, isMounted } = useOccasion();
+  const { isAdmin } = useAdmin();
 
-  if (!isMounted) return null;
+  if (!isMounted || !isAdmin) return null;
 
   return (
     <div className="fixed bottom-6 left-6 z-50 animate-bounce" style={{ animationDuration: "3s" }}>

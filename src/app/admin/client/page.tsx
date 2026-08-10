@@ -1,24 +1,50 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/AdminLayout";
 import { useAdmin } from "@/context/AdminContext";
+import { useApp } from "@/context/AppContext";
 import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
-import { Palette, Check, ExternalLink, Gift, Info, ShieldCheck } from "lucide-react";
+import {
+  Palette,
+  Check,
+  ExternalLink,
+  Gift,
+  Info,
+  ShieldCheck,
+  Building2,
+  Phone,
+  MessageCircle,
+  MapPin,
+  Save,
+  Tag,
+} from "lucide-react";
 
 const occasionsList = Object.values(SAUDI_OCCASIONS);
 
 export default function ClientAdminPage() {
-  const { session, clients, getClientTheme, setClientTheme, isSuperAdmin } = useAdmin();
+  const { session, clients, getClientTheme, setClientTheme, updateClient, isSuperAdmin } = useAdmin();
+  const { showToast } = useApp();
 
   // Get the client for this admin
   const myClient = clients.find((c) => c.slug === session?.clientSlug);
   const currentTheme = getClientTheme(session?.clientSlug || "") || "national_day";
   const currentOcc = SAUDI_OCCASIONS[currentTheme];
 
+  // Editable Form State
+  const [name, setName] = useState(myClient?.name || "");
+  const [tagline, setTagline] = useState(myClient?.tagline || "");
+  const [subtitle, setSubtitle] = useState(myClient?.subtitle || "");
+  const [phone, setPhone] = useState(myClient?.phone || "");
+  const [whatsapp, setWhatsapp] = useState(myClient?.whatsapp || "");
+  const [location, setLocation] = useState(myClient?.location || "");
+  const [couponCode, setCouponCode] = useState(myClient?.couponCode || currentOcc.couponCode);
+  const [discountText, setDiscountText] = useState(myClient?.discountText || currentOcc.discountText);
+  const [discountEnabled, setDiscountEnabled] = useState(myClient?.discountEnabled ?? true);
+  const [isSaving, setIsSaving] = useState(false);
+
   if (isSuperAdmin) {
-    // Super admin should be on /admin, not /admin/client
     return (
       <AdminLayout>
         <div className="text-center py-20 space-y-4">
@@ -45,14 +71,45 @@ export default function ClientAdminPage() {
     );
   }
 
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    setTimeout(() => {
+      updateClient(myClient.slug, {
+        name,
+        tagline,
+        subtitle,
+        phone,
+        whatsapp,
+        location,
+        couponCode,
+        discountText,
+        discountEnabled,
+      });
+      setIsSaving(false);
+      showToast("تم حفظ وتحديث بيانات وإعدادات العروض بنجاح ✨", "success");
+    }, 600);
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8 text-right">
         {/* Header */}
         <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-bold">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>لوحة تحكم: {myClient.name}</span>
+          <div className="flex items-center justify-between">
+            <Link
+              href={`/subscriber/${myClient.slug}`}
+              target="_blank"
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all"
+            >
+              <ExternalLink className="w-4 h-4" />
+              معاينة صفحة الزوار
+            </Link>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>لوحة تحكم المنشأة</span>
+            </div>
           </div>
           <h1 className="text-2xl font-extrabold text-white">{myClient.name}</h1>
           <p className="text-slate-400 text-xs">
@@ -60,35 +117,155 @@ export default function ClientAdminPage() {
             {" · "}
             المسار: <code className="text-slate-300 font-mono">/subscriber/{myClient.slug}</code>
           </p>
+        </div>
 
-          {/* Client Info */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-              <p className="text-[10px] text-slate-500">الثيم الحالي</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span
-                  className="w-3 h-3 rounded-full border border-white/20"
-                  style={{ backgroundColor: currentOcc?.accentColor }}
-                />
-                <p className="text-xs font-bold text-white">{currentOcc?.shortName}</p>
-              </div>
+        {/* Store Settings Form */}
+        <form onSubmit={handleSaveSettings} className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
+            <Building2 className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-extrabold text-white">إعدادات المنشأة وبيانات التواصل</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">اسم المنشأة التجاري *</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+              />
             </div>
-            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-              <p className="text-[10px] text-slate-500">نوع المنشأة</p>
-              <p className="text-xs font-bold text-white mt-1">{myClient.type}</p>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">العنوان الفرعي / السلوجان</label>
+              <input
+                type="text"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+              />
             </div>
-            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-              <p className="text-[10px] text-slate-500">التقييم</p>
-              <p className="text-xs font-bold text-white mt-1">⭐ {myClient.rating}</p>
+
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">الوصف التعريفي بالمنشأة</label>
+              <textarea
+                rows={2}
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300 flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                <span>رقم الهاتف المباشر</span>
+              </label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="05XXXXXXXX"
+                dir="ltr"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300 flex items-center gap-1">
+                <MessageCircle className="w-3.5 h-3.5 text-sky-400" />
+                <span>رقم الواتساب بالحجم الدولي</span>
+              </label>
+              <input
+                type="text"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="9665XXXXXXXX"
+                dir="ltr"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                <span>العنوان والموقع الجغرافي</span>
+              </label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="مثال: حي العليا - الرياض، المملكة العربية السعودية"
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+              />
             </div>
           </div>
-        </div>
+
+          {/* Coupon and Discount Management */}
+          <div className="pt-6 border-t border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-extrabold text-white">إدارة العروض وكوبونات الخصم</h3>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={discountEnabled}
+                  onChange={(e) => setDiscountEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-950"
+                />
+                <span>تفعيل شريط العرض والخصم في الصفحة</span>
+              </label>
+            </div>
+
+            {discountEnabled && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">كود الخصم المخصص</label>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="مثال: MAHRUSA20"
+                    dir="ltr"
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-amber-300 font-mono focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">نص الخصم / العرض</label>
+                  <input
+                    type="text"
+                    value={discountText}
+                    onChange={(e) => setDiscountText(e.target.value)}
+                    placeholder="مثال: خصم 20% حصري لمستخدمي المنصة"
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold text-sm rounded-xl shadow-xl transition-all flex items-center justify-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? "جاري الحفظ..." : "حفظ التغييرات والعروض"}</span>
+            </button>
+          </div>
+        </form>
 
         {/* Theme Selector */}
         <section id="theme" className="space-y-5">
           <div className="flex items-center gap-3">
             <Palette className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-extrabold text-white">اختر ثيم صفحتك</h2>
+            <h2 className="text-lg font-extrabold text-white">اختر ثيم صفحتك للمناسبات</h2>
           </div>
 
           <div className="p-4 rounded-2xl bg-blue-950/20 border border-blue-800/30 text-xs text-blue-300 flex items-start gap-2">
@@ -104,7 +281,11 @@ export default function ClientAdminPage() {
               return (
                 <button
                   key={occ.id}
-                  onClick={() => setClientTheme(myClient.slug, occ.id as OccasionId)}
+                  type="button"
+                  onClick={() => {
+                    setClientTheme(myClient.slug, occ.id as OccasionId);
+                    showToast(`تم تغيير الثيم إلى: ${occ.shortName}`, "success");
+                  }}
                   className={`p-5 rounded-3xl border text-right transition-all relative ${
                     isActive
                       ? "bg-slate-900 border-amber-500 shadow-xl ring-2 ring-amber-500/30"
@@ -133,29 +314,13 @@ export default function ClientAdminPage() {
                   <div className="flex items-center gap-1.5 text-[11px]">
                     <Gift className="w-3 h-3 text-amber-400" />
                     <span className="text-slate-500">كود الخصم:</span>
-                    <code className="font-mono font-bold text-amber-300">{occ.couponCode}</code>
+                    <code className="font-mono font-bold text-amber-300">{couponCode || occ.couponCode}</code>
                   </div>
                 </button>
               );
             })}
           </div>
         </section>
-
-        {/* Preview Link */}
-        <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-slate-200">معاينة صفحة العميل</p>
-            <p className="text-xs text-slate-400">شاهد كيف تبدو صفحتك للزوار بالثيم المختار</p>
-          </div>
-          <Link
-            href={`/subscriber/${myClient.slug}`}
-            target="_blank"
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-all hover:scale-105"
-          >
-            <ExternalLink className="w-4 h-4" />
-            فتح الصفحة
-          </Link>
-        </div>
       </div>
     </AdminLayout>
   );

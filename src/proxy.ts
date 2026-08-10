@@ -6,17 +6,27 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
 
-  // Handle subdomain mapping (e.g. demo.mken.live, almahrusa.mken.live)
+  // Extract subdomain if present (e.g. demo.mken.live, almahrusa.mken.live)
+  let subdomain: string | null = null;
   if (hostname.includes("mken.live")) {
-    const subdomain = hostname.split(".")[0]?.toLowerCase();
-
-    if (subdomain && subdomain !== "mken" && subdomain !== "www" && subdomain !== "admin") {
-      // If user accesses root of subdomain (e.g. demo.mken.live or almahrusa.mken.live)
-      if (url.pathname === "/") {
-        url.pathname = `/subscriber/${subdomain}`;
-        return NextResponse.rewrite(url);
-      }
+    const parts = hostname.split(".");
+    if (parts.length > 2 && parts[0] !== "www" && parts[0] !== "admin" && parts[0] !== "mken") {
+      subdomain = parts[0].toLowerCase();
     }
+  }
+
+  // Redirect /admin.html or /admin to /admin/login
+  if (url.pathname === "/admin.html" || url.pathname === "/admin") {
+    url.pathname = "/admin/login";
+    if (subdomain) {
+      url.searchParams.set("client", subdomain);
+    }
+    return NextResponse.redirect(url);
+  }
+
+  if (subdomain && url.pathname === "/") {
+    url.pathname = `/subscriber/${subdomain}`;
+    return NextResponse.rewrite(url);
   }
 
   // Handle /book.html

@@ -65,6 +65,9 @@ export interface ClientRecord {
   adminEmail: string;
   adminPassword: string;
   theme: string; // OccasionId
+  couponCode?: string;
+  discountText?: string;
+  discountEnabled?: boolean;
   active: boolean;
   createdAt: string;
 }

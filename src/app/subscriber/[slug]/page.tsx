@@ -146,7 +146,10 @@ export default function SubscriberStorefrontPage({
         heroImage:
           adminClient.heroImage ||
           "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-        demoNotice: adminClient.demoNotice || `✨ عرض تجريبي — ${adminClient.name} على منصة مكّن`,
+        demoNotice: adminClient.demoNotice || `✨ صفحة منشأة ${adminClient.name} المعتمدة`,
+        couponCode: adminClient.couponCode,
+        discountText: adminClient.discountText,
+        discountEnabled: adminClient.discountEnabled ?? true,
       }
     : isSalon
     ? {
@@ -157,9 +160,12 @@ export default function SubscriberStorefrontPage({
         phone: "0543530333",
         whatsapp: "966543530333",
         rating: "4.9",
-        reviewsCount: "512 تقييم موثق",
+        reviewsCount: "تقييمات موثقة",
         heroImage: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
-        demoNotice: "🚀 عرض تجريبي حي – مثال: صالون النخبة على مكّن. جرب 14 يوماً مجاناً",
+        demoNotice: "✨ صفحة منشأة صالون النخبة المعتمدة",
+        couponCode: undefined,
+        discountText: undefined,
+        discountEnabled: true,
       }
     : {
         name: "مجموعة المحروسة",
@@ -169,9 +175,12 @@ export default function SubscriberStorefrontPage({
         phone: "0551234567",
         whatsapp: "966551234567",
         rating: "4.9",
-        reviewsCount: "382 تقييم موثق",
+        reviewsCount: "تقييمات موثقة",
         heroImage: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-        demoNotice: "✨ عرض تجريبي حي – مثال: مجموعة المحروسة للشقق الفندقية على منصة مكّن",
+        demoNotice: "✨ صفحة منشأة مجموعة المحروسة للشقق الفندقية",
+        couponCode: undefined,
+        discountText: undefined,
+        discountEnabled: true,
       };
 
   const handleOpenBooking = (srv?: ServiceOption) => {
@@ -278,18 +287,20 @@ export default function SubscriberStorefrontPage({
       </header>
 
       {/* Festive Occasion Top Banner */}
-      <div
-        className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 transition-colors duration-500"
-        style={{
-          background: `linear-gradient(90deg, rgba(15,23,42,0.95) 0%, ${occasionDetails.accentColor}25 50%, rgba(15,23,42,0.95) 100%)`,
-        }}
-      >
-        <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
-        <span>عرض مناسبة {occasionDetails.shortName}: <strong>{occasionDetails.discountText}</strong></span>
-        <button onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
-          كود الخصم: <strong className="font-mono">{occasionDetails.couponCode}</strong> 🇸🇦
-        </button>
-      </div>
+      {storeInfo.discountEnabled !== false && (
+        <div
+          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 transition-colors duration-500"
+          style={{
+            background: `linear-gradient(90deg, rgba(15,23,42,0.95) 0%, ${occasionDetails.accentColor}25 50%, rgba(15,23,42,0.95) 100%)`,
+          }}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
+          <span>عرض مناسبة {occasionDetails.shortName}: <strong>{storeInfo.discountText || occasionDetails.discountText}</strong></span>
+          <button onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
+            كود الخصم: <strong className="font-mono">{storeInfo.couponCode || occasionDetails.couponCode}</strong> 🇸🇦
+          </button>
+        </div>
+      )}
 
       {/* Main Hero Section */}
       <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/60">
@@ -478,6 +489,81 @@ export default function SubscriberStorefrontPage({
           ))}
         </div>
       </section>
+
+      {/* Storefront Footer */}
+      <footer className="mt-auto bg-slate-950 border-t border-slate-800/80 pt-12 pb-8 text-right">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-slate-800/60">
+            {/* Store Info Column */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg text-white shadow-md"
+                  style={{ backgroundColor: occasionDetails.accentColor }}
+                >
+                  {isSalon ? "💈" : "🏢"}
+                </div>
+                <h3 className="font-extrabold text-lg text-slate-100">{storeInfo.name}</h3>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">{storeInfo.tagline}</p>
+              <p className="text-xs text-slate-500 leading-relaxed">{storeInfo.subtitle}</p>
+            </div>
+
+            {/* Quick Contact Column */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">تواصل معنا</h4>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>{storeInfo.location}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span dir="ltr">{storeInfo.phone}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-sky-400 shrink-0" />
+                  <a
+                    href={`https://wa.me/${storeInfo.whatsapp}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-emerald-400 transition"
+                  >
+                    محادثة واتساب مباشرة
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Admin & Management Link Column */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">إدارة المنشأة</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                مخصص لمدير المنشأة والموظفين للوصول إلى لوحة التحكّم وتغيير الثيم والإعدادات.
+              </p>
+              <Link
+                href={`/admin/login?client=${slug}`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 text-xs font-bold transition hover:border-amber-500/50 shadow-md"
+              >
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>تسجيل دخول الأدمن / الموظفين</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div>
+              جميع الحقوق محفوظة © 2026 {storeInfo.name}
+            </div>
+            <div className="flex items-center gap-1 text-[11px]">
+              <span>مشغّل بواسطة</span>
+              <Link href="/" className="text-slate-400 hover:text-white font-bold transition">
+                منصة مكّن 🇸🇦
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Floating App Install Banner */}
       {showAppBanner && (
