@@ -40,8 +40,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const clientAdminLinks = [
-    { name: "إعدادات العميل", href: "/admin/client", icon: LayoutDashboard },
-    { name: "تخصيص الثيم", href: "/admin/client#theme", icon: Palette },
+    { name: "إعدادات المنشأة", href: "/admin/client#settings", icon: LayoutDashboard },
+    { name: "تخصيص الثيم والعروض", href: "/admin/client#theme", icon: Palette },
+    { name: "إدارة الخدمات والأسعار", href: "/admin/client#services", icon: Settings },
+    { name: "طلبات الحجز والمواعيد", href: "/admin/client#bookings", icon: ShieldCheck },
+    { name: "اشتراك وباقات مكّن", href: "/admin/client#subscription", icon: Shield },
   ];
 
   const links = isSuperAdmin ? superAdminLinks : clientAdminLinks;

@@ -321,6 +321,141 @@ export default function ClientAdminPage() {
             })}
           </div>
         </section>
+
+        {/* Services & Accommodations Section */}
+        <section id="services" className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-sky-400" />
+              <h2 className="text-lg font-extrabold text-white">
+                {myClient.type === "hotel" ? "خيارات الإقامة والغرف المعروضة" : "إدارة الخدمات والأسعار"}
+              </h2>
+            </div>
+            <span className="text-xs text-slate-400 bg-slate-950 px-3 py-1 rounded-full border border-slate-800 font-medium">
+              نوع المنشأة: {myClient.type === "hotel" ? "شقق وفنادق 🏢" : "صالون وعناية 💈"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {myClient.type === "hotel" ? (
+              <>
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">قياسية 🛏️</span>
+                    <span className="text-xs font-extrabold text-white">250 ر.س / ليلة</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">غرفة قياسية (Standard)</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">سرير مزدوج، شاشة 55 بوصة ذكية، واي فاي سريع، خدمة الغرف 24/7</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-amber-500/40 space-y-3 relative">
+                  <div className="absolute top-3 left-3 text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">الأكثر طلباً</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">ديلوكس ✨</span>
+                    <span className="text-xs font-extrabold text-white">420 ر.س / ليلة</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">جناح ديلوكس (Deluxe Suite)</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">غرفة نوم + صالة جلوس، إطلالة بانورامية، آلة اسبريسو، موقف خاص</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">ملكي 🏰</span>
+                    <span className="text-xs font-extrabold text-white">680 ر.س / ليلة</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">جناح عائلي فاخر (Royal Family)</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">2 غرفة نوم + 2 حمام + مطبخ مجهز، منطقة ألعاب، خدمة تنظيف يومية</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">حلاقة 💈</span>
+                    <span className="text-xs font-extrabold text-white">70 ر.س</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">حلاقة شعر احترافية وتصفيف</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">قص وتحديد احترافي، غسيل واستشوار، منتجات عناية إيطالية</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">لحية 🧔</span>
+                    <span className="text-xs font-extrabold text-white">50 ر.س</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">عناية باللحية وتحديد بالبخار</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">تحديد بالبخار، زيوت ومقشرات ترطيب، منشفة حارة استرخائية</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">منزل VIP 🏠</span>
+                    <span className="text-xs font-extrabold text-white">150 ر.س</span>
+                  </div>
+                  <h3 className="font-extrabold text-sm text-slate-100">خدمة حلاقة وتجميل منزلية</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">حقيبة معقمة بالكامل، خدمة منزلية VIP بأحدث الأدوات</p>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* Incoming Bookings Section */}
+        <section id="bookings" className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-extrabold text-white">طلبات الحجز والمواعيد الواردة</h2>
+            </div>
+            <span className="text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full font-bold">
+              تصلك مباشرة على الواتساب المعتمد
+            </span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-2">
+            <p className="font-bold text-slate-200">📌 كيف تعمل طلبات الحجز؟</p>
+            <p className="leading-relaxed">
+              عندما ينقر الزائر على &quot;احجز وادخل بدون انتظار&quot; في صفحتك المعتمدة، يتم توجيهه مباشرة إلى محادثة الواتساب الخاصة بك ({myClient.whatsapp}) محملة بالبيانات الكاملة (الاسم، الجوال، الخدمة المختارة، وكود الخصم المطبق).
+            </p>
+          </div>
+        </section>
+
+        {/* Mken Subscription Services Overview */}
+        <section id="subscription" className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+              <Tag className="w-5 h-5 text-amber-400" />
+              <h2 className="text-lg font-extrabold text-white">خدمات واشتراكات منصة مكّن المفعلة</h2>
+            </div>
+            <span className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full font-bold">
+              اشتراك موثق ومفعل ✅
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-amber-400 text-xs font-bold">
+                <span>حزمة تحسين خرائط Google Local SEO</span>
+                <span>مُفعَّلة</span>
+              </div>
+              <p className="text-xs text-slate-300 font-bold">الظهور الجغرافي والكلمات المفتاحية</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                تهيئة بيانات النشاط التجاري (NAP Consistency)، استهداف كلمات البحث الأكثر ربحية لسكان مدينتك، وإدارة التقييمات.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-emerald-400 text-xs font-bold">
+                <span>حزمة واجهات المناسبات السعودية</span>
+                <span>مُفعَّلة</span>
+              </div>
+              <p className="text-xs text-slate-300 font-bold">اليوم الوطني، يوم التأسيس، يوم العلم والأعياد</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                واجهات تفاعلية تتغير بنقرة زر واحدة لتفعيل الثيم السعودي المناسب وإتاحة كوبونات الخصم للعملاء.
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
     </AdminLayout>
   );

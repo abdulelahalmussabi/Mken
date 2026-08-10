@@ -253,7 +253,7 @@ export default function SubscriberStorefrontPage({
               الرئيسية
             </a>
             <a href="#services" className="px-3.5 py-1.5 text-xs font-semibold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 transition">
-              خدمات الصالون / المتوفرة
+              {isSalon ? "خدمات الصالون / المتوفرة" : "خيارات الإقامة / المتوفرة"}
             </a>
             <Link href={`/book?tenant=${slug}`} className="px-3.5 py-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-full transition flex items-center gap-1">
               <CalendarCheck className="w-3.5 h-3.5" />
