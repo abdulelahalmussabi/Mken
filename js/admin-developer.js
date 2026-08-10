@@ -516,6 +516,7 @@
     var aiSection = document.getElementById('googleBusinessAiSection');
     if (aiSection) aiSection.hidden = false;
     populateAiServicesDropdown();
+    renderGbpAiPostPresets();
   }
 
   function updateReviewLinkDisplay(reviewUrl) {
@@ -890,6 +891,30 @@
     }
   }
 
+  function renderGbpAiPostPresets() {
+    var box = document.getElementById('gbpAiPostPresets');
+    var promptInput = document.getElementById('gbpAiPostPrompt');
+    if (!box || !window.MkenGbpPostPresets) return;
+    var cfg = store.loadConfig() || {};
+    var activityId = cfg.featuredActivity || ((cfg.enabledActivities || [])[0] || '');
+    var presets = window.MkenGbpPostPresets.getForActivity(activityId);
+    box.innerHTML = presets.map(function (p) {
+      return '<button type="button" class="btn btn--outline btn--sm gbp-preset-btn" data-preset="' +
+        String(p.id).replace(/"/g, '') + '">' + String(p.label) + '</button>';
+    }).join('');
+    box.querySelectorAll('.gbp-preset-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-preset');
+        var preset = presets.find(function (x) { return x.id === id; });
+        if (preset && promptInput) {
+          promptInput.value = preset.prompt;
+          promptInput.focus();
+          toast('تم تعبئة القالب — يمكنك التعديل ثم التوليد', 'success');
+        }
+      });
+    });
+  }
+
   function generateGbpAiPost() {
     var promptInput = document.getElementById('gbpAiPostPrompt');
     var select = document.getElementById('gbpAiPostServiceSelect');
@@ -905,10 +930,16 @@
     var tenantSlug = getGoogleBusinessTenantSlug();
     var brandName = getBrandName();
     var serviceName = select ? select.value : '';
+    var cfg = store.loadConfig() || {};
+    var act = cfg.featuredActivity ? store.getResolvedActivity(cfg.featuredActivity, cfg) : null;
+    var city = (cfg.serviceArea && cfg.serviceArea.city) || '';
+    var ctaHint = (act && act.booking && act.booking.type === 'quote-request')
+      ? 'طلب عرض سعر أو معاينة مجانية أو واتساب'
+      : 'الحجز أو الاتصال أو واتساب';
     
     if (generateBtn) {
       generateBtn.disabled = true;
-      generateBtn.textContent = 'جاري التوليد بالذكاء الاصطناعي... 🪄';
+      generateBtn.textContent = 'جاري التوليد بالذكاء الاصطناعي...';
     }
     if (resultBlock) resultBlock.hidden = true;
     
@@ -921,7 +952,10 @@
             tenant: tenantSlug,
             prompt: promptInput.value.trim(),
             businessName: brandName,
-            serviceName: serviceName
+            serviceName: serviceName,
+            city: city,
+            activityTitle: act && act.title ? act.title : '',
+            ctaHint: ctaHint
           })
         });
       })
@@ -935,7 +969,7 @@
       .finally(function () {
         if (generateBtn) {
           generateBtn.disabled = false;
-          generateBtn.textContent = '🪄 توليد منشور سيو محلي';
+          generateBtn.textContent = 'توليد منشور سيو محلي';
         }
       });
   }

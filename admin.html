@@ -1346,6 +1346,10 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
                 <!-- Panel 1: Post Generator -->
                 <div id="gbpAiPostPanel" class="gbp-ai-panel">
                   <div class="admin-field">
+                    <label>قوالب سريعة حسب نشاطك</label>
+                    <div id="gbpAiPostPresets" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
+                  </div>
+                  <div class="admin-field">
                     <label for="gbpAiPostServiceSelect">اختر الخدمة المستهدفة (اختياري)</label>
                     <select id="gbpAiPostServiceSelect" class="admin-input" style="margin-bottom: 8px;"></select>
                   </div>
@@ -2340,6 +2344,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
   <script src="js/content-templates/it-support.js"></script>
   <script src="js/content-templates/cleaning.js"></script>
   <script src="js/content-templates/renovation.js"></script>
+  <script src="js/content-templates/canopies-steel.js"></script>
   <script src="js/content-templates/security.js"></script>
   <script src="js/content-templates/training.js"></script>
   <script src="js/content-templates/barber-salon.js"></script>
@@ -2361,6 +2366,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
   <script src="js/content-templates/tailoring.js"></script>
   <script src="js/content-templates/bodybuilding.js"></script>
   <script src="js/content-templates/football.js"></script>
+  <script src="js/gbp-post-presets.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/content-resolver.js"></script>
   <script src="js/emails-catalog.js"></script>

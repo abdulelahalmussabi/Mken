@@ -42,6 +42,7 @@ window.MkenContentRegistry = {
   'it-support': function () { return window.MkenContentItSupport; },
   cleaning: function () { return window.MkenContentCleaning; },
   renovation: function () { return window.MkenContentRenovation; },
+  'canopies-steel': function () { return window.MkenContentCanopiesSteel; },
   security: function () { return window.MkenContentSecurity; },
   training: function () { return window.MkenContentTraining; },
   'barber-salon': function () { return window.MkenContentBarberSalon; },

@@ -441,11 +441,27 @@
     return typeof url === 'string' ? url.trim() : '';
   }
 
+  function isQuoteRequestActivity(act) {
+    return !!(act && act.booking && act.booking.type === 'quote-request');
+  }
+
+  function getQuoteRequestUrl(activityId) {
+    return 'quote.html?activity=' + encodeURIComponent(activityId || '');
+  }
+
   function getBookableActivities() {
     return getEnabledActivities().filter(function (act) {
+      if (isQuoteRequestActivity(act)) return false;
       if (getActivityBookingPortalUrl(act.id)) return false;
       var profile = window.MkenUiProfile && window.MkenUiProfile.get(act.uiProfile);
       if (!profile || !profile.showBooking) return false;
+      return getEnabledServicesByActivity(act.id).length > 0;
+    });
+  }
+
+  function getQuoteActivities() {
+    return getEnabledActivities().filter(function (act) {
+      if (!isQuoteRequestActivity(act)) return false;
       return getEnabledServicesByActivity(act.id).length > 0;
     });
   }
@@ -1305,6 +1321,9 @@
     serviceIsRemoteOnly: serviceIsRemoteOnly,
     getVenueNote: getVenueNote,
     getBookableActivities: getBookableActivities,
+    getQuoteActivities: getQuoteActivities,
+    isQuoteRequestActivity: isQuoteRequestActivity,
+    getQuoteRequestUrl: getQuoteRequestUrl,
     getOrderableActivities: getOrderableActivities,
     normalizeServiceArea: normalizeServiceArea,
     isAdminLoggedIn: isAdminLoggedIn,

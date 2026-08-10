@@ -36,6 +36,27 @@ const ACTIVITY_PRESETS = {
     activities: ['cleaning'],
     services: ['cleaning', 'office-cleaning', 'disinfection'],
   },
+  'canopies-steel': {
+    activities: ['canopies-steel'],
+    services: [
+      'canopies',
+      'fences-screens',
+      'hangars',
+      'pergolas',
+      'tents-shades',
+      'roof-tiles',
+      'annex-build',
+      'metalworks',
+    ],
+  },
+  renovation: {
+    activities: ['renovation'],
+    services: ['painting', 'carpentry', 'tiling', 'wallpaper', 'kitchen-cabinets'],
+  },
+  maintenance: {
+    activities: ['maintenance'],
+    services: ['ac', 'plumbing', 'electrical', 'general'],
+  },
 };
 
 function trialEndDate(from) {
@@ -55,6 +76,7 @@ function buildTrialTenantConfig(opts) {
   const services = preset.services;
   const featuredActivity = activities[0];
   const featured = services[0];
+  const isFieldQuote = opts.activityId === 'canopies-steel' || opts.activityId === 'renovation' || opts.activityId === 'maintenance';
 
   return {
     enabledActivities: activities,
@@ -62,17 +84,27 @@ function buildTrialTenantConfig(opts) {
     featuredActivity: featuredActivity,
     featured: featured,
     heroFocus: featured,
-    theme: 'slate',
+    theme: isFieldQuote ? 'slate' : 'slate',
     phone: opts.phone || '966500000000',
     brand: {
       name: opts.businessName || 'منشأتي',
-      tagline: 'مرحباً بك — موقعك جاهز للانطلاق',
+      tagline: opts.activityId === 'canopies-steel'
+        ? 'مظلات وسواتر وهناجر — معاينة وعرض سعر'
+        : 'مرحباً بك — موقعك جاهز للانطلاق',
       logo: '',
     },
     activities: {},
     services: {},
     booking: { enabled: true, mode: 'form', requirePayment: false },
-    serviceArea: { enabled: false, city: 'الرياض', radiusKm: 15 },
+    serviceArea: {
+      enabled: isFieldQuote,
+      displayOnHomepage: isFieldQuote,
+      city: 'جدة',
+      center: { lat: 21.485811, lng: 39.192505 },
+      radiusKm: isFieldQuote ? 80 : 15,
+      coverageNote: isFieldQuote ? 'جدة والمناطق المجاورة' : '',
+      showAsFullCity: true,
+    },
     push: { enabled: false },
     supabase: { enabled: false },
     saas: { baseDomain: 'mken.live', useSubdomains: true },

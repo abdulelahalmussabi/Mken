@@ -941,6 +941,22 @@
         window.location.replace(portalUrl);
         return;
       }
+      var requestedAct = store.getResolvedActivity(param, config);
+      if (store.isQuoteRequestActivity && store.isQuoteRequestActivity(requestedAct) && !calendarMode) {
+        window.location.replace(store.getQuoteRequestUrl(param));
+        return;
+      }
+    }
+
+    var featuredProbe = store.getResolvedActivity(config.featuredActivity, config);
+    if (
+      !param &&
+      store.isQuoteRequestActivity &&
+      store.isQuoteRequestActivity(featuredProbe) &&
+      !calendarMode
+    ) {
+      window.location.replace(store.getQuoteRequestUrl(config.featuredActivity));
+      return;
     }
 
     var bookable = store.getBookableActivities();

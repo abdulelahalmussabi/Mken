@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <script src="js/theme-early.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>طلب عرض سعر</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/platform.css">
+  <link rel="stylesheet" href="css/booking.css">
+  <link rel="stylesheet" href="css/pwa.css">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+</head>
+<body>
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="index.html" class="logo" aria-label="العودة للصفحة الرئيسية">
+        <span data-brand-logo data-size="48"></span>
+        <div class="logo__text">
+          <span class="logo__name" data-brand="name">اسم منشأتك</span>
+          <span class="logo__tagline" data-brand="tagline">وصف مختصر</span>
+        </div>
+      </a>
+      <nav class="nav" id="nav">
+        <a href="index.html#services">خدماتنا</a>
+        <a href="quote.html" class="nav__active" data-nav="quote">عرض سعر</a>
+        <a href="index.html#contact">تواصل</a>
+        <a href="admin.html">الإدارة</a>
+      </nav>
+      <a href="#" class="btn btn--primary header__cta" data-contact="whatsapp" target="_blank" rel="noopener">واتساب</a>
+      <button class="menu-toggle" id="menuToggle" aria-label="فتح القائمة" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="booking-page">
+    <div class="container">
+      <div class="booking-hero">
+        <h1 id="quoteHeroTitle">اطلب عرض سعر</h1>
+        <p id="quoteHeroDesc">أدخل تفاصيل المشروع — سنراجع الطلب ونرد عليك بعرض أولي عبر واتساب.</p>
+      </div>
+
+      <nav class="activity-nav booking-activity-nav container" id="quoteActivityNav" aria-label="الأنشطة" hidden></nav>
+
+      <div id="quoteDisabled" class="booking-card booking-disabled" hidden>
+        <h2>طلب عرض السعر غير متاح حالياً</h2>
+        <p>فعّل خدمات المقاولات من لوحة الإدارة أو تواصل معنا مباشرة.</p>
+        <a href="index.html#contact" class="btn btn--primary">تواصل معنا</a>
+      </div>
+
+      <div id="quoteApp" class="booking-card" hidden>
+        <form id="quoteForm" novalidate>
+          <div class="booking-panel">
+            <h2>١ — نوع الخدمة</h2>
+            <div class="booking-services" id="quoteServices"></div>
+          </div>
+
+          <div class="booking-panel" style="margin-top:1.25rem">
+            <h2>٢ — بيانات المشروع</h2>
+            <div class="booking-form quote-form-grid">
+              <div class="booking-field">
+                <label for="quoteName">الاسم *</label>
+                <input type="text" id="quoteName" name="name" required autocomplete="name" placeholder="اسمك الكامل">
+              </div>
+              <div class="booking-field">
+                <label for="quotePhone">الجوال *</label>
+                <input type="tel" id="quotePhone" name="phone" required dir="ltr" autocomplete="tel" placeholder="05xxxxxxxx">
+              </div>
+              <div class="booking-field">
+                <label for="quoteCity">المدينة / الحي *</label>
+                <input type="text" id="quoteCity" name="city" required placeholder="مثال: جدة — أبحر">
+              </div>
+              <div class="booking-field">
+                <label for="quoteArea">المساحة التقريبية</label>
+                <input type="text" id="quoteArea" name="area" placeholder="مثال: 6×4 متر أو 80 م²">
+              </div>
+              <div class="booking-field quote-field--full">
+                <label for="quoteAddress">عنوان الموقع</label>
+                <input type="text" id="quoteAddress" name="address" placeholder="حي، شارع، أقرب معلم">
+              </div>
+              <div class="booking-field quote-field--full">
+                <label for="quoteDetails">تفاصيل إضافية</label>
+                <textarea id="quoteDetails" name="details" rows="4" placeholder="الخامة المفضلة، اللون، ميزانية تقريبية، أو أي ملاحظات"></textarea>
+              </div>
+              <div class="booking-field quote-field--full">
+                <label for="quoteMedia">رابط صور / فيديو (اختياري)</label>
+                <input type="url" id="quoteMedia" name="media" dir="ltr" placeholder="https://...">
+              </div>
+            </div>
+            <div class="booking-actions" style="margin-top:1.25rem">
+              <button type="submit" class="btn btn--primary" id="quoteSubmit">إرسال عبر واتساب</button>
+              <a href="#" class="btn btn--outline" data-contact="whatsapp" target="_blank" rel="noopener">محادثة مباشرة</a>
+            </div>
+            <p class="admin-hint" style="margin-top:12px">بعد الإرسال تُفتح واتساب برسالة جاهزة فيها كل التفاصيل.</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/activities-catalog.js"></script>
+  <script src="js/services-catalog.js"></script>
+  <script src="js/content-templates/maintenance.js"></script>
+  <script src="js/content-templates/tech-digital.js"></script>
+  <script src="js/content-templates/it-support.js"></script>
+  <script src="js/content-templates/cleaning.js"></script>
+  <script src="js/content-templates/renovation.js"></script>
+  <script src="js/content-templates/canopies-steel.js"></script>
+  <script src="js/content-templates/security.js"></script>
+  <script src="js/content-templates/training.js"></script>
+  <script src="js/content-templates/barber-salon.js"></script>
+  <script src="js/content-templates/car-care.js"></script>
+  <script src="js/content-templates/healthcare.js"></script>
+  <script src="js/content-templates/spa-wellness.js"></script>
+  <script src="js/content-templates/fitness.js"></script>
+  <script src="js/content-templates/veterinary.js"></script>
+  <script src="js/content-templates/restaurant.js"></script>
+  <script src="js/content-templates/legal.js"></script>
+  <script src="js/content-templates/consulting.js"></script>
+  <script src="js/content-templates/photography.js"></script>
+  <script src="js/content-templates/tutoring.js"></script>
+  <script src="js/content-templates/hotels.js"></script>
+  <script src="js/content-templates/travel.js"></script>
+  <script src="js/content-templates/events.js"></script>
+  <script src="js/content-templates/commerce.js"></script>
+  <script src="js/content-templates/hockey.js"></script>
+  <script src="js/content-templates/tailoring.js"></script>
+  <script src="js/content-templates/bodybuilding.js"></script>
+  <script src="js/content-templates/football.js"></script>
+  <script src="js/ui-profiles/registry.js"></script>
+  <script src="js/social-catalog.js"></script>
+  <script src="js/themes-catalog.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-db.js"></script>
+  <script src="js/services-store.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/brand-logo.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/quote.js"></script>
+</body>
+</html>

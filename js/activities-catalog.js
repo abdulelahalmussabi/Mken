@@ -102,6 +102,26 @@ window.MkenActivitiesCatalog = [
     },
   },
   {
+    id: 'canopies-steel',
+    icon: '🏗️',
+    title: 'المظلات والسواتر والهناجر',
+    shortTitle: 'مظلات وهناجر',
+    tagline: 'مظلات · سواتر · هناجر · برجولات',
+    description: 'تصنيع وتركيب المظلات والسواتر والهناجر والبرجولات والخيام والقرميد والملاحق وأعمال الحدادة — خامات مستوردة وتنفيذ ميداني بجدة والمناطق المجاورة.',
+    uiProfile: 'field-service',
+    defaultTheme: 'slate',
+    serviceIds: [
+      'canopies', 'fences-screens', 'hangars', 'pergolas',
+      'tents-shades', 'roof-tiles', 'annex-build', 'metalworks',
+    ],
+    booking: {
+      type: 'quote-request',
+      requiresAddress: true,
+      slotDuration: 180,
+      ctaLabel: 'اطلب عرض سعر',
+    },
+  },
+  {
     id: 'security',
     icon: '🛡️',
     title: 'الأمن والمراقبة',

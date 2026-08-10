@@ -40,6 +40,14 @@
       : '';
     var orderUrl = 'order.html?activity=' + encodeURIComponent(activeActivityId) +
       '&service=' + encodeURIComponent(service.id);
+    var act = store.getResolvedActivity(activeActivityId, config);
+    var secondaryHref = (store.isQuoteRequestActivity && store.isQuoteRequestActivity(act))
+      ? (store.getQuoteRequestUrl(activeActivityId) + '&service=' + encodeURIComponent(service.id))
+      : ('book.html?activity=' + encodeURIComponent(activeActivityId) +
+        '&service=' + encodeURIComponent(service.id));
+    var secondaryLabel = (store.isQuoteRequestActivity && store.isQuoteRequestActivity(act))
+      ? 'عرض سعر'
+      : 'استشارة';
     var iconHtml = service.icon
       ? '<span class="service-card__emoji" aria-hidden="true">' + service.icon + '</span>'
       : renderServiceIcon(service.svg);
@@ -54,8 +62,7 @@
       '<ul class="service-card__list">' + featuresHtml + '</ul>' +
       '<footer class="service-card__footer">' +
       '<a href="' + orderUrl + '" class="btn btn--primary btn--sm service-card__cta">اطلب الخدمة</a>' +
-      '<a href="book.html?activity=' + encodeURIComponent(activeActivityId) +
-      '&service=' + encodeURIComponent(service.id) + '" class="btn btn--outline btn--sm">استشارة</a>' +
+      '<a href="' + secondaryHref + '" class="btn btn--outline btn--sm">' + secondaryLabel + '</a>' +
       '</footer>' +
       '</article>'
     );
@@ -204,6 +211,8 @@
       var globalBooking = config.booking && config.booking.enabled !== false;
       if (profile.id === 'order-based') {
         ctaBooking.href = 'order.html?activity=' + encodeURIComponent(activeActivityId);
+      } else if (store.isQuoteRequestActivity && store.isQuoteRequestActivity(act)) {
+        ctaBooking.href = store.getQuoteRequestUrl(activeActivityId);
       } else if (profile.showBooking && globalBooking) {
         ctaBooking.href = bookCfg.portalUrl || ('book.html?activity=' + encodeURIComponent(activeActivityId));
       } else {
@@ -492,10 +501,27 @@
 
     // Dynamic header links visibility based on features availability
     var hasBookable = store.getBookableActivities && store.getBookableActivities().length > 0;
+    var hasQuote = store.getQuoteActivities && store.getQuoteActivities().length > 0;
     var hasOrderable = store.getOrderableActivities && store.getOrderableActivities().length > 0;
-    
-    document.querySelectorAll('nav a[href="book.html"], .hero__actions a[id="heroBookingCta"]').forEach(function (el) {
+    var quoteActs = hasQuote ? store.getQuoteActivities() : [];
+    var quoteHref = quoteActs.length
+      ? store.getQuoteRequestUrl(quoteActs[0].id)
+      : 'quote.html';
+
+    document.querySelectorAll('nav a[href="book.html"]').forEach(function (el) {
       el.style.display = hasBookable ? '' : 'none';
+    });
+    document.querySelectorAll('nav a[data-nav="quote"], nav a[href="quote.html"], nav a[href^="quote.html"]').forEach(function (el) {
+      el.style.display = hasQuote ? '' : 'none';
+      if (hasQuote) {
+        el.href = quoteHref;
+        if (!el.dataset.labelLocked) el.textContent = 'عرض سعر';
+      }
+    });
+    document.querySelectorAll('.hero__actions a[id="heroBookingCta"]').forEach(function (el) {
+      var act = activities.find(function (a) { return a.id === activeActivityId; });
+      var showCta = hasBookable || hasQuote || (act && store.isQuoteRequestActivity && store.isQuoteRequestActivity(act));
+      el.style.display = showCta ? '' : 'none';
     });
     document.querySelectorAll('nav a[href="order.html"]').forEach(function (el) {
       el.style.display = hasOrderable ? '' : 'none';

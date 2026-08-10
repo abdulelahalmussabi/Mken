@@ -8,6 +8,7 @@ var SHELL = [
   './',
   './index.html',
   './book.html',
+  './quote.html',
   './order.html',
   './admin.html',
   './coaching.html',

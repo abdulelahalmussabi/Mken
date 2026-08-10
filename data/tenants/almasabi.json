@@ -1,0 +1,75 @@
+{
+  "brand": {
+    "name": "مؤسسة المصعبي للتجارة",
+    "tagline": "مظلات وسواتر وهناجر — جدة",
+    "logo": ""
+  },
+  "enabledActivities": ["canopies-steel"],
+  "enabled": [
+    "canopies",
+    "fences-screens",
+    "hangars",
+    "pergolas",
+    "tents-shades",
+    "roof-tiles",
+    "annex-build",
+    "metalworks"
+  ],
+  "featuredActivity": "canopies-steel",
+  "featured": "canopies",
+  "heroFocus": "canopies",
+  "theme": "slate",
+  "phone": "966545111130",
+  "social": {
+    "whatsapp": { "enabled": true, "value": "966545111130" },
+    "instagram": { "enabled": false, "value": "" },
+    "twitter": { "enabled": false, "value": "" },
+    "facebook": { "enabled": false, "value": "" },
+    "tiktok": { "enabled": true, "value": "" },
+    "linkedin": { "enabled": false, "value": "" }
+  },
+  "emails": {
+    "inquiries": { "enabled": false, "value": "" },
+    "sales": { "enabled": false, "value": "" },
+    "support": { "enabled": false, "value": "" }
+  },
+  "activities": {},
+  "services": {},
+  "booking": {
+    "enabled": true,
+    "slotDuration": 180,
+    "advanceDays": 14,
+    "workingDays": [0, 1, 2, 3, 4, 5, 6],
+    "workingHours": { "start": "08:00", "end": "22:00" },
+    "maxPerSlot": 3
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "جدة",
+    "center": { "lat": 21.485811, "lng": 39.192505 },
+    "radiusKm": 80,
+    "coverageNote": "جدة والمناطق والمحافظات المجاورة",
+    "showAsFullCity": true
+  },
+  "googleBusiness": {
+    "enabled": true,
+    "primaryCategory": "مقاول مظلات وسواتر",
+    "reviewUrl": "",
+    "locationName": "",
+    "notes": "اربط الحساب من لوحة الإدارة → المطوّر/Google Business ثم الصق رابط التقييم هنا"
+  },
+  "whatsappApi": {
+    "enabled": true,
+    "templates": {
+      "confirmation": "مرحباً {customerName}، استلمنا طلبك في {brand}. سنتواصل معك قريباً لتأكيد المعاينة أو عرض السعر.",
+      "reminder": "تذكير من {brand}: موعد المعاينة قريب. للاستفسار راسلنا على واتساب.",
+      "review_request": "شكراً لثقتكم بـ {brand}. تقييمكم على خرائط Google يساعدنا نقدم الأفضل: {googleReviewUrl}"
+    }
+  },
+  "saas": {
+    "baseDomain": "mken.live",
+    "useSubdomains": true
+  },
+  "updatedAt": "2026-08-10T00:00:00.000Z"
+}

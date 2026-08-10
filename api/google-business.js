@@ -589,21 +589,27 @@ module.exports = async function handler(req, res) {
       const auth = await authorizeGbpAiRequest(req, res, 'generate-post');
       if (!auth) return;
 
-      const { prompt, businessName, serviceName } = req.body || {};
+      const { prompt, businessName, serviceName, city, activityTitle, ctaHint } = req.body || {};
       if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: 'prompt is required' });
       if (String(prompt).length > 2000) {
         return res.status(400).json({ error: 'prompt is too long (max 2000 characters)' });
       }
+
+      const actionHint = (ctaHint && String(ctaHint).trim())
+        || 'الحجز أو الاتصال أو طلب عرض سعر';
+      const cityLabel = (city && String(city).trim()) || 'المدينة المحلية';
+      const activityLabel = (activityTitle && String(activityTitle).trim()) || '';
       
       const systemPrompt = `أنت خبير سيو محلي (Local SEO) متمرس. اكتب منشور تسويقي جذاب وملائم لخرائط جوجل (Google Business Profile) باللغة العربية.
 اسم المنشأة: "${businessName || 'مشروعنا'}"
-الخدمة أو العرض المستهدف: "${serviceName || ''}"
+${activityLabel ? 'نوع النشاط: "' + activityLabel + '"\n' : ''}الخدمة أو العرض المستهدف: "${serviceName || ''}"
+المدينة/المنطقة: "${cityLabel}"
 تفاصيل إضافية من التاجر: "${prompt}"
 
 شروط الكتابة:
 1. اكتب بنبرة مهنية وترحيبية تلائم الجمهور السعودي والعربي، واستخدم الرموز التعبيرية (Emojis) بشكل معقول.
-2. ركز على حث العميل على اتخاذ إجراء (Call to Action) مثل الحجز أو الاتصال.
-3. استخدم كلمات مفتاحية طبيعية ومحسنة لمحركات البحث المحلية.
+2. ركز على حث العميل على اتخاذ إجراء (Call to Action) مثل: ${actionHint}.
+3. استخدم كلمات مفتاحية طبيعية ومحسنة لمحركات البحث المحلية وذكر المدينة عند الملاءمة.
 4. لا تذكر أي روابط أو أرقام هواتف إلا إذا حددها المستخدم.
 5. اجعل المنشور قصيراً ومباشراً ومناسباً لمتصفحي خرائط جوجل.
 6. لا تتجاوز ${GBP_POST_MAX_CHARS} حرفاً في النص النهائي.`;
