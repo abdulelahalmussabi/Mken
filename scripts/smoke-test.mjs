@@ -82,25 +82,38 @@ async function runTests() {
     await toDateBtn.click();
     await page.waitForTimeout(500);
 
-    // اختيار اليوم الأول المتاح بالتقويم
+    // اختيار يوم متاح من التقويم يحتوي على فترات زمنية فعلية
     console.log('   - اختيار يوم متاح من التقويم...');
-    const availableDay = page.locator('.booking-calendar__day--available').first();
-    await availableDay.click();
-    await page.waitForTimeout(500);
+    const availableDays = page.locator('.booking-calendar__day--available');
+    const dayCount = await availableDays.count();
+    if (dayCount === 0) {
+      throw new Error('لا توجد أيام متاحة في التقويم للاختبار');
+    }
 
-    // الانتقال للوقت
-    console.log('   - الانتقال للخطوة التالية: الوقت...');
-    const toTimeBtn = page.locator('#btnToTime');
-    await toTimeBtn.click();
-    await page.waitForTimeout(500);
+    let slotFound = false;
+    for (let i = 0; i < Math.min(dayCount, 10); i++) {
+      await availableDays.nth(i).click();
+      await page.waitForTimeout(300);
+      console.log(`   - تجربة اليوم المتاح رقم ${i + 1} ثم فتح خطوة الوقت...`);
+      await page.locator('#btnToTime').click();
+      await page.waitForTimeout(400);
+      const slotCount = await page.locator('.booking-slot').count();
+      if (slotCount > 0) {
+        console.log('   - اختيار فترة زمنية متاحة...');
+        await page.locator('.booking-slot').first().click();
+        await page.waitForTimeout(300);
+        slotFound = true;
+        break;
+      }
+      console.log('   - لا توجد فترات لهذا اليوم، الرجوع لاختيار يوم آخر...');
+      await page.locator('#btnBackDate').click();
+      await page.waitForTimeout(300);
+    }
+    if (!slotFound) {
+      throw new Error('تعذر العثور على فترة زمنية متاحة خلال الأيام المعروضة في التقويم');
+    }
 
-    // اختيار الفترة الأولى المتاحة
-    console.log('   - اختيار فترة زمنية متاحة...');
-    const availableSlot = page.locator('.booking-slot').first();
-    await availableSlot.click();
-    await page.waitForTimeout(500);
-
-    // الانتقال لبيانات العميل
+    // الانتقال لخطوة البيانات وتعبئة النموذج
     console.log('   - الانتقال لخطوة البيانات وتعبئة النموذج...');
     const toFormBtn = page.locator('#btnToForm');
     await toFormBtn.click();
