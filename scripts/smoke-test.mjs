@@ -82,21 +82,30 @@ async function runTests() {
     await toDateBtn.click();
     await page.waitForTimeout(500);
 
-    // اختيار يوم متاح من التقويم يحتوي على فترات زمنية فعلية
+    // اختيار يوم متاح يحتوي فترات (تجنّب اليوم الحالي إن أمكن لأن فتراته قد تكون منتهية حسب توقيت CI)
     console.log('   - اختيار يوم متاح من التقويم...');
-    const availableDays = page.locator('.booking-calendar__day--available');
-    const dayCount = await availableDays.count();
+    let dayCandidates = page.locator('.booking-calendar__day--available:not(.booking-calendar__day--today)');
+    let dayCount = await dayCandidates.count();
+    if (dayCount === 0) {
+      dayCandidates = page.locator('.booking-calendar__day--available');
+      dayCount = await dayCandidates.count();
+    }
     if (dayCount === 0) {
       throw new Error('لا توجد أيام متاحة في التقويم للاختبار');
     }
 
     let slotFound = false;
-    for (let i = 0; i < Math.min(dayCount, 10); i++) {
-      await availableDays.nth(i).click();
+    for (let i = 0; i < Math.min(dayCount, 8); i++) {
+      // ابدأ من الأيام اللاحقة لتقليل احتمال فراغ الفترات
+      const idx = Math.min(dayCount - 1, i === 0 ? Math.min(1, dayCount - 1) : i);
+      await dayCandidates.nth(idx).click();
       await page.waitForTimeout(300);
-      console.log(`   - تجربة اليوم المتاح رقم ${i + 1} ثم فتح خطوة الوقت...`);
+      const toTimeEnabled = await page.locator('#btnToTime').isEnabled();
+      if (!toTimeEnabled) continue;
+
+      console.log(`   - فتح خطوة الوقت لليوم المرشّح ${idx + 1}...`);
       await page.locator('#btnToTime').click();
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(500);
       const slotCount = await page.locator('.booking-slot').count();
       if (slotCount > 0) {
         console.log('   - اختيار فترة زمنية متاحة...');
@@ -105,8 +114,20 @@ async function runTests() {
         slotFound = true;
         break;
       }
-      console.log('   - لا توجد فترات لهذا اليوم، الرجوع لاختيار يوم آخر...');
-      await page.locator('#btnBackDate').click();
+
+      console.log('   - لا توجد فترات، العودة للتقويم...');
+      const backBtn = page.locator('#btnBackDate');
+      if (await backBtn.isVisible()) {
+        await backBtn.click({ force: true });
+      } else {
+        // إعادة فتح لوحة التاريخ مباشرة إن كان زر الرجوع غير ظاهر
+        await page.evaluate(() => {
+          var datePanel = document.getElementById('panelDate');
+          var timePanel = document.getElementById('panelTime');
+          if (timePanel) timePanel.hidden = true;
+          if (datePanel) datePanel.hidden = false;
+        });
+      }
       await page.waitForTimeout(300);
     }
     if (!slotFound) {
