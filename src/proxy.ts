@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
 
-  // Extract subdomain if present (e.g. demo.mken.live, almahrusa.mken.live)
+  // Extract subdomain if present (e.g. demo.mken.live, almahrusa.mken.live, almasabi.mken.live)
   let subdomain: string | null = null;
   if (hostname.includes("mken.live")) {
     const parts = hostname.split(".");
@@ -15,8 +15,8 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Redirect /admin.html or /admin to /admin/login
-  if (url.pathname === "/admin.html" || url.pathname === "/admin") {
+  // Redirect /admin.html, /admin, or /auth to /admin/login
+  if (url.pathname === "/admin.html" || url.pathname === "/admin" || url.pathname === "/auth") {
     url.pathname = "/admin/login";
     if (subdomain) {
       url.searchParams.set("client", subdomain);
@@ -43,6 +43,11 @@ export function proxy(request: NextRequest) {
 
   if (url.pathname === "/demo") {
     url.pathname = "/subscriber/demo";
+    return NextResponse.rewrite(url);
+  }
+
+  if (url.pathname === "/almasabi") {
+    url.pathname = "/subscriber/almasabi";
     return NextResponse.rewrite(url);
   }
 
