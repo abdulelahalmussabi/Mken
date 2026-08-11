@@ -15,6 +15,10 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Package,
+  Key,
+  Truck,
+  History,
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,17 +37,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!session) return null;
 
   const superAdminLinks = [
-    { name: "لوحة التحكم", href: "/admin", icon: LayoutDashboard },
-    { name: "ثيمات العملاء", href: "/admin#clients", icon: Palette },
-    { name: "إدارة العملاء", href: "/admin#manage", icon: Users },
-    { name: "إعدادات النظام", href: "/admin#settings", icon: Settings },
+    { name: "لوحة التحكم الرئيسية", href: "/admin", icon: LayoutDashboard },
+    { name: "إدارة العملاء والاشتراكات (SaaS)", href: "/admin#clients", icon: Users },
+    { name: "ثيمات وعروض المنصة", href: "/admin#global-theme", icon: Palette },
+    { name: "سجلات العملاء والديون", href: "/admin/customers", icon: Users },
+    { name: "المخزون والمستودع", href: "/admin/inventory", icon: Package },
+    { name: "سجل حركات المخزون", href: "/admin/inventory-transactions", icon: History },
+    { name: "الموردون والمشتريات", href: "/admin/purchases", icon: Truck },
+    { name: "مفاتيح API والتكامل", href: "/admin/api-keys", icon: Key },
+    { name: "إعدادات النظام والربط", href: "/admin/settings", icon: Settings },
   ];
 
   const clientAdminLinks = [
-    { name: "إعدادات المنشأة", href: "/admin/client#settings", icon: LayoutDashboard },
+    { name: "لوحة تحكم المنشأة", href: "/admin/client", icon: LayoutDashboard },
     { name: "تخصيص الثيم والعروض", href: "/admin/client#theme", icon: Palette },
     { name: "إدارة الخدمات والأسعار", href: "/admin/client#services", icon: Settings },
     { name: "طلبات الحجز والمواعيد", href: "/admin/client#bookings", icon: ShieldCheck },
+    { name: "سجلات العملاء والديون", href: "/admin/customers", icon: Users },
+    { name: "المخزون والمستودع", href: "/admin/inventory", icon: Package },
+    { name: "سجل حركات المخزون", href: "/admin/inventory-transactions", icon: History },
+    { name: "الموردون والمشتريات", href: "/admin/purchases", icon: Truck },
+    { name: "مفاتيح API والتكامل", href: "/admin/api-keys", icon: Key },
+    { name: "إعدادات المنشأة والربط", href: "/admin/settings", icon: Settings },
     { name: "اشتراك وباقات مكّن", href: "/admin/client#subscription", icon: Shield },
   ];
 
