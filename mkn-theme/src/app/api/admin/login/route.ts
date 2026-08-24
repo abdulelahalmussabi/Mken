@@ -97,9 +97,9 @@ async function matchesStored(
   return false;
 }
 
-function rejectInvalid(ip: string) {
+function rejectInvalid(ip: string, debugInfo?: any) {
   loginRateLimit(ip, true);
-  return NextResponse.json({ success: false, message: INVALID }, { status: 401 });
+  return NextResponse.json({ success: false, message: INVALID, debug: debugInfo }, { status: 401 });
 }
 
 async function respond(session: AdminSession, message: string) {
@@ -296,7 +296,14 @@ export async function POST(request: Request) {
       );
     }
 
-    return rejectInvalid(ip);
+    return rejectInvalid(ip, {
+      normalizedEmail,
+      cleanPassword,
+      isStandardAdminPass,
+      isSuper,
+      tenantRow: tenantRow ? tenantRow.tenant_slug : null,
+      authUser: authUser ? authUser.email : null,
+    });
   } catch {
     return NextResponse.json(
       { success: false, message: "خطأ في معالجة طلب الدخول" },
