@@ -100,31 +100,55 @@ const SALON_SERVICES: ServiceOption[] = [
   },
 ];
 
-const HALL_SERVICES: ServiceOption[] = [
+const SHADE_SERVICES: ServiceOption[] = [
   {
-    id: "royal_hall",
-    name: "قاعة الفخامة الملكية للأفراح والمناسبات",
-    badge: "ملكي 🏰",
-    price: "4,500 ر.س / يوم",
-    features: ["تتسع لـ 500 ضيف مع شاشات وعروض ضوئية", "أجنحة ضيافة خاصة للاهل والضيوف", "خدمة صبابين وقهوة سعودية وفاخرة", "تكييف مركزي ونظام صوتي سينمائي"],
-    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
+    id: "shades",
+    name: "مظلات حدائق وجلسات وفلل (PVC و قماش مستورد)",
+    badge: "مظلات ☂️",
+    price: "280 ر.س / م²",
+    features: ["خامات كورية وفرنسية مقاوِمة للحرارة والحرائق", "عزل حراري 100% وحماية من الأشعة فوق البنفسجية", "تصاميم هرمية وقوسية تناسب الفلل والاستراحات", "ضمان 10 سنوات على التركيب والقماش"],
+    image: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
     popular: true,
   },
   {
-    id: "vip_suite",
-    name: "جناح كبار الشخصيات والاجتماعات VIP",
-    badge: "VIP ✨",
-    price: "1,800 ر.س / يوم",
-    features: ["تجهيز اجتماعات الشركات واللقاءات الخاصة", "خدمة ضيافة مستمرة طوال اليوم", "مدخل وطاولة استقبال خاصة", "مواقف VIP مغطاة"],
-    image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80",
+    id: "screens",
+    name: "سواتر خشبية وحديدية وقماشية لحماية الخصوصية",
+    badge: "سواتر 🧱",
+    price: "180 ر.س / م²",
+    features: ["سواتر شرايح ومجدول خشب بلاستيكي وحديد", "حجب الرؤية 100% ومقاومة عالية للرياح", "طلاء ناري مقاوم للصدأ والعوامل الجوية بجدة", "تشكيلة ألوان تناسب دهانات الأسوار والخارجية"],
+    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
   },
   {
-    id: "hospitality",
-    name: "باقة الضيافة الكاملة والقهوة السعودية",
-    badge: "ضيافة ☕",
-    price: "950 ر.س",
-    features: ["طاقم صبابين ومباشرين محترفين", "قهوة سعودية وشاي فاخر وتمور فاخرة", "بخور وعود وطيب ملكي", "أواني وضيافة فخمة ومذهبة"],
-    image: "https://images.unsplash.com/photo-1578474846511-04ba529f0b88?auto=format&fit=crop&w=800&q=80",
+    id: "hangars",
+    name: "هناجر ومستودعات صناعية وتجارية متكاملة",
+    badge: "هناجر 🏭",
+    price: "350 ر.س / م²",
+    features: ["هياكل حديدية مقواة للأغراض التجارية والصناعية", "تغطية ساندوتش بنل أو شينكو معزول حرارياً", "تصميم هندسي متكامل ومطابق لكود البناء السعودي", "تنفيذ سريع بأعلى مقاييس الجودة والسلامة"],
+    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "pergolas",
+    name: "برجولات خشبية وحديدية عصرية للمجالس والحدائق",
+    badge: "برجولات 🏡",
+    price: "320 ر.س / م²",
+    features: ["تصاميم مودرن عصرية للمجالس والجلسات الخارجية", "دمج مع إضاءات مخفية وتغطيات لكسبان شفافة", "خامات متينة ومقاومة للرطوبة والعوامل الجوية بجدة", "تنفيذ بالدقة والذوق المناسب لميزانية العميل"],
+    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "tents",
+    name: "خيام ملكية وبيوت شعر فاخرة",
+    badge: "خيام ⛺",
+    price: "1,500 ر.س",
+    features: ["خيام ملكي وعادي بأفخم الديكورات والأثاث الداخلي", "عزل مائي وحراري متكامل مع إضاءة وثريات فخمة", "فتحات تكييف مجهزة وتمديدات كهربائية آمنة", "تفصيل حسب المساحات المطلوبة للحدائق والأسطح"],
+    image: "https://images.unsplash.com/photo-1510312305653-8ed496efae75?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "blacksmith",
+    name: "أعمال قرميد وملاحق وأعمال حدادة متكاملة",
+    badge: "حدادة 🛠️",
+    price: "120 ر.س / م²",
+    features: ["قرميد إيطالي ووطني بأشكال وألوان هندسية متعددة", "بناء ملاحق علوية وأرضية سريعة العزل والتنفيذ", "أبواب، شبابيك، ودربزينات فورفورجيه حسب الطلب", "فريق فني متخصص بتغطية جدة وكافة المحافظات"],
+    image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80",
   },
 ];
 
@@ -145,7 +169,7 @@ export default function SubscriberStorefrontPage({
   const isSalon = adminClient
     ? adminClient.type === "salon"
     : slug === "demo" || slug === "salon" || slug === "barber";
-  const isHall = adminClient
+  const isShade = adminClient
     ? adminClient.type === "other" || adminClient.slug === "almasabi"
     : slug === "almasabi";
 
@@ -161,8 +185,8 @@ export default function SubscriberStorefrontPage({
   const [bookingTime, setBookingTime] = useState("16:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentServices = isHall
-    ? HALL_SERVICES
+  const currentServices = isShade
+    ? SHADE_SERVICES
     : isSalon
     ? SALON_SERVICES
     : HOTEL_SERVICES;
@@ -171,16 +195,16 @@ export default function SubscriberStorefrontPage({
   const fallbackStoreInfo =
     slug === "almasabi"
       ? {
-          name: "قصر المصعبي للمناسبات والضيافة",
-          tagline: "قاعات فخمة وخدمة ضيافة راقية",
-          subtitle: "في قصر المصعبي نوفر قاعات فخمة للمناسبات والأفراح والاجتماعات مع تجهيزات ضيافة مكتملة في الرياض.",
-          location: "حي الملقا - الرياض، المملكة العربية السعودية",
-          phone: "0555555555",
-          whatsapp: "966555555555",
+          name: "مؤسسة المصعبي للتجارة",
+          tagline: "نحميك من الشمس… ونضيف الفخامة لمكانك",
+          subtitle: "تصنيع وتركيب كافة أنواع المظلات والسواتر والهناجر والبرجولات والخيام والقرميد بجدة والمحافظات المجاورة بخامات كورية وفرنسية وألمانية بأسعار منافسة.",
+          location: "جدة – المملكة العربية السعودية",
+          phone: "0545111130",
+          whatsapp: "966545111130",
           rating: "4.9",
-          reviewsCount: "240 تقييم موثق",
-          heroImage: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
-          demoNotice: "✨ موقع قصر المصعبي للمناسبات والضيافة على منصة مكّن",
+          reviewsCount: "480 تقييم موثق",
+          heroImage: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
+          demoNotice: "✨ الموقع الرسمي لمؤسسة المصعبي للتجارة (مظلات وسواتر وهناجر جدة) على منصة مكّن",
           couponCode: undefined,
           discountText: undefined,
           discountEnabled: true,
