@@ -146,7 +146,36 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window === "undefined") return DEFAULT_CLIENTS;
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.clients);
-      return saved ? JSON.parse(saved) : DEFAULT_CLIENTS;
+      if (!saved) return DEFAULT_CLIENTS;
+      const parsed: ClientRecord[] = JSON.parse(saved);
+
+      // Force update system clients (almasabi, almahrusa, demo) with latest business defaults
+      const merged = DEFAULT_CLIENTS.map((defC) => {
+        const found = parsed.find((p) => p.slug === defC.slug);
+        if (!found) return defC;
+        return {
+          ...defC,
+          ...found,
+          name: defC.name,
+          tagline: defC.tagline,
+          subtitle: defC.subtitle,
+          location: defC.location,
+          phone: defC.phone,
+          whatsapp: defC.whatsapp,
+          heroImage: defC.heroImage,
+          demoNotice: defC.demoNotice,
+          type: defC.type,
+        };
+      });
+
+      // Keep custom user-added clients
+      parsed.forEach((p) => {
+        if (!merged.some((m) => m.slug === p.slug)) {
+          merged.push(p);
+        }
+      });
+
+      return merged;
     } catch {
       return DEFAULT_CLIENTS;
     }
@@ -159,20 +188,21 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .then((data) => {
         if (data.success && data.clients && data.clients.length > 0) {
           setClients((prev) => {
-            // Merge server clients with existing local clients
-            const merged = [...data.clients];
-            prev.forEach((localC) => {
-              if (!merged.some((m) => m.slug === localC.slug)) {
-                merged.push(localC);
+            const serverClients = data.clients as ClientRecord[];
+            const updated = prev.map((localC) => {
+              const fromServer = serverClients.find((s) => s.slug === localC.slug);
+              return fromServer ? { ...localC, ...fromServer } : localC;
+            });
+            serverClients.forEach((s) => {
+              if (!updated.some((u) => u.slug === s.slug)) {
+                updated.push(s);
               }
             });
-            return merged;
+            return updated;
           });
         }
       })
-      .catch(() => {
-        // Fallback to local state if offline or API error
-      });
+      .catch(() => {});
   }, []);
 
   // Persist changes
