@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Next.js 16: "proxy" replaces "middleware"
 export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
@@ -24,7 +23,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (subdomain && url.pathname === "/") {
+  // Rewrite root subdomain requests (e.g. almasabi.mken.live/) to subscriber page
+  if (subdomain && (url.pathname === "/" || url.pathname === "")) {
     url.pathname = `/subscriber/${subdomain}`;
     return NextResponse.rewrite(url);
   }
