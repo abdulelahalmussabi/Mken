@@ -100,6 +100,34 @@ const SALON_SERVICES: ServiceOption[] = [
   },
 ];
 
+const HALL_SERVICES: ServiceOption[] = [
+  {
+    id: "royal_hall",
+    name: "قاعة الفخامة الملكية للأفراح والمناسبات",
+    badge: "ملكي 🏰",
+    price: "4,500 ر.س / يوم",
+    features: ["تتسع لـ 500 ضيف مع شاشات وعروض ضوئية", "أجنحة ضيافة خاصة للاهل والضيوف", "خدمة صبابين وقهوة سعودية وفاخرة", "تكييف مركزي ونظام صوتي سينمائي"],
+    image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
+    popular: true,
+  },
+  {
+    id: "vip_suite",
+    name: "جناح كبار الشخصيات والاجتماعات VIP",
+    badge: "VIP ✨",
+    price: "1,800 ر.س / يوم",
+    features: ["تجهيز اجتماعات الشركات واللقاءات الخاصة", "خدمة ضيافة مستمرة طوال اليوم", "مدخل وطاولة استقبال خاصة", "مواقف VIP مغطاة"],
+    image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "hospitality",
+    name: "باقة الضيافة الكاملة والقهوة السعودية",
+    badge: "ضيافة ☕",
+    price: "950 ر.س",
+    features: ["طاقم صبابين ومباشرين محترفين", "قهوة سعودية وشاي فاخر وتمور فاخرة", "بخور وعود وطيب ملكي", "أواني وضيافة فخمة ومذهبة"],
+    image: "https://images.unsplash.com/photo-1578474846511-04ba529f0b88?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
 export default function SubscriberStorefrontPage({
   params,
 }: {
@@ -117,6 +145,9 @@ export default function SubscriberStorefrontPage({
   const isSalon = adminClient
     ? adminClient.type === "salon"
     : slug === "demo" || slug === "salon" || slug === "barber";
+  const isHall = adminClient
+    ? adminClient.type === "other" || adminClient.slug === "almasabi"
+    : slug === "almasabi";
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showAppBanner, setShowAppBanner] = useState<boolean>(true);
@@ -130,58 +161,80 @@ export default function SubscriberStorefrontPage({
   const [bookingTime, setBookingTime] = useState("16:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentServices = isSalon ? SALON_SERVICES : HOTEL_SERVICES;
+  const currentServices = isHall
+    ? HALL_SERVICES
+    : isSalon
+    ? SALON_SERVICES
+    : HOTEL_SERVICES;
 
-  // Store Metadata — dynamic from AdminContext, with hardcoded fallback
+  // Strict Tenant Fallbacks to prevent cross-tenant data leaks during SSR
+  const fallbackStoreInfo =
+    slug === "almasabi"
+      ? {
+          name: "قصر المصعبي للمناسبات والضيافة",
+          tagline: "قاعات فخمة وخدمة ضيافة راقية",
+          subtitle: "في قصر المصعبي نوفر قاعات فخمة للمناسبات والأفراح والاجتماعات مع تجهيزات ضيافة مكتملة في الرياض.",
+          location: "حي الملقا - الرياض، المملكة العربية السعودية",
+          phone: "0555555555",
+          whatsapp: "966555555555",
+          rating: "4.9",
+          reviewsCount: "240 تقييم موثق",
+          heroImage: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
+          demoNotice: "✨ موقع قصر المصعبي للمناسبات والضيافة على منصة مكّن",
+          couponCode: undefined,
+          discountText: undefined,
+          discountEnabled: true,
+        }
+      : slug === "demo" || slug === "salon" || slug === "barber"
+      ? {
+          name: "صالون النخبة",
+          tagline: "احجز وادخل بدون انتظار",
+          subtitle: "في صالون النخبة نوفر حلاقة رجالية ونسائية، عناية باللحية، وتجميل – احجز موعدك أونلاين واختر الوقت المناسب.",
+          location: "حي الربيع - الرياض، المملكة العربية السعودية",
+          phone: "0543530333",
+          whatsapp: "966543530333",
+          rating: "4.9",
+          reviewsCount: "تقييمات موثقة",
+          heroImage: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
+          demoNotice: "✨ صفحة منشأة صالون النخبة المعتمدة",
+          couponCode: undefined,
+          discountText: undefined,
+          discountEnabled: true,
+        }
+      : {
+          name: "المحروسة للشقق المخدومة",
+          tagline: "إقامة مميزة وخدمة استثنائية",
+          subtitle: "في المحروسة للشقق المخدومة شقق وأجنحة بمعايير ضيافة عالية – احجز مسبقاً واستمتع بإقامة مريحة في المدينة المنورة.",
+          location: "حي ابو كبير - الحمراء - المدينة المنورة، المملكة العربية السعودية",
+          phone: "0554453287",
+          whatsapp: "966554453287",
+          rating: "4.9",
+          reviewsCount: "382 تقييم موثق",
+          heroImage: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+          demoNotice: "✨ صفحة منشأة المحروسة للشقق المخدومة في المدينة المنورة على منصة مكّن",
+          couponCode: undefined,
+          discountText: undefined,
+          discountEnabled: true,
+        };
+
+  // Store Metadata — dynamic from AdminContext with strict fallback
   const storeInfo = adminClient
     ? {
         name: adminClient.name,
-        tagline: adminClient.tagline || "احجز وادخل بدون انتظار",
-        subtitle: adminClient.subtitle || "",
-        location: adminClient.location || "المملكة العربية السعودية",
-        phone: adminClient.phone || "0500000000",
-        whatsapp: adminClient.whatsapp || "966500000000",
+        tagline: adminClient.tagline || fallbackStoreInfo.tagline,
+        subtitle: adminClient.subtitle || fallbackStoreInfo.subtitle,
+        location: adminClient.location || fallbackStoreInfo.location,
+        phone: adminClient.phone || fallbackStoreInfo.phone,
+        whatsapp: adminClient.whatsapp || fallbackStoreInfo.whatsapp,
         rating: adminClient.rating || "4.9",
-        reviewsCount: adminClient.reviewsCount || "0 تقييم",
-        heroImage:
-          adminClient.heroImage ||
-          "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+        reviewsCount: adminClient.reviewsCount || "تقييمات موثقة",
+        heroImage: adminClient.heroImage || fallbackStoreInfo.heroImage,
         demoNotice: adminClient.demoNotice || `✨ صفحة منشأة ${adminClient.name} المعتمدة`,
         couponCode: adminClient.couponCode,
         discountText: adminClient.discountText,
         discountEnabled: adminClient.discountEnabled ?? true,
       }
-    : isSalon
-    ? {
-        name: "صالون النخبة",
-        tagline: "احجز وادخل بدون انتظار",
-        subtitle: "في صالون النخبة نوفر حلاقة رجالية ونسائية، عناية باللحية، وتجميل – احجز موعدك أونلاين واختر الوقت المناسب.",
-        location: "حي الربيع - الرياض، المملكة العربية السعودية",
-        phone: "0543530333",
-        whatsapp: "966543530333",
-        rating: "4.9",
-        reviewsCount: "تقييمات موثقة",
-        heroImage: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
-        demoNotice: "✨ صفحة منشأة صالون النخبة المعتمدة",
-        couponCode: undefined,
-        discountText: undefined,
-        discountEnabled: true,
-      }
-    : {
-        name: "مجموعة المحروسة",
-        tagline: "إقامة مميزة وخدمة استثنائية",
-        subtitle: "في مجموعة المحروسة غرف وأجنحة بمعايير ضيافة عالية – احجز مسبقاً واستمتع بإقامة مريحة في قلب الرياض.",
-        location: "حي العليا - الرياض، المملكة العربية السعودية",
-        phone: "0551234567",
-        whatsapp: "966551234567",
-        rating: "4.9",
-        reviewsCount: "تقييمات موثقة",
-        heroImage: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-        demoNotice: "✨ صفحة منشأة مجموعة المحروسة للشقق الفندقية",
-        couponCode: undefined,
-        discountText: undefined,
-        discountEnabled: true,
-      };
+    : fallbackStoreInfo;
 
   const handleOpenBooking = (srv?: ServiceOption) => {
     setSelectedService(srv || currentServices[0]);
