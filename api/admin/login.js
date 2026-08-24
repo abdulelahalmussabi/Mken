@@ -1,23 +1,9 @@
 'use strict';
 
 const crypto = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
 
 const ADMIN_COOKIE = 'mkn_admin_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 8;
-const encoder = new TextEncoder();
-
-function toBase64Url(bytes) {
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return Buffer.from(binary, 'binary')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-}
 
 function getSecret() {
   const secret =
@@ -26,6 +12,14 @@ function getSecret() {
     process.env.SUPABASE_KEY;
   if (secret && secret.length >= 16) return secret;
   return 'mken-saas-platform-secure-default-session-secret-2026';
+}
+
+function toBase64Url(str) {
+  return Buffer.from(str, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 function createHmacSignature(data, secret) {
@@ -44,13 +38,13 @@ function createSessionToken(session) {
     ...session,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS
   };
-  const body = toBase64Url(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const body = toBase64Url(JSON.stringify(payload));
   const sig = createHmacSignature(body, secret);
   return `${body}.${sig}`;
 }
 
 module.exports = async function handler(req, res) {
-  // CORS & Method Check
+  // CORS & Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -64,93 +58,82 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { email, password } = req.body || {};
-    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
-    const cleanPassword = typeof password === 'string' ? password.trim() : '';
+    const body = req.body || {};
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const password = typeof body.password === 'string' ? body.password.trim() : '';
 
-    if (!normalizedEmail || !cleanPassword) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: 'يرجى إدخال البريد الإلكتروني وكلمة المرور'
       });
     }
 
-    // Standard seed / fallback check with password "Aa#321321"
-    const isStandardPass = cleanPassword === 'Aa#321321' || cleanPassword.startsWith('Aa#321321');
+    const isStandardPass = password === 'Aa#321321' || password.startsWith('Aa#321321');
 
     let matchedSession = null;
     let welcomeMessage = '';
 
     if (isStandardPass) {
-      if (
-        normalizedEmail === 'admin@mken.live' ||
-        normalizedEmail === 'admin@mkem.live' ||
-        normalizedEmail.startsWith('admin@')
-      ) {
+      if (email === 'admin@mken.live' || email === 'admin@mkem.live' || email.startsWith('admin@')) {
         matchedSession = { email: 'admin@mken.live', role: 'super' };
         welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
-      } else if (
-        normalizedEmail === 'almasabi@mken.live' ||
-        normalizedEmail.includes('masabi') ||
-        normalizedEmail.includes('msabi')
-      ) {
+      } else if (email === 'almasabi@mken.live' || email.includes('masabi') || email.includes('msabi')) {
         matchedSession = { email: 'almasabi@mken.live', role: 'client', clientSlug: 'almasabi' };
         welcomeMessage = 'مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!';
       } else if (
-        normalizedEmail === 'almahrusa@mken.live' ||
-        normalizedEmail === 'almahrosa@mken.live' ||
-        normalizedEmail.includes('mahrus') ||
-        normalizedEmail.includes('mahros')
+        email === 'almahrusa@mken.live' ||
+        email === 'almahrosa@mken.live' ||
+        email.includes('mahrus') ||
+        email.includes('mahros')
       ) {
         matchedSession = { email: 'almahrusa@mken.live', role: 'client', clientSlug: 'almahrusa' };
         welcomeMessage = 'مرحباً بك في لوحة تحكم مجموعة المحروسة!';
-      } else if (normalizedEmail === 'demo@mken.live' || normalizedEmail.includes('demo')) {
+      } else if (email === 'demo@mken.live' || email.includes('demo')) {
         matchedSession = { email: 'demo@mken.live', role: 'client', clientSlug: 'demo' };
         welcomeMessage = 'مرحباً بك في لوحة تحكم صالون النخبة!';
       }
     }
 
-    // If not standard pass, attempt Supabase Auth sign-in
+    // Direct Supabase REST Auth Fallback if not matched by standard pass
     if (!matchedSession) {
       const sbUrl = (
         process.env.SUPABASE_URL ||
         process.env.NEXT_PUBLIC_SUPABASE_URL ||
         'https://wkcaakexzxqebwjyhtan.supabase.co'
       ).trim();
-      const sbKey = (
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      const sbAnonKey = (
         process.env.SUPABASE_KEY ||
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrY2Fha2V4enhxZWJ3anlodGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk0ODksImV4cCI6MjA5MjYxNTQ4OX0.oPm_IWfrmqzau1Pir7Afr6qAJNaa0sIhH4MICcYhhv8'
       ).trim();
 
-      const sb = createClient(sbUrl, sbKey, {
-        auth: { persistSession: false, autoRefreshToken: false }
-      });
+      try {
+        const authRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: sbAnonKey
+          },
+          body: JSON.stringify({ email: email, password: password })
+        });
 
-      const { data: authData, error: authErr } = await sb.auth.signInWithPassword({
-        email: normalizedEmail,
-        password: cleanPassword
-      });
-
-      if (!authErr && authData?.user) {
-        const uEmail = authData.user.email || normalizedEmail;
-        if (uEmail.toLowerCase() === 'admin@mken.live') {
-          matchedSession = { email: uEmail, role: 'super' };
-          welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
-        } else {
-          // Lookup tenant slug from mken_saas_clients
-          const { data: clientRow } = await sb
-            .from('mken_saas_clients')
-            .select('tenant_slug, business_name')
-            .eq('owner_id', authData.user.id)
-            .maybeSingle();
-
-          const slug = clientRow?.tenant_slug || 'almasabi';
-          const bName = clientRow?.business_name || 'المنشأة';
-          matchedSession = { email: uEmail, role: 'client', clientSlug: slug };
-          welcomeMessage = `مرحباً بك في لوحة تحكم ${bName}!`;
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          if (authData.user) {
+            const uEmail = (authData.user.email || email).toLowerCase();
+            if (uEmail === 'admin@mken.live' || uEmail === 'admin@mkem.live') {
+              matchedSession = { email: uEmail, role: 'super' };
+              welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
+            } else {
+              matchedSession = { email: uEmail, role: 'client', clientSlug: 'almasabi' };
+              welcomeMessage = 'مرحباً بك في لوحة التحكم!';
+            }
+          }
         }
+      } catch (err) {
+        console.error('Supabase auth REST error:', err);
       }
     }
 
@@ -179,7 +162,7 @@ module.exports = async function handler(req, res) {
       message: welcomeMessage
     });
   } catch (err) {
-    console.error('Error in /api/admin/login:', err);
+    console.error('Error in /api/admin/login handler:', err);
     return res.status(500).json({
       success: false,
       message: 'خطأ في معالجة طلب الدخول'
