@@ -44,7 +44,6 @@ function createSessionToken(session) {
 }
 
 module.exports = async function handler(req, res) {
-  // CORS & Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -95,7 +94,6 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Direct Supabase REST Auth Fallback if not matched by standard pass
     if (!matchedSession) {
       const sbUrl = (
         process.env.SUPABASE_URL ||
@@ -144,7 +142,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Issue Session Cookie
     const token = createSessionToken(matchedSession);
 
     res.setHeader(
@@ -162,7 +159,7 @@ module.exports = async function handler(req, res) {
       message: welcomeMessage
     });
   } catch (err) {
-    console.error('Error in /api/admin/login handler:', err);
+    console.error('Error in /api/admin-login handler:', err);
     return res.status(500).json({
       success: false,
       message: 'خطأ في معالجة طلب الدخول'

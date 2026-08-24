@@ -35,6 +35,7 @@
     { "source": "/api/v1/auth/register-verify", "destination": "/api/v1/auth?type=register&step=verify" },
     { "source": "/api/v1/auth/register-trial", "destination": "/api/v1/auth?type=register-trial" },
     { "source": "/api/v1/auth/admin-login", "destination": "/api/v1/auth?type=admin-login" },
+    { "source": "/api/admin/login", "destination": "/api/admin-login" },
     { "source": "/api/v1/auth/supabase-config", "destination": "/api/v1/auth?type=supabase-config" },
     { "source": "/api/v1/trust/challenge", "destination": "/api/v1/trust?action=challenge" },
     { "source": "/api/v1/trust/verify", "destination": "/api/v1/trust?action=verify" },
