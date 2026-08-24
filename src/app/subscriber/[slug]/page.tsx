@@ -197,14 +197,14 @@ export default function SubscriberStorefrontPage({
       ? {
           name: "مؤسسة المصعبي للتجارة",
           tagline: "نحميك من الشمس… ونضيف الفخامة لمكانك",
-          subtitle: "تصنيع وتركيب كافة أنواع المظلات والسواتر والهناجر والبرجولات والخيام والقرميد بجدة والمحافظات المجاورة بخامات كورية وفرنسية وألمانية بأسعار منافسة.",
-          location: "جدة – المملكة العربية السعودية",
+          subtitle: "تصنيع وتركيب كافة أنواع المظلات والسواتر والهناجر والبرجولات والخيام والقرميد بجدة ومكة المكرمة والمدينة المنورة بخامات كورية وفرنسية وألمانية بأسعار منافسة.",
+          location: "جدة، مكة المكرمة، والمدينة المنورة – المملكة العربية السعودية",
           phone: "0545111130",
           whatsapp: "966545111130",
           rating: "4.9",
           reviewsCount: "480 تقييم موثق",
           heroImage: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
-          demoNotice: "✨ الموقع الرسمي لمؤسسة المصعبي للتجارة (مظلات وسواتر وهناجر جدة) على منصة مكّن",
+          demoNotice: "✨ الموقع الرسمي لمؤسسة المصعبي للتجارة (مظلات وسواتر وهناجر جدة ومكة والمدينة) على منصة مكّن",
           couponCode: undefined,
           discountText: undefined,
           discountEnabled: true,
@@ -231,7 +231,7 @@ export default function SubscriberStorefrontPage({
           subtitle: "في المحروسة للشقق المخدومة شقق وأجنحة بمعايير ضيافة عالية – احجز مسبقاً واستمتع بإقامة مريحة في المدينة المنورة.",
           location: "حي ابو كبير - الحمراء - المدينة المنورة، المملكة العربية السعودية",
           phone: "0554453287",
-          whatsapp: "966554453287",
+          whatsapp: "96654453287",
           rating: "4.9",
           reviewsCount: "382 تقييم موثق",
           heroImage: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
@@ -241,22 +241,26 @@ export default function SubscriberStorefrontPage({
           discountEnabled: true,
         };
 
-  // Store Metadata — dynamic from AdminContext with strict fallback
-  const storeInfo = adminClient
+  // Store Metadata — dynamic from AdminContext with strict fallback for almasabi
+  const isAlmasabiValid = adminClient && slug === "almasabi" && adminClient.name.includes("المصعبي");
+  const isOtherValid = adminClient && slug !== "almasabi";
+  const validAdminClient = isAlmasabiValid || isOtherValid ? adminClient : null;
+
+  const storeInfo = validAdminClient
     ? {
-        name: adminClient.name,
-        tagline: adminClient.tagline || fallbackStoreInfo.tagline,
-        subtitle: adminClient.subtitle || fallbackStoreInfo.subtitle,
-        location: adminClient.location || fallbackStoreInfo.location,
-        phone: adminClient.phone || fallbackStoreInfo.phone,
-        whatsapp: adminClient.whatsapp || fallbackStoreInfo.whatsapp,
-        rating: adminClient.rating || "4.9",
-        reviewsCount: adminClient.reviewsCount || "تقييمات موثقة",
-        heroImage: adminClient.heroImage || fallbackStoreInfo.heroImage,
-        demoNotice: adminClient.demoNotice || `✨ صفحة منشأة ${adminClient.name} المعتمدة`,
-        couponCode: adminClient.couponCode,
-        discountText: adminClient.discountText,
-        discountEnabled: adminClient.discountEnabled ?? true,
+        name: validAdminClient.name,
+        tagline: validAdminClient.tagline || fallbackStoreInfo.tagline,
+        subtitle: validAdminClient.subtitle || fallbackStoreInfo.subtitle,
+        location: validAdminClient.location || fallbackStoreInfo.location,
+        phone: validAdminClient.phone || fallbackStoreInfo.phone,
+        whatsapp: validAdminClient.whatsapp || fallbackStoreInfo.whatsapp,
+        rating: validAdminClient.rating || "4.9",
+        reviewsCount: validAdminClient.reviewsCount || "تقييمات موثقة",
+        heroImage: validAdminClient.heroImage || fallbackStoreInfo.heroImage,
+        demoNotice: validAdminClient.demoNotice || `✨ صفحة منشأة ${validAdminClient.name} المعتمدة`,
+        couponCode: validAdminClient.couponCode,
+        discountText: validAdminClient.discountText,
+        discountEnabled: validAdminClient.discountEnabled ?? true,
       }
     : fallbackStoreInfo;
 
