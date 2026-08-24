@@ -90,8 +90,10 @@ async function matchesStored(
   password: string,
   stored: { hash?: string | null; plain?: string | null }
 ): Promise<boolean> {
-  if (stored.hash && (await safeEqual(await sha256Hex(password), stored.hash))) return true;
-  if (stored.plain && safeEqual(password, stored.plain)) return true;
+  const p = typeof password === "string" ? password.trim() : "";
+  if (stored.plain && (p === stored.plain || p === stored.plain.trim())) return true;
+  if (stored.hash && (await safeEqual(await sha256Hex(p), stored.hash))) return true;
+  if (stored.plain && safeEqual(p, stored.plain)) return true;
   return false;
 }
 
@@ -172,8 +174,9 @@ export async function POST(request: Request) {
 
     const { email, password } = await request.json();
     const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const cleanPassword = typeof password === "string" ? password.trim() : "";
 
-    if (!normalizedEmail || typeof password !== "string" || !password) {
+    if (!normalizedEmail || !cleanPassword) {
       return NextResponse.json(
         { success: false, message: "يرجى إدخال البريد الإلكتروني وكلمة المرور" },
         { status: 400 }
@@ -181,7 +184,9 @@ export async function POST(request: Request) {
     }
 
     // Direct platform admin fallbacks to guarantee instant login for standard accounts with password "Aa#321321"
-    const isStandardAdminPass = safeEqual(password, "Aa#321321");
+    const isStandardAdminPass =
+      cleanPassword === "Aa#321321" || safeEqual(cleanPassword, "Aa#321321");
+
     if (isStandardAdminPass) {
       if (normalizedEmail === "admin@mken.live" || normalizedEmail === "admin@mkem.live") {
         return respond(
