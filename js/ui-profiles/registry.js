@@ -63,6 +63,7 @@ window.MkenContentRegistry = {
   commerce: function () { return window.MkenContentCommerce; },
   hockey: function () { return window.MkenContentHockey; },
   tailoring: function () { return window.MkenContentTailoring; },
+  'app-development': function () { return window.MkenContentAppDevelopment; },
 };
 
 window.MkenUiProfile = {

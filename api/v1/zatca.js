@@ -4,13 +4,15 @@ const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
 
 function getEncryptionKey() {
-  const secret = process.env.ZATCA_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_KEY || 'mken_zatca_fallback_secure_key_123';
+  const secret = process.env.ZATCA_ENCRYPTION_KEY;
+  if (!secret || secret.length < 16) return null;
   return crypto.pbkdf2Sync(secret, 'mken_salt', 10000, 32, 'sha256');
 }
 
 function encrypt(text) {
   if (!text) return '';
   const key = getEncryptionKey();
+  if (!key) throw new Error('ZATCA_ENCRYPTION_KEY is not configured');
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -31,6 +33,7 @@ function decrypt(ciphertext) {
     const authTag = Buffer.from(parts[1], 'hex');
     const encrypted = parts[2];
     const key = getEncryptionKey();
+    if (!key) throw new Error('ZATCA_ENCRYPTION_KEY is not configured');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
     decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
@@ -342,6 +345,10 @@ module.exports = async function handler(req, res) {
   const action = (req.body && req.body.action) || (req.query && req.query.action);
   if (!action) {
     return res.status(400).json({ success: false, error: 'Missing action parameter' });
+  }
+
+  if ((action === 'onboard' || action === 'report') && !getEncryptionKey()) {
+    return res.status(503).json({ success: false, error: 'ZATCA_ENCRYPTION_KEY is not configured' });
   }
 
   const supabaseUrl = sbEnv.getSupabaseUrl();

@@ -14,6 +14,8 @@ config_private.json
 dist/
 build/
 *.log
+.next/
+.backup-stash/
 
 # OS-specific files
 .DS_Store
@@ -21,3 +23,7 @@ Thumbs.db
 
 .vercel
 .env*
+!.env.example
+*.tsbuildinfo
+.zcode/
+مجلد جديد/

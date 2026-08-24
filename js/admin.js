@@ -27,7 +27,7 @@
   var emailsPreview = document.getElementById('emailsPreview');
   var emailsCatalog = (window.MkenEmailsCatalog && window.MkenEmailsCatalog.TYPES) || [];
   var themesGrid = document.getElementById('themesGrid');
-  var featuredSelect = document.getElementById('featuredSelect');
+  var serviceOrderList = document.getElementById('serviceOrderList');
   var featuredActivitySelect = document.getElementById('featuredActivitySelect');
   var brandLogoFile = document.getElementById('brandLogoFile');
   var brandLogoBtn = document.getElementById('brandLogoBtn');
@@ -37,6 +37,7 @@
   var pendingBrandLogoTouched = false;
   var selectedTheme = 'slate';
   var activeTab = 'reports';
+  var _dragServiceId = null;
 
   // Payment settings elements
   var paymentEnabled = document.getElementById('paymentEnabled');
@@ -48,8 +49,36 @@
 
   if (contentAdmin) contentAdmin.init(store);
 
+  var SUPER_ADMIN_EMAILS = ['admin@mken.live', 'admin@mkem.live'];
+
+  function isSuperAdminEmail(addr) {
+    return SUPER_ADMIN_EMAILS.indexOf(String(addr || '').trim().toLowerCase()) !== -1;
+  }
+
+  window.MkenAdminAuth = {
+    isSuperAdmin: function () {
+      try {
+        if (sessionStorage.getItem('mken_super_admin') === '1') return true;
+      } catch (e) { /* ignore */ }
+      var slug = '';
+      try {
+        if (store && typeof store.getCurrentTenantSlug === 'function') {
+          slug = (store.getCurrentTenantSlug() || '').toLowerCase();
+        }
+      } catch (e2) { /* ignore */ }
+      return slug === 'admin' || slug === 'mken' || !slug || slug === 'default';
+    },
+    isSuperAdminEmail: isSuperAdminEmail,
+  };
+
   function esc(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function showToast(msg, type) {
@@ -58,6 +87,26 @@
     toast.className = 'toast toast--' + (type || 'success');
     toast.hidden = false;
     setTimeout(function () { toast.hidden = true; }, 4000);
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      throw new Error('Clipboard API unavailable');
+    } catch (e) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return true;
+    }
   }
 
   window.MkenAdminToast = showToast;
@@ -71,8 +120,7 @@
     // Show/hide clients tab for Platform/Super Admin only
     var tabClients = document.getElementById('tabClients');
     if (tabClients) {
-      var isSuperAdmin = !store.getCurrentTenantSlug() || store.getCurrentTenantSlug() === 'default';
-      tabClients.style.display = isSuperAdmin ? '' : 'none';
+      tabClients.style.display = canManageFullActivityCatalog() ? '' : 'none';
     }
 
     renderPanel();
@@ -165,6 +213,149 @@
     return ids;
   }
 
+  function getServiceOrderFromDom() {
+    if (!serviceOrderList) return [];
+    var ids = [];
+    serviceOrderList.querySelectorAll('[data-service-id]').forEach(function (el) {
+      ids.push(el.getAttribute('data-service-id'));
+    });
+    return ids;
+  }
+
+  /** Merge checkbox-enabled IDs with current DnD order (new services append at end). */
+  function getOrderedEnabledServiceIds() {
+    var checked = getEnabledServiceIds();
+    var checkedSet = {};
+    checked.forEach(function (id) { checkedSet[id] = true; });
+
+    var ordered = [];
+    getServiceOrderFromDom().forEach(function (id) {
+      if (checkedSet[id]) {
+        ordered.push(id);
+        delete checkedSet[id];
+      }
+    });
+    checked.forEach(function (id) {
+      if (checkedSet[id]) ordered.push(id);
+    });
+    return ordered;
+  }
+
+  function moveServiceOrderItem(serviceId, direction) {
+    var ids = getServiceOrderFromDom();
+    var idx = ids.indexOf(serviceId);
+    if (idx < 0) return;
+    var swap = idx + direction;
+    if (swap < 0 || swap >= ids.length) return;
+    var tmp = ids[idx];
+    ids[idx] = ids[swap];
+    ids[swap] = tmp;
+    renderServiceOrderList(ids);
+  }
+
+  function bindServiceOrderDrag() {
+    if (!serviceOrderList) return;
+    var items = serviceOrderList.querySelectorAll('.admin-service-order__item');
+
+    items.forEach(function (item) {
+      item.addEventListener('dragstart', function (e) {
+        _dragServiceId = item.getAttribute('data-service-id');
+        item.classList.add('is-dragging');
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', _dragServiceId);
+        }
+      });
+
+      item.addEventListener('dragend', function () {
+        item.classList.remove('is-dragging');
+        serviceOrderList.querySelectorAll('.is-drag-over').forEach(function (el) {
+          el.classList.remove('is-drag-over');
+        });
+        _dragServiceId = null;
+      });
+
+      item.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        var targetId = item.getAttribute('data-service-id');
+        if (!_dragServiceId || _dragServiceId === targetId) return;
+        serviceOrderList.querySelectorAll('.is-drag-over').forEach(function (el) {
+          el.classList.remove('is-drag-over');
+        });
+        item.classList.add('is-drag-over');
+      });
+
+      item.addEventListener('dragleave', function () {
+        item.classList.remove('is-drag-over');
+      });
+
+      item.addEventListener('drop', function (e) {
+        e.preventDefault();
+        item.classList.remove('is-drag-over');
+        var targetId = item.getAttribute('data-service-id');
+        var fromId = _dragServiceId || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+        if (!fromId || fromId === targetId) return;
+
+        var ids = getServiceOrderFromDom();
+        var fromIdx = ids.indexOf(fromId);
+        var toIdx = ids.indexOf(targetId);
+        if (fromIdx < 0 || toIdx < 0) return;
+        ids.splice(fromIdx, 1);
+        ids.splice(toIdx, 0, fromId);
+        renderServiceOrderList(ids);
+      });
+
+      var upBtn = item.querySelector('[data-order-move="up"]');
+      var downBtn = item.querySelector('[data-order-move="down"]');
+      if (upBtn) {
+        upBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveServiceOrderItem(item.getAttribute('data-service-id'), -1);
+        });
+      }
+      if (downBtn) {
+        downBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveServiceOrderItem(item.getAttribute('data-service-id'), 1);
+        });
+      }
+    });
+  }
+
+  function renderServiceOrderList(orderedIds) {
+    if (!serviceOrderList) return;
+    var config = store.loadConfig();
+    var ids = orderedIds || getOrderedEnabledServiceIds();
+
+    if (!ids.length) {
+      serviceOrderList.innerHTML = '<div class="admin-hint" style="padding:12px;text-align:center;">فعّل خدمة واحدة على الأقل أعلاه، ثم رتّبها هنا بالسحب.</div>';
+      return;
+    }
+
+    serviceOrderList.innerHTML = ids.map(function (id, index) {
+      var svc = store.getResolvedService(id, config);
+      if (!svc) return '';
+      var featuredClass = index === 0 ? ' admin-service-order__item--featured' : '';
+      var badge = index === 0 ? '<small class="admin-service-order__badge">بارزة — أول ظهور</small>' : '';
+      return (
+        '<div class="admin-service-order__item' + featuredClass + '" draggable="true" data-service-id="' + id + '">' +
+        '<span class="admin-service-order__handle" aria-hidden="true">⋮⋮</span>' +
+        '<span class="admin-service-order__rank">' + (index + 1) + '</span>' +
+        '<span class="admin-service-order__icon">' + (svc.icon || '🔧') + '</span>' +
+        '<span class="admin-service-order__info"><strong>' + esc(svc.title) + '</strong>' + badge + '</span>' +
+        '<span class="admin-service-order__moves">' +
+        '<button type="button" data-order-move="up" aria-label="تحريك لأعلى"' + (index === 0 ? ' disabled' : '') + '>▲</button>' +
+        '<button type="button" data-order-move="down" aria-label="تحريك لأسفل"' + (index === ids.length - 1 ? ' disabled' : '') + '>▼</button>' +
+        '</span></div>'
+      );
+    }).join('');
+
+    bindServiceOrderDrag();
+  }
+
   function updateCount() {
     var actCount = getEnabledActivityIds().length;
     var svcCount = getEnabledServiceIds().length;
@@ -175,20 +366,19 @@
 
   function updateSelects() {
     var enabledActs = getEnabledActivityIds();
-    var enabledSvcs = getEnabledServiceIds();
+    var prevFeaturedAct = featuredActivitySelect ? featuredActivitySelect.value : '';
 
     if (featuredActivitySelect) {
       featuredActivitySelect.innerHTML = enabledActs.map(function (id) {
         var act = store.getResolvedActivity(id);
         return act ? '<option value="' + id + '">' + esc(act.title) + '</option>' : '';
       }).join('') || '<option value="">—</option>';
+      if (prevFeaturedAct && enabledActs.indexOf(prevFeaturedAct) !== -1) {
+        featuredActivitySelect.value = prevFeaturedAct;
+      }
     }
-    if (featuredSelect) {
-      featuredSelect.innerHTML = enabledSvcs.map(function (id) {
-        var svc = store.getResolvedService(id);
-        return svc ? '<option value="' + id + '">' + esc(svc.title) + '</option>' : '';
-      }).join('') || '<option value="">—</option>';
-    }
+
+    renderServiceOrderList(getOrderedEnabledServiceIds());
   }
 
   function renderSocial(config) {
@@ -336,13 +526,29 @@
     updateBrandPreview(config);
   }
 
+  function canManageFullActivityCatalog() {
+    var slug = '';
+    try {
+      slug = (store.getCurrentTenantSlug() || '').toLowerCase();
+    } catch (e) {}
+    if (!slug || slug === 'default' || slug === 'admin' || slug === 'mken') return true;
+    try {
+      if (window.MkenAdminAuth && typeof window.MkenAdminAuth.isSuperAdmin === 'function') {
+        return !!window.MkenAdminAuth.isSuperAdmin();
+      }
+    } catch (e2) {}
+    return false;
+  }
+
   function renderActivities(config) {
     var enabledActs = config.enabledActivities || [];
     var enabledSvcs = config.enabled || [];
     var catalog = store.getActivitiesCatalog();
 
-    var isSuperAdmin = !store.getCurrentTenantSlug() || store.getCurrentTenantSlug() === 'default';
-    if (!isSuperAdmin) {
+    var isSuperAdmin = canManageFullActivityCatalog();
+    // Tenant admins only see licensed activities — but if the list is empty
+    // (broken/migrated config), show the full catalog so they can re-enable.
+    if (!isSuperAdmin && enabledActs.length > 0) {
       catalog = catalog.filter(function (act) {
         return enabledActs.indexOf(act.id) !== -1;
       });
@@ -884,6 +1090,17 @@
       }
     });
 
+    // Hide sidebar group titles when every tab inside is display:none
+    document.querySelectorAll('.admin-sidebar__group').forEach(function (group) {
+      var items = group.querySelectorAll('.admin-tab');
+      if (!items.length) return;
+      var anyVisible = false;
+      items.forEach(function (tab) {
+        if (tab.style.display !== 'none') anyVisible = true;
+      });
+      group.style.display = anyVisible ? '' : 'none';
+    });
+
     // Check if active tab is hidden, switch to "activities"
     var activeTab = document.querySelector('.admin-tab.admin-tab--active');
     if (activeTab) {
@@ -914,7 +1131,8 @@
     if (phoneInput) phoneInput.value = config.phone || '';
     updateSelects();
     if (featuredActivitySelect) featuredActivitySelect.value = config.featuredActivity || '';
-    if (featuredSelect) featuredSelect.value = config.featured || '';
+    // Seed DnD list from saved enabled order (featured = first)
+    renderServiceOrderList((config.enabled || []).slice());
     updateCount();
     updateSaaSFeatureVisibility(config);
     if (contentAdmin) {
@@ -987,12 +1205,15 @@
       showAsFullCity: true
     };
 
+    var orderedEnabled = getOrderedEnabledServiceIds();
+    var featuredServiceId = orderedEnabled[0] || '';
+
     return store.normalizeConfig({
       enabledActivities: getEnabledActivityIds(),
-      enabled: getEnabledServiceIds(),
+      enabled: orderedEnabled,
       featuredActivity: featuredActivitySelect ? featuredActivitySelect.value : current.featuredActivity,
-      featured: featuredSelect ? featuredSelect.value : current.featured,
-      heroFocus: featuredSelect ? featuredSelect.value : current.heroFocus,
+      featured: featuredServiceId,
+      heroFocus: featuredServiceId,
       theme: selectedTheme,
       phone: phoneInput ? phoneInput.value : current.phone,
       brand: {
@@ -1200,6 +1421,35 @@
         var email = loginEmailInput ? loginEmailInput.value.trim() : '';
         var password = loginPasswordInput ? loginPasswordInput.value : '';
         var db = window.MkenSupabaseDb;
+        var SUPER_ADMIN_EMAILS = ['admin@mken.live', 'admin@mkem.live'];
+
+        function isSuperAdminEmail(addr) {
+          return SUPER_ADMIN_EMAILS.indexOf(String(addr || '').trim().toLowerCase()) !== -1;
+        }
+
+        function finishSaasLogin(tenantSlug, userEmail) {
+          store.setAdminLoggedIn(true);
+          try {
+            if (isSuperAdminEmail(userEmail)) {
+              sessionStorage.setItem('mken_super_admin', '1');
+            } else {
+              sessionStorage.removeItem('mken_super_admin');
+            }
+          } catch (e) { /* private mode */ }
+
+          window.MkenAdminAuth = window.MkenAdminAuth || {};
+          window.MkenAdminAuth.isSuperAdmin = function () {
+            try {
+              if (sessionStorage.getItem('mken_super_admin') === '1') return true;
+            } catch (e2) { /* ignore */ }
+            return isSuperAdminEmail(userEmail);
+          };
+
+          showToast('تم تسجيل الدخول بنجاح! 🚀');
+          var slug = tenantSlug || (isSuperAdminEmail(userEmail) ? 'admin' : 'default');
+          var newUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + '?tenant=' + encodeURIComponent(slug);
+          window.location.href = newUrl;
+        }
         
         if (!db || !db.isConfigured()) {
           showToast('يرجى تهيئة وتفعيل المزامنة السحابية (Supabase) أولاً في تبويب الإعدادات.', 'error');
@@ -1221,26 +1471,57 @@
         client.auth.signInWithPassword({ email: email, password: password })
           .then(function (authRes) {
             if (authRes.error) throw authRes.error;
-            
-            // Fetch the tenant slug associated with this owner_id
+
+            var user = authRes.data.user;
+            var userEmail = (user && user.email) ? String(user.email).trim().toLowerCase() : email.toLowerCase();
+
+            // Super admin: لا يشترط ربط owner_id بمستأجر
+            if (isSuperAdminEmail(userEmail)) {
+              return client
+                .from('mken_saas_clients')
+                .select('tenant_slug')
+                .eq('tenant_slug', 'admin')
+                .maybeSingle()
+                .then(function (adminTenantRes) {
+                  var slug = (adminTenantRes.data && adminTenantRes.data.tenant_slug) || 'admin';
+                  finishSaasLogin(slug, userEmail);
+                });
+            }
+
+            // Tenant owner: ابحث بـ owner_id ثم بالبريد كاحتياط
             return client
               .from('mken_saas_clients')
               .select('tenant_slug')
-              .eq('owner_id', authRes.data.user.id)
+              .eq('owner_id', user.id)
+              .limit(1)
               .maybeSingle()
               .then(function (tenantRes) {
                 if (tenantRes.error) throw tenantRes.error;
-                if (!tenantRes.data) {
-                  client.auth.signOut();
-                  throw new Error('لا يوجد نشاط تجاري مرتبط بهذا البريد الإلكتروني.');
+                if (tenantRes.data && tenantRes.data.tenant_slug) {
+                  finishSaasLogin(tenantRes.data.tenant_slug, userEmail);
+                  return null;
                 }
-                
-                var tenantSlug = tenantRes.data.tenant_slug;
-                store.setAdminLoggedIn(true);
-                
-                showToast('تم تسجيل الدخول بنجاح! 🚀');
-                var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?tenant=" + tenantSlug;
-                window.location.href = newUrl;
+                return client
+                  .from('mken_saas_clients')
+                  .select('tenant_slug, id')
+                  .eq('email', userEmail)
+                  .limit(1)
+                  .maybeSingle()
+                  .then(function (byEmail) {
+                    if (byEmail.error) throw byEmail.error;
+                    if (!byEmail.data) {
+                      client.auth.signOut();
+                      throw new Error('لا يوجد نشاط تجاري مرتبط بهذا البريد الإلكتروني.');
+                    }
+                    // اربط owner_id تلقائياً إن كان فارغاً (إصلاح بيانات قديمة)
+                    return client
+                      .from('mken_saas_clients')
+                      .update({ owner_id: user.id })
+                      .eq('id', byEmail.data.id)
+                      .then(function () {
+                        finishSaasLogin(byEmail.data.tenant_slug, userEmail);
+                      });
+                  });
               });
           })
           .catch(function (err) {
@@ -1249,7 +1530,11 @@
               submitBtn.textContent = 'دخول';
             }
             if (loginError) {
-              loginError.textContent = err.message || 'فشل تسجيل الدخول.';
+              var msg = err.message || 'فشل تسجيل الدخول.';
+              if (/invalid login credentials/i.test(msg)) {
+                msg = 'البريد أو كلمة المرور غير صحيحة. استخدم «نسيت كلمة المرور» إن لزم.';
+              }
+              loginError.textContent = msg;
               loginError.hidden = false;
             }
           });
@@ -1474,9 +1759,9 @@
       fillCustomWebhookPayloadSample();
       var area = document.getElementById('whatsappCustomPayloadSample');
       if (area) {
-        area.select();
-        document.execCommand('copy');
-        showToast('تم نسخ مثال الطلب إلى الحافظة');
+        copyToClipboard(area.value).then(function() {
+          showToast('تم نسخ مثال الطلب إلى الحافظة');
+        });
       }
     });
   }
@@ -1545,9 +1830,9 @@
     supabaseCopySqlBtn.addEventListener('click', function () {
       var sqlArea = document.getElementById('supabaseSqlArea');
       if (sqlArea) {
-        sqlArea.select();
-        document.execCommand('copy');
-        showToast('تم نسخ سكريبت SQL إلى الحافظة بنجاح!');
+        copyToClipboard(sqlArea.value).then(function() {
+          showToast('تم نسخ سكريبت SQL إلى الحافظة بنجاح!');
+        });
       }
     });
   }
@@ -1605,9 +1890,9 @@
     supabaseCopyUpgradeSqlBtn.addEventListener('click', function () {
       var area = document.getElementById('supabaseUpgradeSqlArea');
       if (area) {
-        area.select();
-        document.execCommand('copy');
-        showToast('تم نسخ سكريبت ترقية الدفع إلى الحافظة بنجاح!');
+        copyToClipboard(area.value).then(function() {
+          showToast('تم نسخ سكريبت ترقية الدفع إلى الحافظة بنجاح!');
+        });
       }
     });
   }

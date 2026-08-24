@@ -173,7 +173,7 @@
               <span class="admin-tab-icon">🇸🇦</span>هيئة الزكاة (ZATCA)
             </button>
             <button type="button" class="admin-tab" data-tab="saas">
-              <span class="admin-tab-icon">💳</span>الاشتراك والخرائط
+              <span class="admin-tab-icon">💳</span>الاشتراك والخرائط والمنافسين
             </button>
             <button type="button" class="admin-tab" data-tab="developer">
               <span class="admin-tab-icon">🛠️</span>المطورين (API)
@@ -221,13 +221,16 @@
           <div id="activitiesList" class="admin-activities"></div>
         </section>
         <section class="admin-section admin-section--inline">
+          <h3 style="margin-bottom: 6px;">ترتيب الظهور للخدمات</h3>
+          <p class="admin-hint" style="margin-bottom: 12px;">اسحب الخدمات لإعادة ترتيبها. الأولى تظهر كخدمة بارزة في الواجهة (Hero والبطاقة المميزة).</p>
           <div class="admin-field">
-            <label for="featuredActivitySelect">النشاط البارز</label>
+            <label for="featuredActivitySelect">النشاط البارز (أول ظهور)</label>
             <select id="featuredActivitySelect" class="admin-input"></select>
           </div>
           <div class="admin-field">
-            <label for="featuredSelect">الخدمة البارزة</label>
-            <select id="featuredSelect" class="admin-input"></select>
+            <label>ترتيب الخدمات (سحب وإفلات)</label>
+            <div id="serviceOrderList" class="admin-service-order" aria-label="ترتيب ظهور الخدمات"></div>
+            <small class="admin-field__hint">يمكنك أيضاً استخدام ▲ ▼. احفظ التغييرات لتطبيق الترتيب على الموقع.</small>
           </div>
           <div class="admin-field">
             <label>الثيم</label>
@@ -461,13 +464,13 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">صورة الصنف</th>
-                  <th style="padding: 12px; font-weight: 600;">اسم الصنف</th>
-                  <th style="padding: 12px; font-weight: 600;">رمز SKU / باركود</th>
-                  <th style="padding: 12px; font-weight: 600;">سعر الشراء</th>
-                  <th style="padding: 12px; font-weight: 600;">سعر البيع</th>
-                  <th style="padding: 12px; font-weight: 600;">الكمية المتوفرة</th>
-                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                  <th class="admin-th-cell">صورة الصنف</th>
+                  <th class="admin-th-cell">اسم الصنف</th>
+                  <th class="admin-th-cell">رمز SKU / باركود</th>
+                  <th class="admin-th-cell">سعر الشراء</th>
+                  <th class="admin-th-cell">سعر البيع</th>
+                  <th class="admin-th-cell">الكمية المتوفرة</th>
+                  <th class="admin-th-cell">خيارات</th>
                 </tr>
               </thead>
               <tbody id="adminInventoryList">
@@ -518,14 +521,14 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة / العرض</th>
-                  <th style="padding: 12px; font-weight: 600;">النوع</th>
-                  <th style="padding: 12px; font-weight: 600;">العميل</th>
-                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
-                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
-                  <th style="padding: 12px; font-weight: 600;">طريقة السداد</th>
-                  <th style="padding: 12px; font-weight: 600;">تاريخ الإصدار</th>
-                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                  <th class="admin-th-cell">رقم الفاتورة / العرض</th>
+                  <th class="admin-th-cell">النوع</th>
+                  <th class="admin-th-cell">العميل</th>
+                  <th class="admin-th-cell">المجموع النهائي</th>
+                  <th class="admin-th-cell">حالة الدفع</th>
+                  <th class="admin-th-cell">طريقة السداد</th>
+                  <th class="admin-th-cell">تاريخ الإصدار</th>
+                  <th class="admin-th-cell">خيارات</th>
                 </tr>
               </thead>
               <tbody id="adminInvoicesList">
@@ -554,12 +557,12 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">اسم المورد</th>
-                  <th style="padding: 12px; font-weight: 600;">الشخص المسؤول</th>
-                  <th style="padding: 12px; font-weight: 600;">رقم الهاتف</th>
-                  <th style="padding: 12px; font-weight: 600;">البريد الإلكتروني</th>
-                  <th style="padding: 12px; font-weight: 600;">العنوان</th>
-                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                  <th class="admin-th-cell">اسم المورد</th>
+                  <th class="admin-th-cell">الشخص المسؤول</th>
+                  <th class="admin-th-cell">رقم الهاتف</th>
+                  <th class="admin-th-cell">البريد الإلكتروني</th>
+                  <th class="admin-th-cell">العنوان</th>
+                  <th class="admin-th-cell">خيارات</th>
                 </tr>
               </thead>
               <tbody id="adminVendorsList">
@@ -585,13 +588,13 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة</th>
-                  <th style="padding: 12px; font-weight: 600;">المورد</th>
-                  <th style="padding: 12px; font-weight: 600;">عدد الأصناف</th>
-                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
-                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
-                  <th style="padding: 12px; font-weight: 600;">تاريخ الفاتورة</th>
-                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                  <th class="admin-th-cell">رقم الفاتورة</th>
+                  <th class="admin-th-cell">المورد</th>
+                  <th class="admin-th-cell">عدد الأصناف</th>
+                  <th class="admin-th-cell">المجموع النهائي</th>
+                  <th class="admin-th-cell">حالة الدفع</th>
+                  <th class="admin-th-cell">تاريخ الفاتورة</th>
+                  <th class="admin-th-cell">خيارات</th>
                 </tr>
               </thead>
               <tbody id="adminPurchaseInvoicesList">
@@ -619,12 +622,12 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">اسم العميل</th>
-                  <th style="padding: 12px; font-weight: 600;">رقم الهاتف</th>
-                  <th style="padding: 12px; font-weight: 600;">البريد الإلكتروني</th>
-                  <th style="padding: 12px; font-weight: 600;">العنوان</th>
-                  <th style="padding: 12px; font-weight: 600;">المدفوعات الآجلة (الديون)</th>
-                  <th style="padding: 12px; font-weight: 600;">خيارات</th>
+                  <th class="admin-th-cell">اسم العميل</th>
+                  <th class="admin-th-cell">رقم الهاتف</th>
+                  <th class="admin-th-cell">البريد الإلكتروني</th>
+                  <th class="admin-th-cell">العنوان</th>
+                  <th class="admin-th-cell">المدفوعات الآجلة (الديون)</th>
+                  <th class="admin-th-cell">خيارات</th>
                 </tr>
               </thead>
               <tbody id="adminCustomersList">
@@ -720,11 +723,11 @@
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">اسم المنتج</th>
-                  <th style="padding: 12px; font-weight: 600;">الكمية المباعة</th>
-                  <th style="padding: 12px; font-weight: 600;">إجمالي الإيرادات</th>
-                  <th style="padding: 12px; font-weight: 600;">إجمالي التكلفة</th>
-                  <th style="padding: 12px; font-weight: 600;">صافي الربح</th>
+                  <th class="admin-th-cell">اسم المنتج</th>
+                  <th class="admin-th-cell">الكمية المباعة</th>
+                  <th class="admin-th-cell">إجمالي الإيرادات</th>
+                  <th class="admin-th-cell">إجمالي التكلفة</th>
+                  <th class="admin-th-cell">صافي الربح</th>
                 </tr>
               </thead>
               <tbody id="reportsTopItemsList">
@@ -1339,11 +1342,11 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
 
               <!-- Competitors & Local SEO Scan -->
               <div id="gbpCompetitorsBlock" style="margin-top: 20px; padding-top: 18px; border-top: 1px dashed rgba(255,255,255,0.12);">
-                <h4 style="margin: 0 0 8px; color: var(--color-primary); font-size: 0.95rem;">🗺️ مقارنة المنافسين والسيو المحلي (Local Scan)</h4>
+                <h4 style="margin: 0 0 8px; color: var(--color-primary); font-size: 0.95rem;">🗺️ معالج فحص المنافسين (Local SEO Scan)</h4>
                 <p class="admin-hint" style="margin-bottom: 12px;">مقارنة تقييم نشاطك الحالي وعدد المراجعات بمتوسط المنافسين القريبين في منطقتك الجغرافية.</p>
                 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
-                  <button type="button" id="gbpRunScanBtn" class="btn btn--outline" style="flex: 1; min-width: 140px;">🔍 فحص المنافسين بالمنطقة</button>
+                  <button type="button" id="gbpRunScanBtn" class="btn btn--outline" style="flex: 1; min-width: 140px;">🔍 تشغيل معالج فحص المنافسين</button>
                 </div>
 
                 <div id="gbpScanLoading" class="admin-hint" style="display: none; margin-bottom: 10px;">جاري فحص الخريطة وتحليل المنافسين...</div>
@@ -2308,11 +2311,11 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
             <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: right; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius);">
               <thead>
                 <tr style="background: #f8f9fa; border-bottom: 1px solid var(--color-border);">
-                  <th style="padding: 12px; font-weight: 600;">رقم الفاتورة</th>
-                  <th style="padding: 12px; font-weight: 600;">تاريخ الفاتورة</th>
-                  <th style="padding: 12px; font-weight: 600;">طريقة الدفع</th>
-                  <th style="padding: 12px; font-weight: 600;">حالة الدفع</th>
-                  <th style="padding: 12px; font-weight: 600;">المجموع النهائي</th>
+                  <th class="admin-th-cell">رقم الفاتورة</th>
+                  <th class="admin-th-cell">تاريخ الفاتورة</th>
+                  <th class="admin-th-cell">طريقة الدفع</th>
+                  <th class="admin-th-cell">حالة الدفع</th>
+                  <th class="admin-th-cell">المجموع النهائي</th>
                 </tr>
               </thead>
               <tbody id="customerLedgerTransactionsList">
@@ -2427,6 +2430,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
   <script src="js/content-templates/tailoring.js"></script>
   <script src="js/content-templates/bodybuilding.js"></script>
   <script src="js/content-templates/football.js"></script>
+  <script src="js/content-templates/app-development.js"></script>
   <script src="js/ui-profiles/registry.js"></script>
   <script src="js/content-resolver.js"></script>
   <script src="js/emails-catalog.js"></script>

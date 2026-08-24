@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تحويل — لوحة التحكم</title>
+  <link rel="icon" type="image/png" href="assets/mken-logo.png">
+  <script>
+    // Bridge: /admin.html on the static Vercel app → mkn-theme /admin.
+    // Nested www.{tenant}.mken.live is not covered by the *.mken.live cert.
+    (function() {
+      function themeOrigin() {
+        var host = (location.hostname || "").toLowerCase();
+        var nested = host.match(/^www\.([a-z0-9-]+)\.mken\.live$/);
+        if (nested) return location.protocol + "//" + nested[1] + ".mken.live";
+        if (host === "localhost" || host === "127.0.0.1") {
+          try {
+            var stored = localStorage.getItem("mken_theme_origin");
+            if (stored) return stored.replace(/\/$/, "");
+          } catch (e) {}
+          return "http://localhost:3113";
+        }
+        return location.origin;
+      }
+      var dest = "/admin";
+      if (location.search.indexOf("google_connect=") !== -1) dest = "/admin/settings";
+      window.location.replace(themeOrigin() + dest + location.search + location.hash);
+    })();
+  </script>
+</head>
+<body>
+  <p>يتم التحويل إلى لوحة التحكم... إذا لم يتم التحويل تلقائياً، <a id="link">اضغط هنا</a>.</p>
+  <script>
+    (function() {
+      function themeOrigin() {
+        var host = (location.hostname || "").toLowerCase();
+        var nested = host.match(/^www\.([a-z0-9-]+)\.mken\.live$/);
+        if (nested) return location.protocol + "//" + nested[1] + ".mken.live";
+        if (host === "localhost" || host === "127.0.0.1") {
+          try {
+            var stored = localStorage.getItem("mken_theme_origin");
+            if (stored) return stored.replace(/\/$/, "");
+          } catch (e) {}
+          return "http://localhost:3113";
+        }
+        return location.origin;
+      }
+      var dest = "/admin";
+      if (location.search.indexOf("google_connect=") !== -1) dest = "/admin/settings";
+      document.getElementById("link").href = themeOrigin() + dest + location.search + location.hash;
+    })();
+  </script>
+</body>
+</html>

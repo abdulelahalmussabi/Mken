@@ -10,7 +10,13 @@
   var config, activities, activeActivityId, content, profile;
 
   function esc(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function brandName() {
@@ -279,13 +285,10 @@
     }
     if (empty) empty.hidden = true;
 
-    var sorted = services.slice().sort(function (a, b) {
-      if (a.id === featuredId) return -1;
-      if (b.id === featuredId) return 1;
-      return 0;
-    });
-    grid.innerHTML = sorted.map(function (s) {
-      return renderServiceCard(s, featuredId);
+    // Order follows config.enabled (admin drag-and-drop). First item is featured.
+    var displayFeaturedId = featuredId || (services[0] && services[0].id) || '';
+    grid.innerHTML = services.map(function (s) {
+      return renderServiceCard(s, displayFeaturedId);
     }).join('');
   }
 

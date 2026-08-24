@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مكّن — Trust SDK Demo</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a222c;
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #2dd4bf;
+      --danger: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #1e3a3a 0%, var(--bg) 55%);
+      color: var(--text);
+      display: grid; place-items: center; padding: 24px;
+    }
+    .box {
+      width: min(420px, 100%);
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      border: 1px solid #2a3542;
+      border-radius: 16px; padding: 28px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.35rem; }
+    p { margin: 0 0 20px; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: var(--muted); }
+    input[type="tel"], input[type="text"] {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid #334155; background: #0b1220; color: var(--text);
+      margin-bottom: 14px; font-size: 1rem;
+    }
+    .row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .row input { width: auto; margin: 0; }
+    button {
+      width: 100%; padding: 12px; border: 0; border-radius: 10px;
+      background: var(--accent); color: #042f2e; font-weight: 700;
+      cursor: pointer; font-size: 1rem;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #otpPanel { display: none; margin-top: 8px; }
+    #status { margin-top: 14px; font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+    #status.err { color: var(--danger); }
+    #status.ok { color: var(--accent); }
+    #turnstile { margin: 12px 0; min-height: 65px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>دخول مكّن</h1>
+    <p>
+      توثيق الجهاز + Turnstile + Authentica OTP.
+      بالموافقة يمكن تخطي OTP في الزيارات التالية على نفس الجهاز.
+    </p>
+
+    <label for="phone">رقم الجوال</label>
+    <input id="phone" type="tel" inputmode="tel" placeholder="05xxxxxxxx أو +9665..." autocomplete="tel" />
+
+    <div class="row">
+      <input id="remember" type="checkbox" checked />
+      <label for="remember" style="margin:0">تذكّر هذا الجهاز (موافقة PDPL)</label>
+    </div>
+
+    <div id="turnstile"></div>
+
+    <button id="btnStart" type="button">متابعة</button>
+
+    <div id="otpPanel">
+      <label for="otp">رمز التحقق</label>
+      <input id="otp" type="text" inputmode="numeric" maxlength="8" placeholder="••••••" autocomplete="one-time-code" />
+      <button id="btnVerify" type="button">تأكيد الرمز</button>
+      <button id="btnSms" type="button" style="margin-top:8px;background:#334155;color:#fff">إعادة الإرسال عبر SMS</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+
+  <script src="/js/mken-trust-sdk.js"></script>
+  <script>
+    (function () {
+      var statusEl = document.getElementById('status');
+      var otpPanel = document.getElementById('otpPanel');
+      var verifyCtx = null;
+
+      function setStatus(msg, kind) {
+        statusEl.textContent = msg || '';
+        statusEl.className = kind || '';
+      }
+
+      // إنتاج: BFF على نفس الأصل يضبط الكوكي Domain=.mken.live
+      MkenTrust.init({
+        bffBaseUrl: '/api/v1/trust',
+        turnstileSiteKey: 'YOUR_TURNSTILE_SITE_KEY',
+        tenantSlug: 'demo',
+        onError: function (err) {
+          console.error(err);
+        }
+      });
+
+      MkenTrust.mountTurnstile('#turnstile').catch(function (e) {
+        setStatus('تعذر تحميل Turnstile: ' + e.message, 'err');
+      });
+
+      document.getElementById('btnStart').addEventListener('click', function () {
+        var phone = document.getElementById('phone').value;
+        var remember = document.getElementById('remember').checked;
+        MkenTrust.setDeviceConsent(remember);
+        setStatus('جاري التحقق...', '');
+        document.getElementById('btnStart').disabled = true;
+
+        MkenTrust.loginWithPhone({
+          phone: phone,
+          rememberDevice: remember,
+          onOtpRequired: function (ctx) {
+            verifyCtx = ctx;
+            otpPanel.style.display = 'block';
+            setStatus('أُرسل رمز عبر واتساب. إن تأخر، سيُرسل SMS خلال ~15 ثانية.', '');
+          }
+        }).then(function (out) {
+          document.getElementById('btnStart').disabled = false;
+          if (out.phase === 'trusted') {
+            otpPanel.style.display = 'none';
+            setStatus('جهاز موثوق — تم الدخول بدون OTP. userId=' + out.result.userId, 'ok');
+          }
+        }).catch(function (err) {
+          document.getElementById('btnStart').disabled = false;
+          var msg = (err.payload && err.payload.error) || err.message;
+          setStatus('فشل: ' + msg, 'err');
+          MkenTrust.resetTurnstile();
+        });
+      });
+
+      document.getElementById('btnVerify').addEventListener('click', function () {
+        if (!verifyCtx) return;
+        var otp = document.getElementById('otp').value;
+        setStatus('جاري التحقق من الرمز...', '');
+        verifyCtx.verify(otp).then(function (out) {
+          setStatus('تم التحقق بنجاح. userId=' + out.result.userId, 'ok');
+          otpPanel.style.display = 'none';
+        }).catch(function (err) {
+          var msg = (err.payload && err.payload.error) || err.message;
+          setStatus('رمز غير صحيح: ' + msg, 'err');
+        });
+      });
+
+      document.getElementById('btnSms').addEventListener('click', function () {
+        if (!verifyCtx) return;
+        verifyCtx.sendSmsFallback().then(function () {
+          setStatus('تم طلب SMS.', 'ok');
+        }).catch(function (err) {
+          setStatus('فشل SMS: ' + ((err.payload && err.payload.error) || err.message), 'err');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -62,7 +62,7 @@
         });
       })
       .then(function (data) {
-        var adminUrl = data.adminUrl || ('https://' + payload.tenantSlug + '.mken.live/admin.html');
+        var adminUrl = data.adminUrl || ('https://' + payload.tenantSlug + '.mken.live/admin');
         var siteUrl = data.siteUrl || ('https://' + payload.tenantSlug + '.mken.live/');
         showSuccess(
           '<strong>🎉 تم إنشاء حسابك!</strong><br><br>' +

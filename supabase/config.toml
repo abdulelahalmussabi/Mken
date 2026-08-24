@@ -1,0 +1,13 @@
+# Supabase Edge Functions — Mken Trust Engine
+# Deploy: supabase functions deploy trust-challenge --no-verify-jwt
+#         supabase functions deploy trust-verify --no-verify-jwt
+#         supabase functions deploy authentica-fallback --no-verify-jwt
+
+[functions.trust-challenge]
+verify_jwt = false
+
+[functions.trust-verify]
+verify_jwt = false
+
+[functions.authentica-fallback]
+verify_jwt = false

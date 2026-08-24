@@ -1,0 +1,46 @@
+---
+description: Keep enterprise/auth/GENERATE-CODE sessions lean — one deliverable per turn, no full-platform dumps
+alwaysApply: true
+---
+
+# Lean enterprise sessions (مكّن)
+
+Applies when the user pastes a long persona/system prompt, uses `[GENERATE-CODE]` / `[SECURITY-AUDIT]` / `[ARCHITECTURE-DIAGRAM]`, or asks for Trust / fingerprint / OTP / Edge Function / Zero-Trust work.
+
+## Scope discipline
+
+- Treat a persona prompt as **role + quality bar**, not a license to rebuild the whole platform.
+- **One deliverable per turn** unless the user lists multiple explicitly.
+  - Example: `[GENERATE-CODE] Edge Function` → only the named function (+ minimal shared helpers it needs). Do **not** also dump SQL, SDK, BFF, README, and fallbacks.
+- Prefer **extending existing** `api/`, `db/`, `supabase/functions/` patterns over greenfield trees of `_shared/*` files.
+- Cap new files: if a turn needs **>5 new files**, stop after the critical path and ask what to generate next.
+
+## Tooling budget
+
+- Diagnostics (`login`, `admin@…`, env, deploy): **≤6 tool calls** before a hypothesis; open the obvious auth/admin path first (`js/admin.js`, `api/v1/auth.js`, related schema). Do not re-scan the whole repo.
+- Do **not** re-read every skill on every follow-up; reuse context already loaded in the chat.
+- Skip `SearchConversations` / broad `Glob`/`Grep` unless the path is unknown after one focused search.
+
+## Response shape
+
+- Start with the artifact (SQL / TS / patch), not architecture essays.
+- No fluff. Tables/diagrams only when the command prefix asks for them (`[ARCHITECTURE-DIAGRAM]`, `[SECURITY-AUDIT]`, `[COMPLIANCE-CHECK]`).
+- Production-ready means **correct and complete for the asked surface**, not every adjacent subsystem.
+
+## Anti-patterns
+
+```text
+❌ User: "Edge Function trust-challenge"
+   Agent: writes 19 files (all _shared + verify + fallback + README + config)
+
+✅ User: "Edge Function trust-challenge"
+   Agent: trust-challenge/index.ts + only shared modules it imports; note follow-ups
+```
+
+```text
+❌ User: "admin@mken.live logs in then kicks out"
+   Agent: 14× Read across unrelated schemas
+
+✅ User: same
+   Agent: trace sign-in → tenant/owner binding → redirect; patch that path
+```

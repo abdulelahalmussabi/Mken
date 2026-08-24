@@ -10,6 +10,18 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/mken-logo.png">
   <link rel="stylesheet" href="css/landing.css">
+  <script>
+    // mkn-theme bridge: redirect signup to mkn-theme /auth?tab=register
+    (function() {
+      var stored = null;
+      try { stored = localStorage.getItem('mken_theme_origin'); } catch(e) {}
+      var base = stored || 'http://localhost:3113';
+      // Allow skipping redirect with ?no-redirect query param
+      if (!window.location.search.includes('no-redirect')) {
+        window.location.replace(base + '/auth?tab=register');
+      }
+    })();
+  </script>
   <style>
     .signup-wrap {
       min-height: 100vh;

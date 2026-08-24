@@ -52,7 +52,7 @@ async function handleNotify(req, res) {
   const tenantSlug = (body.tenantSlug || body.tenant_slug || 'default').trim() || 'default';
   const title = typeof body.title === 'string' ? body.title.slice(0, 120) : 'مكِّن';
   const text = typeof body.body === 'string' ? body.body.slice(0, 500) : '';
-  const url = typeof body.url === 'string' ? body.url.slice(0, 200) : './admin.html';
+  const url = typeof body.url === 'string' ? body.url.slice(0, 200) : '/admin';
 
   const supabaseUrl = sbEnv.getSupabaseUrl();
   const supabaseKey = sbEnv.getSupabaseServiceKey();
@@ -80,7 +80,7 @@ async function handleTest(req, res) {
     tenantSlug,
     'اختبار Push — مكِّن',
     'تم إعداد التنبيهات بنجاح. ستصلك إشعارات الحجوزات والتذكيرات هنا.',
-    './admin.html'
+    '/admin'
   );
 
   if (result.skipped === 'no-subscriptions') {

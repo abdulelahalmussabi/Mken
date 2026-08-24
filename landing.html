@@ -10,6 +10,16 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/mken-logo.png">
   <link rel="stylesheet" href="css/landing.css">
+  <script>
+    // mkn-theme bridge: resolves the mkn-theme origin for navigation links
+    // In production (Vercel), set localStorage mken_theme_origin to the deployed mkn-theme URL
+    // In local dev, defaults to http://localhost:3113
+    window.MKEN_THEME = (function() {
+      var stored = null;
+      try { stored = localStorage.getItem('mken_theme_origin'); } catch(e) {}
+      return stored || 'http://localhost:3113';
+    })();
+  </script>
 </head>
 <body>
 
@@ -23,9 +33,9 @@
         <a href="#features">الميزات</a>
         <a href="#pricing">الباقات</a>
         <a href="#faq">الأسئلة</a>
-        <a href="admin.html">دخول</a>
+        <a id="nav-admin-link" href="/admin">دخول</a>
       </nav>
-      <a href="signup.html" class="lp-btn lp-btn--primary">جرّب 14 يوماً</a>
+      <a id="nav-signup-link" href="signup.html" class="lp-btn lp-btn--primary">جرّب 14 يوماً</a>
     </div>
   </header>
 
@@ -36,7 +46,7 @@
         <h1>فواتير معتمدة من الزكاة + واتساب CRM ذكي — موقعك جاهز في يوم واحد</h1>
         <p class="lp-hero__desc">منصة خفيفة لرجل الأعمال الناشئ: امتثال تنظيمي، فواتير إلكترونية، ردود واتساب آلية، وظهور على خرائط Google — بدون تعقيد ERP.</p>
         <div class="lp-hero__actions">
-          <a href="signup.html" class="lp-btn lp-btn--primary lp-btn--lg">جرّب 14 يوماً مجاناً</a>
+          <a id="hero-signup-link" href="signup.html" class="lp-btn lp-btn--primary lp-btn--lg">جرّب 14 يوماً مجاناً</a>
           <a href="https://demo.mken.live/" class="lp-btn lp-btn--outline lp-btn--lg" target="_blank" rel="noopener">شاهد العرض الحي</a>
         </div>
         <p class="lp-trust">✓ متوافق مع مرحلة II للفوترة · ✓ فاتورة QR · ✓ ردود واتساب ذكية · ✓ بدون بطاقة في التجربة</p>
@@ -145,7 +155,7 @@
             <li>موقع + حجز</li>
             <li>QR فوري</li>
           </ul>
-          <a href="signup.html" class="lp-btn lp-btn--outline">ابدأ</a>
+          <a href="signup.html" class="lp-btn lp-btn--outline pricing-signup-link">ابدأ</a>
         </article>
         <article class="lp-plan lp-plan--popular">
           <span class="lp-plan__badge">الأكثر طلباً</span>
@@ -156,7 +166,7 @@
             <li>واتساب CRM + ردود ذكية</li>
             <li><strong>14 يوم تجربة مجانية</strong></li>
           </ul>
-          <a href="signup.html" class="lp-btn lp-btn--primary">جرّب مجاناً</a>
+          <a href="signup.html" class="lp-btn lp-btn--primary pricing-signup-link">جرّب مجاناً</a>
         </article>
         <article class="lp-plan">
           <h3>احترافي</h3>
@@ -198,15 +208,30 @@
     <div class="lp-container lp-cta__inner">
       <h2>جاهز للامتثال قبل الغرامة؟</h2>
       <p>ابدأ تجربتك المجانية اليوم — بدون بطاقة ائتمان</p>
-      <a href="signup.html" class="lp-btn lp-btn--white lp-btn--lg">ابدأ الآن</a>
+      <a id="cta-signup-link" href="signup.html" class="lp-btn lp-btn--white lp-btn--lg">ابدأ الآن</a>
     </div>
   </section>
 
   <footer class="lp-footer">
     <div class="lp-container lp-footer__inner">
-      <p>© 2026 مكن · <a href="admin.html">لوحة الإدارة</a> · <a href="https://license.mken.live" target="_blank" rel="noopener">Mken Lite</a></p>
+      <p>© 2026 مكن · <a id="footer-admin-link" href="/admin">لوحة الإدارة</a> · <a href="https://license.mken.live" target="_blank" rel="noopener">Mken Lite</a></p>
     </div>
   </footer>
+
+  <script>
+    // mkn-theme bridge: rewrite links to point to the mkn-theme Next.js app
+    (function() {
+      var base = window.MKEN_THEME || 'http://localhost:3113';
+
+      // Admin links → mkn-theme /admin/login
+      var adminLinks = document.querySelectorAll('#nav-admin-link, #footer-admin-link');
+      adminLinks.forEach(function(a) { a.href = base + '/admin/login'; });
+
+      // Signup links → mkn-theme /auth?tab=register
+      var signupLinks = document.querySelectorAll('#nav-signup-link, #hero-signup-link, #cta-signup-link, .pricing-signup-link');
+      signupLinks.forEach(function(a) { a.href = base + '/auth?tab=register'; });
+    })();
+  </script>
 
 </body>
 </html>

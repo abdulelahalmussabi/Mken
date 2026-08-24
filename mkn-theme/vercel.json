@@ -1,0 +1,40 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/dashboarc/:path*",
+      "destination": "/dashboard/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/themes",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard/theme",
+      "destination": "/dashboard/themes",
+      "permanent": true
+    },
+    {
+      "source": "/staff.html",
+      "destination": "/staff/login",
+      "permanent": true
+    },
+    {
+      "source": "/almahrusa",
+      "destination": "/subscriber/almahrusa",
+      "permanent": true
+    }
+  ]
+}

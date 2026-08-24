@@ -112,7 +112,7 @@
         tenantSlug: tenantSlug || 'default',
         title: title,
         body: body,
-        url: url || './admin.html',
+        url: url || '/admin',
       }),
     }).then(function (res) {
       return res.json().catch(function () { return {}; });

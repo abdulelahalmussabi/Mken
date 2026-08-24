@@ -1,0 +1,88 @@
+{
+  "name": "Mken AI WhatsApp Autonomous Sales & Support Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-ai-webhook",
+        "options": {}
+      },
+      "id": "whatsapp-incoming-webhook",
+      "name": "WhatsApp Incoming Webhook (Meta Cloud API)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, brand_name, is_active FROM public.tenants WHERE waba_id = '{{ $json.body.entry[0].changes[0].value.metadata.phone_number_id }}' LIMIT 1;"
+      },
+      "id": "supabase-rls-waba-auth",
+      "name": "Extract & Verify WABA Tenant RLS",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "systemMessage": "=أنت المساعد الذكي الآلي لمنشأة {{ $json.brand_name }} المدار بواسطة منصة مكِّن (Mken SaaS).\nمهمتك: الإجابة على استفسارات العملاء، التحقق من المواعيد المتاحة، وإتمام الحجوزات والطلبات التجارية مباشرة داخل المحادثة بأدب واحترافية سعودية."
+        }
+      },
+      "id": "openai-ai-agent-engine",
+      "name": "AI Sales & Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $json.phone_number_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_CLOUD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "messaging_product", "value": "whatsapp" },
+            { "name": "to", "value": "={{ $json.from_phone }}" },
+            { "name": "type", "value": "text" },
+            {
+              "name": "text",
+              "value": "={\n  \"body\": \"{{ $json.ai_reply }}\"\n}"
+            }
+          ]
+        }
+      },
+      "id": "whatsapp-reply-dispatch",
+      "name": "Send WhatsApp Response to Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [950, 300]
+    }
+  ],
+  "connections": {
+    "WhatsApp Incoming Webhook (Meta Cloud API)": {
+      "main": [[{ "node": "Extract & Verify WABA Tenant RLS", "type": "main", "index": 0 }]]
+    },
+    "Extract & Verify WABA Tenant RLS": {
+      "main": [[{ "node": "AI Sales & Support Agent", "type": "main", "index": 0 }]]
+    },
+    "AI Sales & Support Agent": {
+      "main": [[{ "node": "Send WhatsApp Response to Client", "type": "main", "index": 0 }]]
+    }
+  }
+}

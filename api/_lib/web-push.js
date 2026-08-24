@@ -72,7 +72,7 @@ async function sendPushToTenant(supabase, tenantSlug, title, body, url) {
   const payload = JSON.stringify({
     title: title || 'مكِّن',
     body: body || '',
-    url: url || './admin.html',
+    url: url || '/admin',
   });
 
   let sent = 0;

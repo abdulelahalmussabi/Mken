@@ -525,11 +525,61 @@
       };
     }
 
+    if (slug === 'almasabi') {
+      return {
+        brand: {
+          name: 'مؤسسة المصعبي للتجارة',
+          tagline: 'تجارة وتوريد بين جدة ومكة والمدينة',
+          logo: '',
+        },
+        enabledActivities: ['commerce'],
+        enabled: [
+          'general-product', 'electronics-item', 'grocery-box',
+          'custom-gift', 'wholesale-order', 'monthly-subscription',
+        ],
+        featuredActivity: 'commerce',
+        featured: 'general-product',
+        heroFocus: 'general-product',
+        theme: 'terracotta',
+        phone: '',
+        social: {
+          whatsapp: { enabled: false, value: '' },
+          instagram: { enabled: false, value: '' },
+          twitter: { enabled: false, value: '' },
+          facebook: { enabled: false, value: '' },
+          tiktok: { enabled: false, value: '' },
+          linkedin: { enabled: false, value: '' },
+        },
+        emails: {
+          inquiries: { enabled: false, value: '' },
+          sales: { enabled: false, value: '' },
+          support: { enabled: false, value: '' },
+        },
+        heroImage: '',
+        activities: {},
+        services: {},
+        booking: Object.assign({}, DEFAULT_BOOKING),
+        serviceArea: Object.assign({}, DEFAULT_SERVICE_AREA, {
+          enabled: true,
+          displayOnHomepage: true,
+          city: 'جدة',
+          coverageNote: 'نخدم جدة ومكة المكرمة والمدينة المنورة',
+          showAsFullCity: true,
+        }),
+        push: Object.assign({}, DEFAULT_PUSH),
+        supabase: Object.assign({}, DEFAULT_SUPABASE),
+        saas: { baseDomain: 'mken.live', useSubdomains: true },
+        whatsappApi: Object.assign({}, DEFAULT_WHATSAPP_API),
+        payment: Object.assign({}, DEFAULT_PAYMENT),
+        updatedAt: null,
+      };
+    }
+
     if (slug === 'almahrosa' || slug === 'almahrusa') {
       return {
         brand: {
           name: "مجموعة المحروسة",
-          tagline: "مرحباً بكم في مجموعة المحروسة للغرف والوحدات السكنية المفروشة",
+          tagline: "شقق مخدومة في المدينة المنورة",
           logo: ""
         },
         enabledActivities: ['hotels'],
@@ -1173,6 +1223,7 @@
     }).filter(Boolean);
   }
 
+  /** Enabled services in display order (config.enabled array order from admin DnD). */
   function getEnabledServices() {
     var config = loadConfig();
     var enabled = config.enabled || [];
@@ -1181,6 +1232,7 @@
     }).filter(Boolean);
   }
 
+  /** Activity services preserving global enabled order. */
   function getEnabledServicesByActivity(activityId) {
     return getEnabledServices().filter(function (s) { return s.activityId === activityId; });
   }

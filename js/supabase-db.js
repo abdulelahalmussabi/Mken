@@ -230,7 +230,7 @@
             .maybeSingle()
             .then(function (tblRes) {
               if (tblRes.error) {
-                // Fallback to old table if new table does not exist yet
+                if (slug && slug !== 'default') return null;
                 return client
                   .from('mken_config')
                   .select('config_data')

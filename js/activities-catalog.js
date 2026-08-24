@@ -465,5 +465,24 @@ window.MkenActivitiesCatalog = [
       ctaLabel: 'ابدأ تفصيل البدلة العسكرية',
       requiresAddress: true,
     }
+  },
+  {
+    id: 'app-development',
+    icon: '📱',
+    title: 'تطوير وإدارة التطبيقات',
+    shortTitle: 'تطبيقات',
+    tagline: 'تطوير تطبيقات احترافية',
+    description: 'تصميم وتطوير تطبيقات الجوال بـ Flutter، صفحات الهبوط التعريفية، سياسات الخصوصية المتوافقة مع PDPL، ونشر المتاجر.',
+    uiProfile: 'project-based',
+    defaultTheme: 'slate',
+    serviceIds: [
+      'app-flutter', 'app-landing-page', 'app-privacy-policy', 'app-store-publish', 'app-maintenance',
+    ],
+    booking: {
+      type: 'consultation',
+      requiresAddress: false,
+      slotDuration: 60,
+      ctaLabel: 'اطلب استشارة مجانية',
+    },
   }
 ];

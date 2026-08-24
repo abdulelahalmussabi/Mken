@@ -16,7 +16,7 @@ function handleCors(req, res, allowedMethods = 'GET,OPTIONS,PATCH,DELETE,POST,PU
   res.setHeader('Access-Control-Allow-Methods', allowedMethods);
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Pin'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-Admin-Pin, X-Turnstile-Token, X-Mken-Tenant'
   );
   if (req.method === 'OPTIONS') {
     res.status(200).end();

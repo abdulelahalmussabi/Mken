@@ -24,6 +24,11 @@
     { "source": "/api/google-business/competitors", "destination": "/api/google-business?action=competitors" },
     { "source": "/api/google-business/nap-audit", "destination": "/api/google-business?action=nap-audit" },
     { "source": "/api/google-business/sync-nap", "destination": "/api/google-business?action=sync-nap" },
+    { "source": "/api/instagram/auth-url", "destination": "/api/instagram?action=auth-url" },
+    { "source": "/api/instagram/callback", "destination": "/api/instagram?action=callback" },
+    { "source": "/api/instagram/sync", "destination": "/api/instagram?action=sync" },
+    { "source": "/api/instagram/status", "destination": "/api/instagram?action=status" },
+    { "source": "/api/instagram/disconnect", "destination": "/api/instagram?action=disconnect" },
     { "source": "/api/v1/auth/login-challenge", "destination": "/api/v1/auth?type=login&step=challenge" },
     { "source": "/api/v1/auth/login-verify", "destination": "/api/v1/auth?type=login&step=verify" },
     { "source": "/api/v1/auth/register-challenge", "destination": "/api/v1/auth?type=register&step=challenge" },
@@ -31,6 +36,9 @@
     { "source": "/api/v1/auth/register-trial", "destination": "/api/v1/auth?type=register-trial" },
     { "source": "/api/v1/auth/admin-login", "destination": "/api/v1/auth?type=admin-login" },
     { "source": "/api/v1/auth/supabase-config", "destination": "/api/v1/auth?type=supabase-config" },
+    { "source": "/api/v1/trust/challenge", "destination": "/api/v1/trust?action=challenge" },
+    { "source": "/api/v1/trust/verify", "destination": "/api/v1/trust?action=verify" },
+    { "source": "/api/v1/trust/fallback", "destination": "/api/v1/trust?action=fallback" },
     { "source": "/api/license/activate", "destination": "/api/license?action=activate" },
     { "source": "/api/license/verify", "destination": "/api/license?action=verify" },
     { "source": "/api/license/deactivate", "destination": "/api/license?action=deactivate" },
@@ -45,15 +53,58 @@
     { "source": "/", "has": [{ "type": "host", "value": "www.mken.live" }], "destination": "/landing.html" },
     { "source": "/admin", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/license-admin.html" },
     { "source": "/admin", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/license-admin.html" },
+    { "source": "/admin", "destination": "/admin-redirect.html" },
     { "source": "/", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/pricing.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/pricing.html" }
+    { "source": "/", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/pricing.html" },
+    { "source": "/signup.html", "destination": "/signup-redirect.html" },
+    { "source": "/admin.html", "destination": "/admin-redirect.html" },
+    { "source": "/book.html", "destination": "/book-redirect.html" },
+    { "source": "/index.html", "destination": "/index-redirect.html" },
+    { "source": "/track.html", "destination": "/track-redirect.html" },
+    { "source": "/order.html", "destination": "/order-redirect.html" },
+    { "source": "/staff.html", "destination": "/staff-redirect.html" },
+    { "source": "/coaching.html", "destination": "/coaching-redirect.html" },
+    { "source": "/football-coaching.html", "destination": "/football-coaching-redirect.html" },
+    { "source": "/contract.html", "destination": "/contract-redirect.html" },
+    { "source": "/marketing-profile.html", "destination": "/marketing-profile-redirect.html" },
+    { "source": "/security-profile.html", "destination": "/security-profile-redirect.html" },
+    { "source": "/prereqs.html", "destination": "/prereqs-redirect.html" },
+    { "source": "/legal-portal.html", "destination": "/legal-portal-redirect.html" }
   ],
   "headers": [
     {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" }
+        { "key": "Access-Control-Allow-Origin", "value": "https://mken.live" },
+        { "key": "Access-Control-Allow-Origin", "value": "https://www.mken.live" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
+        { "key": "Access-Control-Max-Age", "value": "86400" }
+      ]
+    },
+    {
+      "source": "/api/webhook-proxy/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/api/whatsapp-webhook",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
