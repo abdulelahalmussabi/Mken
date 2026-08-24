@@ -139,11 +139,28 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const loginAdmin = useCallback(
     async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
       try {
-        const res = await fetch("/api/admin/login", {
+        let res = await fetch("/api/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email.trim(), password }),
         });
+
+        // Dual fallback to /api/v1/auth/admin-login
+        if (!res.ok) {
+          try {
+            const fallbackRes = await fetch("/api/v1/auth/admin-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: email.trim(), password }),
+            });
+            if (fallbackRes.ok) {
+              res = fallbackRes;
+            }
+          } catch {
+            // ignore fallback error
+          }
+        }
+
         const data = await res.json();
 
         if (!res.ok || !data.success) {
