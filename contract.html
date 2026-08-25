@@ -790,6 +790,8 @@
         var tier = client.subscription_tier || 'basic';
         var tierText = 'الأساسية (Basic)';
         var priceText = '99';
+        var cfg = client.config_data || {};
+        var quoted = cfg.subscription && cfg.subscription.pricing;
         
         if (tier === 'growth') {
           tierText = 'المتقدمة (Growth)';
@@ -799,28 +801,33 @@
           priceText = '599';
         } else if (tier === 'custom') {
           tierText = 'المخصصة (Custom)';
-          // حساب التسعير التفاعلي بناء على الخدمات المفعلة في config_data
-          var base = 99;
-          var cfg = client.config_data || {};
+          var addOns = (quoted && quoted.addOns) || {};
+          var base = addOns.base != null ? Number(addOns.base) : 99;
+          var extraAct = addOns.extraActivity != null ? Number(addOns.extraActivity) : 29;
           var actsCount = (cfg.enabledActivities || []).length;
           var customMonthly = base;
           if (actsCount > 1) {
-            customMonthly += (actsCount - 1) * 29;
+            customMonthly += (actsCount - 1) * extraAct;
           }
-          if (cfg.booking && cfg.booking.enabled) customMonthly += 49;
-          if (cfg.config_data && cfg.config_data.enabledServices && cfg.config_data.enabledServices.indexOf('commerce') !== -1) customMonthly += 99;
-          if (cfg.whatsappApi && cfg.whatsappApi.enabled) customMonthly += 149;
-          // check config_data.subscription.customFeatures
+          if (cfg.booking && cfg.booking.enabled) customMonthly += (addOns.booking != null ? Number(addOns.booking) : 49);
+          if (cfg.config_data && cfg.config_data.enabledServices && cfg.config_data.enabledServices.indexOf('commerce') !== -1) {
+            customMonthly += (addOns.commerce != null ? Number(addOns.commerce) : 99);
+          }
+          if (cfg.whatsappApi && cfg.whatsappApi.enabled) customMonthly += (addOns.whatsapp != null ? Number(addOns.whatsapp) : 149);
           if (cfg.subscription && cfg.subscription.customFeatures) {
             var feats = cfg.subscription.customFeatures;
             customMonthly = base;
-            if (actsCount > 1) customMonthly += (actsCount - 1) * 29;
-            if (feats.hasBooking) customMonthly += 49;
-            if (feats.hasCommerce) customMonthly += 99;
-            if (feats.hasWhatsApp) customMonthly += 149;
-            if (feats.hasInvoices) customMonthly += 199;
+            if (actsCount > 1) customMonthly += (actsCount - 1) * extraAct;
+            if (feats.hasBooking) customMonthly += (addOns.booking != null ? Number(addOns.booking) : 49);
+            if (feats.hasCommerce) customMonthly += (addOns.commerce != null ? Number(addOns.commerce) : 99);
+            if (feats.hasWhatsApp) customMonthly += (addOns.whatsapp != null ? Number(addOns.whatsapp) : 149);
+            if (feats.hasInvoices) customMonthly += (addOns.invoices != null ? Number(addOns.invoices) : 199);
           }
           priceText = customMonthly;
+        }
+
+        if (quoted && quoted.monthly != null && quoted.monthly !== '') {
+          priceText = quoted.monthly;
         }
         
         document.getElementById('p2Tier').textContent = tierText;

@@ -6,7 +6,7 @@ const { getSafeCorsOrigin } = require('./_lib/cors');
 
 module.exports = async function handler(req, res) {
   // 1. Set CORS headers dynamically
-  const origin = getSafeCorsOrigin(req);
+  const origin = await getSafeCorsOrigin(req);
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');

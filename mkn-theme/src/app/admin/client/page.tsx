@@ -28,7 +28,7 @@ export default function ClientAdminPage() {
 
   // Get the client for this admin
   const myClient = clients.find((c) => c.slug === session?.clientSlug);
-  const currentTheme = getClientTheme(session?.clientSlug || "") || "national_day";
+  const currentTheme = getClientTheme(session?.clientSlug || "") || "none";
   const currentOcc = SAUDI_OCCASIONS[currentTheme];
 
   // Editable Form State

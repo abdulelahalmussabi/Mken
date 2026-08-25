@@ -445,13 +445,17 @@
     var commerceCheck = document.getElementById('adminRegSvcCommerce');
     var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
     var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+    var domainCheck = document.getElementById('adminRegSvcCustomDomain');
 
     var customFeatures = {
       hasBooking: bookingCheck ? bookingCheck.checked : true,
       hasCommerce: commerceCheck ? commerceCheck.checked : false,
       hasWhatsApp: whatsappCheck ? whatsappCheck.checked : false,
-      hasInvoices: invoicesCheck ? invoicesCheck.checked : false
+      hasInvoices: invoicesCheck ? invoicesCheck.checked : false,
+      hasCustomDomain: domainCheck ? domainCheck.checked : false
     };
+
+    var quote = currentQuoteTotals();
 
     if (customFeatures.hasCommerce && enabledActivities.indexOf('commerce') === -1) {
       enabledActivities.push('commerce');
@@ -509,6 +513,7 @@
         enabledActivities: enabledActivities,
         enabledServices: enabledServices,
         customFeatures: customFeatures,
+        pricing: collectPricingQuote(tier, quote.monthly, quote.yearly),
         civilRegistryNumber: civilRegistry,
         commercialRegistryNumber: croOrFreelance,
         taxNumber: vatNumber,
@@ -527,6 +532,7 @@
       if (data && data.success) {
         toast('تم تسجيل العميل الجديد بنجاح وتفعيل موقعه! 🚀');
         if (adminRegisterForm) adminRegisterForm.reset();
+        updateRegistrationPricing();
         loadClients();
       } else {
         throw new Error(data.error || 'فشل التسجيل.');
@@ -571,6 +577,7 @@
     var commerceCheck = document.getElementById('adminRegSvcCommerce');
     var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
     var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+    var domainCheck = document.getElementById('adminRegSvcCustomDomain');
 
     function toggleSecurityAttachmentField() {
       var securityCheckbox = container.querySelector('.admin-reg-activity-check[value="security"]');
@@ -600,11 +607,72 @@
       });
     });
     toggleSecurityAttachmentField();
-    [bookingCheck, commerceCheck, whatsappCheck, invoicesCheck].forEach(function (cb) {
+    [bookingCheck, commerceCheck, whatsappCheck, invoicesCheck, domainCheck].forEach(function (cb) {
       if (cb) cb.addEventListener('change', onChange);
+    });
+    [
+      'adminRegPriceBooking', 'adminRegPriceCommerce', 'adminRegPriceWhatsapp',
+      'adminRegPriceInvoices', 'adminRegPriceCustomDomain',
+      'adminRegPriceTierBasic', 'adminRegPriceTierGrowth', 'adminRegPriceTierUnlimited',
+      'adminRegPriceBase', 'adminRegPriceExtraActivity'
+    ].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', onChange);
     });
 
     onTierSelectChange(); // Force preset initialization on load
+  }
+
+  var PRICE_DEFAULTS = {
+    basicMonth: 99,
+    growthMonth: 299,
+    unlimitedMonth: 599,
+    base: 99,
+    extraActivity: 29,
+    booking: 49,
+    commerce: 99,
+    whatsapp: 149,
+    invoices: 199,
+    customDomainYear: 249
+  };
+
+  function readPrice(id, fallback) {
+    var el = document.getElementById(id);
+    if (!el) return fallback;
+    var n = parseFloat(String(el.value).replace(',', '.'));
+    if (!isFinite(n) || n < 0) return fallback;
+    return Math.round(n);
+  }
+
+  function collectPricingQuote(tier, monthly, yearly) {
+    var storePrices = (window.MkenServicesStore && window.MkenServicesStore.SAAS_ADDON_PRICES) || {};
+    var d = PRICE_DEFAULTS;
+    if (storePrices.customDomainYear != null) d = Object.assign({}, d, storePrices);
+    return {
+      currency: 'SAR',
+      tier: tier,
+      monthly: monthly,
+      yearly: yearly,
+      customDomainYear: readPrice('adminRegPriceCustomDomain', d.customDomainYear),
+      addOns: {
+        base: readPrice('adminRegPriceBase', d.base),
+        extraActivity: readPrice('adminRegPriceExtraActivity', d.extraActivity),
+        booking: readPrice('adminRegPriceBooking', d.booking),
+        commerce: readPrice('adminRegPriceCommerce', d.commerce),
+        whatsapp: readPrice('adminRegPriceWhatsapp', d.whatsapp),
+        invoices: readPrice('adminRegPriceInvoices', d.invoices),
+        basicMonth: readPrice('adminRegPriceTierBasic', d.basicMonth),
+        growthMonth: readPrice('adminRegPriceTierGrowth', d.growthMonth),
+        unlimitedMonth: readPrice('adminRegPriceTierUnlimited', d.unlimitedMonth)
+      }
+    };
+  }
+
+  function currentQuoteTotals() {
+    return {
+      monthly: readPrice('adminRegCalcMonthly', 0),
+      yearly: readPrice('adminRegCalcYearly', 0)
+    };
   }
 
   function onTierSelectChange() {
@@ -618,6 +686,11 @@
     var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
     var invoicesCheck = document.getElementById('adminRegSvcInvoices');
     var checks = document.querySelectorAll('.admin-reg-activity-check');
+    var customPriceFields = document.getElementById('adminRegCustomPriceFields');
+
+    if (customPriceFields) {
+      customPriceFields.style.display = val === 'custom' ? '' : 'none';
+    }
 
     if (val === 'custom') {
       if (bookingCheck) bookingCheck.disabled = false;
@@ -658,26 +731,30 @@
     var val = tierSelect.value;
     var monthly = 0;
     var yearly = 0;
+    var domainCheck = document.getElementById('adminRegSvcCustomDomain');
+    var domainYear = (domainCheck && domainCheck.checked)
+      ? readPrice('adminRegPriceCustomDomain', PRICE_DEFAULTS.customDomainYear)
+      : 0;
 
     if (val === 'basic') {
-      monthly = 99;
-      yearly = 990;
+      monthly = readPrice('adminRegPriceTierBasic', PRICE_DEFAULTS.basicMonth);
+      yearly = monthly * 10;
     } else if (val === 'growth') {
-      monthly = 299;
-      yearly = 2990;
+      monthly = readPrice('adminRegPriceTierGrowth', PRICE_DEFAULTS.growthMonth);
+      yearly = monthly * 10;
     } else if (val === 'unlimited') {
-      monthly = 599;
-      yearly = 5990;
+      monthly = readPrice('adminRegPriceTierUnlimited', PRICE_DEFAULTS.unlimitedMonth);
+      yearly = monthly * 10;
     } else if (val === 'custom') {
-      var basePrice = 99;
-      var bookingPrice = 49;
-      var commercePrice = 99;
-      var whatsappPrice = 149;
-      var invoicesPrice = 199;
-      var extraActivityPrice = 29;
+      var basePrice = readPrice('adminRegPriceBase', PRICE_DEFAULTS.base);
+      var extraActivityPrice = readPrice('adminRegPriceExtraActivity', PRICE_DEFAULTS.extraActivity);
+      var bookingPrice = readPrice('adminRegPriceBooking', PRICE_DEFAULTS.booking);
+      var commercePrice = readPrice('adminRegPriceCommerce', PRICE_DEFAULTS.commerce);
+      var whatsappPrice = readPrice('adminRegPriceWhatsapp', PRICE_DEFAULTS.whatsapp);
+      var invoicesPrice = readPrice('adminRegPriceInvoices', PRICE_DEFAULTS.invoices);
 
       var activityCount = document.querySelectorAll('.admin-reg-activity-check:checked').length;
-      
+
       monthly = basePrice;
       if (activityCount > 1) {
         monthly += (activityCount - 1) * extraActivityPrice;
@@ -696,8 +773,21 @@
       yearly = monthly * 10;
     }
 
-    monthlyEl.textContent = monthly;
-    yearlyEl.textContent = yearly;
+    yearly += domainYear;
+
+    monthlyEl.value = monthly;
+    yearlyEl.value = yearly;
+
+    var domainNote = document.getElementById('adminRegDomainFeeNote');
+    if (domainNote) {
+      if (domainYear > 0) {
+        domainNote.style.display = 'block';
+        domainNote.textContent = 'يشمل الدومين الخاص: ' + domainYear + ' ر.س تُضاف على الاشتراك السنوي فقط.';
+      } else {
+        domainNote.style.display = 'none';
+        domainNote.textContent = '';
+      }
+    }
   }
 
   function bindEvents() {

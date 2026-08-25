@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { resolveActiveCustomHost } from "@/lib/mken/custom-domain";
 
 const ADMIN_COOKIE = "mkn_admin_session";
 
@@ -43,7 +44,7 @@ function hasAdminCookie(request: NextRequest): boolean {
  * `/dashboard` and `/login` are a different identity (P-07) — do not require
  * `mkn_admin_session` there.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
   const nestedWww = nestedWwwTenant(hostname);
@@ -56,10 +57,12 @@ export function proxy(request: NextRequest) {
   }
   const { pathname } = url;
   const subdomain = tenantSubdomain(hostname);
+  const customSlug = subdomain ? null : await resolveActiveCustomHost(hostname);
+  const tenant = subdomain || customSlug;
 
   if (pathname === "/admin.html") {
     url.pathname = url.searchParams.has("google_connect") ? "/admin/settings" : "/admin";
-    if (subdomain) url.searchParams.set("client", subdomain);
+    if (tenant) url.searchParams.set("client", tenant);
     return NextResponse.redirect(url);
   }
 
@@ -78,7 +81,7 @@ export function proxy(request: NextRequest) {
         );
       }
       const loginUrl = new URL("/staff/login", request.url);
-      if (subdomain) loginUrl.searchParams.set("tenant", subdomain);
+      if (tenant) loginUrl.searchParams.set("tenant", tenant);
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -100,13 +103,18 @@ export function proxy(request: NextRequest) {
       request.nextUrl.searchParams.forEach((value, key) => {
         if (!loginUrl.searchParams.has(key)) loginUrl.searchParams.set(key, value);
       });
-      if (subdomain) loginUrl.searchParams.set("client", subdomain);
+      if (tenant) loginUrl.searchParams.set("client", tenant);
       return NextResponse.redirect(loginUrl);
     }
   }
 
-  if (subdomain && pathname === "/") {
-    url.pathname = `/subscriber/${subdomain}`;
+  if (tenant && pathname === "/") {
+    url.pathname = `/subscriber/${tenant}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (customSlug && (pathname === "/book" || pathname === "/book.html") && !url.searchParams.has("tenant")) {
+    url.searchParams.set("tenant", customSlug);
     return NextResponse.rewrite(url);
   }
 

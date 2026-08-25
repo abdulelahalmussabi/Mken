@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [newClient, setNewClient] = useState<Partial<ClientRecord>>({
     type: "hotel",
-    theme: "national_day",
+    theme: "none",
     active: true,
   });
 
@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
       demoNotice: newClient.demoNotice || `✨ موقع ${newClient.name} على منصة مكّن`,
       adminEmail: newClient.adminEmail || "",
       adminPassword: newClient.adminPassword || "",
-      theme: (newClient.theme as OccasionId) || "national_day",
+      theme: (newClient.theme as OccasionId) || "none",
       active: true,
       createdAt: new Date().toISOString(),
     });
@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    setNewClient({ type: "hotel", theme: "national_day", active: true });
+    setNewClient({ type: "hotel", theme: "none", active: true });
     setShowAddForm(false);
     showToast("تمت إضافة المنشأة بنجاح", "success");
   };
@@ -267,7 +267,7 @@ export default function AdminDashboardPage() {
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-slate-300">الثيم الافتراضي</label>
                   <select
-                    value={newClient.theme || "national_day"}
+                    value={newClient.theme || "none"}
                     onChange={(e) => setNewClient((prev) => ({ ...prev, theme: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                   >
@@ -304,7 +304,7 @@ export default function AdminDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {clients.map((client) => {
-                    const clientTheme = getClientTheme(client.slug) || "national_day";
+                    const clientTheme = getClientTheme(client.slug) || "none";
                     const occ = SAUDI_OCCASIONS[clientTheme];
                     const isEditing = editingSlug === client.slug;
 

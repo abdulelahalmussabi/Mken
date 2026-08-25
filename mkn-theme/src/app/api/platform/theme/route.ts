@@ -3,7 +3,7 @@ import { readAdminSession } from "@/lib/auth/session";
 import { fetchPlatformOccasion, upsertPlatformOccasion } from "@/lib/mken/tenant";
 
 export async function GET() {
-  const theme = (await fetchPlatformOccasion()) || "national_day";
+  const theme = (await fetchPlatformOccasion()) || "none";
   return NextResponse.json({ success: true, theme });
 }
 

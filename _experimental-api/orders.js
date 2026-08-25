@@ -69,7 +69,7 @@ function mapRowToOrder(row) {
 }
 
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res)) return;
+  if (await handleCors(req, res)) return;
 
   const auth = await authenticateApiKey(req, res);
   if (!auth) return; // Response is already sent by authenticateApiKey

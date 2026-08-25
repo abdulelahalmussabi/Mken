@@ -17,7 +17,7 @@ const trustBff = require('../_lib/trust-bff');
 
 module.exports = async function handler(req, res) {
   // Allow Turnstile / trust headers on preflight
-  if (handleCors(req, res, 'POST,OPTIONS')) return;
+  if (await handleCors(req, res, 'POST,OPTIONS')) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed' });

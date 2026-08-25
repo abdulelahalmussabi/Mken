@@ -325,7 +325,7 @@ function generateInvoiceXml(invoice, tenantConfig) {
 }
 
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res)) return;
+  if (await handleCors(req, res)) return;
 
   const pin = (req.body && req.body.pin) || (req.query && req.query.pin) || req.headers['x-admin-pin'];
   const expectedPin = process.env.ADMIN_PIN;

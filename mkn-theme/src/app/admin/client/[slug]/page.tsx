@@ -34,7 +34,7 @@ export default function ClientDetailPage() {
   const router = useRouter();
 
   const targetClient = clients.find((c) => c.slug === slug);
-  const currentTheme = getClientTheme(slug) || "national_day";
+  const currentTheme = getClientTheme(slug) || "none";
   const currentOcc = SAUDI_OCCASIONS[currentTheme];
 
   useEffect(() => {

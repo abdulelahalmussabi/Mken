@@ -1157,6 +1157,16 @@
       });
   }
 
+  var SAAS_ADDON_PRICES = {
+    base: 99,
+    extraActivity: 29,
+    booking: 49,
+    commerce: 99,
+    whatsapp: 149,
+    invoices: 199,
+    customDomainYear: 249
+  };
+
   var SAAS_TIERS = {
     'basic': {
       id: 'basic',
@@ -1368,6 +1378,7 @@
     applyThemeEarly: applyThemeEarly,
     getThemesCatalog: function () { return window.MkenThemesCatalog || []; },
     SAAS_TIERS: SAAS_TIERS,
+    SAAS_ADDON_PRICES: SAAS_ADDON_PRICES,
     getSaaSPlan: getSaaSPlan,
   };
   Object.defineProperty(window.MkenServicesStore, 'STORAGE_KEY', {

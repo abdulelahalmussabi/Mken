@@ -21,10 +21,27 @@ import {
   ExternalLink,
   Phone,
   Link2,
+  Globe,
 } from "lucide-react";
 
 const inputClass =
   "w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-amber-500 transition-colors";
+
+type DomainRow = {
+  id: string;
+  hostname: string;
+  status: string;
+  ssl_ready: boolean;
+  dns_records?: Array<{ type: string; name: string; value: string; hint: string }>;
+  expires_at?: string | null;
+};
+
+const DOMAIN_STATUS: Record<string, string> = {
+  pending_dns: "بانتظار DNS",
+  verified: "تم التحقق",
+  active: "نشط",
+  suspended: "موقوف",
+};
 
 function Toggle({
   on,
@@ -88,6 +105,11 @@ export default function AdminSettingsPage() {
   const [gbpBusy, setGbpBusy] = useState(false);
   const [gbpLocations, setGbpLocations] = useState<GbpLocation[]>([]);
   const [gbpLocationId, setGbpLocationId] = useState("");
+  const [domains, setDomains] = useState<DomainRow[]>([]);
+  const [domainEntitled, setDomainEntitled] = useState(false);
+  const [domainMessage, setDomainMessage] = useState("");
+  const [domainInput, setDomainInput] = useState("");
+  const [domainBusy, setDomainBusy] = useState(false);
 
   const tenant = isSuperAdmin ? selectedTenant : session?.clientSlug || "";
   const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
@@ -127,6 +149,18 @@ export default function AdminSettingsPage() {
         }
       } else {
         setGbpLocations([]);
+      }
+
+      const domainRes = await fetch(`/api/admin/domains${query}`);
+      const domainData = await domainRes.json();
+      if (domainRes.ok && domainData.success) {
+        setDomains(domainData.domains || []);
+        setDomainEntitled(Boolean(domainData.entitled));
+        setDomainMessage(domainData.entitledMessage || "");
+      } else {
+        setDomains([]);
+        setDomainEntitled(false);
+        setDomainMessage(domainData.message || "");
       }
     } catch {
       setError("تعذّر الاتصال بالخادم");
@@ -260,6 +294,81 @@ export default function AdminSettingsPage() {
       showToast("تعذّر الاتصال بالخادم", "error");
     } finally {
       setGbpBusy(false);
+    }
+  };
+
+  const addCustomDomain = async () => {
+    if (!domainInput.trim()) {
+      showToast("أدخل النطاق أولاً", "error");
+      return;
+    }
+    setDomainBusy(true);
+    try {
+      const res = await fetch(`/api/admin/domains${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostname: domainInput }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر إضافة النطاق", "error");
+        return;
+      }
+      setDomainInput("");
+      showToast("أُضيف النطاق — أكمل سجلات DNS ثم اضغط تحقق", "success");
+      await load();
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setDomainBusy(false);
+    }
+  };
+
+  const verifyCustomDomain = async (id: string) => {
+    setDomainBusy(true);
+    try {
+      const res = await fetch(`/api/admin/domains${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "ما زال DNS غير مكتمل", "error");
+        return;
+      }
+      const status = data.domain?.status;
+      showToast(
+        status === "active" ? "النطاق نشط" : "سُجّل التحقق — انتظر انتشار DNS ثم أعد المحاولة",
+        "success"
+      );
+      await load();
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setDomainBusy(false);
+    }
+  };
+
+  const removeCustomDomain = async (id: string, hostname: string) => {
+    if (!window.confirm(`إزالة ${hostname} من المنشأة؟`)) return;
+    setDomainBusy(true);
+    try {
+      const res = await fetch(`/api/admin/domains?${new URLSearchParams({
+        ...(tenant && isSuperAdmin ? { client: tenant } : {}),
+        id,
+      }).toString()}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر الحذف", "error");
+        return;
+      }
+      showToast("أُزيل النطاق", "success");
+      await load();
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setDomainBusy(false);
     }
   };
 
@@ -401,6 +510,81 @@ export default function AdminSettingsPage() {
               </div>
             </Section>
 
+            <Section title="الدومين الخاص" icon={Globe}>
+              <p className="text-xs text-slate-400">
+                اربط نطاقاً تملكه (مثل example.com). أضف سجلات DNS ثم اضغط تحقق. يبقى {tenant}.mken.live يعمل.
+              </p>
+              {!domainEntitled ? (
+                <p className="text-xs text-amber-400 font-bold">
+                  {domainMessage || "فعّل إضافة الدومين الخاص من خيارات الاشتراك أولاً."}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={domainInput}
+                    onChange={(e) => setDomainInput(e.target.value)}
+                    placeholder="www.example.com"
+                    dir="ltr"
+                    className={`${inputClass} text-left flex-1 min-w-[200px]`}
+                    disabled={domainBusy}
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomDomain}
+                    disabled={domainBusy}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+                  >
+                    {domainBusy ? "جارٍ…" : "إضافة النطاق"}
+                  </button>
+                </div>
+              )}
+              {domains.length > 0 && (
+                <div className="space-y-3">
+                  {domains.map((row) => (
+                    <div
+                      key={row.id}
+                      className="p-3 rounded-2xl border border-slate-800 bg-slate-950/50 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-slate-100" dir="ltr">
+                          {row.hostname}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {DOMAIN_STATUS[row.status] || row.status}
+                          {row.ssl_ready ? " · SSL جاهز" : ""}
+                        </span>
+                      </div>
+                      {(row.dns_records || []).map((rec) => (
+                        <p key={`${rec.type}-${rec.name}`} className="text-[11px] text-slate-500" dir="ltr">
+                          {rec.type} {rec.name} → {rec.value}
+                        </p>
+                      ))}
+                      <div className="flex gap-2">
+                        {row.status !== "suspended" && (
+                          <button
+                            type="button"
+                            onClick={() => verifyCustomDomain(row.id)}
+                            disabled={domainBusy}
+                            className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
+                          >
+                            تحقق DNS
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeCustomDomain(row.id, row.hostname)}
+                          disabled={domainBusy}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-rose-900/50 text-rose-300 hover:bg-rose-950/40 disabled:opacity-50"
+                        >
+                          إزالة
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+
             <Section title="Google Business Profile" icon={Link2}>
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -454,7 +638,10 @@ export default function AdminSettingsPage() {
                     </div>
                     {tenant ? (
                       <p className="text-[11px] text-slate-500" dir="ltr">
-                        الموقع: https://{tenant}.mken.live/
+                        الموقع:{" "}
+                        {domains.find((d) => d.status === "active")
+                          ? `https://${domains.find((d) => d.status === "active")?.hostname}/`
+                          : `https://${tenant}.mken.live/`}
                       </p>
                     ) : null}
                     <div className="flex flex-wrap gap-2">

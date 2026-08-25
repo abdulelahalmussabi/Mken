@@ -152,7 +152,7 @@ async function doPull(req, res, supabase, ctx) {
 }
 
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res, 'POST,OPTIONS')) return;
+  if (await handleCors(req, res, 'POST,OPTIONS')) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST فقط' });
 
   const ip = getClientIp(req);

@@ -98,7 +98,7 @@ async function handleTest(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res, 'POST, OPTIONS')) return;
+  if (await handleCors(req, res, 'POST, OPTIONS')) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });

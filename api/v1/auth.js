@@ -11,6 +11,48 @@ function getStep(req) {
   return 'challenge';
 }
 
+function sanitizeMoney(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > 1000000) {
+    return fallback == null ? 0 : fallback;
+  }
+  return Math.round(n * 100) / 100;
+}
+
+function sanitizeSubscriptionPricing(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const addOnsIn = raw.addOns && typeof raw.addOns === 'object' ? raw.addOns : {};
+  return {
+    currency: 'SAR',
+    tier: typeof raw.tier === 'string' ? raw.tier : undefined,
+    monthly: sanitizeMoney(raw.monthly, 0),
+    yearly: sanitizeMoney(raw.yearly, 0),
+    customDomainYear: sanitizeMoney(raw.customDomainYear, 0),
+    addOns: {
+      base: sanitizeMoney(addOnsIn.base, 99),
+      extraActivity: sanitizeMoney(addOnsIn.extraActivity, 29),
+      booking: sanitizeMoney(addOnsIn.booking, 49),
+      commerce: sanitizeMoney(addOnsIn.commerce, 99),
+      whatsapp: sanitizeMoney(addOnsIn.whatsapp, 149),
+      invoices: sanitizeMoney(addOnsIn.invoices, 199),
+      basicMonth: sanitizeMoney(addOnsIn.basicMonth, 99),
+      growthMonth: sanitizeMoney(addOnsIn.growthMonth, 299),
+      unlimitedMonth: sanitizeMoney(addOnsIn.unlimitedMonth, 599)
+    }
+  };
+}
+
+function sanitizeCustomFeatures(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    hasBooking: !!raw.hasBooking,
+    hasCommerce: !!raw.hasCommerce,
+    hasWhatsApp: !!raw.hasWhatsApp,
+    hasInvoices: !!raw.hasInvoices,
+    hasCustomDomain: !!raw.hasCustomDomain
+  };
+}
+
 // ─── LOGIN HANDLERS ───
 async function handleLoginChallenge(req, res) {
   const { tenantSlug, phone } = req.body || {};
@@ -598,7 +640,7 @@ async function handleAdminOperations(req, res) {
   if (action === 'register-client') {
     const { 
       tenantSlug, businessName, email, password, phone, subscription_tier,
-      enabledActivities, enabledServices, customFeatures,
+      enabledActivities, enabledServices, customFeatures, pricing,
       civilRegistryNumber, commercialRegistryNumber, taxNumber, securityAttachment
     } = req.body || {};
     if (!tenantSlug || !businessName || !email || !password || !phone || !civilRegistryNumber || !commercialRegistryNumber) {
@@ -656,7 +698,8 @@ async function handleAdminOperations(req, res) {
 
     defaultTenantConfig.subscription = {
       tier: subscription_tier || 'basic',
-      customFeatures: customFeatures || null
+      customFeatures: sanitizeCustomFeatures(customFeatures),
+      pricing: sanitizeSubscriptionPricing(pricing)
     };
 
     const insertObj = {
@@ -1152,7 +1195,7 @@ async function handleRegisterTrial(req, res) {
 
 // ─── MAIN HANDLER ───
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res)) return;
+  if (await handleCors(req, res)) return;
 
   // Parse custom routing parameter "type"
   let type = (req.query && req.query.type) || '';

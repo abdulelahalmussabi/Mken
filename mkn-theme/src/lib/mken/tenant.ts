@@ -66,9 +66,18 @@ export interface MkenConfig {
   subscription?: {
     tier?: string;
     customFeatures?: {
+      hasBooking?: boolean;
       hasWhatsApp?: boolean;
       hasCommerce?: boolean;
       hasInvoices?: boolean;
+      hasCustomDomain?: boolean;
+    };
+    pricing?: {
+      currency?: string;
+      monthly?: number;
+      yearly?: number;
+      customDomainYear?: number;
+      addOns?: Record<string, number>;
     };
   };
   location?: string;
@@ -110,7 +119,7 @@ function env(...names: string[]): string {
  */
 export function getTenantDb(): SupabaseClient | null {
   const url = env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL");
-  const key = env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY");
+  const key = env("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_KEY", "SUPABASE_KEY");
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }
@@ -150,7 +159,7 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     heroImage: config.heroImage || "",
     demoNotice: config.demoNotice || "",
     adminEmail: config.adminEmail || row.email || "",
-    theme: pack.forceId || "national_day",
+    theme: isOccasionTheme(pack.forceId) ? pack.forceId : "none",
     couponCode: pack.promo?.code,
     discountText: pack.promo?.text,
     discountEnabled: pack.enabled ?? false,

@@ -223,7 +223,7 @@ interface OccasionContextType {
   currentSlug: string | null;
 }
 
-const PLATFORM_DEFAULT: OccasionId = "national_day";
+const PLATFORM_DEFAULT: OccasionId = "none";
 
 function isOccasionId(value: unknown): value is OccasionId {
   return typeof value === "string" && value in SAUDI_OCCASIONS;

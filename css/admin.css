@@ -1573,3 +1573,62 @@
 .admin-mt-20 { margin-top: 20px; }
 .admin-flex-1 { flex: 1; }
 .admin-w-full { width: 100%; }
+
+.admin-addon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  padding: 10px;
+  border-radius: var(--radius);
+  background: #fafafa;
+}
+.admin-addon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-addon-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 0;
+}
+.admin-addon-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #7f8c8d;
+}
+.admin-addon-price .admin-input {
+  width: 88px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.admin-price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.admin-price-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #7f8c8d;
+  margin: 0;
+}
+.admin-quote-input {
+  width: 110px;
+  display: inline-block;
+  padding: 6px 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-align: center;
+}

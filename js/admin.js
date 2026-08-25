@@ -981,6 +981,15 @@
         if (sub.tier === 'growth') tierName = 'الباقة المتقدمة (Growth)';
         if (sub.tier === 'unlimited') tierName = 'الباقة الاحترافية (Unlimited)';
         if (sub.tier === 'custom') tierName = 'باقة مخصصة (Custom Flex)';
+        if (sub.pricing && (sub.pricing.monthly || sub.pricing.yearly)) {
+          var quoteBits = [];
+          if (sub.pricing.monthly) quoteBits.push(sub.pricing.monthly + ' ر.س/شهر');
+          if (sub.pricing.yearly) quoteBits.push(sub.pricing.yearly + ' ر.س/سنة');
+          if (sub.customFeatures && sub.customFeatures.hasCustomDomain) {
+            quoteBits.push('دومين خاص ' + (sub.pricing.customDomainYear || 0) + ' ر.س/سنة');
+          }
+          if (quoteBits.length) tierName += ' — ' + quoteBits.join(' · ');
+        }
         subTier.textContent = tierName;
         subTier.style.color = 'var(--color-primary)';
       }

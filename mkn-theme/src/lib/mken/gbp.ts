@@ -1,4 +1,5 @@
 import { fetchTenantRow, getTenantDb, TENANT_TABLE } from "@/lib/mken/tenant";
+import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { fetchTenantCatalog } from "@/lib/mken/catalog";
 import { buildNapAuditReport, planNapSync, type NapReport, type NapSiteSnapshot } from "@/lib/mken/nap";
 
@@ -213,10 +214,6 @@ export async function listGbpLocations(
   }
 }
 
-export function tenantWebsiteUrl(slug: string): string {
-  return `https://${slug}.mken.live/`;
-}
-
 export async function selectGbpLocation(
   slug: string,
   locationId: string,
@@ -229,7 +226,7 @@ export async function selectGbpLocation(
   if (syncWebsite) {
     try {
       const token = await getValidAccessToken(slug);
-      const websiteUrl = tenantWebsiteUrl(slug);
+      const websiteUrl = await tenantWebsiteUrl(slug);
       const updateRes = await fetch(
         `https://mybusinessbusinessinformation.googleapis.com/v1/${locationId}?updateMask=websiteUri`,
         {
@@ -315,7 +312,7 @@ export async function loadNapSiteSnapshot(
     site: {
       name: config.brand?.name || row.business_name || slug,
       phone: config.phone || row.phone || "",
-      website: tenantWebsiteUrl(slug),
+      website: await tenantWebsiteUrl(slug),
       city: area.city || "",
       hoursStart: typeof wh.start === "string" ? wh.start : "",
       hoursEnd: typeof wh.end === "string" ? wh.end : "",
@@ -673,7 +670,7 @@ export async function publishGbpPost(
         topicType: "STANDARD",
         callToAction: {
           actionType: "BOOK",
-          url: tenantWebsiteUrl(slug),
+          url: await tenantWebsiteUrl(slug),
         },
       }),
     });

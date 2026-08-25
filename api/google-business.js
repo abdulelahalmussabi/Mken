@@ -64,10 +64,10 @@ async function handleGoogleResponseError(res, defaultMessage) {
   throw new Error(defaultMessage + ': ' + errText);
 }
 
-function corsGet(req, res) {
+async function corsGet(req, res) {
   const { getSafeCorsOrigin } = require('./_lib/cors');
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', getSafeCorsOrigin(req));
+  res.setHeader('Access-Control-Allow-Origin', await getSafeCorsOrigin(req));
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -75,10 +75,10 @@ function corsGet(req, res) {
   );
 }
 
-function corsPost(req, res) {
+async function corsPost(req, res) {
   const { getSafeCorsOrigin } = require('./_lib/cors');
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', getSafeCorsOrigin(req));
+  res.setHeader('Access-Control-Allow-Origin', await getSafeCorsOrigin(req));
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -554,7 +554,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'update-website') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -568,7 +568,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'sync-services') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -582,7 +582,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'generate-post') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -617,7 +617,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'generate-reply') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -649,7 +649,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'nap-audit') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -661,7 +661,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'sync-nap') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -673,7 +673,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (action === 'competitors') {
-    corsPost(req, res);
+    await corsPost(req, res);
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     try {
@@ -684,7 +684,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  corsGet(req, res);
+  await corsGet(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
 

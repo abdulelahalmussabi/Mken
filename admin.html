@@ -1828,46 +1828,111 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
               <!-- الخدمات والأنظمة الإضافية -->
               <div class="admin-field" style="margin-top: 15px;">
                 <label style="font-weight: bold; margin-bottom: 5px; display: block;">الخدمات والأنظمة الإضافية</label>
-                <p class="admin-hint" style="margin-top: 0; margin-bottom: 8px;">فعّل الخدمات المتاحة للتاجر بناءً على اشتراكه.</p>
-                <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--color-border); padding: 10px; border-radius: var(--radius); background: #fafafa;">
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
-                    <input type="checkbox" id="adminRegSvcBooking" checked>
-                    <span>📅 نظام حجز المواعيد والجدولة (+49 ر.س/شهر)</span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
-                    <input type="checkbox" id="adminRegSvcCommerce">
-                    <span>🛒 المتجر الإلكتروني - Commerce (+99 ر.س/شهر)</span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
-                    <input type="checkbox" id="adminRegSvcWhatsApp">
-                    <span>💬 أتمتة واتساب CRM والتنبيهات (+149 ر.س/شهر)</span>
-                  </label>
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
-                    <input type="checkbox" id="adminRegSvcInvoices">
-                    <span>🧾 برنامج الفواتير والمخازن والتقارير (+199 ر.س/شهر)</span>
-                  </label>
+                <p class="admin-hint" style="margin-top: 0; margin-bottom: 8px;">فعّل الخدمة ثم عدّل رسمها لهذا العقد. الدومين الخاص رسم سنوي مستقل.</p>
+                <div class="admin-addon-list">
+                  <div class="admin-addon-row">
+                    <label>
+                      <input type="checkbox" id="adminRegSvcBooking" checked>
+                      <span>نظام حجز المواعيد والجدولة</span>
+                    </label>
+                    <span class="admin-addon-price">
+                      <input type="number" id="adminRegPriceBooking" class="admin-input" min="0" step="1" value="49" dir="ltr" aria-label="رسم الحجز الشهري">
+                      <small>ر.س/شهر</small>
+                    </span>
+                  </div>
+                  <div class="admin-addon-row">
+                    <label>
+                      <input type="checkbox" id="adminRegSvcCommerce">
+                      <span>المتجر الإلكتروني</span>
+                    </label>
+                    <span class="admin-addon-price">
+                      <input type="number" id="adminRegPriceCommerce" class="admin-input" min="0" step="1" value="99" dir="ltr" aria-label="رسم المتجر الشهري">
+                      <small>ر.س/شهر</small>
+                    </span>
+                  </div>
+                  <div class="admin-addon-row">
+                    <label>
+                      <input type="checkbox" id="adminRegSvcWhatsApp">
+                      <span>أتمتة واتساب CRM والتنبيهات</span>
+                    </label>
+                    <span class="admin-addon-price">
+                      <input type="number" id="adminRegPriceWhatsapp" class="admin-input" min="0" step="1" value="149" dir="ltr" aria-label="رسم واتساب الشهري">
+                      <small>ر.س/شهر</small>
+                    </span>
+                  </div>
+                  <div class="admin-addon-row">
+                    <label>
+                      <input type="checkbox" id="adminRegSvcInvoices">
+                      <span>الفواتير والمخازن والتقارير</span>
+                    </label>
+                    <span class="admin-addon-price">
+                      <input type="number" id="adminRegPriceInvoices" class="admin-input" min="0" step="1" value="199" dir="ltr" aria-label="رسم الفواتير الشهري">
+                      <small>ر.س/شهر</small>
+                    </span>
+                  </div>
+                  <div class="admin-addon-row">
+                    <label>
+                      <input type="checkbox" id="adminRegSvcCustomDomain">
+                      <span>دومين خاص (نطاق العميل)</span>
+                    </label>
+                    <span class="admin-addon-price">
+                      <input type="number" id="adminRegPriceCustomDomain" class="admin-input" min="0" step="1" value="249" dir="ltr" aria-label="رسم الدومين السنوي">
+                      <small>ر.س/سنة</small>
+                    </span>
+                  </div>
                 </div>
               </div>
 
               <div class="admin-field" style="margin-top: 15px;">
                 <label for="adminRegTier">نوع باقة الاشتراك وتحديد التسعيرة *</label>
                 <select id="adminRegTier" class="admin-input" required>
-                  <option value="basic">الباقة الأساسية (Basic) — 99 ريال</option>
-                  <option value="growth">الباقة المتقدمة (Growth) — 299 ريال</option>
-                  <option value="unlimited">الباقة الاحترافية (Unlimited) — 599 ريال</option>
+                  <option value="basic">الباقة الأساسية (Basic)</option>
+                  <option value="growth">الباقة المتقدمة (Growth)</option>
+                  <option value="unlimited">الباقة الاحترافية (Unlimited)</option>
                   <option value="custom" selected>باقة مخصصة (تسعير مرن حسب الخدمات)</option>
                 </select>
               </div>
 
+              <div class="admin-field" style="margin-top: 15px;">
+                <label style="font-weight: bold; margin-bottom: 5px; display: block;">رسوم الباقات الجاهزة (ر.س/شهر)</label>
+                <p class="admin-hint" style="margin-top: 0; margin-bottom: 8px;">تُستخدم عند اختيار باقة جاهزة، ويمكن تغييرها لكل عقد.</p>
+                <div class="admin-price-grid">
+                  <label>الأساسية
+                    <input type="number" id="adminRegPriceTierBasic" class="admin-input" min="0" step="1" value="99" dir="ltr">
+                  </label>
+                  <label>المتقدمة
+                    <input type="number" id="adminRegPriceTierGrowth" class="admin-input" min="0" step="1" value="299" dir="ltr">
+                  </label>
+                  <label>الاحترافية
+                    <input type="number" id="adminRegPriceTierUnlimited" class="admin-input" min="0" step="1" value="599" dir="ltr">
+                  </label>
+                </div>
+              </div>
+
+              <div class="admin-field" id="adminRegCustomPriceFields" style="margin-top: 15px;">
+                <label style="font-weight: bold; margin-bottom: 5px; display: block;">رسوم الباقة المخصصة</label>
+                <div class="admin-price-grid">
+                  <label>الأساس الشهري
+                    <input type="number" id="adminRegPriceBase" class="admin-input" min="0" step="1" value="99" dir="ltr">
+                  </label>
+                  <label>كل نشاط إضافي
+                    <input type="number" id="adminRegPriceExtraActivity" class="admin-input" min="0" step="1" value="29" dir="ltr">
+                  </label>
+                </div>
+              </div>
+
               <!-- حاسبة التسعير التفاعلية -->
               <div class="admin-field" style="background: #fbfaf8; border: 1px solid var(--color-primary); padding: 12px; border-radius: var(--radius); margin-top: 15px;">
-                <div style="font-weight: bold; margin-bottom: 5px; color: var(--color-primary); font-size: 0.85rem;">سعر الاشتراك المحتسب:</div>
-                <div style="font-size: 1.25rem; font-weight: bold; color: #2ecc71;">
-                  <span id="adminRegCalcMonthly">99</span> ر.س <span style="font-size: 0.85rem; color: #7f8c8d; font-weight: normal;">/ شهرياً</span>
+                <div style="font-weight: bold; margin-bottom: 5px; color: var(--color-primary); font-size: 0.85rem;">السعر المتفق عليه (قابل للتعديل):</div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <input type="number" id="adminRegCalcMonthly" class="admin-input admin-quote-input" min="0" step="1" value="99" dir="ltr" aria-label="السعر الشهري المتفق عليه">
+                  <span style="font-size: 0.85rem; color: #7f8c8d;">ر.س / شهرياً</span>
                 </div>
-                <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 3px;">
-                  أو <span id="adminRegCalcYearly">990</span> ر.س <span style="font-size: 0.78rem; color: #7f8c8d; font-weight: normal;">/ سنوياً (خصم شهرين)</span>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top: 8px;">
+                  <input type="number" id="adminRegCalcYearly" class="admin-input admin-quote-input" min="0" step="1" value="990" dir="ltr" aria-label="السعر السنوي المتفق عليه">
+                  <span style="font-size: 0.78rem; color: #7f8c8d;">ر.س / سنوياً (خصم شهرين + الدومين إن وُجد)</span>
                 </div>
+                <div id="adminRegDomainFeeNote" class="admin-hint" style="margin-top: 8px; display: none;"></div>
               </div>
 
               <p id="adminRegisterError" class="admin-error" hidden style="color: #ff4d4f; font-size: 13px; margin-bottom: 15px;"></p>

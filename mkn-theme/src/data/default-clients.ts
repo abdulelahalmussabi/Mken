@@ -23,7 +23,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "✨ صفحة مجموعة المحروسة للشقق المخدومة — المدينة المنورة",
     adminEmail: "almahrusa@mken.live",
-    theme: "national_day",
+    theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
   },
@@ -44,7 +44,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
       "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
     demoNotice: "صفحة مؤسسة المصعبي للتجارة على منصة مكّن",
     adminEmail: "almasabi@mken.live",
-    theme: "national_day",
+    theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
   },
@@ -66,7 +66,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "🚀 عرض تجريبي حي – مثال: صالون النخبة على مكّن. جرب 14 يوماً مجاناً",
     adminEmail: "demo@mken.live",
-    theme: "national_day",
+    theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
   },

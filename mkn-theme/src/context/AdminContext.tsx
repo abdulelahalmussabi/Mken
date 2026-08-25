@@ -24,7 +24,10 @@ interface AdminContextType {
   authLoading: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  loginAdmin: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  loginAdmin: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; message: string; role?: AdminRole; clientSlug?: string }>;
   logoutAdmin: () => Promise<void>;
   saas: SaasFeatures;
 
@@ -52,7 +55,7 @@ export interface SaveResult {
 // ─── Context ────────────────────────────────────────────────────────────────
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-const PLATFORM_DEFAULT: OccasionId = "national_day";
+const PLATFORM_DEFAULT: OccasionId = "none";
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // The session lives in an HttpOnly cookie; the browser only mirrors what the server reports.
@@ -65,19 +68,26 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
+  const sessionGen = React.useRef(0);
+
   // Hydrate the session from the signed cookie
   useEffect(() => {
+    const gen = sessionGen.current;
     fetch("/api/admin/session")
       .then((res) => res.json())
       .then((data) => {
+        if (sessionGen.current !== gen) return;
         setSession(data.session ?? null);
         setSaas(data.features ?? null);
       })
       .catch(() => {
+        if (sessionGen.current !== gen) return;
         setSession(null);
         setSaas(null);
       })
-      .finally(() => setAuthLoading(false));
+      .finally(() => {
+        if (sessionGen.current === gen) setAuthLoading(false);
+      });
   }, []);
 
   // Directory is admin-only. Visitors never receive or cache the full tenant list.
@@ -137,41 +147,39 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const loginAdmin = useCallback(
-    async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+    async (
+      email: string,
+      password: string
+    ): Promise<{ success: boolean; message: string; role?: AdminRole; clientSlug?: string }> => {
       try {
-        let res = await fetch("/api/admin/login", {
+        const res = await fetch("/api/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email.trim(), password }),
+          signal: AbortSignal.timeout(15000),
         });
-
-        // Dual fallback to /api/v1/auth/admin-login
-        if (!res.ok) {
-          try {
-            const fallbackRes = await fetch("/api/v1/auth/admin-login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: email.trim(), password }),
-            });
-            if (fallbackRes.ok) {
-              res = fallbackRes;
-            }
-          } catch {
-            // ignore fallback error
-          }
-        }
-
         const data = await res.json();
 
         if (!res.ok || !data.success) {
           return { success: false, message: data.message || "تعذّر تسجيل الدخول" };
         }
 
+        sessionGen.current += 1;
         setSession({ email: data.email, role: data.role, clientSlug: data.clientSlug });
         setSaas(data.features ?? null);
-        return { success: true, message: data.message };
-      } catch {
-        return { success: false, message: "تعذّر الاتصال بالخادم" };
+        setAuthLoading(false);
+        return {
+          success: true,
+          message: data.message,
+          role: data.role,
+          clientSlug: data.clientSlug,
+        };
+      } catch (err) {
+        const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        return {
+          success: false,
+          message: timedOut ? "انتهت مهلة الاتصال بالخادم، حاول مرة أخرى" : "تعذّر الاتصال بالخادم",
+        };
       }
     },
     []

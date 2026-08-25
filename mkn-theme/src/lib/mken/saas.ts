@@ -14,6 +14,7 @@ export interface SaasFeatures {
   hasWhatsApp: boolean;
   hasCommerce: boolean;
   hasInvoices: boolean;
+  hasCustomDomain: boolean;
 }
 
 export const SAAS_TIERS: Record<"basic" | "growth" | "unlimited", SaasFeatures> = {
@@ -23,6 +24,7 @@ export const SAAS_TIERS: Record<"basic" | "growth" | "unlimited", SaasFeatures> 
     hasWhatsApp: false,
     hasCommerce: false,
     hasInvoices: false,
+    hasCustomDomain: false,
   },
   growth: {
     tier: "growth",
@@ -30,6 +32,7 @@ export const SAAS_TIERS: Record<"basic" | "growth" | "unlimited", SaasFeatures> 
     hasWhatsApp: true,
     hasCommerce: true,
     hasInvoices: false,
+    hasCustomDomain: false,
   },
   unlimited: {
     tier: "unlimited",
@@ -37,10 +40,14 @@ export const SAAS_TIERS: Record<"basic" | "growth" | "unlimited", SaasFeatures> 
     hasWhatsApp: true,
     hasCommerce: true,
     hasInvoices: true,
+    hasCustomDomain: false,
   },
 };
 
-export const SAAS_FEATURES_UNLIMITED: SaasFeatures = SAAS_TIERS.unlimited;
+export const SAAS_FEATURES_UNLIMITED: SaasFeatures = {
+  ...SAAS_TIERS.unlimited,
+  hasCustomDomain: true,
+};
 export const SAAS_FEATURES_LOCKED: SaasFeatures = SAAS_TIERS.basic;
 
 const PLATFORM_SLUGS = new Set(["admin", "mken", "default"]);
@@ -49,9 +56,18 @@ export interface SaasConfigSlice {
   subscription?: {
     tier?: string;
     customFeatures?: {
+      hasBooking?: boolean;
       hasWhatsApp?: boolean;
       hasCommerce?: boolean;
       hasInvoices?: boolean;
+      hasCustomDomain?: boolean;
+    };
+    pricing?: {
+      currency?: string;
+      monthly?: number;
+      yearly?: number;
+      customDomainYear?: number;
+      addOns?: Record<string, number>;
     };
   };
 }
@@ -67,6 +83,8 @@ export function saasFeaturesFromConfig(
   if (!sub) return SAAS_FEATURES_UNLIMITED;
 
   const tier = (sub.tier || "basic").toLowerCase();
+  const addonDomain = !!sub?.customFeatures?.hasCustomDomain;
+
   if (tier === "custom") {
     const custom = sub.customFeatures || {};
     return {
@@ -75,17 +93,19 @@ export function saasFeaturesFromConfig(
       hasWhatsApp: !!custom.hasWhatsApp,
       hasCommerce: !!custom.hasCommerce,
       hasInvoices: !!custom.hasInvoices,
+      hasCustomDomain: addonDomain,
     };
   }
 
-  if (tier === "growth") return SAAS_TIERS.growth;
-  if (tier === "unlimited") return SAAS_TIERS.unlimited;
-  return SAAS_TIERS.basic;
+  if (tier === "growth") return { ...SAAS_TIERS.growth, hasCustomDomain: addonDomain };
+  if (tier === "unlimited") return { ...SAAS_TIERS.unlimited, hasCustomDomain: addonDomain };
+  return { ...SAAS_TIERS.basic, hasCustomDomain: addonDomain };
 }
 
 export const SAAS_FEATURE_MESSAGES = {
   whatsapp: "سجل واتساب غير متاح في باقتك الحالية. يتطلب الباقة المتقدمة أو أعلى.",
   commerce: "المتجر الإلكتروني يتطلب الباقة المتقدمة 🌟",
   invoices: "الفواتير والمخزون يتطلبان الباقة الاحترافية.",
+  customDomain: "الدومين الخاص إضافة سنوية تُفعَّل من خيارات الاشتراك.",
 } as const;
 

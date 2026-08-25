@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "crons": [
+    {
+      "path": "/api/cron/custom-domains",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",

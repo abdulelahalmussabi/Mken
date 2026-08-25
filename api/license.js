@@ -311,7 +311,7 @@ async function doCheckoutStatus(req, res, supabase) {
 }
 
 module.exports = async function handler(req, res) {
-  if (handleCors(req, res, 'GET,POST,OPTIONS')) return;
+  if (await handleCors(req, res, 'GET,POST,OPTIONS')) return;
 
   const supabase = getSupabase(res);
   if (!supabase) return;
