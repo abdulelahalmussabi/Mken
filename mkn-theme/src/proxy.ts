@@ -13,6 +13,12 @@ const SKIP_SUBDOMAINS = new Set([
   "api",
 ]);
 
+function knownCustomHost(hostname: string): string | null {
+  const host = hostname.split(":")[0].toLowerCase();
+  if (host === "rewa.care" || host === "www.rewa.care") return "rewa";
+  return null;
+}
+
 function tenantSubdomain(hostname: string): string | null {
   if (!hostname.includes("mken.live")) return null;
   const host = hostname.split(":")[0].toLowerCase();
@@ -57,7 +63,7 @@ export async function proxy(request: NextRequest) {
   }
   const { pathname } = url;
   const subdomain = tenantSubdomain(hostname);
-  const customSlug = subdomain ? null : await resolveActiveCustomHost(hostname);
+  const customSlug = subdomain ? null : knownCustomHost(hostname) || (await resolveActiveCustomHost(hostname));
   const tenant = subdomain || customSlug;
 
   if (pathname === "/admin.html") {
@@ -135,6 +141,16 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/demo") {
     url.pathname = "/subscriber/demo";
+    return NextResponse.rewrite(url);
+  }
+
+  if (pathname === "/almasabi") {
+    url.pathname = "/subscriber/almasabi";
+    return NextResponse.rewrite(url);
+  }
+
+  if (pathname === "/rewa") {
+    url.pathname = "/subscriber/rewa";
     return NextResponse.rewrite(url);
   }
 
