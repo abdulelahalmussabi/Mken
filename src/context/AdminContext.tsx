@@ -1,12 +1,43 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import type { ClientRecord } from "@/types/database";
+import type { ClientRecord, AdBannerRecord } from "@/types/database";
 import type { OccasionId } from "@/context/OccasionContext";
 
 // ─── Super Admin Credentials ───────────────────────────────────────────────
 const SUPER_ADMIN_EMAIL = "admin@mken.live";
 const SUPER_ADMIN_PASSWORD = "Aa#321321";
+
+// ─── Default Advertisements ────────────────────────────────────────────────
+export const DEFAULT_ADS: AdBannerRecord[] = [
+  {
+    id: "ad-1",
+    tenantSlug: "all",
+    title: "عرض اليوم الوطني 96: خصم 45% حصري",
+    subtitle: "استفد من كود الخصم الوطني لجميع خدمات الإقامة والعيادات والحجوزات والمرافق",
+    linkUrl: "/subscriptions",
+    type: "hero_banner",
+    active: true,
+  },
+  {
+    id: "ad-2",
+    tenantSlug: "almahrusa",
+    title: "خصم خاص على حجز الأجنحة الفندقية المخدومة",
+    subtitle: "إقامة متميزة وراحة تامة بالمدينة المنورة بالقرب من المسجد النبوي الشريف",
+    linkUrl: "/subscriber/almahrusa",
+    type: "hero_banner",
+    active: true,
+  },
+  {
+    id: "ad-3",
+    tenantSlug: "rewa",
+    title: "باقة رواء الاستشفائية والتغذية العلاجية",
+    subtitle: "استمتع بجلسات السبا والعيادات الطبية والنادي الصحي مع خصم 30%",
+    linkUrl: "/subscriber/rewa",
+    type: "hero_banner",
+    active: true,
+  }
+];
 
 // ─── Default Clients ────────────────────────────────────────────────────────
 export const DEFAULT_CLIENTS: ClientRecord[] = [
@@ -166,6 +197,14 @@ interface AdminContextType {
   addClient: (client: ClientRecord) => void;
   updateClient: (slug: string, updates: Partial<ClientRecord>) => void;
   removeClient: (slug: string) => void;
+
+  // Advertisements Management
+  ads: AdBannerRecord[];
+  getAdsForTenant: (tenantSlug?: string) => AdBannerRecord[];
+  addAd: (ad: AdBannerRecord) => void;
+  updateAd: (id: string, updates: Partial<AdBannerRecord>) => void;
+  deleteAd: (id: string) => void;
+  toggleAdActive: (id: string) => void;
 }
 
 // ─── Context ────────────────────────────────────────────────────────────────
@@ -175,6 +214,7 @@ const STORAGE_KEYS = {
   session: "mkn_admin_session",
   globalTheme: "mkn_admin_global_theme",
   clients: "mkn_admin_clients",
+  ads: "mkn_admin_ads",
 };
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -240,6 +280,16 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  const [ads, setAds] = useState<AdBannerRecord[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_ADS;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.ads);
+      return saved ? JSON.parse(saved) : DEFAULT_ADS;
+    } catch {
+      return DEFAULT_ADS;
+    }
+  });
+
   // Initial server sync
   useEffect(() => {
     fetch("/api/clients")
@@ -280,6 +330,37 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(clients));
   }, [clients]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.ads, JSON.stringify(ads));
+  }, [ads]);
+
+  // ── Ads Methods ───────────────────────────────────────────────────────────
+  const getAdsForTenant = useCallback(
+    (tenantSlug?: string) => {
+      if (!tenantSlug || tenantSlug === "all") {
+        return ads.filter((a) => a.active);
+      }
+      return ads.filter((a) => a.active && (a.tenantSlug === "all" || a.tenantSlug === tenantSlug));
+    },
+    [ads]
+  );
+
+  const addAd = useCallback((newAd: AdBannerRecord) => {
+    setAds((prev) => [newAd, ...prev]);
+  }, []);
+
+  const updateAd = useCallback((id: string, updates: Partial<AdBannerRecord>) => {
+    setAds((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+  }, []);
+
+  const deleteAd = useCallback((id: string) => {
+    setAds((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const toggleAdActive = useCallback((id: string) => {
+    setAds((prev) => prev.map((a) => (a.id === id ? { ...a, active: !a.active } : a)));
+  }, []);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const loginAdmin = useCallback(
@@ -434,6 +515,12 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addClient,
         updateClient,
         removeClient,
+        ads,
+        getAdsForTenant,
+        addAd,
+        updateAd,
+        deleteAd,
+        toggleAdActive,
       }}
     >
       {children}

@@ -339,7 +339,18 @@ const INITIAL_ADS: AdBannerRecord[] = [
 ];
 
 export default function ClientAdminPage() {
-  const { session, clients, getClientTheme, setClientTheme, updateClient, isSuperAdmin } = useAdmin();
+  const {
+    session,
+    clients,
+    getClientTheme,
+    setClientTheme,
+    updateClient,
+    isSuperAdmin,
+    ads,
+    addAd,
+    deleteAd,
+    toggleAdActive
+  } = useAdmin();
   const { showToast } = useApp();
 
   // Active Main Navigation Section (Right Sidebar)
@@ -391,7 +402,11 @@ export default function ClientAdminPage() {
   const [bookings, setBookings] = useState<StaffBookingRecord[]>(INITIAL_BOOKINGS);
   const [packages, setPackages] = useState<SubscriptionPackageRecord[]>(INITIAL_PACKAGES);
   const [subscribers, setSubscribers] = useState<SubscriberMemberRecord[]>(INITIAL_SUBSCRIBERS);
-  const [adsList, setAdsList] = useState<AdBannerRecord[]>(INITIAL_ADS);
+
+  // New Ad Form State
+  const [newAdTitle, setNewAdTitle] = useState("");
+  const [newAdSubtitle, setNewAdSubtitle] = useState("");
+  const [newAdLink, setNewAdLink] = useState("");
 
   // New Clinic Form State
   const [newClinicName, setNewClinicName] = useState("");
@@ -1464,7 +1479,15 @@ export default function ClientAdminPage() {
                       subTab === "visitor_content" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    📢 بانرات صفحة الزوار
+                    📢 بانرات صفحة الزوار ({ads.filter(a => a.tenantSlug === 'all' || a.tenantSlug === myClient.slug).length})
+                  </button>
+                  <button
+                    onClick={() => setSubTab("add_ad")}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      subTab === "add_ad" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    ➕ إنشاء إعلان / بانر جديد
                   </button>
                   <button
                     onClick={() => setSubTab("promotions")}
@@ -1474,32 +1497,151 @@ export default function ClientAdminPage() {
                   >
                     🏷️ عروض وكوبونات الخصم
                   </button>
-                  <button
-                    onClick={() => setSubTab("popups")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                      subTab === "popups" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    📱 التنبيهات والنوافذ المنبثقة
-                  </button>
                 </div>
 
-                <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
-                  <h3 className="font-extrabold text-base text-white">البانرات الإعلانية الترويجية</h3>
-                  <div className="space-y-3">
-                    {adsList.map((ad) => (
-                      <div key={ad.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-bold text-white text-sm">{ad.title}</p>
-                          <p className="text-slate-400 text-xs mt-0.5">{ad.subtitle}</p>
-                        </div>
-                        <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full font-bold">
-                          مفعل ويظهر للزوار ✅
-                        </span>
+                {subTab === "visitor_content" && (
+                  <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div>
+                        <h3 className="font-extrabold text-base text-white">البانرات والعروض الترويجية النشطة</h3>
+                        <p className="text-xs text-slate-400">
+                          عند وجود إعلانات مفعلة، يظهر زر "العروض والإعلانات" تلقائياً في الشريط العلوي لكافة الزوار.
+                        </p>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      {ads
+                        .filter((a) => a.tenantSlug === "all" || a.tenantSlug === myClient.slug)
+                        .map((ad) => (
+                          <div
+                            key={ad.id}
+                            className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs ${
+                              ad.active
+                                ? "bg-slate-950 border-amber-500/30"
+                                : "bg-slate-950/40 border-slate-800 opacity-60"
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white text-sm">{ad.title}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                                  {ad.tenantSlug === "all" ? "إعلان عام للمنصة" : "خاص بالمنشأة"}
+                                </span>
+                              </div>
+                              <p className="text-slate-400 text-xs">{ad.subtitle}</p>
+                              {ad.linkUrl && (
+                                <p className="text-[11px] text-amber-400/80 font-mono">الرابط: {ad.linkUrl}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => {
+                                  toggleAdActive(ad.id);
+                                  showToast(ad.active ? "تم تعطيل الإعلان وإخفاؤه" : "تم تفعيل الإعلان وإظهاره بنجاح ✨", "success");
+                                }}
+                                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition ${
+                                  ad.active
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
+                                    : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-white"
+                                }`}
+                              >
+                                {ad.active ? "مفعل ويظهر للزوار ✅" : "معطل (مخفي) ⏸️"}
+                              </button>
+
+                              {ad.tenantSlug !== "all" && (
+                                <button
+                                  onClick={() => {
+                                    deleteAd(ad.id);
+                                    showToast("تم حذف الإعلان بنجاح", "success");
+                                  }}
+                                  className="p-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 text-red-400 rounded-lg transition"
+                                  title="حذف الإعلان"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {subTab === "add_ad" && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newAdTitle.trim()) return;
+                      addAd({
+                        id: "ad-" + Date.now(),
+                        tenantSlug: myClient.slug,
+                        title: newAdTitle,
+                        subtitle: newAdSubtitle,
+                        linkUrl: newAdLink || `/subscriber/${myClient.slug}`,
+                        type: "hero_banner",
+                        active: true,
+                      });
+                      setNewAdTitle("");
+                      setNewAdSubtitle("");
+                      setNewAdLink("");
+                      showToast("تم إنشاء الإعلان وتفعيله بنجاح ✨", "success");
+                      setSubTab("visitor_content");
+                    }}
+                    className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-5"
+                  >
+                    <h3 className="font-extrabold text-base text-white">إنشاء إعلان أو بانر ترويجي جديد للمنشأة</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-300">عنوان الإعلان الرئيسي *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: خصم 35% على باقات جلسات العناية والإقامة"
+                          value={newAdTitle}
+                          onChange={(e) => setNewAdTitle(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-300">تفاصيل العرض / الوصف الترويجي</label>
+                        <textarea
+                          rows={2}
+                          placeholder="مثال: احجز موعدك اليوم واستمتع بالعرض الحصري مع خدمة التوصيل والاستشارة المجانية"
+                          value={newAdSubtitle}
+                          onChange={(e) => setNewAdSubtitle(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-300">رابط توجيه العميل (اختياري)</label>
+                        <input
+                          type="text"
+                          placeholder={`/subscriber/${myClient.slug}`}
+                          value={newAdLink}
+                          onChange={(e) => setNewAdLink(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all"
+                    >
+                      نشر وتفعيل الإعلان فوراً
+                    </button>
+                  </form>
+                )}
+
+                {subTab === "promotions" && (
+                  <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
+                    <h3 className="font-extrabold text-base text-white">إدارة كوبونات وعروض المناسبات</h3>
+                    <p className="text-xs text-slate-400">
+                      يتم تفعيل كوبون الخصم تلقائياً عند تفعيل ثيم المناسبة أو جدولتها.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

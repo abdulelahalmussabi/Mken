@@ -5,9 +5,11 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
 
-  // Extract subdomain if present (e.g. demo.mken.live, almahrusa.mken.live, almasabi.mken.live)
+  // Extract subdomain or custom domain (e.g. demo.mken.live, rewa.care, almahrusa.mken.live)
   let subdomain: string | null = null;
-  if (hostname.includes("mken.live")) {
+  if (hostname.includes("rewa.care")) {
+    subdomain = "rewa";
+  } else if (hostname.includes("mken.live")) {
     const parts = hostname.split(".");
     if (parts.length > 2 && parts[0] !== "www" && parts[0] !== "admin" && parts[0] !== "mken") {
       subdomain = parts[0].toLowerCase();
