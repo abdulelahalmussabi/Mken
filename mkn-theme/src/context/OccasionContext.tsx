@@ -271,7 +271,37 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [hostSlug, setHostSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    setHostSlug(slugFromHost());
+    const local = slugFromHost();
+    if (local) {
+      setHostSlug(local);
+      return;
+    }
+
+    const hostname = window.location.hostname.toLowerCase();
+    if (
+      !hostname ||
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname.endsWith(".mken.live") ||
+      hostname === "mken.live"
+    ) {
+      setHostSlug(null);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/domains/resolve?host=${encodeURIComponent(hostname)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.success && typeof data.slug === "string") {
+          setHostSlug(data.slug);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   const currentSlug = slugFromPath(pathname) || slugFromQuery(searchParams) || hostSlug;

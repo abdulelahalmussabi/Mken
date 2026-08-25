@@ -118,6 +118,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  if (customSlug && (pathname === "/store" || pathname === "/store.html")) {
+    url.pathname = `/store/${customSlug}`;
+    return NextResponse.rewrite(url);
+  }
+
   if (pathname === "/book.html") {
     url.pathname = "/book";
     return NextResponse.rewrite(url);

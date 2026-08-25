@@ -237,24 +237,20 @@ export async function expiryForSlug(slug: string): Promise<string | null> {
   return inYear.toISOString();
 }
 
-export async function insertDomain(input: {
+async function insertDomainRow(input: {
   slug: string;
   hostname: string;
   createdBy: string;
+  expires_at: string;
 }): Promise<{ domain?: TenantDomain; error?: string }> {
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة — نفّذ db/tenant-custom-domains-schema.sql" };
-
-  const existing = await listTenantDomains(input.slug);
-  const live = existing.filter((d) => d.status !== "suspended");
-  if (live.length >= 2) return { error: "حد أقصى نطاقان لكل منشأة (الجذر و www)" };
 
   const dns_records = dnsInstructions(input.hostname);
   const vercel = await vercelAddDomain(input.hostname);
   if (vercel.error) return { error: vercel.error };
 
   const status: DomainStatus = vercel.verified ? "verified" : "pending_dns";
-  const expires_at = await expiryForSlug(input.slug);
 
   const { data, error } = await db
     .from(DOMAINS_TABLE)
@@ -266,7 +262,7 @@ export async function insertDomain(input: {
       ssl_ready: false,
       verification: vercel.verification,
       dns_records,
-      expires_at,
+      expires_at: input.expires_at,
       created_by: input.createdBy,
       updated_at: new Date().toISOString(),
     })
@@ -281,6 +277,47 @@ export async function insertDomain(input: {
     return { error: error.message };
   }
   return { domain: data as TenantDomain };
+}
+
+export async function insertDomain(input: {
+  slug: string;
+  hostname: string;
+  createdBy: string;
+}): Promise<{ domain?: TenantDomain; error?: string; paired?: TenantDomain | null }> {
+  const existing = await listTenantDomains(input.slug);
+  const live = existing.filter((d) => d.status !== "suspended");
+  const parts = input.hostname.split(".");
+  const isApex = parts.length === 2;
+  const wwwHost = isApex ? `www.${input.hostname}` : null;
+  const slotsNeeded = isApex && wwwHost && !live.some((d) => d.hostname === wwwHost) ? 2 : 1;
+
+  if (live.length + slotsNeeded > 2) {
+    return { error: "حد أقصى نطاقان لكل منشأة (الجذر و www)" };
+  }
+
+  const expires_at = (await expiryForSlug(input.slug)) || new Date().toISOString();
+  const primary = await insertDomainRow({
+    slug: input.slug,
+    hostname: input.hostname,
+    createdBy: input.createdBy,
+    expires_at,
+  });
+  if (primary.error || !primary.domain) return primary;
+
+  if (!wwwHost || live.some((d) => d.hostname === wwwHost)) {
+    return primary;
+  }
+
+  const paired = await insertDomainRow({
+    slug: input.slug,
+    hostname: wwwHost,
+    createdBy: input.createdBy,
+    expires_at,
+  });
+  if (paired.error) {
+    return { ...primary, paired: null };
+  }
+  return { ...primary, paired: paired.domain || null };
 }
 
 export async function refreshDomain(id: string, slug: string): Promise<{ domain?: TenantDomain; error?: string }> {
