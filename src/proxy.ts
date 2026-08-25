@@ -9,7 +9,7 @@ export function proxy(request: NextRequest) {
   let subdomain: string | null = null;
   if (hostname.includes("rewa.care")) {
     subdomain = "rewa";
-  } else if (hostname.includes("mken.live")) {
+  } else if (hostname.includes("mken.live") || hostname.includes("localhost")) {
     const parts = hostname.split(".");
     if (parts.length > 2 && parts[0] !== "www" && parts[0] !== "admin" && parts[0] !== "mken") {
       subdomain = parts[0].toLowerCase();
