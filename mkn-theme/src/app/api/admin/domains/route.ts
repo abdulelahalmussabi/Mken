@@ -75,7 +75,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    return NextResponse.json({ success: true, domain: result.domain });
+    return NextResponse.json({
+      success: true,
+      domain: result.domain,
+      paired: result.paired || null,
+    });
   } catch {
     return NextResponse.json({ success: false, message: "طلب غير صالح" }, { status: 400 });
   }

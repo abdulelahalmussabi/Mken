@@ -315,7 +315,12 @@ export default function AdminSettingsPage() {
         return;
       }
       setDomainInput("");
-      showToast("أُضيف النطاق — أكمل سجلات DNS ثم اضغط تحقق", "success");
+      showToast(
+        data.paired
+          ? "أُضيف النطاق مع www تلقائياً — أكمل سجلات DNS ثم اضغط تحقق"
+          : "أُضيف النطاق — أكمل سجلات DNS ثم اضغط تحقق",
+        "success"
+      );
       await load();
     } catch {
       showToast("تعذّر الاتصال بالخادم", "error");
