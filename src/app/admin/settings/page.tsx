@@ -18,6 +18,11 @@ import {
   Zap,
   Globe,
   FileText,
+  Copy,
+  ExternalLink,
+  Trash2,
+  Link2,
+  Check,
 } from "lucide-react";
 import type { TenantSettings } from "@/lib/mken/settings";
 
@@ -32,11 +37,20 @@ export default function AdminSettingsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Active Section Tab
-  const [activeTab, setActiveTab] = useState<"facility" | "whatsapp" | "moyasar">("facility");
+  const [activeTab, setActiveTab] = useState<"facility" | "whatsapp" | "moyasar" | "domain">("facility");
 
   // Show secret key states
   const [showMoyasarSecret, setShowMoyasarSecret] = useState(false);
   const [showWaToken, setShowWaToken] = useState(false);
+
+  // Custom Domain State
+  const [customDomain, setCustomDomain] = useState("");
+  const [domainStatus, setDomainStatus] = useState<string>("not_configured");
+  const [domainVerified, setDomainVerified] = useState(false);
+  const [isVercelConfigured, setIsVercelConfigured] = useState(false);
+  const [dnsRecords, setDnsRecords] = useState<Array<{ type: string; name: string; value: string; description: string }>>([]);
+  const [checkingDomain, setCheckingDomain] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -45,6 +59,21 @@ export default function AdminSettingsPage() {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  // Load Custom Domain
+  const loadDomain = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/domains?tenant_slug=${encodeURIComponent(tenantSlug)}`);
+      const data = await res.json();
+      if (data.success) {
+        setCustomDomain(data.domain || "");
+        setDomainVerified(Boolean(data.verified));
+        setDomainStatus(data.domain ? (data.verified ? "active" : "pending_dns") : "not_configured");
+        setDnsRecords(data.dnsRecords || []);
+        setIsVercelConfigured(Boolean(data.isVercelConfigured));
+      }
+    } catch {}
+  }, [tenantSlug]);
 
   // Load Settings
   const loadSettings = useCallback(async () => {
@@ -70,11 +99,110 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadDomain();
+  }, [loadSettings, loadDomain]);
 
   // Handle Form Change
   const handleChange = (field: keyof TenantSettings, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Handle Save Domain
+  const handleSaveDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customDomain.trim()) {
+      showToast("يرجى إدخال اسم النطاق", "error");
+      return;
+    }
+
+    setSavingDomain(true);
+    try {
+      const res = await fetch("/api/admin/domains", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_slug: tenantSlug,
+          domain: customDomain.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setCustomDomain(data.domain);
+        setDomainVerified(Boolean(data.verified));
+        setDomainStatus(data.status || "pending_dns");
+        setDnsRecords(data.dnsRecords || []);
+        setIsVercelConfigured(Boolean(data.isVercelConfigured));
+        showToast(data.message || "تم حفظ بيانات النطاق بنجاح");
+      } else {
+        showToast(data.error || "فشل حفظ النطاق", "error");
+      }
+    } catch {
+      showToast("حدث خطأ أثناء حفظ النطاق", "error");
+    } finally {
+      setSavingDomain(false);
+    }
+  };
+
+  // Handle Verify Domain
+  const handleVerifyDomain = async () => {
+    setCheckingDomain(true);
+    try {
+      const res = await fetch("/api/admin/domains", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenant_slug: tenantSlug }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setDomainVerified(Boolean(data.verified));
+        setDomainStatus(data.status || "pending_dns");
+        if (data.dnsRecords) setDnsRecords(data.dnsRecords);
+        showToast(data.message || "تم التحقق من النطاق", data.verified ? "success" : "error");
+      } else {
+        showToast(data.error || "فشل التحقق من النطاق", "error");
+      }
+    } catch {
+      showToast("حدث خطأ أثناء التحقق من النطاق", "error");
+    } finally {
+      setCheckingDomain(false);
+    }
+  };
+
+  // Handle Delete Domain
+  const handleDeleteDomain = async () => {
+    if (!confirm("هل أنت متأكد من حذف النطاق المخصص؟ سيبقى الرابط الأساسي يعمل دائماً.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/domains?tenant_slug=${encodeURIComponent(tenantSlug)}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setCustomDomain("");
+        setDomainVerified(false);
+        setDomainStatus("not_configured");
+        setDnsRecords([]);
+        showToast(data.message || "تم حذف النطاق المخصص بنجاح");
+      } else {
+        showToast(data.error || "فشل حذف النطاق", "error");
+      }
+    } catch {
+      showToast("حدث خطأ أثناء حذف النطاق", "error");
+    }
+  };
+
+  // Copy to clipboard helper
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedValue(text);
+    showToast("تم النسخ إلى الحافظة");
+    setTimeout(() => setCopiedValue(null), 2500);
   };
 
   // Handle Save
@@ -223,6 +351,18 @@ export default function AdminSettingsPage() {
           >
             <CreditCard className="w-4 h-4" />
             <span>دفع ميسر (Moyasar)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("domain")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === "domain"
+                ? "bg-amber-500 text-slate-950 shadow-md"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            <span>دومين خاص (Custom Domain)</span>
           </button>
         </div>
 
@@ -531,6 +671,240 @@ export default function AdminSettingsPage() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* Tab 4: Custom Domain Settings */}
+        {activeTab === "domain" && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="font-extrabold text-base text-white">إعدادات النطاق المخصص (Custom Domain)</h3>
+                  <p className="text-xs text-slate-400">
+                    اربط نطاقك الخاص (مثل <code>rewa.care</code>) بصفحة الحجوزات ولوحة التحكم الخاصة بك.
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                {domainVerified ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    النطاق متصل ونشط
+                  </span>
+                ) : customDomain ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    بانتظار التحقق من الـ DNS
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-xs font-bold">
+                    غير معين
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Vercel API Status Banner */}
+            <div className={`p-4 rounded-2xl border text-xs flex items-start gap-3 ${
+              isVercelConfigured
+                ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                : "bg-blue-950/30 border-blue-500/30 text-blue-300"
+            }`}>
+              <Zap className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold">
+                  {isVercelConfigured
+                    ? "الربط الآلي مع Vercel مفعّل"
+                    : "الربط بدون مفاتيح Vercel API (الوضع اليدوي)"}
+                </p>
+                <p className="text-[11px] opacity-80 leading-relaxed">
+                  {isVercelConfigured
+                    ? "يتم تسجيل النطاق وإصدار شهادة SSL تلقائياً عبر Vercel API بمجرد توجيه سجلات DNS."
+                    : "بدون مفاتيح Vercel API يتم حفظ النطاق وإظهار تعليمات الـ DNS، ويمكنك إضافته في لوحة تحكم Vercel يدوياً تحت Domains."}
+                </p>
+              </div>
+            </div>
+
+            {/* Domain Form */}
+            <form onSubmit={handleSaveDomain} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-300 text-xs">
+                  اسم النطاق المخصص (Custom Domain)
+                </label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Globe className="absolute right-3.5 top-3 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      dir="ltr"
+                      placeholder="rewa.care أو booking.yourbrand.com"
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-full pl-3.5 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="submit"
+                      disabled={savingDomain}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {savingDomain ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      <span>حفظ النطاق</span>
+                    </button>
+
+                    {customDomain && (
+                      <button
+                        type="button"
+                        onClick={handleVerifyDomain}
+                        disabled={checkingDomain}
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${checkingDomain ? "animate-spin" : ""}`} />
+                        <span>تحقق من الـ DNS</span>
+                      </button>
+                    )}
+
+                    {customDomain && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteDomain}
+                        className="p-2.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-xl border border-rose-800/40 text-xs transition-all"
+                        title="حذف النطاق المخصص"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </form>
+
+            {/* DNS Instructions Table */}
+            {customDomain && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs text-white flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-amber-400" />
+                    <span>سجلات DNS المطلوبة لمزود النطاق الخاص بك (Cloudflare, GoDaddy, Namecheap...)</span>
+                  </h4>
+                  {domainVerified && (
+                    <a
+                      href={`https://${customDomain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-amber-400 hover:underline"
+                    >
+                      <span>زيارة النطاق</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-950">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="bg-slate-900/60 border-b border-slate-800 text-slate-400 font-bold">
+                        <th className="p-3">النوع (Type)</th>
+                        <th className="p-3">الاسم (Host / Name)</th>
+                        <th className="p-3">القيمة (Value / Target)</th>
+                        <th className="p-3">إجراء</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {dnsRecords.length > 0 ? (
+                        dnsRecords.map((rec, i) => (
+                          <tr key={i} className="hover:bg-slate-900/30">
+                            <td className="p-3 font-mono font-bold text-amber-400">{rec.type}</td>
+                            <td className="p-3 font-mono text-slate-300">{rec.name}</td>
+                            <td className="p-3 font-mono text-slate-300 dir-ltr text-right">{rec.value}</td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(rec.value)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] transition-all"
+                              >
+                                {copiedValue === rec.value ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span>تم النسخ</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>نسخ</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <>
+                          <tr className="hover:bg-slate-900/30">
+                            <td className="p-3 font-mono font-bold text-amber-400">A</td>
+                            <td className="p-3 font-mono text-slate-300">@</td>
+                            <td className="p-3 font-mono text-slate-300 dir-ltr text-right">76.76.21.21</td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard("76.76.21.21")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px]"
+                              >
+                                <Copy className="w-3 h-3" />
+                                <span>نسخ</span>
+                              </button>
+                            </td>
+                          </tr>
+                          <tr className="hover:bg-slate-900/30">
+                            <td className="p-3 font-mono font-bold text-amber-400">CNAME</td>
+                            <td className="p-3 font-mono text-slate-300">www</td>
+                            <td className="p-3 font-mono text-slate-300 dir-ltr text-right">cname.vercel-dns.com.</td>
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard("cname.vercel-dns.com.")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px]"
+                              >
+                                <Copy className="w-3 h-3" />
+                                <span>نسخ</span>
+                              </button>
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Permanent Link Info */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <Link2 className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <p className="font-bold text-white">الرابط الافتراضي الدائم للمنشأة</p>
+                  <p className="text-slate-400 text-[11px] mt-0.5">
+                    الرابط <code>https://{tenantSlug}.mken.live</code> يبقى يعمل دائماً في جميع الأحوال حتى بعد تفعيل الدومين الخاص.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://${tenantSlug}.mken.live`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-[11px] font-bold flex items-center gap-1 shrink-0"
+              >
+                <span>فتح الرابط</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
         )}
       </div>
     </AdminLayout>

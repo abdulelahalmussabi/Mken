@@ -39,6 +39,13 @@ if (-not $superEmail) { $superEmail = "admin@mken.live" }
 $superPassHash = Read-Host "Enter ADMIN_SUPER_PASSWORD_HASH" -AsSecureString
 $superPassHashPlain = Get-PlainSecureString $superPassHash
 
+# Optional: Vercel Domains API Integration
+$vercelToken = Read-Host "Enter VERCEL_API_TOKEN (Optional, for auto-domains)" -AsSecureString
+$vercelTokenPlain = Get-PlainSecureString $vercelToken
+
+$vercelProjId = Read-Host "Enter VERCEL_PROJECT_ID (Optional, for auto-domains)"
+$vercelTeamId = Read-Host "Enter VERCEL_TEAM_ID (Optional, leave blank if personal account)"
+
 Write-Host ""
 Write-Host "Updating variables on Vercel project (mkn)..." -ForegroundColor Yellow
 
@@ -69,6 +76,21 @@ Set-VercelEnv "ADMIN_SUPER_EMAIL" $superEmail "preview"
 
 Set-VercelEnv "ADMIN_SUPER_PASSWORD_HASH" $superPassHashPlain "production"
 Set-VercelEnv "ADMIN_SUPER_PASSWORD_HASH" $superPassHashPlain "preview"
+
+if ($vercelTokenPlain) {
+  Set-VercelEnv "VERCEL_API_TOKEN" $vercelTokenPlain "production"
+  Set-VercelEnv "VERCEL_API_TOKEN" $vercelTokenPlain "preview"
+}
+
+if ($vercelProjId) {
+  Set-VercelEnv "VERCEL_PROJECT_ID" $vercelProjId "production"
+  Set-VercelEnv "VERCEL_PROJECT_ID" $vercelProjId "preview"
+}
+
+if ($vercelTeamId) {
+  Set-VercelEnv "VERCEL_TEAM_ID" $vercelTeamId "production"
+  Set-VercelEnv "VERCEL_TEAM_ID" $vercelTeamId "preview"
+}
 
 Write-Host ""
 Write-Host "Vercel Environment Setup Complete!" -ForegroundColor Green
