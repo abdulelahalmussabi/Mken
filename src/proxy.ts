@@ -51,6 +51,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
+  if (url.pathname === "/rewa") {
+    url.pathname = "/subscriber/rewa";
+    return NextResponse.rewrite(url);
+  }
+
   return NextResponse.next();
 }
 

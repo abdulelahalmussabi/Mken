@@ -49,17 +49,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const clientAdminLinks = [
-    { name: "لوحة تحكم المنشأة", href: "/admin/client", icon: LayoutDashboard },
-    { name: "تخصيص الثيم والعروض", href: "/admin/client#theme", icon: Palette },
-    { name: "إدارة الخدمات والأسعار", href: "/admin/client#services", icon: Settings },
-    { name: "طلبات الحجز والمواعيد", href: "/admin/client#bookings", icon: ShieldCheck },
+    { name: "لوحة تحكم المنشأة الموحدة", href: "/admin/client", icon: LayoutDashboard },
+    { name: "باقات واشتراكات المنصة", href: "/subscriptions", icon: Palette },
+    { name: "نظام الحجوزات والمواعيد", href: "/bookings", icon: ShieldCheck },
     { name: "سجلات العملاء والديون", href: "/admin/customers", icon: Users },
     { name: "المخزون والمستودع", href: "/admin/inventory", icon: Package },
     { name: "سجل حركات المخزون", href: "/admin/inventory-transactions", icon: History },
     { name: "الموردون والمشتريات", href: "/admin/purchases", icon: Truck },
     { name: "مفاتيح API والتكامل", href: "/admin/api-keys", icon: Key },
     { name: "إعدادات المنشأة والربط", href: "/admin/settings", icon: Settings },
-    { name: "اشتراك وباقات مكّن", href: "/admin/client#subscription", icon: Shield },
   ];
 
   const links = isSuperAdmin ? superAdminLinks : clientAdminLinks;

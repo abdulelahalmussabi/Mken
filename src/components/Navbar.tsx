@@ -25,17 +25,18 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "الرئيسية", href: "/" },
-    { name: "خدماتنا", href: "/#services" },
+    { name: "الاشتراكات 🎟️", href: "/subscriptions" },
+    { name: "الحجوزات 📅", href: "/bookings" },
     { name: "الثيمات والمناسبات 🇸🇦", href: "/themes" },
-    { name: "لماذا مكّن؟", href: "/#features" },
+    { name: "خدماتنا", href: "/#services" },
     { name: "تواصل معنا", href: "/#contact" },
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#090d16]/90 backdrop-blur-xl border-b border-slate-800/80 transition-all">
+    <header className="sticky top-0 z-50 bg-[#090d16]/95 backdrop-blur-xl border-b border-slate-800/80 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-2">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group shrink-0">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl text-white shadow-lg transition-transform group-hover:scale-105"
             style={{ backgroundColor: occasionDetails.accentColor }}
@@ -56,23 +57,15 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Occasion Active Pill Badge (if occasion active) */}
-        {activeOccasion !== "none" && (
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-slate-900/80 border border-slate-800 rounded-full text-xs font-bold text-slate-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>ثيم {occasionDetails.shortName}</span>
-          </div>
-        )}
-
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-full border border-slate-800/80">
+        <nav className="hidden xl:flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-full border border-slate-800/80">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-full transition-all ${
                   isActive
                     ? "bg-slate-800 text-white shadow-md border border-slate-700 font-bold"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60"
@@ -84,27 +77,76 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Theme Selector & Actions */}
+        {/* Left Side: Social Media Icons + Theme Selector + User Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Social Media Links on Left */}
+          <div className="hidden lg:flex items-center gap-1.5 pl-2 border-l border-slate-800 text-slate-400">
+            <a
+              href="https://x.com/mken_live"
+              target="_blank"
+              rel="noreferrer"
+              title="منصة مكّن على X / تويتر"
+              className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 hover:text-white flex items-center justify-center text-xs transition-all"
+            >
+              𝕏
+            </a>
+            <a
+              href="https://instagram.com/mken.live"
+              target="_blank"
+              rel="noreferrer"
+              title="إنستغرام"
+              className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-pink-500/50 hover:text-pink-400 flex items-center justify-center text-xs transition-all"
+            >
+              📸
+            </a>
+            <a
+              href="https://tiktok.com/@mken.live"
+              target="_blank"
+              rel="noreferrer"
+              title="تيك توك"
+              className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:text-cyan-400 flex items-center justify-center text-xs transition-all"
+            >
+              🎵
+            </a>
+            <a
+              href="https://snapchat.com/add/mken.live"
+              target="_blank"
+              rel="noreferrer"
+              title="سناب شات"
+              className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-yellow-500/50 hover:text-yellow-400 flex items-center justify-center text-xs transition-all"
+            >
+              👻
+            </a>
+            <a
+              href="https://wa.me/966554453287"
+              target="_blank"
+              rel="noreferrer"
+              title="تواصل واتساب المباشر"
+              className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/60 hover:bg-emerald-900/80 text-emerald-400 flex items-center justify-center text-xs transition-all"
+            >
+              💬
+            </a>
+          </div>
+
           {/* Occasion Theme Selector */}
           <OccasionThemeSelector />
 
           {/* User Auth Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
             {user ? (
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-sm font-medium text-slate-200 transition-all cursor-pointer focus:outline-none"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-xs font-medium text-slate-200 transition-all cursor-pointer focus:outline-none"
                 >
                   <div
-                    className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center font-bold text-xs"
+                    className="w-6 h-6 rounded-lg text-slate-950 flex items-center justify-center font-bold text-xs"
                     style={{ backgroundColor: occasionDetails.accentColor }}
                   >
                     {user.full_name.charAt(0)}
                   </div>
-                  <span className="max-w-[120px] truncate">{user.full_name}</span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <span className="max-w-[100px] truncate">{user.full_name}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 {userDropdownOpen && (

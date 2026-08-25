@@ -152,6 +152,76 @@ const SHADE_SERVICES: ServiceOption[] = [
   },
 ];
 
+const REWA_SERVICES: ServiceOption[] = [
+  {
+    id: "dental",
+    name: "عيادات طب وتجميل الأسنان وابتسامة هوليوود",
+    badge: "عيادة الأسنان 🦷",
+    price: "كشف مجاني + خصم خاص",
+    features: [
+      "فحص رقمي شامل وتصوير بالأشعة المتطورة",
+      "تبييض وتلميع الأسنان بأحدث أجهزة الليزر البارد",
+      "تصميم ابتسامة هوليوود وعدسات الفينير الفاخرة",
+      "تقويم وعلاج تحفظي وزراعة بأعلى المعايير الطبية",
+    ],
+    image: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80",
+    popular: true,
+  },
+  {
+    id: "nutrition",
+    name: "عيادة السمنة والنحافة والاستشارات الغذائية المتقدمة",
+    badge: "تغذية ورشاقة 🥗",
+    price: "استشارة + فحص InBody",
+    features: [
+      "فحص دقيق لمكونات الجسم وتوزيع الدهون والعضلات",
+      "برامج وحميات غذائية علاجية مخصصة ومستدامة",
+      "أحدث تقنيات نحت القوام وشد الترهلات",
+      "متابعة دورية أسبوعية مع أخصائي التغذية العلاجية",
+    ],
+    image: "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "spa",
+    name: "النادي الصحي والسبا ومسار الأحجار العلاجية (Reflexology)",
+    badge: "استرخاء وسبا 🌿",
+    price: "باقات استرخاء يومية وشهرية",
+    features: [
+      "تجربة مسار الأحجار الطبيعية الحصري لتحفيز نقاط الطاقة",
+      "جلسات تدليك ومساج علاجي بالزيوت العطرية العضوية",
+      "غرف ساونا، جاكوزي دافئ، وحمامات بخار استشفائية",
+      "جلسات ديتوكس متكاملة لطرد السموم وتصفية الذهن",
+    ],
+    image: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+    popular: true,
+  },
+  {
+    id: "defense",
+    name: "نادي الدفاع عن النفس واللياقة البدنية الشاملة",
+    badge: "دفاع عن النفس 🥋",
+    price: "اشتراكات شهرية وسنوية",
+    features: [
+      "تدريب احترافي على فنون الدفاع عن النفس للكبار والصغار",
+      "رفع معدلات اللياقة البدنية والسرعة ورد الفعل",
+      "مدربون معتمدون وبيئة تدريبية آمنة ومجهزة بالكامل",
+      "برامج متدرجة وأحزمة معتمدة للمتدربين",
+    ],
+    image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "events",
+    name: "الفعاليات وورش العمل وخلوات الاستشفاء الرقمي الدورية",
+    badge: "فعاليات وعروض 🎪",
+    price: "تسجيل فوري للمقاعد",
+    features: [
+      "مهرجانات وأسابيع الاستشفاء ونمط الحياة الصحي المتجددة",
+      "ورش عمل تفاعلية في التغذية والصحة النفسية والبدنية",
+      "إعلانات دورية وعروض خاصة بالمشتركين",
+      "حجز مقاعد مسبق وتأكيد فوري عبر المنصة",
+    ],
+    image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
 export default function SubscriberStorefrontPage({
   params,
 }: {
@@ -166,6 +236,9 @@ export default function SubscriberStorefrontPage({
 
   // Try to get client data from AdminContext (dynamic)
   const adminClient = clients.find((c) => c.slug === slug);
+  const isRewa = adminClient
+    ? adminClient.slug === "rewa" || adminClient.type === "clinic"
+    : slug === "rewa";
   const isSalon = adminClient
     ? adminClient.type === "salon"
     : slug === "demo" || slug === "salon" || slug === "barber";
@@ -185,7 +258,9 @@ export default function SubscriberStorefrontPage({
   const [bookingTime, setBookingTime] = useState("16:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentServices = isShade
+  const currentServices = isRewa
+    ? REWA_SERVICES
+    : isShade
     ? SHADE_SERVICES
     : isSalon
     ? SALON_SERVICES
@@ -193,7 +268,29 @@ export default function SubscriberStorefrontPage({
 
   // Strict Tenant Fallbacks to prevent cross-tenant data leaks during SSR
   const fallbackStoreInfo =
-    slug === "almasabi"
+    slug === "rewa"
+      ? {
+          name: "منتجع رواء الاستشفاء الرقمي",
+          tagline: "رواء.. توازن واسترخاء",
+          subtitle: "منتجع صحي واستشفائي متكامل يضم عيادات الأسنان والسمنة والتغذية، النادي الصحي والسبا، نادي الدفاع عن النفس، واستضافة الفعاليات الصحية الدورية بالمدينة المنورة.",
+          location: "المدينة المنورة، المملكة العربية السعودية",
+          phone: "0539770778",
+          whatsapp: "966549462524",
+          rating: "4.9",
+          reviewsCount: "210 تقييم موثق",
+          heroImage: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+          demoNotice: "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
+          couponCode: undefined,
+          discountText: undefined,
+          discountEnabled: true,
+          socialLinks: {
+            instagram: "https://instagram.com/rewa.100000",
+            tiktok: "https://tiktok.com/@rewa.1000",
+            snapchat: "https://snapchat.com/add/rewa.1000",
+            whatsapp: "966549462524",
+          },
+        }
+      : slug === "almasabi"
       ? {
           name: "مؤسسة المصعبي للتجارة",
           tagline: "نحميك من الشمس… ونضيف الفخامة لمكانك",
@@ -239,6 +336,13 @@ export default function SubscriberStorefrontPage({
           couponCode: undefined,
           discountText: undefined,
           discountEnabled: true,
+          socialLinks: {
+            twitter: "https://x.com/almahrusa_sa",
+            instagram: "https://instagram.com/almahrusa.medina",
+            tiktok: "https://tiktok.com/@almahrusa",
+            snapchat: "https://snapchat.com/add/almahrusa",
+            whatsapp: "966554453287",
+          },
         };
 
   // Store Metadata — dynamic from AdminContext with strict fallback for almasabi
@@ -261,6 +365,7 @@ export default function SubscriberStorefrontPage({
         couponCode: validAdminClient.couponCode,
         discountText: validAdminClient.discountText,
         discountEnabled: validAdminClient.discountEnabled ?? true,
+        socialLinks: validAdminClient.socialLinks || fallbackStoreInfo.socialLinks,
       }
     : fallbackStoreInfo;
 
@@ -329,23 +434,85 @@ export default function SubscriberStorefrontPage({
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-1 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
-            <a href="#hero" className="px-3.5 py-1.5 text-xs font-semibold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 transition">
+          <nav className="hidden xl:flex items-center gap-1 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
+            <a href="#hero" className="px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 transition">
               الرئيسية
             </a>
-            <a href="#services" className="px-3.5 py-1.5 text-xs font-semibold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 transition">
+            <a href="#services" className="px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 transition">
               {isSalon ? "خدمات الصالون / المتوفرة" : "خيارات الإقامة / المتوفرة"}
             </a>
-            <Link href={`/book?tenant=${slug}`} className="px-3.5 py-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-full transition flex items-center gap-1">
+            <Link href="/subscriptions" className="px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-amber-400 rounded-full hover:bg-slate-800 transition">
+              باقات الاشتراكات
+            </Link>
+            <Link href={`/bookings?tenant=${slug}`} className="px-3 py-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-full transition flex items-center gap-1">
               <CalendarCheck className="w-3.5 h-3.5" />
               حجز موعد أونلاين
             </Link>
           </nav>
 
-          {/* Header Action Buttons */}
+          {/* Left Side: Social Media Icons + Action Buttons */}
           <div className="flex items-center gap-2">
+            {/* Social Media Accounts on Left */}
+            <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-slate-800 text-slate-400">
+              {storeInfo.socialLinks?.twitter && (
+                <a
+                  href={storeInfo.socialLinks.twitter}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="حساب X / تويتر"
+                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 hover:text-white flex items-center justify-center text-xs transition-all"
+                >
+                  𝕏
+                </a>
+              )}
+              {storeInfo.socialLinks?.instagram && (
+                <a
+                  href={storeInfo.socialLinks.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="إنستغرام"
+                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-pink-500/50 hover:text-pink-400 flex items-center justify-center text-xs transition-all"
+                >
+                  📸
+                </a>
+              )}
+              {storeInfo.socialLinks?.tiktok && (
+                <a
+                  href={storeInfo.socialLinks.tiktok}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="تيك توك"
+                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:text-cyan-400 flex items-center justify-center text-xs transition-all"
+                >
+                  🎵
+                </a>
+              )}
+              {storeInfo.socialLinks?.snapchat && (
+                <a
+                  href={storeInfo.socialLinks.snapchat}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="سناب شات"
+                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-yellow-500/50 hover:text-yellow-400 flex items-center justify-center text-xs transition-all"
+                >
+                  👻
+                </a>
+              )}
+              {storeInfo.socialLinks?.whatsapp && (
+                <a
+                  href={`https://wa.me/${storeInfo.socialLinks.whatsapp}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="واتساب"
+                  className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/60 hover:bg-emerald-900/80 text-emerald-400 flex items-center justify-center text-xs transition-all"
+                >
+                  💬
+                </a>
+              )}
+            </div>
+
             <Link
-              href={`/book?tenant=${slug}`}
+              href={`/bookings?tenant=${slug}`}
               className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"
               style={{ backgroundColor: occasionDetails.accentColor }}
             >

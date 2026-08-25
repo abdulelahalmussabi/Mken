@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 
 const TYPE_LABELS: Record<string, string> = {
+  clinic: "🏥 مجمع طبي / عيادات",
+  gym: "🏋️ نادي صحي / رياضي",
   hotel: "🏢 فندق / شقق",
   salon: "💈 صالون / حلاقة",
   restaurant: "🍽️ مطعم",
@@ -50,47 +52,89 @@ export default function AdminDashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (text: string, type: "success" | "error" = "success") => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // New Client Form State
   const [newClient, setNewClient] = useState<Partial<ClientRecord>>({
-    type: "hotel",
+    type: "clinic",
     theme: "national_day",
     active: true,
   });
 
   const handleAddClient = () => {
-    if (!newClient.slug || !newClient.name || !newClient.adminEmail || !newClient.adminPassword) {
+    if (!newClient.slug?.trim()) {
+      showToast("يرجى إدخال المعرف الإنجليزي (Slug) للمنشأة", "error");
       return;
     }
+    if (!newClient.name?.trim()) {
+      showToast("يرجى إدخال اسم المنشأة", "error");
+      return;
+    }
+    if (!newClient.adminEmail?.trim()) {
+      showToast("يرجى إدخال البريد الإلكتروني الخاص بمدير المنشأة", "error");
+      return;
+    }
+    if (!newClient.adminPassword?.trim()) {
+      showToast("يرجى إدخال كلمة مرور الحساب", "error");
+      return;
+    }
+
+    const cleanSlug = newClient.slug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, "-");
+
     addClient({
-      slug: newClient.slug.toLowerCase().replace(/\s/g, "-"),
-      name: newClient.name || "",
-      tagline: newClient.tagline || "احجز وادخل بدون انتظار",
-      subtitle: newClient.subtitle || "",
-      type: (newClient.type as ClientRecord["type"]) || "other",
-      phone: newClient.phone || "0500000000",
-      whatsapp: newClient.whatsapp || "966500000000",
-      email: newClient.email,
-      location: newClient.location || "المملكة العربية السعودية",
+      slug: cleanSlug,
+      name: newClient.name.trim(),
+      tagline: newClient.tagline?.trim() || "احجز واستمتع بأفضل الخدمات",
+      subtitle: newClient.subtitle?.trim() || "",
+      type: (newClient.type as ClientRecord["type"]) || "clinic",
+      phone: newClient.phone?.trim() || "0500000000",
+      whatsapp: newClient.whatsapp?.trim() || "966500000000",
+      email: newClient.email?.trim() || newClient.adminEmail?.trim(),
+      location: newClient.location?.trim() || "المملكة العربية السعودية",
       rating: "4.9",
       reviewsCount: "0 تقييم",
       heroImage:
         newClient.heroImage ||
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
       demoNotice: newClient.demoNotice || `✨ موقع ${newClient.name} على منصة مكّن`,
-      adminEmail: newClient.adminEmail || "",
-      adminPassword: newClient.adminPassword || "",
+      adminEmail: newClient.adminEmail.trim(),
+      adminPassword: newClient.adminPassword.trim(),
       theme: (newClient.theme as OccasionId) || "national_day",
       active: true,
       createdAt: new Date().toISOString(),
     });
-    setNewClient({ type: "hotel", theme: "national_day", active: true });
+
+    showToast(`تمت إضافة منشأة "${newClient.name}" بنجاح!`, "success");
+    setNewClient({ type: "clinic", theme: "national_day", active: true });
     setShowAddForm(false);
   };
 
   return (
     <AdminLayout>
       <div className="space-y-10 text-right">
+        {/* Toast Alert */}
+        {toastMessage && (
+          <div
+            className={`p-4 rounded-2xl flex items-center gap-3 border shadow-xl animate-in fade-in slide-in-from-top-4 duration-300 ${
+              toastMessage.type === "success"
+                ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-300"
+                : "bg-rose-950/80 border-rose-500/40 text-rose-300"
+            }`}
+          >
+            {toastMessage.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            ) : (
+              <X className="w-5 h-5 text-rose-400 shrink-0" />
+            )}
+            <span className="text-xs font-extrabold">{toastMessage.text}</span>
+          </div>
+        )}
+
         {/* Page Header */}
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-amber-500/20 shadow-xl space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold">
