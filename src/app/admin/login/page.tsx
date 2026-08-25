@@ -46,15 +46,27 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     setTimeout(() => {
-      const result = loginAdmin(email.trim(), password);
-      if (result.success) {
-        const isSuper = email.trim().toLowerCase() === "admin@mken.live";
-        router.push(isSuper ? "/admin" : "/admin/client");
-      } else {
-        setError(result.message);
+      try {
+        const result = loginAdmin(email.trim(), password);
+        if (result.success) {
+          const isSuper = email.trim().toLowerCase() === "admin@mken.live";
+          const targetPath = isSuper ? "/admin" : "/admin/client";
+          window.location.href = targetPath;
+        } else {
+          setError(result.message);
+          setLoading(false);
+        }
+      } catch (err) {
+        setError("حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة مرة أخرى");
         setLoading(false);
       }
-    }, 600);
+    }, 300);
+  };
+
+  const handleQuickFill = (fillEmail: string, fillPass: string) => {
+    setEmail(fillEmail);
+    setPassword(fillPass);
+    setError("");
   };
 
   return (
@@ -72,7 +84,7 @@ export default function AdminLoginPage() {
           <div>
             <h1 className="text-3xl font-black text-white">لوحة تحكم مكّن</h1>
             <p className="text-slate-400 text-sm mt-1">
-              دخول آمن للمديرين وأدمن العملاء
+              دخول آمن للمديرين وأدمن العملاء والموظفين
             </p>
           </div>
         </div>
@@ -148,22 +160,60 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Accounts Info */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/60 space-y-2 text-xs">
-            <p className="text-slate-400 font-bold">حسابات الدخول:</p>
+          {/* Accounts Info with Quick Fill */}
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/60 space-y-2.5 text-xs">
+            <p className="text-slate-400 font-bold flex items-center justify-between">
+              <span>حسابات الدخول السريعة:</span>
+              <span className="text-[10px] text-slate-500 font-normal">اضغط للتعبئة التلقائية</span>
+            </p>
             <div className="space-y-1.5 text-slate-500">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                <span>سوبر أدمن: <code className="text-amber-400 font-mono">admin@mken.live</code></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>أدمن المحروسة: <code className="text-emerald-400 font-mono">almahrusa@mken.live</code></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                <span>أدمن ديمو: <code className="text-blue-400 font-mono">demo@mken.live</code></span>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("admin@mken.live", "Aa#321321")}
+                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/50 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/30 transition text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-slate-300 font-bold">سوبر أدمن المنصة</span>
+                </div>
+                <code className="text-amber-400 font-mono text-[11px]">admin@mken.live</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill("almahrusa@mken.live", "Almahrusa#123")}
+                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/50 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-slate-300 font-bold">أدمن المحروسة للشقق</span>
+                </div>
+                <code className="text-emerald-400 font-mono text-[11px]">almahrusa@mken.live</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill("almasabi@mken.live", "Almasabi#123")}
+                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/50 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 transition text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                  <span className="text-slate-300 font-bold">أدمن مؤسسة المصعبي</span>
+                </div>
+                <code className="text-purple-400 font-mono text-[11px]">almasabi@mken.live</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill("demo@mken.live", "Demo#123")}
+                className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-900/50 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 transition text-right"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                  <span className="text-slate-300 font-bold">أدمن صالون النخبة</span>
+                </div>
+                <code className="text-blue-400 font-mono text-[11px]">demo@mken.live</code>
+              </button>
             </div>
           </div>
         </div>

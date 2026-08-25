@@ -14,8 +14,8 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Redirect /admin.html, /admin, or /auth to /admin/login
-  if (url.pathname === "/admin.html" || url.pathname === "/admin" || url.pathname === "/auth") {
+  // Redirect /admin.html or /auth to /admin/login
+  if (url.pathname === "/admin.html" || url.pathname === "/auth") {
     url.pathname = "/admin/login";
     if (subdomain) {
       url.searchParams.set("client", subdomain);

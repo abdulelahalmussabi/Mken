@@ -3,11 +3,6 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/admin",
-      "destination": "/admin/login",
-      "permanent": false
-    },
-    {
       "source": "/auth",
       "destination": "/admin/login",
       "permanent": false
