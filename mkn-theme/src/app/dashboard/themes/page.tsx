@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 
 /** Theme editing belongs on /admin — this route only redirects. */
@@ -15,7 +16,7 @@ export default function DashboardThemesRedirect() {
       router.replace("/admin/login?from=/admin");
       return;
     }
-    router.replace(session?.role === "client" ? "/admin/client#theme" : "/admin#clients");
+    router.replace((session?.role === "client" ? "/admin/theme" : "/admin#clients") as Route);
   }, [authLoading, isAdmin, session, router]);
 
   return (

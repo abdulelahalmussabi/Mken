@@ -2,15 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
-import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
+import { SAUDI_OCCASIONS } from "@/context/OccasionContext";
 import {
-  Palette,
-  Check,
   ExternalLink,
-  Gift,
-  Info,
   ShieldCheck,
   Building2,
   Phone,
@@ -18,23 +15,21 @@ import {
   MapPin,
   Save,
   Tag,
+  Palette,
+  Type,
+  Megaphone,
 } from "lucide-react";
 
-const occasionsList = Object.values(SAUDI_OCCASIONS);
-
 export default function ClientAdminPage() {
-  const { session, clients, getClientTheme, setClientTheme, updateClient, isSuperAdmin } = useAdmin();
+  const { session, clients, getClientTheme, updateClient, isSuperAdmin } = useAdmin();
   const { showToast } = useApp();
 
   // Get the client for this admin
   const myClient = clients.find((c) => c.slug === session?.clientSlug);
   const currentTheme = getClientTheme(session?.clientSlug || "") || "none";
-  const currentOcc = SAUDI_OCCASIONS[currentTheme];
+  const currentOcc = currentTheme in SAUDI_OCCASIONS ? SAUDI_OCCASIONS[currentTheme as keyof typeof SAUDI_OCCASIONS] : SAUDI_OCCASIONS.none;
 
   // Editable Form State
-  const [name, setName] = useState(myClient?.name || "");
-  const [tagline, setTagline] = useState(myClient?.tagline || "");
-  const [subtitle, setSubtitle] = useState(myClient?.subtitle || "");
   const [phone, setPhone] = useState(myClient?.phone || "");
   const [whatsapp, setWhatsapp] = useState(myClient?.whatsapp || "");
   const [location, setLocation] = useState(myClient?.location || "");
@@ -75,9 +70,6 @@ export default function ClientAdminPage() {
     setIsSaving(true);
 
     const result = await updateClient(myClient.slug, {
-      name,
-      tagline,
-      subtitle,
       phone,
       whatsapp,
       location,
@@ -119,6 +111,20 @@ export default function ClientAdminPage() {
             {" · "}
             المسار: <code className="text-slate-300 font-mono">/subscriber/{myClient.slug}</code>
           </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Link href={"/admin/theme" as Route} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-[11px] font-bold text-slate-200">
+              <Palette className="w-3.5 h-3.5 text-amber-400" />
+              الثيم
+            </Link>
+            <Link href={"/admin/interface" as Route} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-[11px] font-bold text-slate-200">
+              <Type className="w-3.5 h-3.5 text-amber-400" />
+              عناصر الواجهة
+            </Link>
+            <Link href={"/admin/ads" as Route} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-[11px] font-bold text-slate-200">
+              <Megaphone className="w-3.5 h-3.5 text-amber-400" />
+              الإعلانات
+            </Link>
+          </div>
         </div>
 
         {/* Store Settings Form */}
@@ -129,37 +135,6 @@ export default function ClientAdminPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-300">اسم المنشأة التجاري *</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-300">العنوان الفرعي / السلوجان</label>
-              <input
-                type="text"
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-xs font-bold text-slate-300">الوصف التعريفي بالمنشأة</label>
-              <textarea
-                rows={2}
-                value={subtitle}
-                onChange={(e) => setSubtitle(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-300 flex items-center gap-1">
                 <Phone className="w-3.5 h-3.5 text-emerald-400" />
@@ -262,71 +237,6 @@ export default function ClientAdminPage() {
             </button>
           </div>
         </form>
-
-        {/* Theme Selector */}
-        <section id="theme" className="space-y-5">
-          <div className="flex items-center gap-3">
-            <Palette className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-extrabold text-white">اختر ثيم صفحتك للمناسبات</h2>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-blue-950/20 border border-blue-800/30 text-xs text-blue-300 flex items-start gap-2">
-            <Info className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>
-              الثيم الذي تختاره سيُطبَّق على صفحة <strong>/subscriber/{myClient.slug}</strong> فوراً لجميع زوار صفحتك.
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {occasionsList.map((occ) => {
-              const isActive = currentTheme === occ.id;
-              return (
-                <button
-                  key={occ.id}
-                  type="button"
-                  onClick={async () => {
-                    const result = await setClientTheme(myClient.slug, occ.id as OccasionId);
-                    if (result.success) {
-                      showToast(`تم تغيير الثيم إلى: ${occ.shortName}`, "success");
-                    } else {
-                      showToast(result.message || "تعذّر تغيير الثيم", "error");
-                    }
-                  }}
-                  className={`p-5 rounded-3xl border text-right transition-all relative ${
-                    isActive
-                      ? "bg-slate-900 border-amber-500 shadow-xl ring-2 ring-amber-500/30"
-                      : "bg-slate-900/60 border-slate-800 hover:border-slate-600"
-                  }`}
-                >
-                  {isActive && (
-                    <div className="absolute top-3 left-3 bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      مُفعَّل
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <span
-                      className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0"
-                      style={{ backgroundColor: occ.accentColor }}
-                    />
-                    <span className="font-extrabold text-sm text-white">{occ.name}</span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2 mb-3">
-                    {occ.description}
-                  </p>
-
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <Gift className="w-3 h-3 text-amber-400" />
-                    <span className="text-slate-500">كود الخصم:</span>
-                    <code className="font-mono font-bold text-amber-300">{couponCode || occ.couponCode}</code>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
       </div>
     </>
   );

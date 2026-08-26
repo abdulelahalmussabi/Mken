@@ -21,8 +21,11 @@ export async function GET() {
     );
   }
 
-  const tenants = await fetchTenants();
-  const list = tenants && tenants.length > 0 ? tenants : DEFAULT_CLIENTS;
+  const tenants = (await fetchTenants()) || [];
+  const missingSeeds = DEFAULT_CLIENTS.filter(
+    (seed) => !tenants.some((client) => client.slug === seed.slug)
+  );
+  const list = [...tenants, ...missingSeeds];
   const scoped =
     session.role === "super"
       ? list
@@ -31,7 +34,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     clients: scoped.map(adminClientView),
-    source: tenants && tenants.length > 0 ? "database" : "default",
+    source: tenants.length > 0 ? "database" : "default",
   });
 }
 

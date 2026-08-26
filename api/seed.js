@@ -35,6 +35,7 @@ module.exports = async function handler(req, res) {
       { email: 'almahrusa@mken.live', slug: 'almahrusa', name: 'مجموعة المحروسة' },
       { email: 'almahrosa@mken.live', slug: 'almahrosa', name: 'مجموعة المحروسة' },
       { email: 'almasabi@mken.live', slug: 'almasabi', name: 'مؤسسة المصعبي للتجارة' },
+      { email: 'rewa@mken.live', slug: 'rewa', name: 'منتجع رواء الاستشفاء الرقمي' },
       { email: 'demo@mken.live', slug: 'demo', name: 'صالون النخبة' }
     ];
 

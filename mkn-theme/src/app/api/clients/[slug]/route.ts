@@ -47,6 +47,7 @@ export async function GET(
     success: true,
     client: payload.client,
     catalog: payload.catalog,
+    appearance: payload.appearance,
     source: payload.source,
   });
 }

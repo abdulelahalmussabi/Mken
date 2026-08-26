@@ -25,6 +25,8 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Type,
+  Megaphone,
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -42,7 +44,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [authLoading, session, router, isLogin]);
 
   if (isLogin) return <>{children}</>;
-  if (!session) return null;
+  if (authLoading || !session) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-400 flex items-center justify-center text-sm">
+        جاري فتح لوحة التحكم...
+      </div>
+    );
+  }
 
   const operationsLinks = [
     { name: "المواعيد والتقويم", href: "/admin/appointments" as Route, icon: CalendarDays },
@@ -75,6 +83,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       links: operationsLinks,
     },
     {
+      title: "المظهر والمحتوى",
+      links: [
+        { name: "الثيم", href: "/admin/theme" as Route, icon: Palette },
+        { name: "عناصر الواجهة", href: "/admin/interface" as Route, icon: Type },
+        { name: "الإعلانات", href: "/admin/ads" as Route, icon: Megaphone },
+      ],
+    },
+    {
       title: "الإعدادات والتهيئة",
       links: [{ name: "إعدادات المنشأة", href: "/admin/settings" as Route, icon: Building2 }],
     },
@@ -86,11 +102,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       links: operationsLinks,
     },
     {
+      title: "المظهر والمحتوى",
+      links: [
+        { name: "الثيم", href: "/admin/theme" as Route, icon: Palette },
+        { name: "عناصر الواجهة", href: "/admin/interface" as Route, icon: Type },
+        { name: "الإعلانات", href: "/admin/ads" as Route, icon: Megaphone },
+      ],
+    },
+    {
       title: "الإعدادات والتهيئة",
       links: [
         { name: "إعدادات المنشأة", href: "/admin/settings" as Route, icon: Building2 },
         { name: "إعدادات العميل", href: "/admin/client" as Route, icon: LayoutDashboard },
-        { name: "تخصيص الثيم", href: "/admin/client#theme" as Route, icon: Palette },
       ],
     },
   ];
@@ -180,7 +203,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </p>
                     {group.links.map((item) => {
                       const Icon = item.icon;
-                      const isActive = pathname === item.href;
+                      const [path, hash] = String(item.href).split("#");
+                      const isActive = hash
+                        ? false
+                        : path === "/admin"
+                          ? pathname === "/admin"
+                          : pathname === path || pathname.startsWith(`${path}/`);
                       return (
                         <Link
                           key={item.href}

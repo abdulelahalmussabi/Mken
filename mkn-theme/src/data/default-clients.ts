@@ -70,6 +70,28 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
   },
+  {
+    slug: "rewa",
+    name: "منتجع رواء الاستشفاء الرقمي",
+    tagline: "رواء.. توازن واسترخاء",
+    subtitle:
+      "منتجع صحي واستشفائي متكامل يضم عيادات الأسنان والسمنة والتغذية، نادي الدفاع عن النفس، واستضافة الفعاليات الصحية الدورية بالمدينة المنورة.",
+    type: "other",
+    phone: "0539770778",
+    whatsapp: "966549462524",
+    email: "rewa@mken.live",
+    location: "المدينة المنورة، المملكة العربية السعودية",
+    rating: "4.9",
+    reviewsCount: "210 تقييم موثق",
+    heroImage:
+      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+    demoNotice:
+      "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
+    adminEmail: "rewa@mken.live",
+    theme: "none",
+    active: true,
+    createdAt: new Date("2026-01-01").toISOString(),
+  },
 ];
 
 type CredentialField = "adminPassword" | "admin_password" | "admin_password_hash";

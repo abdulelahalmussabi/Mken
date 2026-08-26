@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { KeyRound, Fingerprint, LogIn, ArrowRight } from "lucide-react";
 
@@ -27,7 +26,6 @@ function base64urlToBuffer(value: string): ArrayBuffer {
 }
 
 export default function StaffLoginPage() {
-  const router = useRouter();
   const [tenantSlug, setTenantSlug] = useState("");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
@@ -40,17 +38,17 @@ export default function StaffLoginPage() {
     const tenant = params.get("tenant") || params.get("client") || "";
     if (tenant) setTenantSlug(tenant.toLowerCase());
     setPasskeyReady(typeof window !== "undefined" && "credentials" in navigator);
-    fetch("/api/staff/session")
+    fetch("/api/staff/session", { signal: AbortSignal.timeout(8000) })
       .then((res) => res.json())
       .then((data) => {
-        if (data.session?.id) router.replace("/staff");
+        if (data.session?.id) window.location.assign("/staff");
       })
       .catch(() => {});
-  }, [router]);
+  }, []);
 
   const afterLogin = (ok: boolean, message?: string) => {
     if (ok) {
-      router.replace("/staff");
+      window.location.assign("/staff");
       return;
     }
     setError(message || "تعذّر تسجيل الدخول");
@@ -66,11 +64,13 @@ export default function StaffLoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ step: "pin", tenantSlug, phone, pin }),
+        signal: AbortSignal.timeout(15000),
       });
       const data = await res.json();
       afterLogin(res.ok && data.success, data.message);
-    } catch {
-      afterLogin(false, "تعذّر الاتصال بالخادم");
+    } catch (err) {
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+      afterLogin(false, timedOut ? "انتهت مهلة الاتصال بالخادم، حاول مرة أخرى" : "تعذّر الاتصال بالخادم");
     }
   };
 

@@ -63,7 +63,7 @@ export default function StaffHomePage() {
   useEffect(() => {
     setPasskeyReady(typeof window !== "undefined" && "credentials" in navigator && "PublicKeyCredential" in window);
 
-    fetch("/api/staff/me/appointments")
+    fetch("/api/staff/me/appointments", { signal: AbortSignal.timeout(12000) })
       .then(async (res) => {
         const data = await res.json();
         if (res.status === 401) {
@@ -72,10 +72,12 @@ export default function StaffHomePage() {
         }
         if (!res.ok || !data.success) {
           setError(data.message || "تعذّر تحميل المهام");
+          if (data.staff) setStaff(data.staff);
           return;
         }
         setStaff(data.staff);
         setAppointments(data.appointments || []);
+        if (data.message) setError(data.message);
       })
       .catch(() => setError("تعذّر الاتصال بالخادم"))
       .finally(() => setLoading(false));

@@ -1,12 +1,13 @@
 import activitiesJson from "@/data/catalog/activities.json";
 import servicesJson from "@/data/catalog/services.json";
 import { DEFAULT_CLIENTS, storefrontClient } from "@/data/default-clients";
+import { appearanceFromConfig, type AppearancePublic } from "@/lib/mken/appearance";
 import {
+  ensureTenantRow,
   fetchTenantRow,
-  getTenantDb,
   isPlatformSlug,
-  TENANT_TABLE,
   toClientRecord,
+  writeTenantConfig,
   type MkenConfig,
 } from "@/lib/mken/tenant";
 import type {
@@ -74,6 +75,7 @@ export const SERVICE_OVERRIDE_FIELDS = [
   "category",
   "price",
   "stayUnit",
+  "heroImage",
 ] as const;
 
 export type ActivityOverrides = Partial<Record<(typeof ACTIVITY_OVERRIDE_FIELDS)[number], string>>;
@@ -166,9 +168,11 @@ export function resolveCatalog(config: MkenConfig): TenantCatalog {
 export async function fetchTenantCatalog(
   slug: string
 ): Promise<{ catalog?: TenantCatalog; error?: string }> {
-  const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
-  return { catalog: resolveCatalog(row.config_data || {}) };
+  const ensured = await ensureTenantRow(slug);
+  if (ensured.error || !ensured.row) {
+    return { error: ensured.error || "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
+  }
+  return { catalog: resolveCatalog(mergeSeedConfig(slug, ensured.row.config_data || {})) };
 }
 
 export interface CatalogUpdate {
@@ -196,11 +200,9 @@ export async function updateTenantCatalog(
   slug: string,
   update: CatalogUpdate
 ): Promise<{ catalog?: TenantCatalog; error?: string }> {
-  const db = getTenantDb();
-  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
-
-  const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة" };
+  const ensured = await ensureTenantRow(slug);
+  if (ensured.error || !ensured.row) return { error: ensured.error || "المنشأة غير موجودة" };
+  const row = ensured.row;
 
   const config: MkenConfig = { ...(row.config_data || {}) };
 
@@ -276,20 +278,12 @@ export async function updateTenantCatalog(
 
   config.updatedAt = new Date().toISOString();
 
-  // Select back the row: RLS filters silently, so an empty result means the
-  // write was rejected even though no error is reported.
-  const { data, error } = await db
-    .from(TENANT_TABLE)
-    .update({ config_data: config, updated_at: new Date().toISOString() })
-    .eq("tenant_slug", slug)
-    .select("config_data");
-
-  if (error) return { error: error.message };
-  if (!data?.length) {
-    return { error: "تعذّر الحفظ: لا توجد صلاحية كتابة على بيانات المنشأة" };
+  const written = await writeTenantConfig(slug, config);
+  if (written.error || !written.row) {
+    return { error: written.error || "تعذّر الحفظ: لا توجد صلاحية كتابة على بيانات المنشأة" };
   }
 
-  return { catalog: resolveCatalog((data[0] as { config_data: MkenConfig }).config_data || {}) };
+  return { catalog: resolveCatalog(written.row.config_data || {}) };
 }
 
 const IMAGE_POOLS: Record<string, string[]> = {
@@ -339,6 +333,18 @@ const SEED_CONFIG: Record<string, MkenConfig> = {
     enabled: ["mens-haircut", "beard-grooming", "kids-haircut", "hair-dye"],
     featuredActivity: "barber-salon",
     featured: "mens-haircut",
+  },
+  rewa: {
+    enabledActivities: ["healthcare", "fitness", "events"],
+    enabled: [
+      "dental-checkup",
+      "gp-consultation",
+      "nutrition-consult",
+      "personal-training",
+      "event-planning",
+    ],
+    featuredActivity: "healthcare",
+    featured: "dental-checkup",
   },
 };
 
@@ -403,7 +409,7 @@ export function toPublicCatalog(catalog: TenantCatalog): StorefrontCatalog {
         price: servicePrice(service),
         features,
         description: service.overrides.description || service.description || "",
-        image: serviceImage(service.activityId, index),
+        image: serviceImage(service.activityId, index, service.overrides.heroImage),
         popular: service.featured,
         duration: serviceDuration(service, storefrontKind(service.activityId)),
       };
@@ -412,28 +418,96 @@ export function toPublicCatalog(catalog: TenantCatalog): StorefrontCatalog {
   return { kind, featuredActivity, activities, services };
 }
 
+function isSpaService(id: string): boolean {
+  if (/spa|massage/i.test(id)) return true;
+  const service = SERVICES.find((item) => item.id === id);
+  return service?.activityId === "spa-wellness";
+}
+
+function scrubSpaCopy(text: string): string {
+  return text
+    .replace(/النادي الصحي والسبا[،,]?\s*/g, "")
+    .replace(/السبا ومسار الأحجار[^،.]*/g, "")
+    .replace(/جلسات(?:\s+ال)?سبا[وال\s]*/g, "")
+    .replace(/والمساج[وال\s]*/g, "")
+    .replace(/المساج[وال\s]*/g, "")
+    .replace(/مساج[^.،]*/g, "")
+    .replace(/السبا[،,]?\s*/g, "")
+    .replace(/والسبا[،,]?\s*/g, "")
+    .replace(/spa/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/،\s*،/g, "،")
+    .replace(/^،\s*/g, "")
+    .trim();
+}
+
+function stripRewaSpa(config: MkenConfig): MkenConfig {
+  const seed = SEED_CONFIG.rewa;
+  const activities = (Array.isArray(config.enabledActivities) ? config.enabledActivities : []).filter(
+    (id) => id !== "spa-wellness"
+  );
+  const enabled = (Array.isArray(config.enabled) ? config.enabled : []).filter((id) => !isSpaService(id));
+  const next: MkenConfig = {
+    ...config,
+    enabledActivities: activities.length ? activities : seed.enabledActivities,
+    enabled: enabled.length ? enabled : seed.enabled,
+  };
+  const actList = Array.isArray(next.enabledActivities) ? (next.enabledActivities as string[]) : [];
+  const enList = Array.isArray(next.enabled) ? (next.enabled as string[]) : [];
+
+  if (!actList.includes(String(next.featuredActivity)) || next.featuredActivity === "spa-wellness") {
+    next.featuredActivity = actList[0] || seed.featuredActivity;
+  }
+  if (!enList.includes(String(next.featured)) || isSpaService(String(next.featured || ""))) {
+    next.featured = enList[0] || seed.featured;
+  }
+  if (typeof next.subtitle === "string") next.subtitle = scrubSpaCopy(next.subtitle);
+  if (next.brand?.description) next.brand = { ...next.brand, description: scrubSpaCopy(next.brand.description) };
+  if (next.brand?.tagline && /سبا|مساج|spa|massage/i.test(next.brand.tagline)) {
+    next.brand = { ...next.brand, tagline: scrubSpaCopy(next.brand.tagline) };
+  }
+  if (next.ads?.secondary) {
+    next.ads = {
+      ...next.ads,
+      secondary: next.ads.secondary.filter(
+        (ad) => !/سبا|مساج|spa|massage/i.test(`${ad.title || ""} ${ad.text || ""}`)
+      ),
+    };
+  }
+  if (next.ads?.primary && /سبا|مساج|spa|massage/i.test(`${next.ads.primary.title || ""} ${next.ads.primary.text || ""}`)) {
+    next.ads = { ...next.ads, primary: { ...next.ads.primary, enabled: false } };
+  }
+  return next;
+}
+
 function mergeSeedConfig(slug: string, config: MkenConfig): MkenConfig {
   const seed = SEED_CONFIG[slug];
-  if (!seed) return config;
-  const enabledActivities = Array.isArray(config.enabledActivities)
-    ? (config.enabledActivities as string[])
-    : [];
-  if (enabledActivities.length > 0) return config;
-  return {
-    ...seed,
-    ...config,
-    enabledActivities: seed.enabledActivities,
-    enabled: Array.isArray(config.enabled) && (config.enabled as string[]).length
-      ? config.enabled
-      : seed.enabled,
-    featuredActivity: (config.featuredActivity as string) || seed.featuredActivity,
-    featured: (config.featured as string) || seed.featured,
-  };
+  let merged = config;
+  if (seed) {
+    const enabledActivities = Array.isArray(config.enabledActivities)
+      ? (config.enabledActivities as string[])
+      : [];
+    merged =
+      enabledActivities.length > 0
+        ? config
+        : {
+            ...seed,
+            ...config,
+            enabledActivities: seed.enabledActivities,
+            enabled: Array.isArray(config.enabled) && (config.enabled as string[]).length
+              ? config.enabled
+              : seed.enabled,
+            featuredActivity: (config.featuredActivity as string) || seed.featuredActivity,
+            featured: (config.featured as string) || seed.featured,
+          };
+  }
+  return slug === "rewa" ? stripRewaSpa(merged) : merged;
 }
 
 export interface PublicStorefront {
   client: StorefrontClient;
   catalog: StorefrontCatalog;
+  appearance: AppearancePublic;
   source: "database" | "default";
 }
 
@@ -447,11 +521,21 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
 
   const merged = mergeSeedConfig(key, row?.config_data || {});
   const catalog = toPublicCatalog(resolveCatalog(merged));
-  const client = row ? storefrontClient(toClientRecord(row)) : storefrontClient(fallback!);
+  const client = row
+    ? storefrontClient(toClientRecord({ ...row, config_data: merged }))
+    : storefrontClient(fallback!);
+  if (key === "rewa") {
+    client.subtitle = merged.subtitle || client.subtitle;
+  }
+  const appearance = appearanceFromConfig(merged);
+  if (appearance.themeKind === "occasion" || appearance.themeKind === "custom") {
+    client.theme = appearance.resolvedTheme;
+  }
 
   return {
     client,
     catalog,
+    appearance,
     source: row ? "database" : "default",
   };
 }

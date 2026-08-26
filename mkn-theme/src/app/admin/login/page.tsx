@@ -49,9 +49,18 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await loginAdmin(email.trim(), password);
-    if (!result.success) {
-      setError(result.message);
+    try {
+      const result = await loginAdmin(email.trim(), password);
+      if (!result.success) {
+        setError(result.message);
+        setLoading(false);
+        return;
+      }
+
+      const next = result.role === "client" ? "/admin/client" : "/admin";
+      window.location.assign(next);
+    } catch {
+      setError("تعذّر الاتصال بالخادم");
       setLoading(false);
     }
   };

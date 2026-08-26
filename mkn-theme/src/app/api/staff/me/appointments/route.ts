@@ -11,13 +11,20 @@ export async function GET() {
     );
   }
 
-  const { appointments, error } = await fetchAppointmentsForStaff(
-    session.tenantSlug,
-    session.id,
-    session.activities
-  );
+  const result = await Promise.race([
+    fetchAppointmentsForStaff(session.tenantSlug, session.id, session.activities),
+    new Promise<{ appointments?: undefined; error: string }>((resolve) =>
+      setTimeout(() => resolve({ error: "انتهت مهلة تحميل المواعيد" }), 8000)
+    ),
+  ]);
+  const { appointments, error } = result;
   if (error) {
-    return NextResponse.json({ success: false, message: error }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      staff: session,
+      appointments: [],
+      message: error,
+    });
   }
 
   return NextResponse.json({

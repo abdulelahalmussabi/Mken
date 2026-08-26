@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { slugFromCustomHostname } from "@/lib/mken/tenant-host";
 
 export type OccasionId =
   | "none"
@@ -248,6 +249,8 @@ function slugFromQuery(searchParams: { get(name: string): string | null } | null
 function slugFromHost(): string | null {
   if (typeof window === "undefined") return null;
   const hostname = window.location.hostname.toLowerCase();
+  const known = slugFromCustomHostname(hostname);
+  if (known) return known;
   if (!hostname.includes("mken.live")) return null;
   const parts = hostname.split(".");
   if (parts.length <= 2) return null;
@@ -268,6 +271,7 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [adminGlobalTheme, setAdminGlobalTheme] = useState<OccasionId>(PLATFORM_DEFAULT);
   const [tenantTheme, setTenantTheme] = useState<OccasionId | null>(null);
+  const [skipPlatformFallback, setSkipPlatformFallback] = useState(false);
   const [hostSlug, setHostSlug] = useState<string | null>(null);
 
   useEffect(() => {
@@ -304,7 +308,9 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [pathname]);
 
-  const currentSlug = slugFromPath(pathname) || slugFromQuery(searchParams) || hostSlug;
+  // Host binding wins. On rewa.care the browser path is "/" (rewritten), and a
+  // leaked /subscriber/almahrusa must not become the active tenant.
+  const currentSlug = hostSlug || slugFromPath(pathname) || slugFromQuery(searchParams);
 
   useEffect(() => {
     setIsMounted(true);
@@ -332,6 +338,7 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     setPreviewId(null);
     setTenantTheme(null);
+    setSkipPlatformFallback(false);
     if (!currentSlug) return;
 
     let cancelled = false;
@@ -339,8 +346,18 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data?.success) return;
-        const theme = data.client?.theme;
-        if (isOccasionId(theme) && theme !== "none") setTenantTheme(theme);
+        const resolved = data.appearance?.resolvedTheme || data.client?.theme;
+        const kind = data.appearance?.themeKind;
+        if (kind === "occasion" && isOccasionId(resolved) && resolved !== "none") {
+          setTenantTheme(resolved);
+          setSkipPlatformFallback(true);
+        } else if (kind === "custom" || kind === "none" || data.appearance) {
+          setTenantTheme("none");
+          setSkipPlatformFallback(true);
+        } else if (isOccasionId(resolved) && resolved !== "none") {
+          setTenantTheme(resolved);
+          setSkipPlatformFallback(true);
+        }
       })
       .catch(() => {});
 
@@ -351,6 +368,9 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const activeOccasion: OccasionId = (() => {
     if (isOccasionId(previewId)) return previewId;
+    if (currentSlug && skipPlatformFallback) {
+      return isOccasionId(tenantTheme) && tenantTheme !== "none" ? tenantTheme : PLATFORM_DEFAULT;
+    }
     if (currentSlug && isOccasionId(tenantTheme)) return tenantTheme;
     if (adminGlobalTheme && adminGlobalTheme !== "none") return adminGlobalTheme;
     return PLATFORM_DEFAULT;

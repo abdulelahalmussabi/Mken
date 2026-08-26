@@ -118,10 +118,14 @@ export async function readAdminSession(): Promise<AdminSession | null> {
   return token ? verifySessionToken(token) : null;
 }
 
+function cookieSecure(): boolean {
+  return process.env.NODE_ENV === "production";
+}
+
 export function applySessionCookie(response: NextResponse, token: string): void {
   response.cookies.set(ADMIN_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
@@ -208,7 +212,7 @@ export async function readStaffSession(): Promise<StaffSession | null> {
 export function applyStaffCookie(response: NextResponse, token: string): void {
   response.cookies.set(STAFF_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveActiveCustomHost } from "@/lib/mken/custom-domain";
+import { slugFromCustomHostname } from "@/lib/mken/tenant-host";
 
 const ADMIN_COOKIE = "mkn_admin_session";
 
@@ -13,11 +14,7 @@ const SKIP_SUBDOMAINS = new Set([
   "api",
 ]);
 
-function knownCustomHost(hostname: string): string | null {
-  const host = hostname.split(":")[0].toLowerCase();
-  if (host === "rewa.care" || host === "www.rewa.care") return "rewa";
-  return null;
-}
+const SHORT_TENANT_ALIASES = new Set(["almahrusa", "demo", "almasabi", "rewa"]);
 
 function tenantSubdomain(hostname: string): string | null {
   if (!hostname.includes("mken.live")) return null;
@@ -45,6 +42,43 @@ function hasAdminCookie(request: NextRequest): boolean {
   return Boolean(request.cookies.get(ADMIN_COOKIE)?.value);
 }
 
+/** A bound host (custom domain or tenant subdomain) must never render another tenant. */
+function lockBoundTenant(url: URL, pathname: string, tenant: string): NextResponse | null {
+  const subscriber = pathname.match(/^\/subscriber\/([^/]+)/i);
+  if (subscriber && subscriber[1].toLowerCase() !== tenant) {
+    url.pathname = `/subscriber/${tenant}`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  const store = pathname.match(/^\/store\/([^/]+)/i);
+  if (store && store[1].toLowerCase() !== tenant) {
+    url.pathname = `/store/${tenant}`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  if (pathname === "/book" || pathname === "/book.html") {
+    const requested = (
+      url.searchParams.get("tenant") ||
+      url.searchParams.get("store") ||
+      url.searchParams.get("client") ||
+      ""
+    ).toLowerCase();
+    if (requested && requested !== tenant) {
+      url.searchParams.set("tenant", tenant);
+      url.searchParams.delete("store");
+      url.searchParams.delete("client");
+      return NextResponse.redirect(url);
+    }
+  }
+  const alias = pathname.replace(/^\//, "").toLowerCase();
+  if (SHORT_TENANT_ALIASES.has(alias) && alias !== tenant) {
+    url.pathname = `/subscriber/${tenant}`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  return null;
+}
+
 /**
  * Next 16 request gate. HMAC cookies protect `/admin` and `/staff` only.
  * `/dashboard` and `/login` are a different identity (P-07) — do not require
@@ -63,8 +97,14 @@ export async function proxy(request: NextRequest) {
   }
   const { pathname } = url;
   const subdomain = tenantSubdomain(hostname);
-  const customSlug = subdomain ? null : knownCustomHost(hostname) || (await resolveActiveCustomHost(hostname));
+  const customSlug =
+    subdomain ? null : slugFromCustomHostname(hostname) || (await resolveActiveCustomHost(hostname));
   const tenant = subdomain || customSlug;
+
+  if (tenant) {
+    const locked = lockBoundTenant(url, pathname, tenant);
+    if (locked) return locked;
+  }
 
   if (pathname === "/admin.html") {
     url.pathname = url.searchParams.has("google_connect") ? "/admin/settings" : "/admin";

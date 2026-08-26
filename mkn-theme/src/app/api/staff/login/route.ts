@@ -96,8 +96,13 @@ export async function POST(request: Request) {
     const step = typeof body.step === "string" ? body.step : "pin";
 
     if (step === "pin") {
-      const result = await loginStaffByPin(body.tenantSlug || "", body.phone || "", body.pin || "");
-      if (result.error || !result.member) {
+      const result = await Promise.race([
+        loginStaffByPin(body.tenantSlug || "", body.phone || "", body.pin || ""),
+        new Promise<{ error: string }>((resolve) =>
+          setTimeout(() => resolve({ error: "انتهت مهلة الاتصال بقاعدة البيانات" }), 8000)
+        ),
+      ]);
+      if (result.error || !("member" in result) || !result.member) {
         rateLimit(ip, true);
         return NextResponse.json({ success: false, message: result.error || INVALID }, { status: 401 });
       }

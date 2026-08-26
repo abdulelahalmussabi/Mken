@@ -152,12 +152,29 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       password: string
     ): Promise<{ success: boolean; message: string; role?: AdminRole; clientSlug?: string }> => {
       try {
-        const res = await fetch("/api/admin/login", {
+        let res = await fetch("/api/admin/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email.trim(), password }),
           signal: AbortSignal.timeout(15000),
         });
+
+        if (!res.ok) {
+          try {
+            const fallbackRes = await fetch("/api/v1/auth/admin-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: email.trim(), password }),
+              signal: AbortSignal.timeout(10000),
+            });
+            if (fallbackRes.ok) {
+              res = fallbackRes;
+            }
+          } catch {
+            // ignore fallback error
+          }
+        }
+
         const data = await res.json();
 
         if (!res.ok || !data.success) {

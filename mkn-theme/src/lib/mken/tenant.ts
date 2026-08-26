@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import type { ClientRecord, ClientType } from "@/types/database";
 
 /**
@@ -60,7 +61,40 @@ export interface MkenConfig {
   occasionPack?: {
     enabled?: boolean;
     forceId?: string;
+    mode?: "manual" | "seasonal";
+    schedule?: { id: string; start: string; end: string }[];
     promo?: { code?: string; text?: string };
+  };
+  customThemes?: {
+    id: string;
+    name: string;
+    accentColor: string;
+    badgeBg: string;
+    bgGradient: string;
+  }[];
+  interfaceCopy?: {
+    servicesHeading?: string;
+    servicesIntro?: string;
+    servicesFooter?: string;
+  };
+  ads?: {
+    primary?: {
+      enabled?: boolean;
+      title?: string;
+      text?: string;
+      image?: string;
+      ctaLabel?: string;
+      ctaHref?: string;
+      couponCode?: string;
+    };
+    secondary?: {
+      id: string;
+      enabled?: boolean;
+      title?: string;
+      text?: string;
+      image?: string;
+      href?: string;
+    }[];
   };
   /** Same shape as js/services-store.js `config.subscription`. */
   subscription?: {
@@ -143,12 +177,14 @@ export function toClientRecord(row: TenantRow): ClientRecord {
   const config = row.config_data || {};
   const brand = config.brand || {};
   const pack = config.occasionPack || {};
+  const forceId = typeof pack.forceId === "string" ? pack.forceId : "none";
+  const seed = DEFAULT_CLIENTS.find((client) => client.slug === row.tenant_slug);
 
   return {
     slug: row.tenant_slug,
-    name: brand.name || row.business_name || row.tenant_slug,
-    tagline: brand.tagline || "",
-    subtitle: config.subtitle || brand.description || "",
+    name: brand.name || row.business_name || seed?.name || row.tenant_slug,
+    tagline: brand.tagline || seed?.tagline || "",
+    subtitle: config.subtitle || brand.description || seed?.subtitle || "",
     type: toClientType(config.featuredActivity),
     phone: config.phone || row.phone || "",
     whatsapp: config.social?.whatsapp?.value || config.phone || row.phone || "",
@@ -159,7 +195,7 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     heroImage: config.heroImage || "",
     demoNotice: config.demoNotice || "",
     adminEmail: config.adminEmail || row.email || "",
-    theme: isOccasionTheme(pack.forceId) ? pack.forceId : "none",
+    theme: forceId.startsWith("custom-") || isOccasionTheme(forceId) ? forceId : "none",
     couponCode: pack.promo?.code,
     discountText: pack.promo?.text,
     discountEnabled: pack.enabled ?? false,
@@ -204,7 +240,7 @@ export function mergeIntoConfig(
     const pack = config.occasionPack || {};
     next.occasionPack = {
       ...pack,
-      ...(updates.theme !== undefined && { forceId: updates.theme }),
+      ...(updates.theme !== undefined && { forceId: updates.theme, mode: "manual" as const }),
       ...(updates.discountEnabled !== undefined && { enabled: updates.discountEnabled }),
     };
     if (updates.couponCode !== undefined || updates.discountText !== undefined) {
@@ -229,8 +265,49 @@ export function mergeIntoConfig(
   return next;
 }
 
-const TENANT_COLUMNS =
-  "tenant_slug, business_name, email, phone, subscription_status, subscription_start, subscription_end, config_data, created_at";
+/** Only columns that exist on every live schema of this table. */
+const TENANT_COLUMNS = "tenant_slug, config_data";
+
+function isMissingColumnError(error: { message?: string; code?: string } | null | undefined): boolean {
+  if (!error) return false;
+  const msg = error.message || "";
+  return (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    /does not exist/i.test(msg) ||
+    /schema cache/i.test(msg)
+  );
+}
+
+export async function writeTenantConfig(
+  slug: string,
+  config: MkenConfig
+): Promise<{ row?: TenantRow; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+
+  const patches: Record<string, unknown>[] = [
+    { config_data: config, updated_at: new Date().toISOString() },
+    { config_data: config },
+  ];
+
+  let lastError = "";
+  for (const patch of patches) {
+    const { data, error } = await db
+      .from(TENANT_TABLE)
+      .update(patch)
+      .eq("tenant_slug", slug)
+      .select(TENANT_COLUMNS);
+    if (error) {
+      lastError = error.message;
+      if (isMissingColumnError(error)) continue;
+      return { error: lastError };
+    }
+    if (data?.length) return { row: data[0] as TenantRow };
+    return { error: "تعذّر حفظ التغييرات" };
+  }
+  return { error: lastError || "تعذّر حفظ التغييرات" };
+}
 
 export async function fetchTenants(): Promise<ClientRecord[] | null> {
   const db = getTenantDb();
@@ -244,8 +321,15 @@ export async function fetchTenants(): Promise<ClientRecord[] | null> {
 }
 
 export async function fetchTenantRow(slug: string): Promise<TenantRow | null> {
+  const result = await fetchTenantRowResult(slug);
+  return result.row ?? null;
+}
+
+async function fetchTenantRowResult(
+  slug: string
+): Promise<{ row?: TenantRow; error?: string }> {
   const db = getTenantDb();
-  if (!db) return null;
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
 
   const { data, error } = await db
     .from(TENANT_TABLE)
@@ -253,8 +337,50 @@ export async function fetchTenantRow(slug: string): Promise<TenantRow | null> {
     .eq("tenant_slug", slug)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return data as TenantRow;
+  if (error) return { error: `تعذّر قراءة المنشأة: ${error.message}` };
+  if (!data) return {};
+  return { row: data as TenantRow };
+}
+
+export async function ensureTenantRow(slug: string): Promise<{ row?: TenantRow; error?: string }> {
+  const existing = await fetchTenantRowResult(slug);
+  if (existing.error) return { error: existing.error };
+  if (existing.row) return { row: existing.row };
+
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+
+  const seed = DEFAULT_CLIENTS.find((client) => client.slug === slug);
+  if (!seed) return { error: "المنشأة غير موجودة" };
+
+  const config = mergeIntoConfig({}, seed);
+  const payloads: Record<string, unknown>[] = [
+    {
+      tenant_slug: slug,
+      email: seed.adminEmail || seed.email,
+      phone: seed.phone || "",
+      subscription_status: seed.active ? "active" : "inactive",
+      config_data: config,
+    },
+    { tenant_slug: slug, config_data: config },
+  ];
+
+  let lastError = "";
+  for (const payload of payloads) {
+    const { error } = await db.from(TENANT_TABLE).insert(payload);
+    if (!error) {
+      const created = await fetchTenantRowResult(slug);
+      if (created.row) return { row: created.row };
+      return { error: created.error || "تعذّر إنشاء سجل المنشأة" };
+    }
+    lastError = `تعذّر إنشاء المنشأة: ${error.message}`;
+    const raced = await fetchTenantRowResult(slug);
+    if (raced.row) return { row: raced.row };
+    if (isMissingColumnError(error) || /null value/i.test(error.message)) continue;
+    return { error: lastError };
+  }
+
+  return { error: lastError || "تعذّر إنشاء سجل المنشأة" };
 }
 
 export async function updateTenant(
@@ -263,31 +389,12 @@ export async function updateTenant(
 ): Promise<{ client?: ClientRecord; error?: string }> {
   if (isPlatformSlug(slug)) return { error: "المنشأة غير موجودة" };
 
-  const db = getTenantDb();
-  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const ensured = await ensureTenantRow(slug);
+  if (ensured.error || !ensured.row) return { error: ensured.error || "المنشأة غير موجودة" };
 
-  const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة" };
-
-  const patch: Record<string, unknown> = {
-    config_data: mergeIntoConfig(row.config_data || {}, updates),
-    updated_at: new Date().toISOString(),
-  };
-  // Keep the legacy columns aligned so the old admin panel shows the same values.
-  if (updates.name !== undefined) patch.business_name = updates.name;
-  if (updates.phone !== undefined) patch.phone = updates.phone;
-  if (updates.email !== undefined) patch.email = updates.email;
-
-  const { data, error } = await db
-    .from(TENANT_TABLE)
-    .update(patch)
-    .eq("tenant_slug", slug)
-    .select(TENANT_COLUMNS);
-
-  if (error) return { error: error.message };
-  if (!data?.length) return { error: "تعذّر حفظ التغييرات" };
-
-  return { client: toClientRecord(data[0] as TenantRow) };
+  const written = await writeTenantConfig(slug, mergeIntoConfig(ensured.row.config_data || {}, updates));
+  if (written.error || !written.row) return { error: written.error || "تعذّر حفظ التغييرات" };
+  return { client: toClientRecord(written.row) };
 }
 
 export async function findTenantByAdminEmail(email: string): Promise<TenantRow | null> {

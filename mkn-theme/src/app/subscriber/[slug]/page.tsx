@@ -7,6 +7,8 @@ import { useApp } from "@/context/AppContext";
 import { OccasionSymbolsStrip } from "@/components/occasions/OccasionSymbolsStrip";
 import { OccasionThemeSelector } from "@/components/occasions/OccasionThemeSelector";
 import type { StorefrontCatalog, StorefrontCatalogService, StorefrontClient, StorefrontKind } from "@/types/database";
+import type { AppearancePublic } from "@/lib/mken/appearance";
+import { isolateTenantHref } from "@/lib/mken/tenant-host";
 import {
   Building2,
   Bed,
@@ -63,6 +65,7 @@ export default function SubscriberStorefrontPage({
   const { showToast } = useApp();
   const [storeClient, setStoreClient] = useState<StorefrontClient | null>(null);
   const [catalog, setCatalog] = useState<StorefrontCatalog | null>(null);
+  const [appearance, setAppearance] = useState<AppearancePublic | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "missing">("loading");
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export default function SubscriberStorefrontPage({
     setLoadState("loading");
     setStoreClient(null);
     setCatalog(null);
+    setAppearance(null);
     fetch(`/api/clients/${encodeURIComponent(slug)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -81,6 +85,7 @@ export default function SubscriberStorefrontPage({
         if (data?.success && data.client && data.catalog) {
           setStoreClient(data.client);
           setCatalog(data.catalog);
+          setAppearance(data.appearance || null);
           setLoadState("ready");
         } else {
           setLoadState("missing");
@@ -118,14 +123,22 @@ export default function SubscriberStorefrontPage({
       : isCommerce
         ? "المنتجات"
         : "خدماتنا";
-  const servicesHeading = isSalon
-    ? "خدمات الصالون المتوفرة"
-    : isHotel
-      ? "خيارات الإقامة والخدمات"
-      : isCommerce
-        ? "المنتجات والخدمات التجارية"
-        : "الخدمات المتوفرة";
+  const servicesHeading =
+    appearance?.interfaceCopy?.servicesHeading ||
+    (isSalon
+      ? "خدمات الصالون المتوفرة"
+      : isHotel
+        ? "خيارات الإقامة والخدمات"
+        : isCommerce
+          ? "المنتجات والخدمات التجارية"
+          : "الخدمات المتوفرة");
+  const servicesIntro =
+    appearance?.interfaceCopy?.servicesIntro ||
+    `اختر الخدمة المطلوبة وتصفح أسعارها واستفد من خصم ${occasionDetails.shortName} المباشر`;
+  const servicesFooter = appearance?.interfaceCopy?.servicesFooter || "";
   const primaryCta = isCommerce ? "اطلب الآن" : isHotel ? "احجز إقامتك" : "احجز موعدك";
+  const accentColor = appearance?.customTheme?.accentColor || occasionDetails.accentColor;
+  const secondaryAds = (appearance?.ads?.secondary || []).filter((ad) => ad.enabled);
 
   const storeInfo = storeClient
     ? {
@@ -138,6 +151,7 @@ export default function SubscriberStorefrontPage({
         rating: storeClient.rating || "",
         reviewsCount: storeClient.reviewsCount || "",
         heroImage:
+          appearance?.ads?.primary?.image ||
           storeClient.heroImage ||
           catalog?.services[0]?.image ||
           "",
@@ -211,22 +225,24 @@ export default function SubscriberStorefrontPage({
 
       {/* Dynamic Header */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg transition-transform hover:scale-105"
-              style={{ backgroundColor: occasionDetails.accentColor }}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg transition-transform hover:scale-105 shrink-0"
+              style={{ backgroundColor: accentColor }}
             >
               {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
             </div>
-            <div>
-              <h1 className="font-extrabold text-xl sm:text-2xl text-slate-100 tracking-tight flex items-center gap-2">
-                {storeInfo.name}
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-normal hidden sm:inline-block">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="font-extrabold text-slate-100 tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
+                  {storeInfo.name}
+                </h1>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-normal hidden xl:inline-block shrink-0">
                   موقع موثق 🇸🇦
                 </span>
-              </h1>
-              <p className="text-xs text-slate-400 font-medium -mt-0.5">{storeInfo.tagline}</p>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
             </div>
           </div>
 
@@ -250,7 +266,7 @@ export default function SubscriberStorefrontPage({
             <Link
               href={`/book?tenant=${slug}`}
               className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"
-              style={{ backgroundColor: occasionDetails.accentColor }}
+              style={{ backgroundColor: accentColor }}
             >
               <CalendarCheck className="w-4 h-4" />
               <span className="hidden sm:inline">احجز موعدك أونلاين</span>
@@ -271,20 +287,31 @@ export default function SubscriberStorefrontPage({
       </header>
 
       {/* Festive Occasion Top Banner */}
-      {storeInfo.discountEnabled !== false && (
+      {(appearance?.ads?.primary ? appearance.ads.primary.enabled : storeInfo.discountEnabled !== false) && (
         <div
-          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 transition-colors duration-500"
+          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 transition-colors duration-500 flex-wrap"
           style={{
-            background: `linear-gradient(90deg, rgba(15,23,42,0.95) 0%, ${occasionDetails.accentColor}25 50%, rgba(15,23,42,0.95) 100%)`,
+            background: `linear-gradient(90deg, rgba(15,23,42,0.95) 0%, ${accentColor}25 50%, rgba(15,23,42,0.95) 100%)`,
           }}
         >
           <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
           <span>
-            {occasionDetails.slogan} — <strong>{storeInfo.discountText || occasionDetails.discountText}</strong>
+            {appearance?.ads?.primary?.title || occasionDetails.slogan} —{" "}
+            <strong>{appearance?.ads?.primary?.text || storeInfo.discountText || occasionDetails.discountText}</strong>
           </span>
-          <button onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
-            كود الخصم: <strong className="font-mono">{storeInfo.couponCode || occasionDetails.couponCode}</strong> 🇸🇦
-          </button>
+          {(appearance?.ads?.primary?.couponCode || storeInfo.couponCode || occasionDetails.couponCode) && (
+            <button onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
+              كود الخصم:{" "}
+              <strong className="font-mono">
+                {appearance?.ads?.primary?.couponCode || storeInfo.couponCode || occasionDetails.couponCode}
+              </strong>
+            </button>
+          )}
+          {appearance?.ads?.primary?.ctaLabel && appearance.ads.primary.ctaHref && (
+            <a href={isolateTenantHref(appearance.ads.primary.ctaHref, slug)} className="underline text-amber-200 mr-2">
+              {appearance.ads.primary.ctaLabel}
+            </a>
+          )}
         </div>
       )}
 
@@ -292,7 +319,7 @@ export default function SubscriberStorefrontPage({
       <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/60">
         <div
           className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-25 transition-colors duration-500"
-          style={{ backgroundColor: occasionDetails.accentColor }}
+          style={{ backgroundColor: accentColor }}
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -306,17 +333,19 @@ export default function SubscriberStorefrontPage({
 
               <OccasionSymbolsStrip />
 
-              <h1 className="text-3xl sm:text-5xl font-black text-slate-100 leading-tight tracking-tight">
-                {storeInfo.name} <br />
-                <span
-                  className="bg-clip-text text-transparent"
+              <div className="space-y-2">
+                <h1 className="text-3xl sm:text-5xl font-black text-slate-100 leading-tight tracking-tight">
+                  {storeInfo.name}
+                </h1>
+                <p
+                  className="text-lg sm:text-2xl font-bold bg-clip-text text-transparent leading-snug"
                   style={{
-                    backgroundImage: `linear-gradient(135deg, #ffffff 0%, ${occasionDetails.accentColor} 100%)`,
+                    backgroundImage: `linear-gradient(135deg, #ffffff 0%, ${accentColor} 100%)`,
                   }}
                 >
                   {storeInfo.tagline}
-                </span>
-              </h1>
+                </p>
+              </div>
 
               <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-normal">
                 {storeInfo.subtitle}
@@ -354,7 +383,7 @@ export default function SubscriberStorefrontPage({
                 <button
                   onClick={() => handleOpenBooking()}
                   className="px-7 py-4 text-slate-950 font-extrabold text-base rounded-2xl shadow-xl transition-transform hover:scale-105 flex items-center gap-2"
-                  style={{ backgroundColor: occasionDetails.accentColor }}
+                  style={{ backgroundColor: accentColor }}
                 >
                   <CalendarCheck className="w-5 h-5" />
                   {primaryCta}
@@ -412,6 +441,34 @@ export default function SubscriberStorefrontPage({
         </div>
       </section>
 
+      {secondaryAds.length > 0 && (
+        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {secondaryAds.map((ad) => {
+              const card = (
+                <div className="rounded-3xl border border-slate-800 bg-slate-900/80 overflow-hidden text-right">
+                  {ad.image && (
+                    <img src={ad.image} alt={ad.title} className="w-full h-40 object-cover" />
+                  )}
+                  <div className="p-5 space-y-2">
+                    <h3 className="text-sm font-extrabold text-white">{ad.title}</h3>
+                    {ad.text && <p className="text-xs text-slate-400 leading-relaxed">{ad.text}</p>}
+                  </div>
+                </div>
+              );
+              const href = ad.href ? isolateTenantHref(ad.href, slug) : "";
+              return href ? (
+                <a key={ad.id} href={href}>
+                  {card}
+                </a>
+              ) : (
+                <div key={ad.id}>{card}</div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Services List Section */}
       <section id="services" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-10">
         <div className="text-center space-y-3 max-w-2xl mx-auto">
@@ -419,7 +476,7 @@ export default function SubscriberStorefrontPage({
             {servicesHeading}
           </h2>
           <p className="text-sm text-slate-400">
-            اختر الخدمة المطلوبة وتصفح أسعارها واستفد من خصم {occasionDetails.shortName} المباشر
+            {servicesIntro}
           </p>
         </div>
 
@@ -467,7 +524,7 @@ export default function SubscriberStorefrontPage({
                 <button
                   onClick={() => handleOpenBooking(srv)}
                   className="w-full py-3 text-slate-950 font-bold text-xs rounded-xl shadow-lg transition-transform hover:scale-102 flex items-center justify-center gap-2"
-                  style={{ backgroundColor: occasionDetails.accentColor }}
+                  style={{ backgroundColor: accentColor }}
                 >
                   <CalendarCheck className="w-4 h-4" />
                   احجز هذه الخدمة الآن
@@ -476,6 +533,9 @@ export default function SubscriberStorefrontPage({
             </div>
           ))}
         </div>
+        {servicesFooter && (
+          <p className="text-center text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">{servicesFooter}</p>
+        )}
       </section>
 
       {/* Storefront Footer */}
@@ -487,7 +547,7 @@ export default function SubscriberStorefrontPage({
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg text-white shadow-md"
-                  style={{ backgroundColor: occasionDetails.accentColor }}
+                  style={{ backgroundColor: accentColor }}
                 >
                   {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
                 </div>
@@ -584,7 +644,7 @@ export default function SubscriberStorefrontPage({
                 setShowAppBanner(false);
               }}
               className="px-4 py-1.5 text-slate-950 font-bold text-xs rounded-lg shadow-md"
-              style={{ backgroundColor: occasionDetails.accentColor }}
+              style={{ backgroundColor: accentColor }}
             >
               تثبيت
             </button>
@@ -686,7 +746,7 @@ export default function SubscriberStorefrontPage({
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full py-3.5 text-slate-950 font-extrabold text-sm rounded-xl shadow-xl transition flex items-center justify-center gap-2"
-                style={{ backgroundColor: occasionDetails.accentColor }}
+                style={{ backgroundColor: accentColor }}
               >
                 {isSubmitting ? "جاري إرسال الطلب..." : "تأكيد الحجز ومتابعة عبر الواتساب"}
               </button>

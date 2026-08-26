@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useOccasion, type OccasionId } from "@/context/OccasionContext";
-import { Copy, Check, Eye } from "lucide-react";
+import { AdsShowcaseModal, useTenantPublicAds } from "@/components/occasions/AdsShowcaseModal";
+import { Copy, Check, Megaphone } from "lucide-react";
 
 /** Compact badge label shown in the top occasion strip (matches original UI). */
 const BANNER_BADGE: Partial<Record<OccasionId, string>> = {
@@ -68,8 +69,10 @@ const DEFAULT_SURFACE = {
 };
 
 export const OccasionBanner: React.FC = () => {
-  const { activeOccasion, occasionDetails, copyCoupon, openModal, isMounted } = useOccasion();
+  const { activeOccasion, occasionDetails, copyCoupon, isMounted, currentSlug } = useOccasion();
   const [copied, setCopied] = useState(false);
+  const [adsOpen, setAdsOpen] = useState(false);
+  const ads = useTenantPublicAds(currentSlug);
 
   if (!isMounted || activeOccasion === "none") return null;
 
@@ -106,11 +109,16 @@ export const OccasionBanner: React.FC = () => {
         <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={openModal}
-            className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition-all shadow-sm hover:scale-[1.03] active:scale-95"
+            onClick={() => setAdsOpen(true)}
+            className="relative flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-3 py-1 rounded-lg text-xs transition-all shadow-md hover:scale-105 active:scale-95"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span>دراسة الحزمة</span>
+            <Megaphone className="w-3.5 h-3.5" />
+            <span>العروض والإعلانات</span>
+            {ads.length > 0 && (
+              <span className="absolute -top-1.5 -left-1.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-rose-500 text-[10px] text-white font-black leading-[1.1rem] text-center">
+                {ads.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -130,6 +138,7 @@ export const OccasionBanner: React.FC = () => {
           </button>
         </div>
       </div>
+      <AdsShowcaseModal open={adsOpen} onClose={() => setAdsOpen(false)} ads={ads} />
     </div>
   );
 };

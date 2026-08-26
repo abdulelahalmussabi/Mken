@@ -289,6 +289,13 @@ async function handleAdminOperations(req, res) {
       if (email === 'admin@mken.live' || email === 'admin@mkem.live' || email.startsWith('admin@')) {
         matchedSession = { email: 'admin@mken.live', role: 'super' };
         welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
+      } else if (
+        email === 'rewa@mken.live' ||
+        email === 'rewaa@mken.live' ||
+        email.includes('rewa')
+      ) {
+        matchedSession = { email: 'rewa@mken.live', role: 'client', clientSlug: 'rewa' };
+        welcomeMessage = 'مرحباً بك في لوحة تحكم منتجع رواء الاستشفاء الرقمي!';
       } else if (email === 'almasabi@mken.live' || email.includes('masabi') || email.includes('msabi')) {
         matchedSession = { email: 'almasabi@mken.live', role: 'client', clientSlug: 'almasabi' };
         welcomeMessage = 'مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!';
