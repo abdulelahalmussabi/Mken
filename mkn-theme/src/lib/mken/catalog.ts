@@ -278,12 +278,13 @@ export async function updateTenantCatalog(
 
   config.updatedAt = new Date().toISOString();
 
-  const written = await writeTenantConfig(slug, config);
+  const toWrite = slug === "rewa" ? stripRewaSpa(config) : config;
+  const written = await writeTenantConfig(slug, toWrite);
   if (written.error || !written.row) {
     return { error: written.error || "تعذّر الحفظ: لا توجد صلاحية كتابة على بيانات المنشأة" };
   }
 
-  return { catalog: resolveCatalog(written.row.config_data || {}) };
+  return { catalog: resolveCatalog(mergeSeedConfig(slug, written.row.config_data || {})) };
 }
 
 const IMAGE_POOLS: Record<string, string[]> = {
@@ -305,6 +306,19 @@ const IMAGE_POOLS: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=800&q=80",
     "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=800&q=80",
     "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
+  ],
+  healthcare: [
+    "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=800&q=80",
+  ],
+  fitness: [
+    "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=800&q=80",
+  ],
+  events: [
+    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
   ],
 };
 
@@ -424,6 +438,10 @@ function isSpaService(id: string): boolean {
   return service?.activityId === "spa-wellness";
 }
 
+function isSpaCopy(text: string): boolean {
+  return /السبا|والسبا|مساج|massage|\bspa\b/i.test(text);
+}
+
 function scrubSpaCopy(text: string): string {
   return text
     .replace(/النادي الصحي والسبا[،,]?\s*/g, "")
@@ -434,47 +452,61 @@ function scrubSpaCopy(text: string): string {
     .replace(/مساج[^.،]*/g, "")
     .replace(/السبا[،,]?\s*/g, "")
     .replace(/والسبا[،,]?\s*/g, "")
-    .replace(/spa/gi, "")
+    .replace(/\bspa\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .replace(/،\s*،/g, "،")
     .replace(/^،\s*/g, "")
     .trim();
 }
 
+const REWA_CLINIC_HERO =
+  "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80";
+
 function stripRewaSpa(config: MkenConfig): MkenConfig {
   const seed = SEED_CONFIG.rewa;
-  const activities = (Array.isArray(config.enabledActivities) ? config.enabledActivities : []).filter(
-    (id) => id !== "spa-wellness"
-  );
-  const enabled = (Array.isArray(config.enabled) ? config.enabled : []).filter((id) => !isSpaService(id));
+  const seedActivities = asStringArray(seed.enabledActivities);
+  const seedEnabled = asStringArray(seed.enabled);
+  const seedFeaturedActivity =
+    typeof seed.featuredActivity === "string" ? seed.featuredActivity : seedActivities[0] || "";
+  const seedFeatured = typeof seed.featured === "string" ? seed.featured : seedEnabled[0] || "";
+
+  const activities = asStringArray(config.enabledActivities).filter((id) => id !== "spa-wellness");
+  const enabled = asStringArray(config.enabled).filter((id) => !isSpaService(id));
+  const nextActivities = activities.length ? activities : seedActivities;
+  const nextEnabled = enabled.length ? enabled : seedEnabled;
+
   const next: MkenConfig = {
     ...config,
-    enabledActivities: activities.length ? activities : seed.enabledActivities,
-    enabled: enabled.length ? enabled : seed.enabled,
+    enabledActivities: nextActivities,
+    enabled: nextEnabled,
   };
-  const actList = Array.isArray(next.enabledActivities) ? (next.enabledActivities as string[]) : [];
-  const enList = Array.isArray(next.enabled) ? (next.enabled as string[]) : [];
 
-  if (!actList.includes(String(next.featuredActivity)) || next.featuredActivity === "spa-wellness") {
-    next.featuredActivity = actList[0] || seed.featuredActivity;
+  if (!nextActivities.includes(String(next.featuredActivity || "")) || next.featuredActivity === "spa-wellness") {
+    next.featuredActivity = nextActivities[0] || seedFeaturedActivity;
   }
-  if (!enList.includes(String(next.featured)) || isSpaService(String(next.featured || ""))) {
-    next.featured = enList[0] || seed.featured;
+  if (!nextEnabled.includes(String(next.featured || "")) || isSpaService(String(next.featured || ""))) {
+    next.featured = nextEnabled[0] || seedFeatured;
   }
   if (typeof next.subtitle === "string") next.subtitle = scrubSpaCopy(next.subtitle);
   if (next.brand?.description) next.brand = { ...next.brand, description: scrubSpaCopy(next.brand.description) };
-  if (next.brand?.tagline && /سبا|مساج|spa|massage/i.test(next.brand.tagline)) {
+  if (next.brand?.tagline && isSpaCopy(next.brand.tagline)) {
     next.brand = { ...next.brand, tagline: scrubSpaCopy(next.brand.tagline) };
+  }
+  if (typeof next.heroImage === "string" && /1540555700478|spa|massage/i.test(next.heroImage)) {
+    next.heroImage = REWA_CLINIC_HERO;
   }
   if (next.ads?.secondary) {
     next.ads = {
       ...next.ads,
       secondary: next.ads.secondary.filter(
-        (ad) => !/سبا|مساج|spa|massage/i.test(`${ad.title || ""} ${ad.text || ""}`)
+        (ad) => !isSpaCopy(`${ad.title || ""} ${ad.text || ""} ${ad.image || ""}`)
       ),
     };
   }
-  if (next.ads?.primary && /سبا|مساج|spa|massage/i.test(`${next.ads.primary.title || ""} ${next.ads.primary.text || ""}`)) {
+  if (
+    next.ads?.primary &&
+    isSpaCopy(`${next.ads.primary.title || ""} ${next.ads.primary.text || ""} ${next.ads.primary.image || ""}`)
+  ) {
     next.ads = { ...next.ads, primary: { ...next.ads.primary, enabled: false } };
   }
   return next;
