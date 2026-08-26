@@ -84,7 +84,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     rating: "4.9",
     reviewsCount: "210 تقييم موثق",
     heroImage:
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80",
     demoNotice:
       "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
     adminEmail: "rewa@mken.live",
