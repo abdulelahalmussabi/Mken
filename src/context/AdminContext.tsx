@@ -56,6 +56,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     reviewsCount: "382 تقييم موثق",
     heroImage:
       "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    logoUrl: "/logos/almahrusa-icon.svg",
     demoNotice:
       "✨ موقع المحروسة للشقق المخدومة في المدينة المنورة على منصة مكّن",
     adminEmail: "almahrusa@mken.live",
@@ -88,6 +89,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     reviewsCount: "512 تقييم موثق",
     heroImage:
       "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
+    logoUrl: "/logos/mken-icon.svg",
     demoNotice:
       "🚀 عرض تجريبي حي – مثال: صالون النخبة على مكّن. جرب 14 يوماً مجاناً",
     adminEmail: "demo@mken.live",
@@ -119,6 +121,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     reviewsCount: "480 تقييم موثق",
     heroImage:
       "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
     demoNotice:
       "✨ الموقع الرسمي لمؤسسة المصعبي للتجارة (مظلات وسواتر وهناجر جدة ومكة والمدينة) على منصة مكّن",
     adminEmail: "almasabi@mken.live",
@@ -150,6 +153,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     reviewsCount: "210 تقييم موثق",
     heroImage:
       "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+    logoUrl: "/logos/rewa-emblem.svg",
     demoNotice:
       "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
     adminEmail: "rewa@mken.live",
@@ -167,6 +171,39 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
   },
 ];
 
+// ─── Host / Domain Detection ─────────────────────────────────────────────
+export function getHostTenantSlug(): string | null {
+  if (typeof window === "undefined") return null;
+  const host = window.location.hostname.toLowerCase().split(":")[0];
+
+  // Direct custom domain matches
+  if (
+    host === "rewa.care" ||
+    host.endsWith(".rewa.care") ||
+    host === "rewa.cre" ||
+    host.endsWith(".rewa.cre")
+  ) {
+    return "rewa";
+  }
+
+  if (host.includes("mken.live") || host.includes("localhost") || host.includes("vercel.app")) {
+    const parts = host.split(".");
+    if (parts.length > 2) {
+      const sub = parts[0].toLowerCase();
+      const reserved = ["www", "admin", "mken", "api", "app", "dashboard", "cname"];
+      if (!reserved.includes(sub)) {
+        return sub;
+      }
+    }
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const qClient = params.get("client") || params.get("tenant_slug") || params.get("tenant");
+    if (qClient) return qClient.toLowerCase();
+  } catch {}
+  return null;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type AdminRole = "super" | "client" | null;
 
@@ -181,6 +218,9 @@ interface AdminContextType {
   session: AdminSession | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  currentTenantSlug: string;
+  hostTenantSlug: string | null;
+  isTenantDomain: boolean;
   loginAdmin: (email: string, password: string) => { success: boolean; message: string };
   logoutAdmin: () => void;
 
@@ -363,13 +403,17 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  const hostTenant = typeof window !== "undefined" ? getHostTenantSlug() : null;
+
   const loginAdmin = useCallback(
     (email: string, password: string): { success: boolean; message: string } => {
       const normalizedEmail = email.trim().toLowerCase();
       const trimmedPass = password.trim();
+      const currentHost = typeof window !== "undefined" ? getHostTenantSlug() : null;
 
-      // Super Admin check
+      // Super Admin check (Only on main platform domains, never on a tenant custom domain)
       if (
+        !currentHost &&
         normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase() &&
         (trimmedPass === SUPER_ADMIN_PASSWORD || trimmedPass === "Aa#321321")
       ) {
@@ -384,15 +428,20 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           clientEmail === normalizedEmail ||
           (c.slug === "almahrusa" && (normalizedEmail === "almahrusa@mken.live" || normalizedEmail === "stayinmedina@gmail.com")) ||
           (c.slug === "almasabi" && normalizedEmail === "almasabi@mken.live") ||
-          (c.slug === "demo" && (normalizedEmail === "demo@mken.live" || normalizedEmail === "info@demo-salon.sa"));
+          (c.slug === "demo" && (normalizedEmail === "demo@mken.live" || normalizedEmail === "info@demo-salon.sa")) ||
+          (c.slug === "rewa" && (normalizedEmail === "rewa@mken.live" || normalizedEmail === "info@rewa.care"));
 
         const passMatches =
           c.adminPassword === trimmedPass ||
           (c.slug === "almahrusa" && (trimmedPass === "Almahrusa#123" || trimmedPass === "almahrusa123")) ||
           (c.slug === "almasabi" && (trimmedPass === "Almasabi#123" || trimmedPass === "almasabi123")) ||
-          (c.slug === "demo" && (trimmedPass === "Demo#123" || trimmedPass === "demo123"));
+          (c.slug === "demo" && (trimmedPass === "Demo#123" || trimmedPass === "demo123")) ||
+          (c.slug === "rewa" && (trimmedPass === "rewa4321" || trimmedPass === "Rewa#123" || trimmedPass === "rewa123"));
 
-        return emailMatches && passMatches && c.active;
+        // If on a tenant custom domain/subdomain, only allow logging into that specific tenant
+        const domainMatches = !currentHost || c.slug === currentHost;
+
+        return emailMatches && passMatches && c.active && domainMatches;
       });
 
       if (matchedClient) {
@@ -401,6 +450,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           success: true,
           message: `مرحباً بك في لوحة تحكم ${matchedClient.name}!`,
         };
+      }
+
+      if (currentHost && normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase()) {
+        return { success: false, message: `الدخول بالسوبر أدمن متاح فقط من المنصة الرئيسية وليس من نطاق العميل الخاص (${currentHost})` };
       }
 
       return { success: false, message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" };
@@ -497,21 +550,38 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const isAdmin = !!session;
-  const isSuperAdmin = session?.role === "super";
+  const isTenantDomain = !!hostTenant;
+  const isSuperAdmin = session?.role === "super" && !isTenantDomain;
+  const currentTenantSlug = (isTenantDomain ? hostTenant : session?.clientSlug) || "rewa";
+
+  // Strict Data Boundary: If on a tenant domain, ONLY return that tenant's client record to prevent cross-tenant leaks
+  const visibleClients = isTenantDomain
+    ? clients.filter((c) => c.slug === hostTenant)
+    : clients;
+
+  // On a tenant domain, ensure session role cannot be elevated to super
+  const effectiveSession = session
+    ? isTenantDomain
+      ? { ...session, role: "client" as const, clientSlug: hostTenant || "rewa" }
+      : session
+    : null;
 
   return (
     <AdminContext.Provider
       value={{
-        session,
+        session: effectiveSession,
         isAdmin,
         isSuperAdmin,
+        currentTenantSlug,
+        hostTenantSlug: hostTenant,
+        isTenantDomain,
         loginAdmin,
         logoutAdmin,
         globalTheme,
         setGlobalTheme,
         getClientTheme,
         setClientTheme,
-        clients,
+        clients: visibleClients,
         addClient,
         updateClient,
         removeClient,

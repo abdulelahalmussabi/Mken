@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import { useAdmin } from "@/context/AdminContext";
 import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
@@ -38,7 +39,9 @@ const occasionsList = Object.values(SAUDI_OCCASIONS);
 
 export default function AdminDashboardPage() {
   const {
+    session,
     isSuperAdmin,
+    isTenantDomain,
     globalTheme,
     setGlobalTheme,
     clients,
@@ -48,11 +51,23 @@ export default function AdminDashboardPage() {
     removeClient,
     updateClient,
   } = useAdmin();
+  const router = useRouter();
+
+  // Strict Tenant Guard: If accessed by a client admin or on a tenant custom domain/subdomain, redirect to /admin/client
+  useEffect(() => {
+    if (session?.role === "client" || isTenantDomain || !isSuperAdmin) {
+      router.replace("/admin/client");
+    }
+  }, [session, isTenantDomain, isSuperAdmin, router]);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  if (!isSuperAdmin || isTenantDomain) {
+    return null;
+  }
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setToastMessage({ text, type });

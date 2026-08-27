@@ -21,8 +21,8 @@ import {
 import type { ApiKeyRecord } from "@/lib/mken/api-keys";
 
 export default function AdminApiKeysPage() {
-  const { session } = useAdmin();
-  const tenantSlug = session?.clientSlug || "almahrusa";
+  const { session, currentTenantSlug, hostTenantSlug } = useAdmin();
+  const tenantSlug = currentTenantSlug || session?.clientSlug || hostTenantSlug || "rewa";
 
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);

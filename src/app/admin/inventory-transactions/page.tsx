@@ -22,8 +22,8 @@ import type { InventoryTransaction } from "@/lib/mken/inventory-transactions";
 import type { InventoryItem } from "@/lib/mken/inventory";
 
 export default function AdminInventoryTransactionsPage() {
-  const { session } = useAdmin();
-  const tenantSlug = session?.clientSlug || "almahrusa";
+  const { session, currentTenantSlug, hostTenantSlug } = useAdmin();
+  const tenantSlug = currentTenantSlug || session?.clientSlug || hostTenantSlug || "rewa";
 
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);

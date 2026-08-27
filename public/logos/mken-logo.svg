@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 140" width="500" height="140">
+  <defs>
+    <linearGradient id="mkenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D26A" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Icon Emblem -->
+  <g transform="translate(370, 15)">
+    <rect width="110" height="110" rx="28" fill="url(#mkenGrad)" filter="drop-shadow(0 8px 16px rgba(5, 150, 105, 0.35))"/>
+    <rect x="4" y="4" width="102" height="102" rx="24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <!-- Letter Meem / Energy Spark -->
+    <path d="M55 24 C40 24 30 35 30 50 C30 65 42 74 55 74 C62 74 68 70 72 65 L72 88 C72 90 74 92 77 92 L82 92 C85 92 87 90 87 88 L87 35 C87 29 73 24 55 24 Z M55 60 C46 60 41 54 41 48 C41 42 46 36 55 36 C64 36 69 42 69 48 C69 54 64 60 55 60 Z" fill="#FFFFFF"/>
+    <circle cx="78" cy="30" r="6" fill="url(#goldAccent)" filter="url(#glow)"/>
+  </g>
+  
+  <!-- Typography "مكّن" -->
+  <text x="350" y="80" font-family="'Segoe UI', 'Cairo', 'Tajawal', sans-serif" font-weight="900" font-size="54" fill="#F8FAFC" text-anchor="end" letter-spacing="-1">
+    مكّـن
+  </text>
+  
+  <!-- Subtitle Tagline -->
+  <text x="350" y="112" font-family="'Segoe UI', 'Cairo', 'Tajawal', sans-serif" font-weight="600" font-size="16" fill="#94A3B8" text-anchor="end" letter-spacing="1">
+    منصة النمو والتحول الرقمي السعودي 🇸🇦
+  </text>
+</svg>

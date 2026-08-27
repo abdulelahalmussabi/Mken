@@ -24,8 +24,8 @@ import {
 import type { Customer } from "@/lib/mken/customers";
 
 export default function AdminCustomersPage() {
-  const { session } = useAdmin();
-  const tenantSlug = session?.clientSlug || "almahrusa";
+  const { session, currentTenantSlug, hostTenantSlug } = useAdmin();
+  const tenantSlug = currentTenantSlug || session?.clientSlug || hostTenantSlug || "rewa";
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);

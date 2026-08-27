@@ -27,8 +27,8 @@ import {
 import type { Vendor, PurchaseInvoice, PurchaseInvoiceItem } from "@/lib/mken/purchases";
 
 export default function AdminPurchasesPage() {
-  const { session } = useAdmin();
-  const tenantSlug = session?.clientSlug || "almahrusa";
+  const { session, currentTenantSlug, hostTenantSlug } = useAdmin();
+  const tenantSlug = currentTenantSlug || session?.clientSlug || hostTenantSlug || "rewa";
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);

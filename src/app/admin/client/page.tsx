@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/AdminLayout";
 import { useAdmin } from "@/context/AdminContext";
@@ -59,6 +59,50 @@ const occasionsList = Object.values(SAUDI_OCCASIONS);
 
 // ─── Initial Mock Data for System Clinics, Staff, Bookings, Subscriptions, Ads ──
 const INITIAL_CLINICS: ClinicRecord[] = [
+  // ─── Rewa Clinics ───
+  {
+    id: "cl-rewa-1",
+    tenantSlug: "rewa",
+    name: "عيادة طب وجراحة الأسنان رواء",
+    specialty: "طب وجراحة الأسنان وتجميل الابتسامة",
+    branch: "الفرع الرئيسي - المدينة المنورة",
+    capacityPerDay: 25,
+    workingDays: "السبت - الخميس",
+    morningShift: "09:00 ص - 01:00 م",
+    eveningShift: "04:30 م - 10:00 م",
+    assignedStaffIds: ["st-rewa-1"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "cl-rewa-2",
+    tenantSlug: "rewa",
+    name: "مركز التغذية العلاجية والسبا والاستشفاء",
+    specialty: "سبا ونادي صحي وتغذية علاجية",
+    branch: "جناح الاستشفاء الرقمي",
+    capacityPerDay: 30,
+    workingDays: "يومياً عدا الجمعة",
+    morningShift: "10:00 ص - 02:00 م",
+    eveningShift: "05:00 م - 11:00 م",
+    assignedStaffIds: ["st-rewa-2"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "cl-rewa-3",
+    tenantSlug: "rewa",
+    name: "نادي الدفاع عن النفس واللياقة البدنية",
+    specialty: "فنون قتالية ولياقة وتأهيل حركي",
+    branch: "الصالة الرياضية المتكاملة",
+    capacityPerDay: 20,
+    workingDays: "الأحد - الخميس",
+    morningShift: "08:30 ص - 12:30 م",
+    eveningShift: "04:00 م - 09:30 م",
+    assignedStaffIds: ["st-rewa-3"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  // ─── Almahrusa Clinics ───
   {
     id: "cl-1",
     tenantSlug: "almahrusa",
@@ -104,6 +148,62 @@ const INITIAL_CLINICS: ClinicRecord[] = [
 ];
 
 const INITIAL_STAFF: StaffRecord[] = [
+  // ─── Rewa Staff ───
+  {
+    id: "st-rewa-1",
+    tenantSlug: "rewa",
+    name: "د. باسل المحمدي",
+    role: "doctor",
+    roleTitle: "استشاري طب وجراحة الأسنان وتجميل الابتسامة",
+    specialty: "زراعة وابتسامة هوليود وتبييض ليزر",
+    email: "b.mohammadi@rewa.care",
+    phone: "0539770778",
+    assignedClinicId: "cl-rewa-1",
+    permissions: ["إدارة المواعيد", "كتابة الوصفات", "تعديل جدول الأسنان"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "st-rewa-2",
+    tenantSlug: "rewa",
+    name: "أ. لمى القحطاني",
+    role: "doctor",
+    roleTitle: "أخصائية التغذية العلاجية والاستشفاء الرقمي",
+    specialty: "حميات وسبا صحي واستشفاء",
+    email: "lama.q@rewa.care",
+    phone: "0549462524",
+    assignedClinicId: "cl-rewa-2",
+    permissions: ["برامج التغذية", "جلسات الاسترخاء والسبا"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "st-rewa-3",
+    tenantSlug: "rewa",
+    name: "كابتن أحمد الشهري",
+    role: "trainer",
+    roleTitle: "مدرب الدفاع عن النفس واللياقة البدنية",
+    specialty: "تدريب شخصي وفنون قتالية",
+    email: "ahmed.fit@rewa.care",
+    phone: "0539112233",
+    assignedClinicId: "cl-rewa-3",
+    permissions: ["إدارة الحصص التدريبية", "جداول التمارين"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "st-rewa-4",
+    tenantSlug: "rewa",
+    name: "ريهام الحربي",
+    role: "receptionist",
+    roleTitle: "مشرفة الاستقبال وتنسيق المواعيد",
+    email: "reception@rewa.care",
+    phone: "0549462524",
+    permissions: ["تأكيد المواعيد", "إرسال رسائل الواتساب", "خدمة عملاء رواء"],
+    active: true,
+    createdAt: new Date().toISOString()
+  },
+  // ─── Almahrusa Staff ───
   {
     id: "st-1",
     tenantSlug: "almahrusa",
@@ -175,6 +275,35 @@ const INITIAL_STAFF: StaffRecord[] = [
 ];
 
 const INITIAL_BOOKINGS: StaffBookingRecord[] = [
+  // ─── Rewa Bookings ───
+  {
+    id: "bk-rewa-1",
+    tenantSlug: "rewa",
+    staffId: "st-rewa-1",
+    staffName: "د. باسل المحمدي",
+    customerName: "محمد بن سالم الحربي",
+    customerPhone: "0549462524",
+    serviceName: "استشارة كشف أسنان وتجميل ابتسامة",
+    date: "2026-08-27",
+    time: "05:00 م",
+    status: "confirmed",
+    notes: "كود خصم رواء الاستشفائي مطبق",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "bk-rewa-2",
+    tenantSlug: "rewa",
+    staffId: "st-rewa-2",
+    staffName: "أ. لمى القحطاني",
+    customerName: "نوف بنت خالد الجهني",
+    customerPhone: "0539770778",
+    serviceName: "جلسة تغذية علاجية واستشفاء سبا",
+    date: "2026-08-27",
+    time: "07:30 م",
+    status: "confirmed",
+    createdAt: new Date().toISOString()
+  },
+  // ─── Almahrusa Bookings ───
   {
     id: "bk-1",
     tenantSlug: "almahrusa",
@@ -219,6 +348,36 @@ const INITIAL_BOOKINGS: StaffBookingRecord[] = [
 ];
 
 const INITIAL_PACKAGES: SubscriptionPackageRecord[] = [
+  // ─── Rewa Packages ───
+  {
+    id: "pkg-rewa-1",
+    tenantSlug: "rewa",
+    category: "sessions",
+    categoryTitle: "حصص استشفاء",
+    title: "باقة رواء الاستشفائية والتغذية العلاجية VIP",
+    price: "1,290 ر.س",
+    period: "شهرياً",
+    description: "جلسات سبا وعيادات تغذية ونادي صحي مع متابعة خاصة بالمدينة المنورة.",
+    trainerName: "أ. لمى القحطاني",
+    features: ["8 جلسات سبا واستشفاء", "برنامج دايت وتغذية مخصص", "دخول المرافق الصحية"],
+    badge: "الأكثر طلباً 🌿",
+    popular: true,
+    active: true
+  },
+  {
+    id: "pkg-rewa-2",
+    tenantSlug: "rewa",
+    category: "gym",
+    categoryTitle: "نادي صحي",
+    title: "عضوية نادي الدفاع عن النفس واللياقة الاستشفائية",
+    price: "550 ر.س",
+    period: "شهرياً",
+    description: "حصص تدريبية متخصصة مع كباتن معتمدين بصالة رواء المتكاملة.",
+    features: ["12 حصة تدريبية", "صالة متكاملة", "تقييم لياقة واستشفاء دوري"],
+    badge: "دفاع عن النفس 🥋",
+    active: true
+  },
+  // ─── Almahrusa Packages ───
   {
     id: "pkg-1",
     tenantSlug: "almahrusa",
@@ -277,6 +436,21 @@ const INITIAL_PACKAGES: SubscriptionPackageRecord[] = [
 ];
 
 const INITIAL_SUBSCRIBERS: SubscriberMemberRecord[] = [
+  // ─── Rewa Subscribers ───
+  {
+    id: "sub-rewa-1",
+    tenantSlug: "rewa",
+    customerName: "سلطان بن حمد العوفي",
+    customerPhone: "0554400991",
+    packageId: "pkg-rewa-1",
+    packageName: "باقة رواء الاستشفائية والتغذية العلاجية VIP",
+    category: "sessions",
+    startDate: "2026-08-01",
+    endDate: "2026-08-31",
+    status: "active",
+    paidAmount: "1,290 ر.س"
+  },
+  // ─── Almahrusa Subscribers ───
   {
     id: "sub-1",
     tenantSlug: "almahrusa",
@@ -320,6 +494,15 @@ const INITIAL_SUBSCRIBERS: SubscriberMemberRecord[] = [
 
 const INITIAL_ADS: AdBannerRecord[] = [
   {
+    id: "ad-rewa-1",
+    tenantSlug: "rewa",
+    title: "باقة رواء الاستشفائية والتغذية العلاجية",
+    subtitle: "استمتع بجلسات السبا والعيادات الطبية والنادي الصحي مع خصم 30%",
+    linkUrl: "/subscriber/rewa",
+    type: "hero_banner",
+    active: true
+  },
+  {
     id: "ad-1",
     tenantSlug: "almahrusa",
     title: "عرض اليوم الوطني 96: خصم 45% حصري",
@@ -346,6 +529,9 @@ export default function ClientAdminPage() {
     setClientTheme,
     updateClient,
     isSuperAdmin,
+    hostTenantSlug,
+    isTenantDomain,
+    currentTenantSlug,
     ads,
     addAd,
     deleteAd,
@@ -370,8 +556,10 @@ export default function ClientAdminPage() {
   // Active Horizontal Sub-Tabs
   const [subTab, setSubTab] = useState<string>("facility");
 
-  // Client Data
-  const myClient = clients.find((c) => c.slug === (session?.clientSlug || "almahrusa")) || clients[0];
+  // Client Data (Strictly isolated by domain/session)
+  const [superAdminSelectedSlug, setSuperAdminSelectedSlug] = useState<string>(() => session?.clientSlug || hostTenantSlug || "rewa");
+  const activeSlug = (isSuperAdmin && !isTenantDomain) ? superAdminSelectedSlug : (session?.clientSlug || hostTenantSlug || "rewa");
+  const myClient = clients.find((c) => c.slug === activeSlug) || clients.find((c) => c.slug === "rewa") || clients[0];
   const currentTheme = getClientTheme(myClient?.slug || "") || "national_day";
   const currentOcc = SAUDI_OCCASIONS[currentTheme];
 
@@ -389,12 +577,35 @@ export default function ClientAdminPage() {
   const [autoThemeSwitch, setAutoThemeSwitch] = useState(myClient?.autoThemeSwitch ?? true);
 
   // Social Links State
-  const [twitter, setTwitter] = useState(myClient?.socialLinks?.twitter || "https://x.com/almahrusa_sa");
-  const [instagram, setInstagram] = useState(myClient?.socialLinks?.instagram || "https://instagram.com/almahrusa.medina");
-  const [tiktok, setTiktok] = useState(myClient?.socialLinks?.tiktok || "https://tiktok.com/@almahrusa");
-  const [snapchat, setSnapchat] = useState(myClient?.socialLinks?.snapchat || "https://snapchat.com/add/almahrusa");
-  const [linkedin, setLinkedin] = useState(myClient?.socialLinks?.linkedin || "https://linkedin.com/company/almahrusa");
+  const [twitter, setTwitter] = useState(myClient?.socialLinks?.twitter || "");
+  const [instagram, setInstagram] = useState(myClient?.socialLinks?.instagram || "");
+  const [tiktok, setTiktok] = useState(myClient?.socialLinks?.tiktok || "");
+  const [snapchat, setSnapchat] = useState(myClient?.socialLinks?.snapchat || "");
+  const [linkedin, setLinkedin] = useState(myClient?.socialLinks?.linkedin || "");
   const [youtube, setYoutube] = useState(myClient?.socialLinks?.youtube || "");
+
+  // Sync Form when selected client changes
+  useEffect(() => {
+    if (myClient) {
+      setName(myClient.name || "");
+      setTagline(myClient.tagline || "");
+      setSubtitle(myClient.subtitle || "");
+      setPhone(myClient.phone || "");
+      setWhatsapp(myClient.whatsapp || "");
+      setEmail(myClient.email || "");
+      setLocation(myClient.location || "");
+      setCouponCode(myClient.couponCode || currentOcc.couponCode);
+      setDiscountText(myClient.discountText || currentOcc.discountText);
+      setDiscountEnabled(myClient.discountEnabled ?? true);
+      setAutoThemeSwitch(myClient.autoThemeSwitch ?? true);
+      setTwitter(myClient.socialLinks?.twitter || "");
+      setInstagram(myClient.socialLinks?.instagram || "");
+      setTiktok(myClient.socialLinks?.tiktok || "");
+      setSnapchat(myClient.socialLinks?.snapchat || "");
+      setLinkedin(myClient.socialLinks?.linkedin || "");
+      setYoutube(myClient.socialLinks?.youtube || "");
+    }
+  }, [myClient?.slug, myClient]);
 
   // Dynamic Collections State
   const [clinics, setClinics] = useState<ClinicRecord[]>(INITIAL_CLINICS);
@@ -402,6 +613,14 @@ export default function ClientAdminPage() {
   const [bookings, setBookings] = useState<StaffBookingRecord[]>(INITIAL_BOOKINGS);
   const [packages, setPackages] = useState<SubscriptionPackageRecord[]>(INITIAL_PACKAGES);
   const [subscribers, setSubscribers] = useState<SubscriberMemberRecord[]>(INITIAL_SUBSCRIBERS);
+
+  // Filtered Collections Strictly Scoped to the Active Tenant
+  const activeStaff = useMemo<StaffRecord[]>(() => staffList.filter((s: StaffRecord) => s.tenantSlug === activeSlug), [staffList, activeSlug]);
+  const activeClinics = useMemo<ClinicRecord[]>(() => clinics.filter((c: ClinicRecord) => c.tenantSlug === activeSlug), [clinics, activeSlug]);
+  const activeBookings = useMemo<StaffBookingRecord[]>(() => bookings.filter((b: StaffBookingRecord) => b.tenantSlug === activeSlug), [bookings, activeSlug]);
+  const activePackages = useMemo<SubscriptionPackageRecord[]>(() => packages.filter((p: SubscriptionPackageRecord) => p.tenantSlug === activeSlug), [packages, activeSlug]);
+  const activeSubscribers = useMemo<SubscriberMemberRecord[]>(() => subscribers.filter((s: SubscriberMemberRecord) => s.tenantSlug === activeSlug), [subscribers, activeSlug]);
+  const activeAds = useMemo<AdBannerRecord[]>(() => ads.filter((a: AdBannerRecord) => a.tenantSlug === "all" || a.tenantSlug === activeSlug), [ads, activeSlug]);
 
   // New Ad Form State
   const [newAdTitle, setNewAdTitle] = useState("");
@@ -420,27 +639,10 @@ export default function ClientAdminPage() {
   const [newStaffTitle, setNewStaffTitle] = useState("");
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
-  const [newStaffClinic, setNewStaffClinic] = useState("cl-1");
+  const [newStaffClinic, setNewStaffClinic] = useState("cl-rewa-1");
 
   // Saving indicator
   const [isSaving, setIsSaving] = useState(false);
-
-  if (isSuperAdmin) {
-    return (
-      <AdminLayout>
-        <div className="text-center py-20 space-y-4">
-          <ShieldCheck className="w-12 h-12 text-amber-400 mx-auto" />
-          <p className="text-slate-300 font-bold">أنت سوبر أدمن، استخدم</p>
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-2xl transition-all shadow-lg"
-          >
-            لوحة التحكم الرئيسية
-          </Link>
-        </div>
-      </AdminLayout>
-    );
-  }
 
   if (!myClient) {
     return (
@@ -579,14 +781,10 @@ export default function ClientAdminPage() {
   // Send WhatsApp to booking customer
   const handleSendWhatsApp = (booking: StaffBookingRecord) => {
     const text = encodeURIComponent(
-      `السلام عليكم ${booking.customerName}، نؤكد لكم موعدكم في *${myClient.name}*:
-` +
-        `• الخدمة: ${booking.serviceName}
-` +
-        `• الممارس/الموظف المسؤول: ${booking.staffName}
-` +
-        `• التاريخ والوقت: ${booking.date} الساعة ${booking.time}
-` +
+      `السلام عليكم ${booking.customerName}، نؤكد لكم موعدكم في *${myClient.name}*:\n` +
+        `• الخدمة: ${booking.serviceName}\n` +
+        `• الممارس/الموظف المسؤول: ${booking.staffName}\n` +
+        `• التاريخ والوقت: ${booking.date} الساعة ${booking.time}\n` +
         `نتشرف بزيارتكم!`
     );
     window.open(`https://wa.me/${booking.customerPhone}?text=${text}`, "_blank");
@@ -605,10 +803,28 @@ export default function ClientAdminPage() {
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white">{myClient.name}</h1>
               <p className="text-slate-400 text-xs">
-                إيميل الإدارة: <code className="text-blue-400 font-mono">{session?.email}</code>
+                إيميل الإدارة: <code className="text-blue-400 font-mono">{session?.email || myClient.adminEmail}</code>
                 {" · "}
                 المسار العام: <code className="text-slate-300 font-mono">/subscriber/{myClient.slug}</code>
               </p>
+
+              {/* Facility Selector for Super Admin only when NOT on a tenant domain */}
+              {isSuperAdmin && !isTenantDomain && (
+                <div className="flex items-center gap-3 pt-2">
+                  <span className="text-xs font-bold text-amber-400">المنشأة المحددة:</span>
+                  <select
+                    value={superAdminSelectedSlug}
+                    onChange={(e) => setSuperAdminSelectedSlug(e.target.value)}
+                    className="px-3.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    {clients.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name} ({c.slug})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -636,10 +852,10 @@ export default function ClientAdminPage() {
               {[
                 { id: "client_settings", name: "إعدادات العميل", icon: Building2, count: "3 أقسام" },
                 { id: "google_seo", name: "خرائط Google والرانك", icon: Globe, count: "SEO محلي" },
-                { id: "clinics", name: "العيادات والمراكز", icon: Stethoscope, count: `${clinics.length} عيادات` },
-                { id: "staff", name: "الموظفين والصلاحيات", icon: Users, count: `${staffList.length} موظفين` },
-                { id: "appointments", name: "المواعيد والحجوزات", icon: CalendarCheck, count: `${bookings.length} موعد` },
-                { id: "subscriptions", name: "الاشتراكات والعضويات", icon: Dumbbell, count: `${packages.length} باقات` },
+                { id: "clinics", name: "العيادات والمراكز", icon: Stethoscope, count: `${activeClinics.length} عيادات` },
+                { id: "staff", name: "الموظفين والصلاحيات", icon: Users, count: `${activeStaff.length} موظفين` },
+                { id: "appointments", name: "المواعيد والحجوزات", icon: CalendarCheck, count: `${activeBookings.length} موعد` },
+                { id: "subscriptions", name: "الاشتراكات والعضويات", icon: Dumbbell, count: `${activePackages.length} باقات` },
                 { id: "ads", name: "الإعلانات ومحتوى الزوار", icon: Megaphone, count: "البانرات والعروض" },
                 { id: "customers", name: "العملاء والديون", icon: UserCheck, count: "دفتر الآجل" },
                 { id: "inventory", name: "المخزون والمشتريات", icon: Package, count: "المستودع والموردين" },
@@ -1116,7 +1332,7 @@ export default function ClientAdminPage() {
 
                 {subTab === "clinics_list" && (
                   <div className="space-y-4">
-                    {clinics.map((clinic) => (
+                    {activeClinics.map((clinic) => (
                       <div key={clinic.id} className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -1247,7 +1463,7 @@ export default function ClientAdminPage() {
 
                 {subTab === "staff_report" && (
                   <div className="space-y-3">
-                    {staffList.map((staff) => (
+                    {activeStaff.map((staff) => (
                       <div key={staff.id} className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
@@ -1275,7 +1491,7 @@ export default function ClientAdminPage() {
 
                 {subTab === "staff_bookings" && (
                   <div className="space-y-3">
-                    {bookings.map((b) => (
+                    {activeBookings.map((b) => (
                       <div key={b.id} className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
@@ -1338,7 +1554,7 @@ export default function ClientAdminPage() {
                         <label className="block text-xs font-bold text-slate-300">البريد الإلكتروني</label>
                         <input
                           type="email"
-                          placeholder="staff@almahrusa.sa"
+                          placeholder="staff@rewa.care"
                           value={newStaffEmail}
                           onChange={(e) => setNewStaffEmail(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
@@ -1366,7 +1582,7 @@ export default function ClientAdminPage() {
                       subTab === "all_bookings" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    📅 جدول كافة المواعيد ({bookings.length})
+                    📅 جدول كافة المواعيد ({activeBookings.length})
                   </button>
                   <button
                     onClick={() => setSubTab("today_bookings")}
@@ -1389,7 +1605,7 @@ export default function ClientAdminPage() {
                 <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
                   <h3 className="font-extrabold text-base text-white">المواعيد المسجلة في النظام</h3>
                   <div className="space-y-3">
-                    {bookings.map((b) => (
+                    {activeBookings.map((b) => (
                       <div key={b.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
                         <div>
                           <p className="font-bold text-white text-sm">{b.customerName} - {b.serviceName}</p>
@@ -1448,12 +1664,12 @@ export default function ClientAdminPage() {
                       subTab === "subscribers_ledger" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    📋 سجل وتجديدات المشتركين ({subscribers.length})
+                    📋 سجل وتجديدات المشتركين ({activeSubscribers.length})
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {packages.map((pkg) => (
+                  {activePackages.map((pkg) => (
                     <div key={pkg.id} className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/30">
@@ -1479,7 +1695,7 @@ export default function ClientAdminPage() {
                       subTab === "visitor_content" ? "bg-amber-500 text-slate-950 shadow-md" : "text-slate-400 hover:text-white"
                     }`}
                   >
-                    📢 بانرات صفحة الزوار ({ads.filter(a => a.tenantSlug === 'all' || a.tenantSlug === myClient.slug).length})
+                    📢 بانرات صفحة الزوار ({activeAds.length})
                   </button>
                   <button
                     onClick={() => setSubTab("add_ad")}
@@ -1511,8 +1727,7 @@ export default function ClientAdminPage() {
                     </div>
 
                     <div className="space-y-3">
-                      {ads
-                        .filter((a) => a.tenantSlug === "all" || a.tenantSlug === myClient.slug)
+                      {activeAds
                         .map((ad) => (
                           <div
                             key={ad.id}

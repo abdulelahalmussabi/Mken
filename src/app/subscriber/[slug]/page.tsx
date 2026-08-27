@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useOccasion } from "@/context/OccasionContext";
 import { useApp } from "@/context/AppContext";
 import { useAdmin } from "@/context/AdminContext";
+import PoweredByBadge from "@/components/mken/PoweredByBadge";
 import {
   Building2,
   Bed,
@@ -279,6 +280,7 @@ export default function SubscriberStorefrontPage({
           rating: "4.9",
           reviewsCount: "210 تقييم موثق",
           heroImage: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
+          logoUrl: "/logos/rewa-emblem.svg",
           demoNotice: "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
           couponCode: undefined,
           discountText: undefined,
@@ -301,6 +303,7 @@ export default function SubscriberStorefrontPage({
           rating: "4.9",
           reviewsCount: "480 تقييم موثق",
           heroImage: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
+          logoUrl: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80",
           demoNotice: "✨ الموقع الرسمي لمؤسسة المصعبي للتجارة (مظلات وسواتر وهناجر جدة ومكة والمدينة) على منصة مكّن",
           couponCode: undefined,
           discountText: undefined,
@@ -317,6 +320,7 @@ export default function SubscriberStorefrontPage({
           rating: "4.9",
           reviewsCount: "تقييمات موثقة",
           heroImage: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=800&q=80",
+          logoUrl: "/logos/mken-icon.svg",
           demoNotice: "✨ صفحة منشأة صالون النخبة المعتمدة",
           couponCode: undefined,
           discountText: undefined,
@@ -332,6 +336,7 @@ export default function SubscriberStorefrontPage({
           rating: "4.9",
           reviewsCount: "382 تقييم موثق",
           heroImage: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+          logoUrl: "/logos/almahrusa-icon.svg",
           demoNotice: "✨ صفحة منشأة المحروسة للشقق المخدومة في المدينة المنورة على منصة مكّن",
           couponCode: undefined,
           discountText: undefined,
@@ -361,6 +366,7 @@ export default function SubscriberStorefrontPage({
         rating: validAdminClient.rating || "4.9",
         reviewsCount: validAdminClient.reviewsCount || "تقييمات موثقة",
         heroImage: validAdminClient.heroImage || fallbackStoreInfo.heroImage,
+        logoUrl: validAdminClient.logoUrl || fallbackStoreInfo.logoUrl,
         demoNotice: validAdminClient.demoNotice || `✨ صفحة منشأة ${validAdminClient.name} المعتمدة`,
         couponCode: validAdminClient.couponCode,
         discountText: validAdminClient.discountText,
@@ -416,12 +422,22 @@ export default function SubscriberStorefrontPage({
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg transition-transform hover:scale-105"
-              style={{ backgroundColor: occasionDetails.accentColor }}
-            >
-              {isSalon ? "💈" : "🏢"}
-            </div>
+            {storeInfo.logoUrl ? (
+              <div className="w-12 h-12 rounded-2xl bg-slate-900/90 border border-slate-700/60 p-1 flex items-center justify-center shadow-lg transition-transform hover:scale-105 overflow-hidden shrink-0">
+                <img
+                  src={storeInfo.logoUrl}
+                  alt={storeInfo.name}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg transition-transform hover:scale-105"
+                style={{ backgroundColor: occasionDetails.accentColor }}
+              >
+                {isSalon ? "💈" : "🏢"}
+              </div>
+            )}
             <div>
               <h1 className="font-extrabold text-xl sm:text-2xl text-slate-100 tracking-tight flex items-center gap-2">
                 {storeInfo.name}
@@ -954,6 +970,9 @@ export default function SubscriberStorefrontPage({
           </div>
         </div>
       )}
+
+      {/* Viral Growth Loop - Powered by MKN Badge with Referral Tracking */}
+      <PoweredByBadge tenantSlug={slug} />
     </div>
   );
 }

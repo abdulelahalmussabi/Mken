@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="mkenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D26A" />
+      <stop offset="50%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="30" fill="url(#mkenGrad)"/>
+  <rect x="4" y="4" width="112" height="112" rx="26" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+  <path d="M60 28 C45 28 34 39 34 54 C34 69 46 78 60 78 C67 78 73 74 77 69 L77 94 C77 96 79 98 82 98 L87 98 C90 98 92 96 92 94 L92 39 C92 33 78 28 60 28 Z M60 64 C51 64 45 58 45 52 C45 46 51 40 60 40 C69 40 75 46 75 52 C75 58 69 64 60 64 Z" fill="#FFFFFF"/>
+  <circle cx="84" cy="34" r="7" fill="url(#goldAccent)"/>
+</svg>

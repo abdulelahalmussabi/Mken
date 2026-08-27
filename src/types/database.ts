@@ -73,6 +73,7 @@ export interface ClientRecord {
   rating: string;
   reviewsCount: string;
   heroImage: string;
+  logoUrl?: string;
   demoNotice: string;
   adminEmail: string;
   adminPassword: string;

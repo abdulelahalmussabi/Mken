@@ -80,13 +80,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <Link href="/admin" className="flex items-center gap-2">
+            <Link href={isSuperAdmin ? "/admin" : "/admin/client"} className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">
                 م
               </div>
               <div>
                 <span className="font-extrabold text-lg text-white">مكّن</span>
-                <span className="text-xs text-amber-400 font-bold mr-1.5">/ Admin</span>
+                <span className="text-xs text-amber-400 font-bold mr-1.5">
+                  {isSuperAdmin ? "/ Super Admin" : `/ ${session.clientSlug || "لوحة المنشأة"}`}
+                </span>
               </div>
             </Link>
           </div>
@@ -95,9 +97,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold
             bg-amber-500/10 border-amber-500/30 text-amber-300">
             {isSuperAdmin ? (
-              <><ShieldCheck className="w-3.5 h-3.5" /> سوبر أدمن</>
+              <><ShieldCheck className="w-3.5 h-3.5" /> سوبر أدمن المنصة</>
             ) : (
-              <><Shield className="w-3.5 h-3.5" /> أدمن عميل: {session.clientSlug}</>
+              <><Shield className="w-3.5 h-3.5" /> أدمن منشأة: {session.clientSlug || "رواء"}</>
             )}
           </div>
 

@@ -27,8 +27,9 @@ import {
 import type { TenantSettings } from "@/lib/mken/settings";
 
 export default function AdminSettingsPage() {
-  const { session } = useAdmin();
-  const tenantSlug = session?.clientSlug || "almahrusa";
+  const { session, isSuperAdmin, isTenantDomain, hostTenantSlug, clients } = useAdmin();
+  const [selectedSlug, setSelectedSlug] = useState<string>(() => session?.clientSlug || hostTenantSlug || "rewa");
+  const tenantSlug = (isSuperAdmin && !isTenantDomain) ? selectedSlug : (session?.clientSlug || hostTenantSlug || "rewa");
 
   const [settings, setSettings] = useState<TenantSettings>({});
   const [loading, setLoading] = useState(true);
@@ -71,6 +72,11 @@ export default function AdminSettingsPage() {
         setDomainStatus(data.domain ? (data.verified ? "active" : "pending_dns") : "not_configured");
         setDnsRecords(data.dnsRecords || []);
         setIsVercelConfigured(Boolean(data.isVercelConfigured));
+      } else {
+        setCustomDomain("");
+        setDomainVerified(false);
+        setDomainStatus("not_configured");
+        setDnsRecords([]);
       }
     } catch {}
   }, [tenantSlug]);
@@ -266,6 +272,24 @@ export default function AdminSettingsPage() {
               <p className="text-slate-400 text-xs">
                 تخصيص البيانات الضريبية، تفعيل أتمتة الواتساب، وضبط إعدادات بوابة الدفع الإلكتروني ميسر Moyasar.
               </p>
+
+              {/* Facility Selector for Super Admin only when NOT on a tenant domain */}
+              {isSuperAdmin && !isTenantDomain && (
+                <div className="flex items-center gap-3 pt-2">
+                  <span className="text-xs font-bold text-amber-400">المنشأة المحددة:</span>
+                  <select
+                    value={selectedSlug}
+                    onChange={(e) => setSelectedSlug(e.target.value)}
+                    className="px-3.5 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    {clients.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name} ({c.slug})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">

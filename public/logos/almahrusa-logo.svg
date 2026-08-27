@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 140" width="540" height="140">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="35%" stop-color="#D97706" />
+      <stop offset="70%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#92400E" />
+    </linearGradient>
+    <linearGradient id="darkBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Luxury Hotel Emblem -->
+  <g transform="translate(410, 15)">
+    <rect width="110" height="110" rx="28" fill="url(#darkBgGrad)" stroke="url(#goldGrad)" stroke-width="2.5"/>
+    <!-- Dome & Architectural Arch -->
+    <path d="M55 22 C42 22 34 32 34 45 L34 88 L42 88 L42 48 C42 38 48 31 55 31 C62 31 68 38 68 48 L68 88 L76 88 L76 45 C76 32 68 22 55 22 Z" fill="url(#goldGrad)"/>
+    <!-- Key / Star Hospitality Icon -->
+    <circle cx="55" cy="56" r="6" fill="#FDE68A"/>
+    <path d="M53 62 L57 62 L57 78 L53 78 Z" fill="#FDE68A"/>
+    <path d="M57 70 L62 70 L62 74 L57 74 Z" fill="#FDE68A"/>
+    <!-- Stars -->
+    <polygon points="55,14 56.5,18 61,18 57.5,20.5 59,25 55,22 51,25 52.5,20.5 49,18 53.5,18" fill="#FDE68A"/>
+  </g>
+  
+  <!-- Typography "المحروسة" -->
+  <text x="390" y="75" font-family="'Segoe UI', 'Cairo', 'Tajawal', serif" font-weight="900" font-size="44" fill="#F8FAFC" text-anchor="end" letter-spacing="0.5">
+    المحروسة
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="390" y="108" font-family="'Segoe UI', 'Cairo', 'Tajawal', sans-serif" font-weight="600" font-size="15" fill="#D97706" text-anchor="end" letter-spacing="0.5">
+    للشقق المخدومة والضيافة • المدينة المنورة
+  </text>
+</svg>
