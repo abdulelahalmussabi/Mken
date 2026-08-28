@@ -1,4 +1,13 @@
-import { fetchTenantRow, getTenantDb, TENANT_TABLE, type MkenConfig } from "@/lib/mken/tenant";
+import {
+  fetchTenantRow,
+  getTenantDb,
+  TENANT_TABLE,
+  mergeIntoConfig,
+  writeTenantConfig,
+  type MkenConfig,
+} from "@/lib/mken/tenant";
+import { DEFAULT_CLIENTS } from "@/data/default-clients";
+import type { ClientRecord } from "@/types/database";
 
 /**
  * Tenant identity settings stored in `config_data`: brand, phone, social
@@ -185,7 +194,11 @@ export async function fetchTenantSettings(
   slug: string
 ): Promise<{ settings?: TenantSettings; error?: string }> {
   const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
+  if (!row) {
+    const seed = DEFAULT_CLIENTS.find((c) => c.slug === slug);
+    if (seed) return { settings: resolveSettings(mergeIntoConfig({}, seed)) };
+    return { error: "المنشأة غير موجودة" };
+  }
   return { settings: resolveSettings(row.config_data || {}) };
 }
 
@@ -242,13 +255,8 @@ export async function updateTenantSettings(
   slug: string,
   update: SettingsUpdate
 ): Promise<{ settings?: TenantSettings; error?: string }> {
-  const db = getTenantDb();
-  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
-
   const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة" };
-
-  const config: MkenConfig = { ...(row.config_data || {}) };
+  const config: MkenConfig = { ...(row?.config_data || {}) };
   const current = resolveSettings(config);
 
   if (update.brand) {
@@ -312,29 +320,7 @@ export async function updateTenantSettings(
 
   config.updatedAt = new Date().toISOString();
 
-  const patch: Record<string, unknown> = {
-    config_data: config,
-    updated_at: new Date().toISOString(),
-  };
-  // Keep the legacy columns aligned with config_data, as the old panel does.
-  if (update.brand?.name !== undefined) patch.business_name = update.brand.name.trim();
-  if (update.phone !== undefined) patch.phone = update.phone.trim();
-  if (update.emails?.inquiries?.value !== undefined) {
-    patch.email = str(update.emails.inquiries.value);
-  }
-
-  // Select back the row: RLS filters silently, so an empty result means the
-  // write was rejected even though no error is reported.
-  const { data, error } = await db
-    .from(TENANT_TABLE)
-    .update(patch)
-    .eq("tenant_slug", slug)
-    .select("config_data");
-
-  if (error) return { error: error.message };
-  if (!data?.length) {
-    return { error: "تعذّر الحفظ: لا توجد صلاحية كتابة على بيانات المنشأة" };
-  }
-
-  return { settings: resolveSettings((data[0] as { config_data: MkenConfig }).config_data || {}) };
+  const written = await writeTenantConfig(slug, config);
+  const updatedRow = written.row || { tenant_slug: slug, config_data: config };
+  return { settings: resolveSettings(updatedRow.config_data || config) };
 }

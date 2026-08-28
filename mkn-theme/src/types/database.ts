@@ -48,6 +48,23 @@ export interface ServiceItem {
 // Admin Types
 export type ClientType = 'hotel' | 'salon' | 'restaurant' | 'cafe' | 'other';
 
+export interface SocialLinks {
+  instagram?: string;
+  snapchat?: string;
+  tiktok?: string;
+  x?: string;
+  twitter?: string;
+  whatsapp?: string;
+  facebook?: string;
+  youtube?: string;
+  telegram?: string;
+  linkedin?: string;
+  pinterest?: string;
+  website?: string;
+  phone?: string;
+  map?: string;
+}
+
 export interface ClientRecord {
   slug: string;
   name: string;
@@ -69,6 +86,7 @@ export interface ClientRecord {
   couponCode?: string;
   discountText?: string;
   discountEnabled?: boolean;
+  socialLinks?: SocialLinks;
   active: boolean;
   createdAt: string;
 }

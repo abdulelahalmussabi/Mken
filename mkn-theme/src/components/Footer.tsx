@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail, Sparkles, Heart } from "lucide-react";
 import { useOccasion } from "@/context/OccasionContext";
+import NeonSocialRow from "@/components/social/NeonSocialRow";
 
 export default function Footer() {
   const { activeOccasion, occasionDetails, openModal } = useOccasion();
@@ -116,8 +117,24 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Neon Social Media Strip */}
+        <div className="py-6 border-t border-slate-800/60 flex flex-col items-center justify-center gap-3">
+          <p className="text-xs font-bold text-slate-400">تابع منصة مكّن عبر قنوات التواصل الرسمية</p>
+          <NeonSocialRow
+            socialLinks={{
+              x: "https://x.com/mkenalkhayal",
+              tiktok: "https://tiktok.com/@mkenalkhayal",
+              instagram: "https://instagram.com/mkenalkhayal",
+              snapchat: "https://snapchat.com/add/mkenalkhayal",
+              whatsapp: "https://wa.me/966543530333",
+              youtube: "https://youtube.com/@mkenalkhayal",
+            }}
+            size="md"
+          />
+        </div>
+
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p className="flex items-center gap-1">
             <span>© {new Date().getFullYear()} منصة مكّن. صُمم بحب للمملكة العربية السعودية</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
