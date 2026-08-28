@@ -50,8 +50,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const clientAdminLinks = [
     { name: "لوحة تحكم المنشأة الموحدة", href: "/admin/client", icon: LayoutDashboard },
-    { name: "باقات واشتراكات المنصة", href: "/subscriptions", icon: Palette },
+    { name: "عناصر ونصوص الواجهة", href: "/admin/interface", icon: Palette },
+    { name: "الخدمات والأنشطة", href: "/admin/services", icon: Package },
     { name: "نظام الحجوزات والمواعيد", href: "/bookings", icon: ShieldCheck },
+    { name: "باقات واشتراكات المنصة", href: "/subscriptions", icon: Palette },
     { name: "سجلات العملاء والديون", href: "/admin/customers", icon: Users },
     { name: "المخزون والمستودع", href: "/admin/inventory", icon: Package },
     { name: "سجل حركات المخزون", href: "/admin/inventory-transactions", icon: History },
