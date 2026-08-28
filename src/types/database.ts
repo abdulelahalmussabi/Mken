@@ -55,6 +55,7 @@ export interface SocialLinks {
   whatsapp?: string;
   youtube?: string;
   facebook?: string;
+  telegram?: string;
 }
 
 // ─── Admin & Client Types ─────────────────────────────────────────────────────

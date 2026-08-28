@@ -6,6 +6,7 @@ import AdminLayout from "@/components/AdminLayout";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
+import NeonSocialRow from "@/components/social/NeonSocialRow";
 import {
   Palette,
   Check,
@@ -583,6 +584,8 @@ export default function ClientAdminPage() {
   const [snapchat, setSnapchat] = useState(myClient?.socialLinks?.snapchat || "");
   const [linkedin, setLinkedin] = useState(myClient?.socialLinks?.linkedin || "");
   const [youtube, setYoutube] = useState(myClient?.socialLinks?.youtube || "");
+  const [facebook, setFacebook] = useState(myClient?.socialLinks?.facebook || "");
+  const [telegram, setTelegram] = useState(myClient?.socialLinks?.telegram || "");
 
   // Sync Form when selected client changes
   useEffect(() => {
@@ -604,6 +607,8 @@ export default function ClientAdminPage() {
       setSnapchat(myClient.socialLinks?.snapchat || "");
       setLinkedin(myClient.socialLinks?.linkedin || "");
       setYoutube(myClient.socialLinks?.youtube || "");
+      setFacebook(myClient.socialLinks?.facebook || "");
+      setTelegram(myClient.socialLinks?.telegram || "");
     }
   }, [myClient?.slug, myClient]);
 
@@ -716,7 +721,9 @@ export default function ClientAdminPage() {
           snapchat,
           linkedin,
           whatsapp,
-          youtube
+          youtube,
+          facebook,
+          telegram,
         }
       });
       setIsSaving(false);
@@ -1109,6 +1116,57 @@ export default function ClientAdminPage() {
                           className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono text-left focus:outline-none focus:border-rose-500"
                         />
                       </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-300">صفحة فيسبوك (Facebook)</label>
+                        <input
+                          type="url"
+                          value={facebook}
+                          onChange={(e) => setFacebook(e.target.value)}
+                          placeholder="https://facebook.com/page"
+                          dir="ltr"
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono text-left focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-300">قناة تيليجرام (Telegram)</label>
+                        <input
+                          type="url"
+                          value={telegram}
+                          onChange={(e) => setTelegram(e.target.value)}
+                          placeholder="https://t.me/channel"
+                          dir="ltr"
+                          className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono text-left focus:outline-none focus:border-sky-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Neon Preview Banner */}
+                    <div className="p-6 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-amber-400" />
+                          <span>معاينة حية لشريط السوشال ميديا النيون (Neon Glow Live Preview)</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500">يظهر فقط القنوات المفعّلة أعلاه</span>
+                      </div>
+
+                      <NeonSocialRow
+                        socialLinks={{
+                          twitter,
+                          instagram,
+                          tiktok,
+                          snapchat,
+                          linkedin,
+                          whatsapp,
+                          youtube,
+                          facebook,
+                          telegram,
+                        }}
+                        size="md"
+                        align="center"
+                      />
                     </div>
 
                     <div className="pt-4 border-t border-slate-800 flex justify-end">

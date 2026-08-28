@@ -6,6 +6,8 @@ import { useOccasion } from "@/context/OccasionContext";
 import { useApp } from "@/context/AppContext";
 import { useAdmin } from "@/context/AdminContext";
 import PoweredByBadge from "@/components/mken/PoweredByBadge";
+import NeonSocialRow from "@/components/social/NeonSocialRow";
+import NeonSocialButton from "@/components/social/NeonSocialIcons";
 import {
   Building2,
   Bed,
@@ -469,61 +471,13 @@ export default function SubscriberStorefrontPage({
           {/* Left Side: Social Media Icons + Action Buttons */}
           <div className="flex items-center gap-2">
             {/* Social Media Accounts on Left */}
-            <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-slate-800 text-slate-400">
-              {storeInfo.socialLinks?.twitter && (
-                <a
-                  href={storeInfo.socialLinks.twitter}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="حساب X / تويتر"
-                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 hover:text-white flex items-center justify-center text-xs transition-all"
-                >
-                  𝕏
-                </a>
-              )}
-              {storeInfo.socialLinks?.instagram && (
-                <a
-                  href={storeInfo.socialLinks.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="إنستغرام"
-                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-pink-500/50 hover:text-pink-400 flex items-center justify-center text-xs transition-all"
-                >
-                  📸
-                </a>
-              )}
-              {storeInfo.socialLinks?.tiktok && (
-                <a
-                  href={storeInfo.socialLinks.tiktok}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="تيك توك"
-                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 hover:text-cyan-400 flex items-center justify-center text-xs transition-all"
-                >
-                  🎵
-                </a>
-              )}
-              {storeInfo.socialLinks?.snapchat && (
-                <a
-                  href={storeInfo.socialLinks.snapchat}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="سناب شات"
-                  className="w-8 h-8 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-yellow-500/50 hover:text-yellow-400 flex items-center justify-center text-xs transition-all"
-                >
-                  👻
-                </a>
-              )}
-              {storeInfo.socialLinks?.whatsapp && (
-                <a
-                  href={`https://wa.me/${storeInfo.socialLinks.whatsapp}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="واتساب"
-                  className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/60 hover:bg-emerald-900/80 text-emerald-400 flex items-center justify-center text-xs transition-all"
-                >
-                  💬
-                </a>
+            <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-800">
+              {storeInfo.socialLinks && (
+                <NeonSocialRow
+                  socialLinks={storeInfo.socialLinks}
+                  size="sm"
+                  align="left"
+                />
               )}
             </div>
 
@@ -814,6 +768,27 @@ export default function SubscriberStorefrontPage({
               </Link>
             </div>
           </div>
+
+          {/* Business Neon Social Channels Row */}
+          {storeInfo.socialLinks && (
+            <div className="p-6 sm:p-7 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-2xl backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="space-y-1 text-center md:text-right">
+                <h4 className="text-sm font-extrabold text-slate-100 flex items-center gap-2 justify-center md:justify-start">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>قنوات التواصل الاجتماعي الرسمية لـ {storeInfo.name}</span>
+                </h4>
+                <p className="text-xs text-slate-400">
+                  تابع آخر العروض والحجوزات الحصرية والمستجدات عبر حساباتنا الموثقة
+                </p>
+              </div>
+
+              <NeonSocialRow
+                socialLinks={storeInfo.socialLinks}
+                size="md"
+                align="center"
+              />
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <div>

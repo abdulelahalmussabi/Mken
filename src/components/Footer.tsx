@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail, Sparkles, Heart } from "lucide-react";
 import { useOccasion } from "@/context/OccasionContext";
+import NeonSocialRow from "@/components/social/NeonSocialRow";
 
 export default function Footer() {
   const { activeOccasion, occasionDetails, openModal } = useOccasion();
@@ -113,6 +114,34 @@ export default function Footer() {
                 <span>support@mkn-seo.sa</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Social Media Neon Channels Row */}
+        <div className="pt-8 border-t border-slate-800/70">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl bg-slate-950/70 border border-slate-800/80 shadow-2xl backdrop-blur-xl">
+            <div className="space-y-1 text-center md:text-right">
+              <h4 className="text-sm font-extrabold text-slate-100 flex items-center gap-2 justify-center md:justify-start">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>تابع منصة مكّن على قنوات التواصل الاجتماعي</span>
+              </h4>
+              <p className="text-xs text-slate-400">
+                انضم لمجتمعنا وكن أول من يعرف جديد تحسين الظهور الموقعي وعروض المناسبات السعودية
+              </p>
+            </div>
+            <NeonSocialRow
+              socialLinks={{
+                twitter: "https://x.com/mken_live",
+                tiktok: "https://tiktok.com/@mken.live",
+                instagram: "https://instagram.com/mken.live",
+                snapchat: "https://snapchat.com/add/mken.live",
+                whatsapp: "966551234567",
+                youtube: "https://youtube.com/@mken_live",
+                linkedin: "https://linkedin.com/company/mken-platform",
+              }}
+              size="md"
+              align="center"
+            />
           </div>
         </div>
 
