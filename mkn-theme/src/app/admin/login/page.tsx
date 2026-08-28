@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
+import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import { Shield, Eye, EyeOff, LogIn, ArrowRight } from "lucide-react";
 
 function adminReturnPath(role: "super" | "client" | null | undefined): string {
@@ -57,7 +58,8 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const next = result.role === "client" ? "/admin/client" : "/admin";
+      const bound = boundTenantFromHostname(window.location.hostname);
+      const next = result.role === "client" || bound ? "/admin/client" : "/admin";
       window.location.assign(next);
     } catch {
       setError("تعذّر الاتصال بالخادم");

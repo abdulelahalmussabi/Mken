@@ -89,6 +89,7 @@ export interface ClientRecord {
   socialLinks?: SocialLinks;
   active: boolean;
   createdAt: string;
+  claimStatus?: "unclaimed" | "pending" | "claimed";
 }
 
 /** Fields a public storefront may expose. No admin emails or credentials. */
@@ -110,6 +111,7 @@ export type StorefrontClient = Pick<
   | "couponCode"
   | "discountText"
   | "discountEnabled"
+  | "claimStatus"
 >;
 
 export type StorefrontKind = "hotel" | "salon" | "commerce" | "generic";

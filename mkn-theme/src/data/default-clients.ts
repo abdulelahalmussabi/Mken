@@ -30,19 +30,19 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
   {
     slug: "almasabi",
     name: "مؤسسة المصعبي للتجارة",
-    tagline: "تجارة وتوريد بين جدة ومكة والمدينة",
+    tagline: "نحميك من الشمس… ونضيف الفخامة لمكانك",
     subtitle:
-      "مؤسسة المصعبي للتجارة — توريد ومنتجات تجارية تغطي جدة ومكة المكرمة والمدينة المنورة.",
+      "تصنيع وتركيب المظلات والسواتر والهناجر والبرجولات والخيام بجدة وخارجها، بخامات كورية وفرنسية وألمانية وأسعار منافسة.",
     type: "other",
-    phone: "",
-    whatsapp: "",
+    phone: "0543530333",
+    whatsapp: "966543530333",
     email: "info@almasabi.sa",
-    location: "جدة، مكة المكرمة، المدينة المنورة",
+    location: "جدة، المملكة العربية السعودية — تغطية مكة المكرمة والطائف",
     rating: "",
     reviewsCount: "",
     heroImage:
-      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
-    demoNotice: "صفحة مؤسسة المصعبي للتجارة على منصة مكّن",
+      "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=1200&q=80",
+    demoNotice: "صفحة مؤسسة المصعبي للتجارة — مظلات وسواتر وهناجر على منصة مكّن",
     adminEmail: "almasabi@mken.live",
     theme: "none",
     active: true,
@@ -77,8 +77,8 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     subtitle:
       "منتجع صحي واستشفائي متكامل يضم عيادات الأسنان والسمنة والتغذية، نادي الدفاع عن النفس، واستضافة الفعاليات الصحية الدورية بالمدينة المنورة.",
     type: "other",
-    phone: "0539770778",
-    whatsapp: "966549462524",
+    phone: "0148462524",
+    whatsapp: "966148462524",
     email: "rewa@mken.live",
     location: "المدينة المنورة، المملكة العربية السعودية",
     rating: "4.9",
@@ -128,6 +128,10 @@ export function storefrontClient(client: ClientRecord): StorefrontClient {
     couponCode: client.couponCode,
     discountText: client.discountText,
     discountEnabled: client.discountEnabled,
+    claimStatus:
+      client.claimStatus === "unclaimed" || client.claimStatus === "pending"
+        ? client.claimStatus
+        : "claimed",
   };
 }
 

@@ -35,7 +35,7 @@
         <a href="#faq">الأسئلة</a>
         <a id="nav-admin-link" href="/admin">دخول</a>
       </nav>
-      <a id="nav-signup-link" href="signup.html" class="lp-btn lp-btn--primary">جرّب 14 يوماً</a>
+      <a id="nav-signup-link" href="signup.html" class="lp-btn lp-btn--primary">معاينة فورية</a>
     </div>
   </header>
 
@@ -46,22 +46,28 @@
         <h1>فواتير معتمدة من الزكاة + واتساب CRM ذكي — موقعك جاهز في يوم واحد</h1>
         <p class="lp-hero__desc">منصة خفيفة لرجل الأعمال الناشئ: امتثال تنظيمي، فواتير إلكترونية، ردود واتساب آلية، وظهور على خرائط Google — بدون تعقيد ERP.</p>
         <div class="lp-hero__actions">
-          <a id="hero-signup-link" href="signup.html" class="lp-btn lp-btn--primary lp-btn--lg">جرّب 14 يوماً مجاناً</a>
+          <a id="hero-signup-link" href="signup.html" class="lp-btn lp-btn--primary lp-btn--lg">جهّز معاينة موقعك</a>
           <a href="https://demo.mken.live/" class="lp-btn lp-btn--outline lp-btn--lg" target="_blank" rel="noopener">شاهد العرض الحي</a>
         </div>
         <p class="lp-trust">✓ متوافق مع مرحلة II للفوترة · ✓ فاتورة QR · ✓ ردود واتساب ذكية · ✓ بدون بطاقة في التجربة</p>
       </div>
-      <div class="lp-hero__card" aria-hidden="true">
-        <div class="lp-mock">
-          <div class="lp-mock__bar"></div>
-          <div class="lp-mock__line lp-mock__line--wide"></div>
-          <div class="lp-mock__line"></div>
-          <div class="lp-mock__chips">
-            <span>فاتورة ZATCA</span>
-            <span>واتساب CRM</span>
-            <span>خرائط Google</span>
-          </div>
-        </div>
+      <div class="lp-hero__card">
+        <form id="magic-preview-form" class="lp-preview-form">
+          <p class="lp-preview-form__title">صانع المعاينة — بموافقة المالك</p>
+          <label>رابط خرائط جوجل
+            <input id="preview-maps" type="text" required placeholder="https://maps.app.goo.gl/…" dir="ltr">
+          </label>
+          <label>رقم الجوال
+            <input id="preview-phone" type="tel" required placeholder="05xxxxxxxx" dir="ltr">
+          </label>
+          <label class="lp-preview-form__consent">
+            <input id="preview-consent" type="checkbox" required>
+            أؤكد أنني صاحب النشاط وأوافق على معالجة رقم الجوال وplace_id فقط.
+          </label>
+          <input id="preview-website" type="text" tabindex="-1" autocomplete="off" class="lp-hp" aria-hidden="true">
+          <button type="submit" class="lp-btn lp-btn--primary" id="preview-submit">إنشاء المعاينة الآمنة</button>
+          <p id="preview-status" class="lp-preview-form__status" hidden></p>
+        </form>
       </div>
     </div>
   </section>
@@ -227,9 +233,53 @@
       var adminLinks = document.querySelectorAll('#nav-admin-link, #footer-admin-link');
       adminLinks.forEach(function(a) { a.href = base + '/admin/login'; });
 
-      // Signup links → mkn-theme /auth?tab=register
+      // Acquisition → inbound Magic Preview (owner-initiated)
       var signupLinks = document.querySelectorAll('#nav-signup-link, #hero-signup-link, #cta-signup-link, .pricing-signup-link');
-      signupLinks.forEach(function(a) { a.href = base + '/auth?tab=register'; });
+      signupLinks.forEach(function(a) { a.href = base + '/preview'; });
+
+      var form = document.getElementById('magic-preview-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var status = document.getElementById('preview-status');
+          var btn = document.getElementById('preview-submit');
+          var consent = document.getElementById('preview-consent');
+          if (!consent.checked) {
+            status.hidden = false;
+            status.textContent = 'يلزم الموافقة الصريحة قبل إنشاء المعاينة.';
+            return;
+          }
+          btn.disabled = true;
+          status.hidden = false;
+          status.textContent = 'جاري تجهيز المعاينة…';
+          fetch(base + '/api/preview?action=challenge')
+            .then(function(r) { return r.json(); })
+            .then(function(ch) {
+              return fetch(base + '/api/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'create',
+                  mapsUrl: document.getElementById('preview-maps').value,
+                  phone: document.getElementById('preview-phone').value,
+                  consent: true,
+                  challenge: ch.challenge,
+                  website: document.getElementById('preview-website').value
+                })
+              });
+            })
+            .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+            .then(function(res) {
+              if (!res.ok || !res.data.success) throw new Error(res.data.message || 'تعذّر إنشاء المعاينة');
+              status.textContent = 'تمت. جارٍ فتح المعاينة غير المفهرسة…';
+              window.location.href = res.data.previewUrl || (base + '/subscriber/' + res.data.slug);
+            })
+            .catch(function(err) {
+              status.textContent = err.message || 'تعذّر إنشاء المعاينة';
+              btn.disabled = false;
+            });
+        });
+      }
     })();
   </script>
 

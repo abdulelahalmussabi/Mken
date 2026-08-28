@@ -1,5 +1,11 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextResponse } from "next/server";
+import {
+  hostnameFromHeaders,
+  pinAdminSessionToBoundHost,
+  pinStaffSessionToBoundHost,
+  resolveBoundTenantFromHostname,
+} from "@/lib/mken/bound-host";
 
 /**
  * HMAC sessions for tenant operators (admin) and staff. Do not reuse for
@@ -113,9 +119,18 @@ export async function verifySessionToken(token: string): Promise<AdminSession | 
   }
 }
 
+async function boundTenantFromIncomingHost(): Promise<string | null> {
+  try {
+    return resolveBoundTenantFromHostname(hostnameFromHeaders(await headers()));
+  } catch {
+    return null;
+  }
+}
+
 export async function readAdminSession(): Promise<AdminSession | null> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
-  return token ? verifySessionToken(token) : null;
+  const session = token ? await verifySessionToken(token) : null;
+  return pinAdminSessionToBoundHost(session, await boundTenantFromIncomingHost());
 }
 
 function cookieSecure(): boolean {
@@ -206,7 +221,8 @@ export async function verifyStaffSessionToken(token: string): Promise<StaffSessi
 
 export async function readStaffSession(): Promise<StaffSession | null> {
   const token = (await cookies()).get(STAFF_COOKIE)?.value;
-  return token ? verifyStaffSessionToken(token) : null;
+  const session = token ? await verifyStaffSessionToken(token) : null;
+  return pinStaffSessionToBoundHost(session, await boundTenantFromIncomingHost());
 }
 
 export function applyStaffCookie(response: NextResponse, token: string): void {

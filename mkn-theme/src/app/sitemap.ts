@@ -18,12 +18,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   for (const tenant of tenants) {
+    if (tenant.claimStatus === "unclaimed" || tenant.claimStatus === "pending") continue;
     pages.push({
       url: `${origin}/subscriber/${tenant.slug}`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     });
+    for (const path of ["about", "services", "work", "contact"] as const) {
+      pages.push({
+        url: `${origin}/subscriber/${tenant.slug}/${path}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.6,
+      });
+    }
   }
 
   return pages;

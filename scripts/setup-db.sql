@@ -270,6 +270,12 @@ DO $$ BEGIN
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_place_id TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS claim_status TEXT DEFAULT 'claimed';
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS preview_expires_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_clients_unclaimed_ttl
+      ON mken_saas_clients (claim_status, preview_expires_at)
+      WHERE claim_status = 'unclaimed';
   END IF;
 END $$;
 

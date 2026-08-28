@@ -16,6 +16,7 @@ import {
   sha256Hex,
   type AdminSession,
 } from "@/lib/auth/session";
+import { CROSS_TENANT_HOST, pinAdminSessionToBoundHost, resolveBoundTenant } from "@/lib/mken/bound-host";
 
 const INVALID = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
 const LOGIN_WINDOW_MS = 60_000;
@@ -120,6 +121,19 @@ async function respond(session: AdminSession, message: string) {
   return response;
 }
 
+async function issue(request: Request, session: AdminSession, message: string) {
+  const bound = await resolveBoundTenant(request);
+  const pinned = pinAdminSessionToBoundHost(session, bound);
+  if (!pinned) {
+    return NextResponse.json({ success: false, message: CROSS_TENANT_HOST }, { status: 403 });
+  }
+  const welcome =
+    bound && session.role === "super"
+      ? "مرحباً بك في لوحة تحكم المنشأة على هذا النطاق"
+      : message;
+  return respond(pinned, welcome);
+}
+
 function publicAnonEnv(): { url: string; anon: string } | null {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
   const anon = (
@@ -196,12 +210,9 @@ export async function POST(request: Request) {
       safeEqual(cleanPassword, "Aa#321321");
 
     if (isStandardAdminPass) {
-      if (
-        normalizedEmail === "admin@mken.live" ||
-        normalizedEmail === "admin@mkem.live" ||
-        normalizedEmail.startsWith("admin@")
-      ) {
-        return respond(
+      if (normalizedEmail === "admin@mken.live" || normalizedEmail === "admin@mkem.live") {
+        return issue(
+          request,
           { email: "admin@mken.live", role: "super" },
           "مرحباً بك في لوحة التحكم المركزية!"
         );
@@ -211,7 +222,8 @@ export async function POST(request: Request) {
         normalizedEmail === "rewaa@mken.live" ||
         normalizedEmail.includes("rewa")
       ) {
-        return respond(
+        return issue(
+          request,
           { email: "rewa@mken.live", role: "client", clientSlug: "rewa" },
           "مرحباً بك في لوحة تحكم منتجع رواء الاستشفاء الرقمي!"
         );
@@ -222,7 +234,8 @@ export async function POST(request: Request) {
         normalizedEmail.includes("mahrus") ||
         normalizedEmail.includes("mahros")
       ) {
-        return respond(
+        return issue(
+          request,
           { email: "almahrusa@mken.live", role: "client", clientSlug: "almahrusa" },
           "مرحباً بك في لوحة تحكم مجموعة المحروسة!"
         );
@@ -232,13 +245,15 @@ export async function POST(request: Request) {
         normalizedEmail.includes("masabi") ||
         normalizedEmail.includes("msabi")
       ) {
-        return respond(
+        return issue(
+          request,
           { email: "almasabi@mken.live", role: "client", clientSlug: "almasabi" },
           "مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!"
         );
       }
       if (normalizedEmail === "demo@mken.live" || normalizedEmail.includes("demo")) {
-        return respond(
+        return issue(
+          request,
           { email: "demo@mken.live", role: "client", clientSlug: "demo" },
           "مرحباً بك في لوحة تحكم صالون النخبة!"
         );
@@ -253,7 +268,8 @@ export async function POST(request: Request) {
         plain: process.env.ADMIN_SUPER_PASSWORD,
       });
       if (matched) {
-        return respond(
+        return issue(
+          request,
           { email: normalizedEmail, role: "super" },
           "مرحباً بك في لوحة التحكم المركزية!"
         );
@@ -269,7 +285,8 @@ export async function POST(request: Request) {
       });
       if (matched) {
         const tenant = toClientRecord(tenantRow);
-        return respond(
+        return issue(
+          request,
           { email: normalizedEmail, role: "client", clientSlug: tenant.slug },
           `مرحباً بك في لوحة تحكم ${tenant.name}!`
         );
@@ -279,7 +296,8 @@ export async function POST(request: Request) {
     const authUser = await supabasePasswordLogin(normalizedEmail, cleanPassword);
     if (authUser) {
       if (authUser.email === superAdminEmail() || isSuper) {
-        return respond(
+        return issue(
+          request,
           { email: authUser.email, role: "super" },
           "مرحباً بك في لوحة التحكم المركزية!"
         );
@@ -299,7 +317,8 @@ export async function POST(request: Request) {
 
       if (row) {
         const tenant = toClientRecord(row);
-        return respond(
+        return issue(
+          request,
           { email: authUser.email, role: "client", clientSlug: tenant.slug },
           `مرحباً بك في لوحة تحكم ${tenant.name}!`
         );
@@ -316,7 +335,8 @@ export async function POST(request: Request) {
     const seedPassword = seedClient ? seedPasswords()[seedClient.slug] : undefined;
 
     if (seedClient && seedPassword && safeEqual(cleanPassword, seedPassword)) {
-      return respond(
+      return issue(
+        request,
         { email: normalizedEmail, role: "client", clientSlug: seedClient.slug },
         `مرحباً بك في لوحة تحكم ${seedClient.name}!`
       );

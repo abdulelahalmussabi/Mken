@@ -114,6 +114,14 @@ export interface MkenConfig {
       addOns?: Record<string, number>;
     };
   };
+  /** Inbound Magic Preview. Never store Places reviews/photos/addresses here. */
+  preview?: {
+    claimStatus?: "unclaimed" | "pending" | "claimed";
+    placeId?: string;
+    expiresAt?: string;
+    otpHash?: string;
+    otpExpiresAt?: string;
+  };
   location?: string;
   subtitle?: string;
   rating?: string;
@@ -121,6 +129,12 @@ export interface MkenConfig {
   demoNotice?: string;
   adminEmail?: string;
   adminPasswordHash?: string;
+  /** Five public site pages + enable flags. See lib/mken/pages.ts */
+  pages?: unknown;
+  booking?: {
+    workingHours?: { start?: string; end?: string };
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
@@ -200,6 +214,10 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     reviewsCount: config.reviewsCount || "",
     heroImage: config.heroImage || "",
     demoNotice: config.demoNotice || "",
+    claimStatus:
+      config.preview?.claimStatus === "unclaimed" || config.preview?.claimStatus === "pending"
+        ? config.preview.claimStatus
+        : "claimed",
     adminEmail: config.adminEmail || row.email || "",
     theme: forceId.startsWith("custom-") || isOccasionTheme(forceId) ? forceId : "none",
     couponCode: pack.promo?.code,

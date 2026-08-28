@@ -191,6 +191,31 @@ async function handleCallback(req, res) {
     .eq('tenant_slug', tenantSlug);
 
   if (updateError) throw updateError;
+
+  const { data: previewRow } = await supabase
+    .from('mken_saas_clients')
+    .select('claim_status, config_data')
+    .eq('tenant_slug', tenantSlug)
+    .maybeSingle();
+  const previewStatus = (
+    (previewRow && previewRow.claim_status) ||
+    (previewRow && previewRow.config_data && previewRow.config_data.preview && previewRow.config_data.preview.claimStatus) ||
+    ''
+  ).toLowerCase();
+  if (previewStatus === 'pending' || previewStatus === 'unclaimed') {
+    const nextConfig = Object.assign({}, (previewRow && previewRow.config_data) || {});
+    nextConfig.preview = Object.assign({}, nextConfig.preview || {}, { claimStatus: 'claimed' });
+    await supabase
+      .from('mken_saas_clients')
+      .update({
+        claim_status: 'claimed',
+        preview_expires_at: null,
+        config_data: nextConfig,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('tenant_slug', tenantSlug);
+  }
+
   return res.redirect(baseRedirectUrl + '?tenant=' + encodeURIComponent(tenantSlug) + '&google_connect=success');
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { StorefrontFrame } from "@/components/storefront/StorefrontFrame";
 import {
   loadStorefrontSeo,
   localBusinessJsonLd,
@@ -17,13 +18,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!client) {
     return { title: "المنشأة غير موجودة", robots: noIndexRobots };
   }
+  if (client.claimStatus === "unclaimed" || client.claimStatus === "pending") {
+    return {
+      ...tenantPageMetadata(client, `/subscriber/${client.slug}`),
+      robots: noIndexRobots,
+      title: `معاينة غير مفهرسة — ${client.name}`,
+    };
+  }
   return tenantPageMetadata(client, `/subscriber/${client.slug}`);
 }
 
 export default async function SubscriberLayout({ children, params }: Props) {
   const { slug } = await params;
   const client = await loadStorefrontSeo(slug);
-  const jsonLd = client ? localBusinessJsonLd(client) : null;
+  const jsonLd =
+    client && client.claimStatus !== "unclaimed" && client.claimStatus !== "pending"
+      ? localBusinessJsonLd(client)
+      : null;
 
   return (
     <>
@@ -35,7 +46,7 @@ export default async function SubscriberLayout({ children, params }: Props) {
           }}
         />
       ) : null}
-      {children}
+      <StorefrontFrame slug={slug}>{children}</StorefrontFrame>
     </>
   );
 }

@@ -529,7 +529,7 @@
       return {
         brand: {
           name: 'مؤسسة المصعبي للتجارة',
-          tagline: 'تجارة وتوريد بين جدة ومكة والمدينة',
+          tagline: 'نحميك من الشمس… ونضيف الفخامة لمكانك',
           logo: '',
         },
         enabledActivities: ['commerce'],
@@ -541,9 +541,9 @@
         featured: 'general-product',
         heroFocus: 'general-product',
         theme: 'terracotta',
-        phone: '',
+        phone: '0543530333',
         social: {
-          whatsapp: { enabled: false, value: '' },
+          whatsapp: { enabled: true, value: '966543530333' },
           instagram: { enabled: false, value: '' },
           twitter: { enabled: false, value: '' },
           facebook: { enabled: false, value: '' },
@@ -563,7 +563,7 @@
           enabled: true,
           displayOnHomepage: true,
           city: 'جدة',
-          coverageNote: 'نخدم جدة ومكة المكرمة والمدينة المنورة',
+          coverageNote: 'نغطي جدة ومكة المكرمة والطائف والمحافظات المجاورة',
           showAsFullCity: true,
         }),
         push: Object.assign({}, DEFAULT_PUSH),

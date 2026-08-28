@@ -150,7 +150,7 @@ export default function Navbar() {
                   تسجيل الدخول
                 </Link>
                 <Link
-                  href="/register"
+                  href={"/preview" as Route}
                   className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-sm rounded-xl shadow-lg transition-all active:scale-95"
                 >
                   <span>ابدأ الآن</span>
@@ -231,7 +231,7 @@ export default function Navbar() {
                   تسجيل الدخول
                 </Link>
                 <Link
-                  href="/register"
+                  href={"/preview" as Route}
                   onClick={() => setMobileMenuOpen(false)}
                   className="py-3 text-center text-sm font-bold text-slate-950 bg-amber-500 rounded-xl shadow-md"
                 >

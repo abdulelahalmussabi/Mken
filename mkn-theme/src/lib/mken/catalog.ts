@@ -3,6 +3,12 @@ import servicesJson from "@/data/catalog/services.json";
 import { DEFAULT_CLIENTS, storefrontClient } from "@/data/default-clients";
 import { appearanceFromConfig, type AppearancePublic } from "@/lib/mken/appearance";
 import {
+  pagesFromConfig,
+  publicContactFromConfig,
+  type StorefrontContactPublic,
+  type StorefrontPagesPublic,
+} from "@/lib/mken/pages";
+import {
   ensureTenantRow,
   fetchTenantRow,
   isPlatformSlug,
@@ -461,6 +467,8 @@ function scrubSpaCopy(text: string): string {
 
 const REWA_CLINIC_HERO =
   "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80";
+const REWA_PHONE = "0148462524";
+const REWA_WHATSAPP = "966148462524";
 
 function stripRewaSpa(config: MkenConfig): MkenConfig {
   const seed = SEED_CONFIG.rewa;
@@ -509,6 +517,11 @@ function stripRewaSpa(config: MkenConfig): MkenConfig {
   ) {
     next.ads = { ...next.ads, primary: { ...next.ads.primary, enabled: false } };
   }
+  next.phone = REWA_PHONE;
+  next.social = {
+    ...(next.social || {}),
+    whatsapp: { enabled: true, value: REWA_WHATSAPP },
+  };
   return next;
 }
 
@@ -540,6 +553,8 @@ export interface PublicStorefront {
   client: StorefrontClient;
   catalog: StorefrontCatalog;
   appearance: AppearancePublic;
+  pages: StorefrontPagesPublic;
+  contactExtras: StorefrontContactPublic;
   source: "database" | "default";
 }
 
@@ -558,6 +573,8 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
     : storefrontClient(fallback!);
   if (key === "rewa") {
     client.subtitle = merged.subtitle || client.subtitle;
+    client.phone = REWA_PHONE;
+    client.whatsapp = REWA_WHATSAPP;
   }
   const appearance = appearanceFromConfig(merged);
   if (appearance.themeKind === "occasion" || appearance.themeKind === "custom") {
@@ -568,6 +585,8 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
     client,
     catalog,
     appearance,
+    pages: pagesFromConfig(merged),
+    contactExtras: publicContactFromConfig(merged),
     source: row ? "database" : "default",
   };
 }

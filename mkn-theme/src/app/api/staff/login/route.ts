@@ -7,6 +7,7 @@ import {
   createStaffSessionToken,
   safeEqual,
 } from "@/lib/auth/session";
+import { resolveBoundTenant } from "@/lib/mken/bound-host";
 
 const INVALID = "بيانات الدخول غير صحيحة أو الحساب غير نشط";
 const LOGIN_WINDOW_MS = 60_000;
@@ -93,11 +94,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    const bound = await resolveBoundTenant(request);
+    const tenantSlug = (bound || (typeof body.tenantSlug === "string" ? body.tenantSlug : ""))
+      .trim()
+      .toLowerCase();
     const step = typeof body.step === "string" ? body.step : "pin";
 
     if (step === "pin") {
       const result = await Promise.race([
-        loginStaffByPin(body.tenantSlug || "", body.phone || "", body.pin || ""),
+        loginStaffByPin(tenantSlug, body.phone || "", body.pin || ""),
         new Promise<{ error: string }>((resolve) =>
           setTimeout(() => resolve({ error: "انتهت مهلة الاتصال بقاعدة البيانات" }), 8000)
         ),
@@ -106,14 +111,20 @@ export async function POST(request: Request) {
         rateLimit(ip, true);
         return NextResponse.json({ success: false, message: result.error || INVALID }, { status: 401 });
       }
+      if (bound && result.member.tenantSlug.toLowerCase() !== bound) {
+        return NextResponse.json({ success: false, message: "هذا النطاق مخصص لمنشأة أخرى" }, { status: 403 });
+      }
       return staffResponse(result.member);
     }
 
     if (step === "passkey-challenge") {
-      const loaded = await loadStaffForLogin(body.tenantSlug || "", body.phone || "");
+      const loaded = await loadStaffForLogin(tenantSlug, body.phone || "");
       if (loaded.error || !loaded.member) {
         rateLimit(ip, true);
         return NextResponse.json({ success: false, message: loaded.error || INVALID }, { status: 401 });
+      }
+      if (bound && loaded.member.tenantSlug.toLowerCase() !== bound) {
+        return NextResponse.json({ success: false, message: "هذا النطاق مخصص لمنشأة أخرى" }, { status: 403 });
       }
 
       const db = getTenantDb();
@@ -153,10 +164,13 @@ export async function POST(request: Request) {
     }
 
     if (step === "passkey-verify") {
-      const loaded = await loadStaffForLogin(body.tenantSlug || "", body.phone || "");
+      const loaded = await loadStaffForLogin(tenantSlug, body.phone || "");
       if (loaded.error || !loaded.member) {
         rateLimit(ip, true);
         return NextResponse.json({ success: false, message: loaded.error || INVALID }, { status: 401 });
+      }
+      if (bound && loaded.member.tenantSlug.toLowerCase() !== bound) {
+        return NextResponse.json({ success: false, message: "هذا النطاق مخصص لمنشأة أخرى" }, { status: 403 });
       }
 
       const {

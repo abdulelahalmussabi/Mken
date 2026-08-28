@@ -14,6 +14,7 @@ import {
   syncGbpServices,
   syncNapFromMken,
 } from "@/lib/mken/gbp";
+import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
 
 export async function GET(request: Request) {
   const scope = await resolveTenantScope(request);
@@ -52,6 +53,9 @@ export async function GET(request: Request) {
   const { status, error } = await fetchGbpStatus(scope.slug);
   if (error || !status) {
     return NextResponse.json({ success: false, message: error }, { status: 500 });
+  }
+  if (status.connected) {
+    await markPreviewIndexedAfterGbp(scope.slug);
   }
   return NextResponse.json({ success: true, tenant: scope.slug, ...status });
 }

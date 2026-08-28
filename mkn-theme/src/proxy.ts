@@ -1,32 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveActiveCustomHost } from "@/lib/mken/custom-domain";
-import { slugFromCustomHostname } from "@/lib/mken/tenant-host";
+import { resolveBoundTenantFromHostname } from "@/lib/mken/bound-host";
+import { attachUnclaimedRobotsHeader } from "@/lib/mken/preview";
 
 const ADMIN_COOKIE = "mkn_admin_session";
 
-const SKIP_SUBDOMAINS = new Set([
-  "www",
-  "admin",
-  "mken",
-  "license",
-  "licenses",
-  "api",
-]);
-
 const SHORT_TENANT_ALIASES = new Set(["almahrusa", "demo", "almasabi", "rewa"]);
-
-function tenantSubdomain(hostname: string): string | null {
-  if (!hostname.includes("mken.live")) return null;
-  const host = hostname.split(":")[0].toLowerCase();
-  const parts = host.split(".");
-  if (parts.length <= 2) return null;
-  let head = parts[0];
-  // www.almasabi.mken.live is a nested host; *.mken.live does not cover it.
-  if (head === "www" && parts.length >= 4) head = parts[1];
-  if (SKIP_SUBDOMAINS.has(head)) return null;
-  return head;
-}
+const SKIP_NESTED_WWW = new Set(["www", "admin", "mken", "license", "licenses", "api"]);
+const PLATFORM_ADMIN_PATHS = new Set(["/admin", "/admin/", "/admin/licenses"]);
 
 /** www.{tenant}.mken.live is not on the wildcard cert — send browsers to {tenant}.mken.live. */
 function nestedWwwTenant(hostname: string): string | null {
@@ -34,7 +15,7 @@ function nestedWwwTenant(hostname: string): string | null {
   const match = host.match(/^www\.([a-z0-9-]+)\.mken\.live$/);
   if (!match) return null;
   const slug = match[1];
-  if (SKIP_SUBDOMAINS.has(slug)) return null;
+  if (SKIP_NESTED_WWW.has(slug)) return null;
   return slug;
 }
 
@@ -46,7 +27,7 @@ function hasAdminCookie(request: NextRequest): boolean {
 function lockBoundTenant(url: URL, pathname: string, tenant: string): NextResponse | null {
   const subscriber = pathname.match(/^\/subscriber\/([^/]+)/i);
   if (subscriber && subscriber[1].toLowerCase() !== tenant) {
-    url.pathname = `/subscriber/${tenant}`;
+    url.pathname = `/subscriber/${tenant}${pathname.slice(subscriber[0].length)}`;
     url.search = "";
     return NextResponse.redirect(url);
   }
@@ -76,6 +57,13 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
     url.search = "";
     return NextResponse.redirect(url);
   }
+  for (const key of ["tenant", "store", "client"] as const) {
+    const value = url.searchParams.get(key);
+    if (value && value.toLowerCase() !== tenant) {
+      url.searchParams.set(key, tenant);
+      return NextResponse.redirect(url);
+    }
+  }
   return null;
 }
 
@@ -96,18 +84,24 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dest, 308);
   }
   const { pathname } = url;
-  const subdomain = tenantSubdomain(hostname);
-  const customSlug =
-    subdomain ? null : slugFromCustomHostname(hostname) || (await resolveActiveCustomHost(hostname));
-  const tenant = subdomain || customSlug;
+  const tenant = await resolveBoundTenantFromHostname(hostname);
 
   if (tenant) {
     const locked = lockBoundTenant(url, pathname, tenant);
     if (locked) return locked;
+    if (PLATFORM_ADMIN_PATHS.has(pathname) || pathname.startsWith("/admin/licenses/")) {
+      url.pathname = "/admin/client";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   if (pathname === "/admin.html") {
-    url.pathname = url.searchParams.has("google_connect") ? "/admin/settings" : "/admin";
+    url.pathname = url.searchParams.has("google_connect")
+      ? "/admin/settings"
+      : tenant
+        ? "/admin/client"
+        : "/admin";
     if (tenant) url.searchParams.set("client", tenant);
     return NextResponse.redirect(url);
   }
@@ -156,17 +150,23 @@ export async function proxy(request: NextRequest) {
 
   if (tenant && pathname === "/") {
     url.pathname = `/subscriber/${tenant}`;
-    return NextResponse.rewrite(url);
+    return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
   }
 
-  if (customSlug && (pathname === "/book" || pathname === "/book.html") && !url.searchParams.has("tenant")) {
-    url.searchParams.set("tenant", customSlug);
-    return NextResponse.rewrite(url);
+  const tenantSitePage = pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
+  if (tenant && /^(about|services|work|contact)$/.test(tenantSitePage)) {
+    url.pathname = `/subscriber/${tenant}/${tenantSitePage}`;
+    return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
   }
 
-  if (customSlug && (pathname === "/store" || pathname === "/store.html")) {
-    url.pathname = `/store/${customSlug}`;
-    return NextResponse.rewrite(url);
+  if (tenant && (pathname === "/book" || pathname === "/book.html") && !url.searchParams.has("tenant")) {
+    url.searchParams.set("tenant", tenant);
+    return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
+  }
+
+  if (tenant && (pathname === "/store" || pathname === "/store.html")) {
+    url.pathname = `/store/${tenant}`;
+    return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
   }
 
   if (pathname === "/book.html") {
@@ -194,7 +194,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  return NextResponse.next();
+  const next = NextResponse.next();
+  return tenant ? attachUnclaimedRobotsHeader(next, tenant) : next;
 }
 
 export const config = {

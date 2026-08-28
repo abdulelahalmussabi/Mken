@@ -27,6 +27,7 @@ function base64urlToBuffer(value: string): ArrayBuffer {
 
 export default function StaffLoginPage() {
   const [tenantSlug, setTenantSlug] = useState("");
+  const [tenantLocked, setTenantLocked] = useState(false);
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
@@ -38,6 +39,15 @@ export default function StaffLoginPage() {
     const tenant = params.get("tenant") || params.get("client") || "";
     if (tenant) setTenantSlug(tenant.toLowerCase());
     setPasskeyReady(typeof window !== "undefined" && "credentials" in navigator);
+    fetch("/api/domains/resolve", { signal: AbortSignal.timeout(8000) })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.slug) {
+          setTenantSlug(String(data.slug).toLowerCase());
+          setTenantLocked(true);
+        }
+      })
+      .catch(() => {});
     fetch("/api/staff/session", { signal: AbortSignal.timeout(8000) })
       .then((res) => res.json())
       .then((data) => {
@@ -154,10 +164,15 @@ export default function StaffLoginPage() {
               <input
                 required
                 value={tenantSlug}
-                onChange={(e) => setTenantSlug(e.target.value)}
+                onChange={(e) => {
+                  if (!tenantLocked) setTenantSlug(e.target.value);
+                }}
+                readOnly={tenantLocked}
                 placeholder="almahrusa"
                 dir="ltr"
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500"
+                className={`w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500 ${
+                  tenantLocked ? "opacity-80 cursor-not-allowed" : ""
+                }`}
               />
             </label>
             <label className="block space-y-1.5">

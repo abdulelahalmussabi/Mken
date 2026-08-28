@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-import { resolveActiveCustomHost } from "@/lib/mken/custom-domain";
-import { slugFromCustomHostname } from "@/lib/mken/tenant-host";
+import { resolveBoundTenantFromHostname } from "@/lib/mken/bound-host";
+import { hostnameFromHeaders } from "@/lib/mken/tenant-host";
 
 export async function GET(request: Request) {
-  const host = new URL(request.url).searchParams.get("host") || "";
-  const slug = slugFromCustomHostname(host) || (await resolveActiveCustomHost(host));
-  if (!slug) {
+  const requested = new URL(request.url).searchParams.get("host") || "";
+  const requestHost = hostnameFromHeaders(request.headers);
+  const bound = await resolveBoundTenantFromHostname(requestHost);
+  const slug = await resolveBoundTenantFromHostname(requested || requestHost);
+  if (!slug || (bound && slug !== bound)) {
+    if (bound) return NextResponse.json({ success: true, slug: bound, bound: true });
     return NextResponse.json({ success: false, slug: null }, { status: 404 });
   }
-  return NextResponse.json({ success: true, slug });
+  return NextResponse.json({ success: true, slug, bound: Boolean(bound) });
 }

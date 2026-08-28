@@ -11,8 +11,9 @@ import {
 } from "@/lib/mken/tenant";
 import { readAdminSession, sha256Hex } from "@/lib/auth/session";
 import type { ClientRecord } from "@/types/database";
+import { resolveBoundTenant } from "@/lib/mken/bound-host";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await readAdminSession();
   if (!session) {
     return NextResponse.json(
@@ -26,8 +27,10 @@ export async function GET() {
     (seed) => !tenants.some((client) => client.slug === seed.slug)
   );
   const list = [...tenants, ...missingSeeds];
-  const scoped =
-    session.role === "super"
+  const bound = await resolveBoundTenant(request);
+  const scoped = bound
+    ? list.filter((client) => client.slug === bound)
+    : session.role === "super"
       ? list
       : list.filter((client) => client.slug === session.clientSlug);
 
@@ -41,6 +44,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await readAdminSession();
   if (session?.role !== "super") {
+    return NextResponse.json({ success: false, message: "غير مصرح" }, { status: 403 });
+  }
+  if (await resolveBoundTenant(request)) {
     return NextResponse.json({ success: false, message: "غير مصرح" }, { status: 403 });
   }
 

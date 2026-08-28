@@ -33,12 +33,21 @@ export async function loadStorefrontSeo(slug: string): Promise<StorefrontClient 
   return record ? storefrontClient(record) : null;
 }
 
+const PAGE_TITLES: Record<string, (name: string) => string> = {
+  storefront: (name) => name,
+  book: (name) => `حجز موعد — ${name}`,
+  about: (name) => `من نحن — ${name}`,
+  services: (name) => `خدماتنا — ${name}`,
+  work: (name) => `أعمالنا — ${name}`,
+  contact: (name) => `اتصل بنا — ${name}`,
+};
+
 export function tenantPageMetadata(
   client: StorefrontClient,
   path: string,
-  kind: "storefront" | "book" = "storefront"
+  kind: "storefront" | "book" | "about" | "services" | "work" | "contact" = "storefront"
 ): Metadata {
-  const title = kind === "book" ? `حجز موعد — ${client.name}` : client.name;
+  const title = (PAGE_TITLES[kind] || PAGE_TITLES.storefront)(client.name);
   const description =
     client.subtitle ||
     client.tagline ||

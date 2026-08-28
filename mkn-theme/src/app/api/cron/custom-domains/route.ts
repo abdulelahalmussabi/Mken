@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { suspendExpiredDomains } from "@/lib/mken/custom-domain";
+import { purgeExpiredUnclaimedPreviews } from "@/lib/mken/preview";
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -11,5 +12,6 @@ export async function GET(request: Request) {
   }
 
   const result = await suspendExpiredDomains();
-  return NextResponse.json({ success: true, ...result });
+  const previews = await purgeExpiredUnclaimedPreviews();
+  return NextResponse.json({ success: true, ...result, unclaimedPurged: previews.deleted, previewError: previews.error });
 }

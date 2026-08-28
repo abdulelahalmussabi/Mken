@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ServiceDetailModal from "@/components/ServiceDetailModal";
+import MagicPreviewForm from "@/components/MagicPreviewForm";
 import { ServiceItem } from "@/types/database";
 import { useApp } from "@/context/AppContext";
 import { useOccasion } from "@/context/OccasionContext";
@@ -227,11 +229,11 @@ export default function HomePage() {
               {/* CTAs */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link
-                  href="/register"
+                  href={"/preview" as Route}
                   className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-slate-950 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 text-center"
                   style={{ backgroundColor: occasionDetails.accentColor }}
                 >
-                  <span>قدم طلب تحسين محلك الآن</span>
+                  <span>جهّز معاينة موقعك الآن</span>
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
 
@@ -263,58 +265,22 @@ export default function HomePage() {
 
             {/* Left Hero Interactive Card */}
             <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-6">
-                {/* Mock Google Maps Card Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="relative mx-auto max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                       <MapPin className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-white">معاينة الظهور في الخريطة</h3>
-                      <p className="text-xs text-slate-400">تحسين النتائج الجغرافية</p>
+                      <h3 className="font-bold text-sm text-white">صانع المعاينة الفورية</h3>
+                      <p className="text-xs text-slate-400">بموافقة المالك — بدون كشط واتساب</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-extrabold">
-                    تحسين الظهور
+                    PDPL
                   </span>
                 </div>
-
-                {/* Mock Search Result Item */}
-                <div className="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-extrabold text-base text-slate-100">نموذج نشاط تجاري 🥐</h4>
-                      <p className="text-xs text-slate-400">المملكة العربية السعودية • مفتوح الآن</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-400 font-bold text-xs bg-amber-400/10 px-2 py-1 rounded-lg">
-                      <Star className="w-3.5 h-3.5 fill-amber-400" />
-                      4.9
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-slate-300 bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span>استهداف الكلمات المفتاحية المحلية</span>
-                    <span className="text-emerald-400 font-bold">نمو وتفاعل إيجابي</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1 text-center text-xs font-semibold">
-                    <div className="p-2 bg-slate-900 rounded-xl text-slate-300 border border-slate-800">
-                      <PhoneCall className="w-3.5 h-3.5 text-amber-400 mx-auto mb-1" />
-                      اتصال مباشر
-                    </div>
-                    <div className="p-2 bg-slate-900 rounded-xl text-slate-300 border border-slate-800">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
-                      الاتجاهات للفرع
-                    </div>
-                  </div>
-                </div>
-
-                {/* Occasion Interactive Slogan Footer */}
-                <div className="pt-2 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>ثيم المناسبة النشط: <strong className="text-white">{occasionDetails.name}</strong></span>
-                </div>
+                <MagicPreviewForm compact />
               </div>
             </div>
           </div>

@@ -1,7 +1,8 @@
 'use strict';
 
-/** إعدادات التجربة المجانية — 14 يوم، باقة نمو */
+/** إعدادات التجربة المجانية — 14 يوم بعد المطالبة؛ المعاينة غير المُطالب بها 7 أيام */
 const TRIAL_DAYS = 14;
+const PREVIEW_TTL_DAYS = 7;
 
 const ACTIVITY_PRESETS = {
   'barber-salon': {
@@ -42,6 +43,53 @@ function trialEndDate(from) {
   const d = from ? new Date(from) : new Date();
   d.setDate(d.getDate() + TRIAL_DAYS);
   return d;
+}
+
+function previewExpiryDate(from) {
+  const d = from ? new Date(from) : new Date();
+  d.setDate(d.getDate() + PREVIEW_TTL_DAYS);
+  return d;
+}
+
+function isUnclaimedPreviewConfig(config) {
+  return config && config.preview && config.preview.claimStatus === 'unclaimed';
+}
+
+/**
+ * يحذف معاينات Magic Preview غير المُطالب بها بعد 7 أيام.
+ * لا يحذف تجارب المطالبة (trial) ولا المستأجرين المدفوعين.
+ */
+async function purgeExpiredUnclaimedPreviews(supabase) {
+  if (!supabase) return { deleted: 0 };
+  const now = new Date().toISOString();
+  const indexed = await supabase
+    .from('mken_saas_clients')
+    .select('tenant_slug')
+    .eq('claim_status', 'unclaimed')
+    .lt('preview_expires_at', now);
+  if (!indexed.error) {
+    const rows = indexed.data || [];
+    let deleted = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const del = await supabase.from('mken_saas_clients').delete().eq('tenant_slug', rows[i].tenant_slug);
+      if (!del.error) deleted += 1;
+    }
+    return { deleted };
+  }
+  const { data, error } = await supabase
+    .from('mken_saas_clients')
+    .select('tenant_slug, config_data');
+  if (error || !data) return { deleted: 0, error: error && error.message };
+  let deleted = 0;
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    if (!isUnclaimedPreviewConfig(row.config_data)) continue;
+    const expires = row.config_data && row.config_data.preview && row.config_data.preview.expiresAt;
+    if (!expires || expires >= now) continue;
+    const del = await supabase.from('mken_saas_clients').delete().eq('tenant_slug', row.tenant_slug);
+    if (!del.error) deleted += 1;
+  }
+  return { deleted };
 }
 
 function getActivityPreset(activityId) {
@@ -99,8 +147,12 @@ function buildTrialTenantConfig(opts) {
 
 module.exports = {
   TRIAL_DAYS,
+  PREVIEW_TTL_DAYS,
   ACTIVITY_PRESETS,
   trialEndDate,
+  previewExpiryDate,
   getActivityPreset,
   buildTrialTenantConfig,
+  isUnclaimedPreviewConfig,
+  purgeExpiredUnclaimedPreviews,
 };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminClientView } from "@/data/default-clients";
 import { canEditClient, readAdminSession, sha256Hex } from "@/lib/auth/session";
 import { loadPublicStorefront } from "@/lib/mken/catalog";
+import { resolveBoundTenant } from "@/lib/mken/bound-host";
 import {
   TENANT_TABLE,
   fetchTenantRow,
@@ -38,6 +39,11 @@ export async function GET(
     return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
   }
 
+  const bound = await resolveBoundTenant(request);
+  if (bound && bound !== slug) {
+    return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
+  }
+
   const payload = await loadPublicStorefront(slug);
   if (!payload) {
     return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
@@ -48,6 +54,8 @@ export async function GET(
     client: payload.client,
     catalog: payload.catalog,
     appearance: payload.appearance,
+    pages: payload.pages,
+    contactExtras: payload.contactExtras,
     source: payload.source,
   });
 }
@@ -64,6 +72,11 @@ export async function PUT(
 
   const session = await readAdminSession();
   if (!canEditClient(session, slug)) {
+    return NextResponse.json({ success: false, message: "غير مصرح" }, { status: 403 });
+  }
+
+  const bound = await resolveBoundTenant(request);
+  if (bound && bound !== slug) {
     return NextResponse.json({ success: false, message: "غير مصرح" }, { status: 403 });
   }
 

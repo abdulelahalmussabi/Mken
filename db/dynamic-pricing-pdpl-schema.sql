@@ -4,10 +4,12 @@
 -- ==============================================================================
 
 -- 1. جدول سجلات موافقات نظام حماية البيانات الشخصية (pdpl_consent_logs)
+-- مرتبط بـ mken_saas_clients (جدول المستأجرين الفعلي) عبر tenant_slug.
 CREATE TABLE IF NOT EXISTS public.pdpl_consent_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES public.profiles(id),
+    tenant_id UUID,
+    tenant_slug TEXT REFERENCES public.mken_saas_clients(tenant_slug) ON DELETE CASCADE,
+    user_id UUID,
     user_phone VARCHAR(20) NOT NULL,
     consent_type VARCHAR(50) NOT NULL, -- MARKETING, LOGISTICS_TRACKING, DATA_PROCESSING
     consent_status VARCHAR(20) NOT NULL DEFAULT 'GRANTED', -- GRANTED, REVOKED
@@ -16,9 +18,47 @@ CREATE TABLE IF NOT EXISTS public.pdpl_consent_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.pdpl_consent_logs ADD COLUMN IF NOT EXISTS tenant_slug TEXT;
+ALTER TABLE public.pdpl_consent_logs ALTER COLUMN tenant_id DROP NOT NULL;
+
+DO $$ BEGIN
+  IF to_regclass('public.mken_saas_clients') IS NOT NULL THEN
+    ALTER TABLE public.pdpl_consent_logs
+      DROP CONSTRAINT IF EXISTS pdpl_consent_logs_tenant_slug_fkey;
+    ALTER TABLE public.pdpl_consent_logs
+      ADD CONSTRAINT pdpl_consent_logs_tenant_slug_fkey
+      FOREIGN KEY (tenant_slug) REFERENCES public.mken_saas_clients(tenant_slug) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_pdpl_consent_slug_type
+  ON public.pdpl_consent_logs (tenant_slug, consent_type, created_at DESC);
+
 ALTER TABLE public.pdpl_consent_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pdpl_consent_isolation ON public.pdpl_consent_logs;
 CREATE POLICY pdpl_consent_isolation ON public.pdpl_consent_logs
-    FOR ALL USING (tenant_id = (SELECT auth.jwt() ->> 'tenant_id')::UUID);
+    FOR ALL USING (
+      tenant_slug IS NOT NULL
+      AND tenant_slug = (SELECT tenant_slug FROM public.mken_saas_clients
+                         WHERE owner_id = auth.uid() LIMIT 1)
+    );
+
+-- معاينة Magic Preview على mken_saas_clients (ليس جدول tenants).
+-- DEFAULT claimed حتى لا تُعامل المنشآت الحالية كمعاينات غير مفهرسة.
+-- يُحفظ place_id فقط — ممنوع تخزين صور/مراجعات/عناوين Google في Postgres.
+DO $$ BEGIN
+  IF to_regclass('public.mken_saas_clients') IS NOT NULL THEN
+    ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS google_place_id TEXT;
+    ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS claim_status TEXT DEFAULT 'claimed';
+    ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS preview_expires_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_clients_unclaimed_ttl
+      ON public.mken_saas_clients (claim_status, preview_expires_at)
+      WHERE claim_status = 'unclaimed';
+    CREATE INDEX IF NOT EXISTS idx_clients_pending_preview
+      ON public.mken_saas_clients (claim_status)
+      WHERE claim_status = 'pending';
+  END IF;
+END $$;
 
 -- 2. دالة التسعير الديناميكي المرن مع ضوابط وزارة التجارة (calculate_dynamic_pricing)
 CREATE OR REPLACE FUNCTION public.calculate_dynamic_pricing(

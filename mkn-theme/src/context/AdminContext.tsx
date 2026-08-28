@@ -8,6 +8,7 @@ import {
   SAAS_FEATURES_UNLIMITED,
   type SaasFeatures,
 } from "@/lib/mken/saas";
+import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type AdminRole = "super" | "client" | null;
@@ -321,14 +322,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [session]
   );
 
-  const isAdmin = !!session;
-  const isSuperAdmin = session?.role === "super";
+  const hostBound =
+    typeof window !== "undefined" ? boundTenantFromHostname(window.location.hostname) : null;
+  const scopedSession = React.useMemo<AdminSession | null>(() => {
+    if (!session) return null;
+    if (!hostBound) return session;
+    if (session.role === "client" && session.clientSlug && session.clientSlug !== hostBound) {
+      return null;
+    }
+    return { ...session, role: "client", clientSlug: hostBound };
+  }, [session, hostBound]);
+
+  const isAdmin = !!scopedSession;
+  const isSuperAdmin = scopedSession?.role === "super";
   const saasFeatures = saas ?? (isSuperAdmin ? SAAS_FEATURES_UNLIMITED : SAAS_FEATURES_LOCKED);
 
   return (
     <AdminContext.Provider
       value={{
-        session,
+        session: scopedSession,
         authLoading,
         isAdmin,
         isSuperAdmin,

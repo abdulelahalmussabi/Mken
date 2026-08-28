@@ -6,6 +6,7 @@ import type { Route } from "next";
 
 const TABS = [
   { href: "/admin/interface" as Route, label: "العناوين" },
+  { href: "/admin/interface/pages" as Route, label: "صفحات الموقع" },
   { href: "/admin/interface/services" as Route, label: "الخدمات" },
   { href: "/admin/interface/phrases" as Route, label: "العبارات أسفل الخدمات" },
 ];
