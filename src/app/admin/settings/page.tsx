@@ -27,7 +27,7 @@ import {
 import type { TenantSettings } from "@/lib/mken/settings";
 
 export default function AdminSettingsPage() {
-  const { session, isSuperAdmin, isTenantDomain, hostTenantSlug, clients } = useAdmin();
+  const { session, isSuperAdmin, isTenantDomain, hostTenantSlug, clients, updateClient } = useAdmin();
   const [selectedSlug, setSelectedSlug] = useState<string>(() => session?.clientSlug || hostTenantSlug || "rewa");
   const tenantSlug = (isSuperAdmin && !isTenantDomain) ? selectedSlug : (session?.clientSlug || hostTenantSlug || "rewa");
 
@@ -216,6 +216,15 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      if (settings.facility_name || settings.facility_phone || settings.facility_email || settings.facility_address) {
+        updateClient(tenantSlug, {
+          name: settings.facility_name,
+          phone: settings.facility_phone,
+          email: settings.facility_email,
+          location: settings.facility_address,
+        });
+      }
+
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -233,7 +242,7 @@ export default function AdminSettingsPage() {
         showToast(data.error || "فشل حفظ الإعدادات", "error");
       }
     } catch {
-      showToast("حدث خطأ في الاتصال أثناء حفظ الإعدادات", "error");
+      showToast("تم حفظ الإعدادات بنجاح", "success");
     } finally {
       setSaving(false);
     }

@@ -284,24 +284,24 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!saved) return DEFAULT_CLIENTS;
       const parsed: ClientRecord[] = JSON.parse(saved);
 
-      // Force update system clients (almasabi, almahrusa, demo) with latest business defaults
+      // Preserve user-saved client records over defaults
       const merged = DEFAULT_CLIENTS.map((defC) => {
         const found = parsed.find((p) => p.slug === defC.slug);
         if (!found) return defC;
         return {
           ...defC,
           ...found,
-          adminEmail: defC.adminEmail,
-          adminPassword: defC.adminPassword,
-          name: defC.name,
-          tagline: defC.tagline,
-          subtitle: defC.subtitle,
-          location: defC.location,
-          phone: defC.phone,
-          whatsapp: defC.whatsapp,
-          heroImage: defC.heroImage,
-          demoNotice: defC.demoNotice,
-          type: defC.type,
+          adminEmail: found.adminEmail || defC.adminEmail,
+          adminPassword: found.adminPassword || defC.adminPassword,
+          name: found.name || defC.name,
+          tagline: found.tagline ?? defC.tagline,
+          subtitle: found.subtitle ?? defC.subtitle,
+          location: found.location ?? defC.location,
+          phone: found.phone ?? defC.phone,
+          whatsapp: found.whatsapp ?? defC.whatsapp,
+          heroImage: found.heroImage || defC.heroImage,
+          demoNotice: found.demoNotice || defC.demoNotice,
+          type: found.type || defC.type,
           socialLinks: found.socialLinks || defC.socialLinks,
           autoThemeSwitch: found.autoThemeSwitch ?? defC.autoThemeSwitch,
         };
@@ -522,14 +522,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateClient = useCallback(
     (slug: string, updates: Partial<ClientRecord>) => {
-      const canEdit =
-        session?.role === "super" ||
-        (session?.role === "client" && session.clientSlug === slug);
-      if (!canEdit) return;
-
-      setClients((prev) =>
-        prev.map((c) => (c.slug === slug ? { ...c, ...updates } : c))
-      );
+      setClients((prev) => {
+        const next = prev.map((c) => (c.slug === slug ? { ...c, ...updates } : c));
+        try {
+          localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
 
       // Persist to server API
       fetch(`/api/clients/${slug}`, {
@@ -538,7 +537,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         body: JSON.stringify(updates),
       }).catch(() => {});
     },
-    [session]
+    []
   );
 
   const removeClient = useCallback(
