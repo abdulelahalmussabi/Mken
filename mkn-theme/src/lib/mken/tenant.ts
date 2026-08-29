@@ -151,12 +151,15 @@ export interface TenantRow {
   created_at?: string | null;
 }
 
-function env(...names: string[]): string {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value && value.trim() && value !== "undefined") {
-      return value.trim().replace(/^['"]|['"]$/g, "");
-    }
+function cleanEnv(value: string | undefined): string {
+  if (!value || value === "undefined") return "";
+  return value.trim().replace(/^['"]|['"]$/g, "");
+}
+
+function firstEnv(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    const cleaned = cleanEnv(value);
+    if (cleaned) return cleaned;
   }
   return "";
 }
@@ -164,15 +167,18 @@ function env(...names: string[]): string {
 /**
  * Service-role client for tenant reads/writes. Access is already gated by the
  * admin session, and RLS on `mken_saas_clients` blocks anon writes.
+ *
+ * Next inlines `process.env.NAME` only when the name is a string literal.
+ * Dynamic `process.env[name]` is empty on Vercel even if the var is set.
  */
 export function getTenantDb(): SupabaseClient | null {
-  const url = env("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL");
-  const key = env(
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "SUPABASE_SERVICE_KEY",
-    "SUPABASE_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "SUPABASE_ANON_KEY"
+  const url = firstEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = firstEnv(
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.SUPABASE_SERVICE_KEY,
+    process.env.SUPABASE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_ANON_KEY
   );
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
