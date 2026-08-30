@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import type { ClientRecord, ClientType } from "@/types/database";
-import { logoValidationError, publicBrandSrc } from "@/lib/mken/logo-crop";
+import { isStaleSeedLogo, logoValidationError, publicBrandSrc } from "@/lib/mken/logo-crop";
 
 /**
  * Bridge to the existing مكّن tenant model: one row per tenant in
@@ -546,7 +546,7 @@ export async function fetchPlatformBrand(): Promise<{ theme: string; logo: strin
   const logo = typeof row?.config_data?.brand?.logo === "string" ? row.config_data.brand.logo : "";
   return {
     theme: isOccasionTheme(theme) ? theme : "none",
-    logo: logo.trim() || publicBrandSrc("mken.png"),
+    logo: !logo.trim() || isStaleSeedLogo(logo) ? publicBrandSrc("mken.png") : logo.trim(),
   };
 }
 

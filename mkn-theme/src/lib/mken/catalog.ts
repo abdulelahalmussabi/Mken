@@ -8,7 +8,7 @@ import {
   type StorefrontContactPublic,
   type StorefrontPagesPublic,
 } from "@/lib/mken/pages";
-import { publicBrandSrc } from "@/lib/mken/logo-crop";
+import { isStaleSeedLogo, publicBrandSrc } from "@/lib/mken/logo-crop";
 import {
   ensureTenantRow,
   fetchTenantRow,
@@ -548,9 +548,9 @@ function mergeSeedConfig(slug: string, config: MkenConfig): MkenConfig {
           };
   }
   const seedLogo =
-    slug === "rewa" ? publicBrandSrc("rewa.png") : slug === "almahrusa" ? publicBrandSrc("almahrusa.jpg") : "";
+    slug === "rewa" ? publicBrandSrc("rewa.png") : slug === "almahrusa" ? publicBrandSrc("almahrusa.png") : "";
   const currentLogo = (merged.brand?.logo || "").trim();
-  if (seedLogo && !currentLogo) {
+  if (seedLogo && (!currentLogo || isStaleSeedLogo(currentLogo))) {
     merged = { ...merged, brand: { ...(merged.brand || {}), logo: seedLogo } };
   }
   return slug === "rewa" ? stripRewaSpa(merged) : merged;

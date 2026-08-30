@@ -24,6 +24,7 @@ import type {
   StorefrontKind,
 } from "@/types/database";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
+import { BrandCutout } from "@/components/PlatformMark";
 import { useColorScheme } from "@/context/ColorSchemeContext";
 import { isUsableLogoSrc } from "@/lib/mken/logo-crop";
 import {
@@ -363,11 +364,7 @@ export function StorefrontFrame({
             <div className="flex items-center gap-2 min-w-0">
               <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
                 {isUsableLogoSrc(storeInfo.logo) ? (
-                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0 shadow-lg">
-                    {/* data URLs and tenant CDNs are not in next/image remotePatterns */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={storeInfo.logo} alt={storeInfo.name} className="w-full h-full object-contain p-0.5" />
-                  </span>
+                  <BrandCutout src={storeInfo.logo} alt={storeInfo.name} className="h-11 sm:h-12 max-w-[4.75rem]" />
                 ) : (
                   <div
                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-slate-950 shadow-lg shrink-0"
@@ -494,10 +491,7 @@ export function StorefrontFrame({
               <div className="space-y-3">
                 <div className="flex items-center gap-2.5">
                   {isUsableLogoSrc(storeInfo.logo) ? (
-                    <span className="w-9 h-9 rounded-xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={storeInfo.logo} alt="" className="w-full h-full object-contain p-0.5" />
-                    </span>
+                    <BrandCutout src={storeInfo.logo} alt="" className="h-9 max-w-[3.5rem]" />
                   ) : null}
                   <h3 className="font-extrabold text-lg text-foreground">{storeInfo.name}</h3>
                 </div>

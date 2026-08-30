@@ -6,6 +6,7 @@ import {
   cropWorthApplying,
   findContentBounds,
   isUsableLogoSrc,
+  knockoutBackground,
   MAX_LOGO_EDGE,
   MAX_SOURCE_BYTES,
   padCropRect,
@@ -34,6 +35,8 @@ export async function processLogoFile(file: File): Promise<{ dataUrl: string; tr
   bitmap.close();
 
   const pixels = sourceCtx.getImageData(0, 0, source.width, source.height);
+  knockoutBackground(pixels);
+  sourceCtx.putImageData(pixels, 0, 0);
   const bounds = findContentBounds(pixels);
   let sx = 0;
   let sy = 0;
@@ -174,7 +177,7 @@ export function BrandLogoUploader({
             ) : null}
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            PNG شفاف أفضل. نقص الهوامش الفارغة تلقائياً ونحفظ الشعار مباشرة في رأس صفحة الزائر.
+            PNG مفرّغ (خلفية شفافة) أفضل. نفرّغ اللوح الأبيض أو الأسود تلقائياً حتى يتكيّف الشعار مع أي ثيم.
           </p>
           {hint ? <p className="text-[11px] font-bold text-amber-300">{hint}</p> : null}
         </div>

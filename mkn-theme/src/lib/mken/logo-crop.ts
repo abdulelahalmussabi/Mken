@@ -1,5 +1,6 @@
 /**
- * Crop empty padding around a logo (transparent Gemini PNGs, white JPEG boards).
+ * Crop empty padding and knock out flat boards around a logo
+ * (transparent PNGs, Gemini cutouts, black/white JPEG boards).
  * Pure pixel math — no DOM. The client uploader draws to a canvas then calls this.
  */
 
@@ -66,10 +67,64 @@ function cornerSample(image: PixelBuffer): Rgba {
   };
 }
 
+const HARD_KEY_DISTANCE = 36;
+const SOFT_KEY_DISTANCE = 72;
+
 function isBackgroundPixel(pixel: Rgba, background: Rgba, alphaThreshold: number): boolean {
   if (pixel.a < alphaThreshold) return true;
   if (background.a < alphaThreshold) return false;
-  return colorDistance(pixel, background) < 36 && pixel.a > 200;
+  return colorDistance(pixel, background) < HARD_KEY_DISTANCE && pixel.a > 200;
+}
+
+/** Black / white / gray studio boards — not a saturated brand-color fill. */
+function isKnockoutBoard(background: Rgba): boolean {
+  if (background.a < 16) return false;
+  const lum = (background.r + background.g + background.b) / 3;
+  const sat =
+    Math.max(background.r, background.g, background.b) -
+    Math.min(background.r, background.g, background.b);
+  return lum <= 28 || lum >= 227 || sat <= 18;
+}
+
+/**
+ * Punch a flat corner-sampled board to true alpha so the cutout sits on any theme.
+ * Returns true when pixels were changed. Skips saturated fills and empty frames.
+ */
+export function knockoutBackground(image: PixelBuffer, alphaThreshold = 16): boolean {
+  const background = cornerSample(image);
+  if (!isKnockoutBoard(background)) return false;
+
+  const data = image.data;
+  const backup = new Uint8ClampedArray(data);
+  let changed = false;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const pixel = {
+      r: data[i],
+      g: data[i + 1],
+      b: data[i + 2],
+      a: data[i + 3],
+    };
+    if (pixel.a < alphaThreshold) continue;
+    const distance = colorDistance(pixel, background);
+    if (distance < HARD_KEY_DISTANCE) {
+      data[i] = 0;
+      data[i + 1] = 0;
+      data[i + 2] = 0;
+      data[i + 3] = 0;
+      changed = true;
+    } else if (distance < SOFT_KEY_DISTANCE) {
+      const t = (distance - HARD_KEY_DISTANCE) / (SOFT_KEY_DISTANCE - HARD_KEY_DISTANCE);
+      data[i + 3] = Math.round(pixel.a * t);
+      changed = true;
+    }
+  }
+
+  if (!changed || !findContentBounds(image, alphaThreshold)) {
+    data.set(backup);
+    return false;
+  }
+  return true;
 }
 
 /** Tight bounding box of non-padding pixels, or null if the canvas is empty. */
@@ -127,10 +182,22 @@ export function isUsableLogoSrc(value: string | undefined | null): boolean {
   return /^https?:\/\//i.test(trimmed);
 }
 
-/** Always served from the apex so tenant hosts do not 404 cached static paths. */
+/** Bump when seed PNGs change so CDN/browser caches drop old opaque boards. */
+export const BRAND_CUTOUT_VERSION = "2";
+
+/** Same-origin in dev; apex in production so tenant hosts do not 404 static brand files. */
 export function publicBrandSrc(filename: string): string {
   const file = filename.replace(/^\/+/, "").replace(/^brand\//, "");
-  return `https://www.mken.live/brand/${file}`;
+  const path =
+    process.env.NODE_ENV === "development" ? `/brand/${file}` : `https://www.mken.live/brand/${file}`;
+  return `${path}?v=${BRAND_CUTOUT_VERSION}`;
+}
+
+/** JPEG boards or unversioned seed PNGs that still show a black/white plate. */
+export function isStaleSeedLogo(value: string): boolean {
+  if (!/\/brand\/(rewa|almahrusa|mken)\.(png|jpe?g)(\?|$)/i.test(value)) return false;
+  if (/\.jpe?g(\?|$)/i.test(value)) return true;
+  return !value.includes(`v=${BRAND_CUTOUT_VERSION}`);
 }
 
 export function logoValidationError(value: string | undefined): string | null {

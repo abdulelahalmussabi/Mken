@@ -1,4 +1,5 @@
 import type { ClientRecord, StorefrontClient } from "@/types/database";
+import { publicBrandSrc } from "@/lib/mken/logo-crop";
 
 /**
  * Seed records used until a client row exists in Supabase.
@@ -23,7 +24,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "✨ صفحة مجموعة المحروسة للشقق المخدومة — المدينة المنورة",
     adminEmail: "almahrusa@mken.live",
-    logo: "https://www.mken.live/brand/almahrusa.jpg",
+    logo: publicBrandSrc("almahrusa.png"),
     theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
@@ -89,7 +90,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
     adminEmail: "rewa@mken.live",
-    logo: "https://www.mken.live/brand/rewa.png",
+    logo: publicBrandSrc("rewa.png"),
     theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),

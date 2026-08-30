@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center mx-auto">
             <PlatformMark
-              className="w-16 h-16 rounded-3xl shadow-2xl shadow-amber-500/30"
+              className="w-16 h-16"
               fallback={
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/30">
                   <Shield className="w-8 h-8 text-slate-950" />
