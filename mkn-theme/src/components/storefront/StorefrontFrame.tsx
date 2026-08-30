@@ -25,6 +25,7 @@ import type {
 } from "@/types/database";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { useColorScheme } from "@/context/ColorSchemeContext";
+import { isUsableLogoSrc } from "@/lib/mken/logo-crop";
 import {
   CalendarCheck,
   Download,
