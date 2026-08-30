@@ -96,7 +96,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6">

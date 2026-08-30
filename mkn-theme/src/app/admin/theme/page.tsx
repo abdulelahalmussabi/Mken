@@ -16,7 +16,7 @@ export default function ThemeLibraryPage() {
         <Palette className="w-5 h-5 text-amber-400" />
         <div>
           <h1 className="text-lg font-extrabold text-white">مكتبة الثيمات</h1>
-          <p className="text-xs text-slate-400 mt-0.5">تفعيل يدوي فوري لمناسبة جاهزة. الوضع الموسمي يُدار من تبويب التخصيص.</p>
+          <p className="text-xs text-slate-400 mt-0.5">تفعيل يدوي فوري لمناسبة جاهزة، أو العودة للمظهر القياسي (أبيض مطفي). الوضع الموسمي والثيم الداكن من تبويب التخصيص.</p>
         </div>
       </div>
 
@@ -41,7 +41,31 @@ export default function ThemeLibraryPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {occasionsList.map((occ) => {
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => save({ mode: "manual", forceId: "none" }, "تم تفعيل المظهر القياسي")}
+            className={`p-5 rounded-3xl border text-right transition-all relative disabled:opacity-60 ${
+              activeId === "none"
+                ? "bg-slate-900 border-amber-500 shadow-xl ring-2 ring-amber-500/30"
+                : "bg-slate-900/60 border-slate-800 hover:border-slate-600"
+            }`}
+          >
+            {activeId === "none" && (
+              <div className="absolute top-3 left-3 bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                مُفعَّل
+              </div>
+            )}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0 bg-[#f2f0eb]" />
+              <span className="font-extrabold text-sm text-white">المظهر القياسي</span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2 mb-3">
+              أبيض مطفي دافئ مع تراكوتا. الثيم الداكن اختياري من تبويب التخصيص.
+            </p>
+          </button>
+          {occasionsList.filter((occ) => occ.id !== "none").map((occ) => {
             const isActive = activeId === occ.id;
             return (
               <button

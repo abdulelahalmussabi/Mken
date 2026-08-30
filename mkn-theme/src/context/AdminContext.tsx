@@ -9,6 +9,7 @@ import {
   type SaasFeatures,
 } from "@/lib/mken/saas";
 import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
+import { publicBrandSrc } from "@/lib/mken/logo-crop";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type AdminRole = "super" | "client" | null;
@@ -34,7 +35,9 @@ interface AdminContextType {
 
   // Global Platform Theme (Super Admin only)
   globalTheme: OccasionId;
+  platformLogo: string;
   setGlobalTheme: (id: OccasionId) => Promise<SaveResult>;
+  setPlatformLogo: (logo: string) => Promise<SaveResult>;
 
   // Per-Client Themes
   getClientTheme: (slug: string) => OccasionId | null;
@@ -65,6 +68,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [saas, setSaas] = useState<SaasFeatures | null>(null);
 
   const [globalTheme, setGlobalThemeState] = useState<OccasionId>(PLATFORM_DEFAULT);
+  const [platformLogo, setPlatformLogoState] = useState(publicBrandSrc("mken.png"));
 
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -139,6 +143,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .then((data) => {
         if (cancelled || !data?.success) return;
         if (typeof data.theme === "string") setGlobalThemeState(data.theme as OccasionId);
+        if (typeof data.logo === "string" && data.logo.trim()) setPlatformLogoState(data.logo);
       })
       .catch(() => {});
     return () => {
@@ -241,6 +246,32 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     },
     [session, globalTheme]
+  );
+
+  const setPlatformLogo = useCallback(
+    async (logo: string): Promise<SaveResult> => {
+      if (session?.role !== "super") return { success: false, message: "غير مصرح" };
+      const previous = platformLogo;
+      setPlatformLogoState(logo);
+      try {
+        const res = await fetch("/api/platform/theme", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ logo }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setPlatformLogoState(previous);
+          return { success: false, message: data.message || "تعذّر حفظ شعار المنصة" };
+        }
+        if (typeof data.logo === "string") setPlatformLogoState(data.logo);
+        return { success: true };
+      } catch {
+        setPlatformLogoState(previous);
+        return { success: false, message: "تعذّر الاتصال بالخادم" };
+      }
+    },
+    [session, platformLogo]
   );
 
   // ── Client Themes ─────────────────────────────────────────────────────────
@@ -348,7 +379,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logoutAdmin,
         saas: saasFeatures,
         globalTheme,
+        platformLogo,
         setGlobalTheme,
+        setPlatformLogo,
         getClientTheme,
         setClientTheme,
         clients,

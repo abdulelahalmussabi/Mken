@@ -4,12 +4,13 @@ import Link from "next/link";
 import { MapPin, Phone, Mail, Sparkles, Heart } from "lucide-react";
 import { useOccasion } from "@/context/OccasionContext";
 import NeonSocialRow from "@/components/social/NeonSocialRow";
+import { PlatformMark } from "@/components/PlatformMark";
 
 export default function Footer() {
   const { activeOccasion, occasionDetails, openModal } = useOccasion();
 
   return (
-    <footer className="bg-[#060911] border-t border-slate-800/80 pt-16 pb-12 text-slate-400 text-sm relative overflow-hidden">
+    <footer className="bg-background border-t border-line pt-16 pb-12 text-muted text-sm relative overflow-hidden">
       {/* Decorative Top Occasion Accent Bar */}
       <div
         className="absolute top-0 inset-x-0 h-1 transition-colors duration-500"
@@ -21,15 +22,20 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-lg text-white shadow-md transition-colors"
-                style={{ backgroundColor: occasionDetails.accentColor }}
-              >
-                م
-              </div>
-              <span className="font-extrabold text-2xl text-slate-100">مكّن</span>
+              <PlatformMark
+                className="w-9 h-9"
+                fallback={
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-lg text-slate-950 shadow-md transition-colors"
+                    style={{ backgroundColor: occasionDetails.accentColor }}
+                  >
+                    م
+                  </div>
+                }
+              />
+              <span className="font-extrabold text-2xl text-foreground">مكّن</span>
             </Link>
-            <p className="text-slate-400 text-sm leading-relaxed">
+            <p className="text-muted text-sm leading-relaxed">
               المنصة السعودية الأولى والمتخصصة في تمكين المحلات والمتاجر المحلية من التصدر في نتائج البحث الموقعي وخرائط Google.
             </p>
             <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full w-fit border ${occasionDetails.badgeBg}`}>
@@ -40,7 +46,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h4 className="text-slate-100 font-bold text-base">روابط سريعة</h4>
+            <h4 className="text-foreground font-bold text-base">روابط سريعة</h4>
             <ul className="space-y-2.5">
               <li>
                 <Link href="/" className="hover:text-amber-400 transition-colors">
@@ -76,8 +82,8 @@ export default function Footer() {
 
           {/* Services Scope */}
           <div className="space-y-4">
-            <h4 className="text-slate-100 font-bold text-base">خدماتنا في المناسبات</h4>
-            <ul className="space-y-2.5 text-xs leading-relaxed text-slate-400">
+            <h4 className="text-foreground font-bold text-base">خدماتنا في المناسبات</h4>
+            <ul className="space-y-2.5 text-xs leading-relaxed text-muted">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
                 تحسين وتأكيد نشاطك على خرائط Google
@@ -92,14 +98,14 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                خصومات خاصة بكود الخصم: <code className="font-mono text-amber-300 font-bold ml-1">{occasionDetails.couponCode}</code>
+                خصومات خاصة بكود الخصم: <code className="font-mono text-amber-700 font-bold ml-1">{occasionDetails.couponCode}</code>
               </li>
             </ul>
           </div>
 
           {/* Contact Details */}
           <div className="space-y-4">
-            <h4 className="text-slate-100 font-bold text-base">تواصل معنا</h4>
+            <h4 className="text-foreground font-bold text-base">تواصل معنا</h4>
             <div className="space-y-3 text-xs">
               <div className="flex items-center gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
@@ -118,8 +124,8 @@ export default function Footer() {
         </div>
 
         {/* Neon Social Media Strip */}
-        <div className="py-6 border-t border-slate-800/60 flex flex-col items-center justify-center gap-3">
-          <p className="text-xs font-bold text-slate-400">تابع منصة مكّن عبر قنوات التواصل الرسمية</p>
+        <div className="py-6 border-t border-line flex flex-col items-center justify-center gap-3">
+          <p className="text-xs font-bold text-muted">تابع منصة مكّن عبر قنوات التواصل الرسمية</p>
           <NeonSocialRow
             socialLinks={{
               x: "https://x.com/mkenalkhayal",
@@ -134,13 +140,13 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="pt-6 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
           <p className="flex items-center gap-1">
             <span>© {new Date().getFullYear()} منصة مكّن. صُمم بحب للمملكة العربية السعودية</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
           <div className="flex items-center gap-4">
-            <span>ثيم المناسبة النشط: <strong className="text-amber-300">{occasionDetails.shortName}</strong></span>
+            <span>ثيم المناسبة النشط: <strong className="text-amber-700">{occasionDetails.shortName}</strong></span>
             <span>•</span>
             <span>السعودية 🇸🇦</span>
           </div>

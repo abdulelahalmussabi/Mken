@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarRange, Palette, Plus, Save, Trash2 } from "lucide-react";
+import { CalendarRange, Moon, Palette, Plus, Save, Sun, Trash2 } from "lucide-react";
 import { SAUDI_OCCASIONS } from "@/context/OccasionContext";
 import { ADMIN_INPUT, useAppearanceEditor } from "@/components/AdminPageTabs";
 import type { CustomTheme, ThemeScheduleItem } from "@/lib/mken/appearance";
@@ -113,6 +113,46 @@ export default function ThemeCustomPage() {
               الثيم الحالي: <strong className="text-slate-200">{appearance?.resolvedTheme}</strong>
               {appearance?.mode === "seasonal" ? " (من الجدول)" : " (يدوي)"}
             </p>
+          </section>
+
+          <section className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              {appearance?.darkModeEnabled !== false ? (
+                <Moon className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-400" />
+              )}
+              <h2 className="text-sm font-bold text-white">الثيم الداكن للزوار</h2>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              الثيم العادي أبيض مطفي. إن فعّلت الداكن يظهر زر قمر/شمس في رأس الموقع ليتبدّل الزائر بينهما. إلغاؤه يُبقي الواجهة فاتحة فقط.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => save({ darkModeEnabled: true }, "تم تفعيل الثيم الداكن للزوار")}
+                className={`p-4 rounded-2xl border text-right text-xs font-bold transition ${
+                  appearance?.darkModeEnabled !== false
+                    ? "border-amber-500 bg-amber-500/10 text-amber-200"
+                    : "border-slate-800 text-slate-400 hover:border-slate-600"
+                }`}
+              >
+                مفعّل — الزائر يختار الفاتح أو الداكن
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => save({ darkModeEnabled: false }, "تم إلغاء الثيم الداكن")}
+                className={`p-4 rounded-2xl border text-right text-xs font-bold transition ${
+                  appearance?.darkModeEnabled === false
+                    ? "border-amber-500 bg-amber-500/10 text-amber-200"
+                    : "border-slate-800 text-slate-400 hover:border-slate-600"
+                }`}
+              >
+                ملغى — الموقع يبقى بالثيم الفاتح فقط
+              </button>
+            </div>
           </section>
 
           <section className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">

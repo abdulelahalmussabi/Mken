@@ -36,7 +36,7 @@ interface ServiceOption {
 
 function BookAppointmentContent() {
   const searchParams = useSearchParams();
-  const { currentSlug, occasionDetails, openModal } = useOccasion();
+  const { currentSlug, occasionDetails } = useOccasion();
   const querySlug = searchParams.get("tenant") || searchParams.get("store") || searchParams.get("client");
   const tenantSlug = (currentSlug || querySlug || "").trim().toLowerCase();
   const tenantHome = (tenantSlug ? `/subscriber/${tenantSlug}` : "/") as Route;
@@ -52,7 +52,7 @@ function BookAppointmentContent() {
   const [clientPhone, setClientPhone] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [couponInput, setCouponInput] = useState<string>(occasionDetails.couponCode);
-  const [couponApplied, setCouponApplied] = useState<boolean>(true);
+  const [couponApplied, setCouponApplied] = useState<boolean>(Boolean(occasionDetails.couponCode));
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showAppBanner, setShowAppBanner] = useState<boolean>(true);
   const [tenantName, setTenantName] = useState<string>("منصة مكّن");
@@ -129,7 +129,9 @@ function BookAppointmentContent() {
           `• الاسم: ${clientName}\n` +
           `• الجوال: ${clientPhone}\n` +
           (notes ? `• الملاحظات: ${notes}\n` : "") +
-          `• كود الخصم: ${couponApplied ? occasionDetails.couponCode : "بدون"} (${occasionDetails.discountText})`
+          (couponApplied && occasionDetails.couponCode
+            ? `• كود الخصم: ${occasionDetails.couponCode}${occasionDetails.discountText ? ` (${occasionDetails.discountText})` : ""}\n`
+            : "")
       );
 
       window.open(`https://wa.me/${tenantWhatsapp || "966500000000"}?text=${text}`, "_blank");
@@ -137,7 +139,7 @@ function BookAppointmentContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-theme-main text-slate-100 font-sans transition-colors duration-500 relative">
+    <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans transition-colors duration-500 relative">
       {/* Header Bar */}
       <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
@@ -181,7 +183,8 @@ function BookAppointmentContent() {
         </div>
       </header>
 
-      {/* Occasion Active Coupon Notification */}
+      {/* Tenant promo — only when the facility has its own offer */}
+      {(occasionDetails.slogan || occasionDetails.discountText) && (
       <div
         className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 transition-colors duration-500"
         style={{
@@ -190,12 +193,16 @@ function BookAppointmentContent() {
       >
         <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
         <span>
-          {occasionDetails.slogan} — <strong>{occasionDetails.discountText}</strong>
+          {occasionDetails.slogan}
+          {occasionDetails.discountText ? (
+            <>
+              {" "}
+              — <strong>{occasionDetails.discountText}</strong>
+            </>
+          ) : null}
         </span>
-        <button onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
-          تغيير الثيم 🇸🇦
-        </button>
       </div>
+      )}
 
       {/* Main Booking Body */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 text-right">
@@ -335,11 +342,11 @@ function BookAppointmentContent() {
               />
             </div>
 
-            {/* Coupon Apply Card */}
+            {occasionDetails.couponCode ? (
             <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
               <label className="block text-xs font-bold text-amber-400 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5" />
-                كوبون الخصم الخاص بالمناسبة ({occasionDetails.shortName})
+                كوبون الخصم
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -361,10 +368,11 @@ function BookAppointmentContent() {
               {couponApplied && (
                 <p className="text-xs text-emerald-400 font-medium flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  تم تطبيق خصم {occasionDetails.shortName}: {occasionDetails.discountText}
+                  تم تطبيق الخصم{occasionDetails.discountText ? `: ${occasionDetails.discountText}` : ""}
                 </p>
               )}
             </div>
+            ) : null}
           </div>
 
           {/* Submit Button */}

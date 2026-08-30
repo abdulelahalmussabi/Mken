@@ -128,12 +128,12 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent text-slate-100 font-sans transition-colors duration-500">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground font-sans transition-colors duration-500">
       <Navbar />
 
       {/* Hero Section — transparent so festive particles show through */}
       <section
-        className={`relative z-10 overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32 border-b border-slate-800/60 ${
+        className={`relative z-10 overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32 border-b border-line ${
           activeOccasion === "national_day" ? "bg-national-pattern bg-sadu-pattern" : ""
         }`}
       >
@@ -149,7 +149,7 @@ export default function HomePage() {
             {/* Right Hero Content */}
             <div className="lg:col-span-7 space-y-6 text-right">
               {/* Occasion Active Pill Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 border border-slate-700 text-slate-200 text-xs font-bold shadow-lg">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold shadow-lg">
                 <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "8s" }} />
                 <span>
                   {activeOccasion === "none"
@@ -158,7 +158,7 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight tracking-tight">
                 اجعل محلك{" "}
                 <span
                   className="bg-clip-text text-transparent underline underline-offset-8 decoration-wavy transition-colors duration-500"
@@ -172,7 +172,7 @@ export default function HomePage() {
                 في منطقتك
               </h1>
 
-              <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl">
+              <p className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl">
                 نساعد أصحاب المحلات والمتاجر في المملكة العربية السعودية على تصدر خرائط Google ونتائج البحث المحلية، لجلب المزيد من اتصالات العملاء والزيارات المباشرة لفرعك يومياً.
               </p>
 
@@ -239,7 +239,7 @@ export default function HomePage() {
 
                 <button
                   onClick={openModal}
-                  className="flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-2xl text-slate-200 text-sm font-bold transition-all"
+                  className="flex items-center justify-center gap-2 px-6 py-4 bg-surface hover:bg-surface-2 border border-line rounded-2xl text-foreground text-sm font-bold transition-all"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   <span>دراسة واجهات المناسبات 🇸🇦</span>
@@ -247,7 +247,7 @@ export default function HomePage() {
               </div>
 
               {/* Trust Indicators */}
-              <div className="pt-4 flex items-center gap-6 text-xs text-slate-400">
+              <div className="pt-4 flex items-center gap-6 text-xs text-muted">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>حلول موثوقة وعالية الجودة</span>
@@ -265,15 +265,15 @@ export default function HomePage() {
 
             {/* Left Hero Interactive Card */}
             <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="relative mx-auto max-w-md bg-surface/90 border border-line rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-line">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                       <MapPin className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-white">صانع المعاينة الفورية</h3>
-                      <p className="text-xs text-slate-400">بموافقة المالك — بدون كشط واتساب</p>
+                      <h3 className="font-bold text-sm text-foreground">صانع المعاينة الفورية</h3>
+                      <p className="text-xs text-muted">بموافقة المالك — بدون كشط واتساب</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-extrabold">
@@ -288,17 +288,17 @@ export default function HomePage() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="relative z-10 py-20 bg-slate-950/70 border-b border-slate-800/80">
+      <section id="services" className="relative z-10 py-20 bg-surface/70 border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
             <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
               <Sparkles className="w-4 h-4" />
               <span>خدماتنا المتخصصة</span>
             </h2>
-            <h3 className="text-3xl sm:text-4xl font-extrabold text-white">
+            <h3 className="text-3xl sm:text-4xl font-extrabold text-foreground">
               كل ما يحتاجه محلك لتصدر نتائج البحث والخرائط
             </h3>
-            <p className="text-slate-400 text-sm leading-relaxed">
+            <p className="text-muted text-sm leading-relaxed">
               نقدم حلولاً متكاملة ومصممة خصيصاً للتوافق مع خوارزميات Google المحلية والجمهور السعودي.
             </p>
           </div>
@@ -307,7 +307,7 @@ export default function HomePage() {
             {SERVICES_DATA.map((service) => (
               <div
                 key={service.id}
-                className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 rounded-3xl p-6 shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
+                className="bg-surface/90 border border-line hover:border-amber-500/50 rounded-3xl p-6 shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -319,20 +319,20 @@ export default function HomePage() {
                       {service.iconName === "Search" && <Search className="w-6 h-6" />}
                       {service.iconName === "Star" && <Star className="w-6 h-6" />}
                     </div>
-                    <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-xs font-semibold border border-slate-700">
+                    <span className="px-3 py-1 bg-surface-2 text-muted rounded-full text-xs font-semibold border border-line">
                       {service.badge}
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                  <h4 className="text-xl font-bold text-foreground group-hover:text-amber-700 transition-colors">
                     {service.title}
                   </h4>
-                  <p className="text-slate-400 text-sm leading-relaxed">{service.shortDesc}</p>
+                  <p className="text-muted text-sm leading-relaxed">{service.shortDesc}</p>
                 </div>
 
                 <button
                   onClick={() => setSelectedService(service)}
-                  className="w-full py-3 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-surface-2 hover:bg-amber-500 hover:text-slate-950 text-foreground font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
                 >
                   <span>عرض تفاصيل الخدمة</span>
                   <ArrowLeft className="w-4 h-4" />
@@ -344,69 +344,69 @@ export default function HomePage() {
       </section>
 
       {/* Why Choose MKN Section */}
-      <section id="features" className="relative z-10 py-20 border-b border-slate-800/80">
+      <section id="features" className="relative z-10 py-20 border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-right">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
                 لماذا تختار منصة &quot;مكّن&quot; لإدارة محلك على الخريطة؟
               </h2>
-              <p className="text-slate-300 text-sm leading-relaxed">
+              <p className="text-muted text-sm leading-relaxed">
                 نجمع بين الخبرة التقنية العميقة في SEO المحلي وفهم سلوك العميل في المملكة لتقديم نتائج سريعة وملموسة.
               </p>
 
               <div className="space-y-4 pt-2">
-                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
                   <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">متوافق 100% مع السياسات المحلية والسعودية</h3>
-                    <p className="text-xs text-slate-400 mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
+                    <h3 className="font-bold text-sm text-foreground">متوافق 100% مع السياسات المحلية والسعودية</h3>
+                    <p className="text-xs text-muted mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
                   <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
-                    <p className="text-xs text-slate-400 mt-1">إمكانية تفعيل واجهات احتفالية لم المحل في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
+                    <h3 className="font-bold text-sm text-foreground">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
+                    <p className="text-xs text-muted mt-1">إمكانية تفعيل واجهات احتفالية لم المحل في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 bg-slate-900/60 border border-slate-800 rounded-2xl">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
                   <div className="p-2 bg-sky-500/20 text-sky-400 rounded-xl shrink-0">
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
-                    <p className="text-xs text-slate-400 mt-1">نظام تواصل متكامل يربط صاحب المحل بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
+                    <h3 className="font-bold text-sm text-foreground">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
+                    <p className="text-xs text-muted mt-1">نظام تواصل متكامل يربط صاحب المحل بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Feature Image / Graphic */}
-            <div className="p-8 bg-slate-900/90 border border-slate-800 rounded-3xl space-y-6 shadow-2xl">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <h3 className="font-bold text-base text-white">إحصائيات التأثير المحقق</h3>
-                <span className="text-xs text-amber-400 font-bold">تقرير النمو 2026</span>
+            <div className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl">
+              <div className="flex items-center justify-between pb-4 border-b border-line">
+                <h3 className="font-bold text-base text-foreground">إحصائيات التأثير المحقق</h3>
+                <span className="text-xs text-amber-700 font-bold">تقرير النمو 2026</span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-amber-400">+350%</div>
-                  <div className="text-xs text-slate-400">زيادة الاتصالات المباشرة</div>
+                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
+                  <div className="text-3xl font-extrabold text-amber-700">+350%</div>
+                  <div className="text-xs text-muted">زيادة الاتصالات المباشرة</div>
                 </div>
-                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-emerald-400">4.9 / 5</div>
-                  <div className="text-xs text-slate-400">متوسط رضا أصحاب المحلات</div>
+                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
+                  <div className="text-3xl font-extrabold text-emerald-600">4.9 / 5</div>
+                  <div className="text-xs text-muted">متوسط رضا أصحاب المحلات</div>
                 </div>
               </div>
-              <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-300">سرعة بدء تنفيذ الطلب:</span>
-                <span className="text-emerald-400 font-bold">خلال 24 ساعة من التقديم</span>
+              <div className="p-4 bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
+                <span className="text-muted">سرعة بدء تنفيذ الطلب:</span>
+                <span className="text-emerald-600 font-bold">خلال 24 ساعة من التقديم</span>
               </div>
             </div>
           </div>
@@ -414,45 +414,45 @@ export default function HomePage() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="relative z-10 py-20 bg-slate-950/80">
+      <section id="contact" className="relative z-10 py-20 bg-surface/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-3">
-            <h2 className="text-3xl font-extrabold text-white">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
-            <p className="text-slate-400 text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
+            <h2 className="text-3xl font-extrabold text-foreground">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
+            <p className="text-muted text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl">
+          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-line rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300">الاسم الكامل</label>
+                <label className="block text-xs font-bold text-muted">الاسم الكامل</label>
                 <input
                   {...register("name")}
                   type="text"
                   placeholder="عبدالرحمن الشمري"
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
                 />
                 {errors.name && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300">البريد الإلكتروني</label>
+                <label className="block text-xs font-bold text-muted">البريد الإلكتروني</label>
                 <input
                   {...register("email")}
                   type="email"
                   placeholder="name@company.sa"
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
                 />
                 {errors.email && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-300">تفاصيل المحل أو الاستفسار</label>
+              <label className="block text-xs font-bold text-muted">تفاصيل المحل أو الاستفسار</label>
               <textarea
                 {...register("message")}
                 rows={4}
                 placeholder="أذكر اسم محلك ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl text-slate-100 text-sm outline-none transition-colors"
+                className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
               />
               {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
             </div>

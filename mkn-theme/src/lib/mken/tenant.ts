@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import type { ClientRecord, ClientType } from "@/types/database";
+import { logoValidationError, publicBrandSrc } from "@/lib/mken/logo-crop";
 
 /**
  * Bridge to the existing مكّن tenant model: one row per tenant in
@@ -76,6 +77,9 @@ export interface MkenConfig {
     servicesHeading?: string;
     servicesIntro?: string;
     servicesFooter?: string;
+  };
+  colorScheme?: {
+    darkEnabled?: boolean;
   };
   ads?: {
     primary?: {
@@ -219,6 +223,10 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     rating: config.rating || "",
     reviewsCount: config.reviewsCount || "",
     heroImage: config.heroImage || "",
+    logo:
+      typeof brand.logo === "string" && brand.logo.trim()
+        ? brand.logo
+        : seed?.logo || "",
     demoNotice: config.demoNotice || "",
     claimStatus:
       config.preview?.claimStatus === "unclaimed" || config.preview?.claimStatus === "pending"
@@ -226,8 +234,9 @@ export function toClientRecord(row: TenantRow): ClientRecord {
         : "claimed",
     adminEmail: config.adminEmail || row.email || "",
     theme: forceId.startsWith("custom-") || isOccasionTheme(forceId) ? forceId : "none",
-    couponCode: pack.promo?.code,
-    discountText: pack.promo?.text,
+    couponCode: pack.promo?.code || (config.ads?.primary as { couponCode?: string } | undefined)?.couponCode,
+    discountText: pack.promo?.text || (config.ads?.primary as { text?: string } | undefined)?.text,
+    promoTitle: (config.ads?.primary as { title?: string } | undefined)?.title,
     discountEnabled: pack.enabled ?? false,
     active: (row.subscription_status || "").toLowerCase() === "active",
     createdAt: row.subscription_start || row.created_at || "",
@@ -241,10 +250,11 @@ export function mergeIntoConfig(
 ): MkenConfig {
   const next: MkenConfig = { ...config };
 
-  if (updates.name !== undefined || updates.tagline !== undefined) {
+  if (updates.name !== undefined || updates.tagline !== undefined || updates.logo !== undefined) {
     next.brand = { ...(config.brand || {}) };
     if (updates.name !== undefined) next.brand.name = updates.name;
     if (updates.tagline !== undefined) next.brand.tagline = updates.tagline;
+    if (updates.logo !== undefined) next.brand.logo = updates.logo;
   }
 
   if (updates.whatsapp !== undefined) {
@@ -265,6 +275,7 @@ export function mergeIntoConfig(
     updates.theme !== undefined ||
     updates.couponCode !== undefined ||
     updates.discountText !== undefined ||
+    updates.promoTitle !== undefined ||
     updates.discountEnabled !== undefined
   ) {
     const pack = config.occasionPack || {};
@@ -280,6 +291,17 @@ export function mergeIntoConfig(
         ...(updates.discountText !== undefined && { text: updates.discountText }),
       };
     }
+    const currentPrimary = (config.ads?.primary || {}) as Record<string, unknown>;
+    next.ads = {
+      ...(config.ads || {}),
+      primary: {
+        ...currentPrimary,
+        ...(updates.discountEnabled !== undefined && { enabled: updates.discountEnabled }),
+        ...(updates.couponCode !== undefined && { couponCode: updates.couponCode }),
+        ...(updates.discountText !== undefined && { text: updates.discountText }),
+        ...(updates.promoTitle !== undefined && { title: updates.promoTitle }),
+      },
+    };
   }
 
   if (updates.phone !== undefined) next.phone = updates.phone;
@@ -516,6 +538,60 @@ export async function fetchPlatformOccasion(): Promise<string | null> {
   const row = await fetchTenantRow(PLATFORM_SLUG);
   const theme = row?.config_data?.occasionPack?.forceId;
   return isOccasionTheme(theme) ? theme : null;
+}
+
+export async function fetchPlatformBrand(): Promise<{ theme: string; logo: string }> {
+  const row = await fetchTenantRow(PLATFORM_SLUG);
+  const theme = row?.config_data?.occasionPack?.forceId;
+  const logo = typeof row?.config_data?.brand?.logo === "string" ? row.config_data.brand.logo : "";
+  return {
+    theme: isOccasionTheme(theme) ? theme : "none",
+    logo: logo.trim() || publicBrandSrc("mken.png"),
+  };
+}
+
+export async function upsertPlatformLogo(logo: string): Promise<{ logo?: string; error?: string }> {
+  const invalid = logoValidationError(logo);
+  if (invalid) return { error: invalid };
+
+  const db = getTenantDb();
+  const row = await fetchTenantRow(PLATFORM_SLUG);
+  const config: MkenConfig = {
+    ...(row?.config_data || {}),
+    brand: { ...(row?.config_data?.brand || {}), logo },
+  };
+  MEMORY_TENANT_CONFIG[PLATFORM_SLUG] = config;
+
+  if (!db) return { logo };
+
+  if (row) {
+    const { data, error } = await db
+      .from(TENANT_TABLE)
+      .update({ config_data: config, updated_at: new Date().toISOString() })
+      .eq("tenant_slug", PLATFORM_SLUG)
+      .select("tenant_slug");
+    if (error) {
+      await db.from(TENANT_TABLE).update({ config_data: config }).eq("tenant_slug", PLATFORM_SLUG);
+    } else if (!data?.length) {
+      const { error: insertError } = await db.from(TENANT_TABLE).insert({
+        tenant_slug: PLATFORM_SLUG,
+        business_name: "منصة مكّن",
+        subscription_status: "internal",
+        config_data: config,
+      });
+      if (insertError) return { logo };
+    }
+    return { logo };
+  }
+
+  const { error } = await db.from(TENANT_TABLE).insert({
+    tenant_slug: PLATFORM_SLUG,
+    business_name: "منصة مكّن",
+    subscription_status: "internal",
+    config_data: config,
+  });
+  if (error) return { logo };
+  return { logo };
 }
 
 export async function upsertPlatformOccasion(

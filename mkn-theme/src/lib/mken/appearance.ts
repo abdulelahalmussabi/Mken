@@ -56,6 +56,7 @@ export interface AppearancePublic {
   schedule: ThemeScheduleItem[];
   customThemes: CustomTheme[];
   customTheme: CustomTheme | null;
+  darkModeEnabled: boolean;
   interfaceCopy: InterfaceCopy;
   ads: {
     primary: PrimaryAd;
@@ -68,6 +69,7 @@ export interface AppearanceUpdate {
   forceId?: string;
   schedule?: ThemeScheduleItem[];
   customThemes?: CustomTheme[];
+  darkModeEnabled?: boolean;
   interfaceCopy?: Partial<InterfaceCopy>;
   ads?: {
     primary?: Partial<PrimaryAd>;
@@ -240,6 +242,7 @@ export function appearanceFromConfig(config: MkenConfig): AppearancePublic {
     schedule: readSchedule(config),
     customThemes,
     customTheme,
+    darkModeEnabled: config.colorScheme?.darkEnabled !== false,
     interfaceCopy: readInterfaceCopy(config),
     ads: {
       primary: readPrimaryAd(config),
@@ -336,6 +339,10 @@ export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): M
   if (update.customThemes) {
     const themes = normalizeCustomThemes(update.customThemes);
     if (typeof themes !== "string") next.customThemes = themes;
+  }
+
+  if (update.darkModeEnabled !== undefined) {
+    next.colorScheme = { ...(config.colorScheme || {}), darkEnabled: update.darkModeEnabled };
   }
 
   if (update.interfaceCopy) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { slugFromCustomHostname } from "@/lib/mken/tenant-host";
 
@@ -45,14 +45,14 @@ export const SAUDI_OCCASIONS: Record<OccasionId, OccasionDetails> = {
     slogan: "تحسين ظهور أنشطتك التجارية على خرائط قوقل",
     couponCode: "MKN10",
     discountText: "خصم 10% على أول طلب تحسين محلي",
-    accentColor: "#f97316",
-    badgeBg: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-    bgGradient: "from-slate-900 via-slate-950 to-slate-900",
+    accentColor: "#c2410c",
+    badgeBg: "bg-orange-500/15 text-orange-800 border-orange-500/25",
+    bgGradient: "from-[#f2f0eb] via-[#fbf9f4] to-[#ebe7df]",
     greetingTemplate: (name) => `مرحباً بك أستاذ ${name} في لوحة التحكم`,
     countdownText: "الخدمة متاحة على مدار 24 ساعة",
     targetDate: "2026-12-31T23:59:59",
     stickers: ["مرحباً بك", "شكراً للتواصل", "تم استلام الطلب", "بالتوفيق"],
-    description: "الهوية الأساسية الفاخرة لمنصة مكّن بلوني الأزرق الداكن والبرتقالي المتوهج.",
+    description: "الهوية الأساسية لمنصة مكّن: أبيض مطفي دافئ، حبر حجري، وتمييز تراكوتا. الثيم الداكن اختياري من زر الوضع.",
     historicNote: "تصميم عصري متناسق لجميع الأوقات والأيام العادية.",
     group: "base",
     officialSymbols: [],
@@ -211,6 +211,63 @@ export const SAUDI_OCCASIONS: Record<OccasionId, OccasionDetails> = {
   },
 };
 
+/** Placeholder copy for tenant promo fields — visitor-facing, never platform SEO. */
+export const VISITOR_PROMO_HINT = {
+  title: "عرض الأسبوع — خصم على أول زيارة",
+  text: "خصم 20% على أول حجز أونلاين",
+  coupon: "SALE20",
+};
+
+function isPlatformMarketingCopy(value: string): boolean {
+  const text = value.trim();
+  if (!text) return true;
+  const none = SAUDI_OCCASIONS.none;
+  if (
+    text === none.slogan ||
+    text === none.discountText ||
+    text === none.couponCode ||
+    text === none.shortName ||
+    text === none.name
+  ) {
+    return true;
+  }
+  return /خرائط\s*(قوقل|جوجل)|تحسين محلي|طلب تحسين/.test(text);
+}
+
+export function tenantSafeCopy(value: string): string {
+  const text = value.trim();
+  return isPlatformMarketingCopy(text) ? "" : text;
+}
+
+/**
+ * Hero kicker on a tenant site. Speaks to the visitor (book / order / occasion),
+ * never the platform pitch ("القياسي", Google Maps SEO, MKN10).
+ */
+export function visitorMarketingKicker(opts: {
+  activeOccasion: OccasionId;
+  shortName: string;
+  slogan: string;
+  promoTitle?: string;
+  isHotel?: boolean;
+  isCommerce?: boolean;
+  isSalon?: boolean;
+}): string {
+  const promo = tenantSafeCopy(opts.promoTitle || "");
+  const greeting = tenantSafeCopy(opts.slogan);
+  const isOccasion = opts.activeOccasion !== "none";
+
+  if (promo) {
+    return isOccasion ? `${opts.shortName} — ${promo}` : promo;
+  }
+  if (isOccasion && (greeting || opts.slogan.trim())) {
+    return `${opts.shortName} — ${greeting || opts.slogan.trim()}`;
+  }
+  if (opts.isCommerce) return "اطلب أونلاين — توصيل لبابك";
+  if (opts.isHotel) return "احجز إقامتك — تأكيد فوري";
+  if (opts.isSalon) return "احجز موعدك اليوم — بدون انتظار";
+  return "اطلب خدمتك اليوم — رد سريع عبر واتساب";
+}
+
 interface OccasionContextType {
   activeOccasion: OccasionId;
   setOccasion: (id: OccasionId) => void;
@@ -273,6 +330,11 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [tenantTheme, setTenantTheme] = useState<OccasionId | null>(null);
   const [skipPlatformFallback, setSkipPlatformFallback] = useState(false);
   const [hostSlug, setHostSlug] = useState<string | null>(null);
+  const [adCopy, setAdCopy] = useState<{ title: string; text: string; coupon: string }>({
+    title: "",
+    text: "",
+    coupon: "",
+  });
 
   useEffect(() => {
     const local = slugFromHost();
@@ -339,6 +401,7 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPreviewId(null);
     setTenantTheme(null);
     setSkipPlatformFallback(false);
+    setAdCopy({ title: "", text: "", coupon: "" });
     if (!currentSlug) return;
 
     let cancelled = false;
@@ -358,6 +421,17 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setTenantTheme(resolved);
           setSkipPlatformFallback(true);
         }
+        const primary = data.appearance?.ads?.primary;
+        const enabled = primary?.enabled !== false && data.client?.discountEnabled !== false;
+        setAdCopy(
+          enabled
+            ? {
+                title: String(primary?.title || data.client?.promoTitle || "").trim(),
+                text: String(primary?.text || data.client?.discountText || "").trim(),
+                coupon: String(primary?.couponCode || data.client?.couponCode || "").trim(),
+              }
+            : { title: "", text: "", coupon: "" }
+        );
       })
       .catch(() => {});
 
@@ -408,12 +482,33 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const openModal = () => setShowModal(true);
   const closeModal = () => setShowModal(false);
 
+  const occasionDetails = useMemo(() => {
+    const base = SAUDI_OCCASIONS[activeOccasion] || SAUDI_OCCASIONS.none;
+    const onTenant = Boolean(currentSlug);
+    if (!onTenant) {
+      return {
+        ...base,
+        slogan: adCopy.title || base.slogan,
+        discountText: adCopy.text || base.discountText,
+        couponCode: adCopy.coupon || base.couponCode,
+      };
+    }
+
+    const isStandard = activeOccasion === "none";
+    return {
+      ...base,
+      slogan: tenantSafeCopy(adCopy.title) || (isStandard ? "" : base.slogan),
+      discountText: tenantSafeCopy(adCopy.text),
+      couponCode: tenantSafeCopy(adCopy.coupon),
+    };
+  }, [activeOccasion, adCopy, currentSlug]);
+
   return (
     <OccasionContext.Provider
       value={{
         activeOccasion,
         setOccasion,
-        occasionDetails: SAUDI_OCCASIONS[activeOccasion] || SAUDI_OCCASIONS.none,
+        occasionDetails,
         showModal,
         openModal,
         closeModal,

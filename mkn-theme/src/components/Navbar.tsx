@@ -8,6 +8,8 @@ import { useApp } from "@/context/AppContext";
 import { useAdmin } from "@/context/AdminContext";
 import { useOccasion } from "@/context/OccasionContext";
 import { OccasionThemeSelector } from "@/components/occasions/OccasionThemeSelector";
+import { PlatformMark } from "@/components/PlatformMark";
+import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import {
   Menu,
   X,
@@ -35,30 +37,35 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all ${
+      className={`sticky top-0 z-50 backdrop-blur-xl border-b border-line transition-all ${
         activeOccasion === "national_day"
           ? "bg-[#01180d]/92 border-emerald-900/50"
-          : "bg-[#090d16]/90 border-slate-800/80"
+          : "bg-background/90"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl text-white shadow-lg transition-transform group-hover:scale-105"
-            style={{ backgroundColor: occasionDetails.accentColor }}
-          >
-            م
-          </div>
+          <PlatformMark
+            className="w-10 h-10"
+            fallback={
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl text-slate-950 shadow-lg transition-transform group-hover:scale-105"
+                style={{ backgroundColor: occasionDetails.accentColor }}
+              >
+                م
+              </div>
+            }
+          />
           <div className="flex flex-col">
-            <span className="font-extrabold text-2xl tracking-tight text-slate-100 flex items-center gap-1.5">
+            <span className="font-extrabold text-2xl tracking-tight text-foreground flex items-center gap-1.5">
               مكّن
               <span
                 className="inline-block w-2 h-2 rounded-full animate-pulse"
                 style={{ backgroundColor: occasionDetails.accentColor }}
               />
             </span>
-            <span className="text-[10px] font-medium text-slate-400 -mt-1 tracking-wide">
+            <span className="text-[10px] font-medium text-muted -mt-1 tracking-wide">
               Local SEO Saudi
             </span>
           </div>
@@ -66,14 +73,14 @@ export default function Navbar() {
 
         {/* Occasion Active Pill Badge (if occasion active) */}
         {activeOccasion !== "none" && (
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-slate-900/80 border border-slate-800 rounded-full text-xs font-bold text-slate-200">
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-surface border border-line rounded-full text-xs font-bold text-foreground">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span className="max-w-[14rem] truncate">{occasionDetails.slogan}</span>
           </div>
         )}
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1.5 rounded-full border border-slate-800/80">
+        <nav className="hidden md:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -82,8 +89,8 @@ export default function Navbar() {
                 href={link.href}
                 className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
                   isActive
-                    ? "bg-slate-800 text-white shadow-md border border-slate-700 font-bold"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-surface-2 text-foreground shadow-md border border-line font-bold"
+                    : "text-muted hover:text-foreground hover:bg-surface-2/60"
                 }`}
               >
                 {link.name}
@@ -94,6 +101,7 @@ export default function Navbar() {
 
         {/* Theme Selector & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <ColorSchemeToggle />
           {isAdmin && <OccasionThemeSelector />}
 
           {/* User Auth Buttons */}
@@ -102,7 +110,7 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 border border-slate-700/80 hover:border-amber-500/50 rounded-xl text-sm font-medium text-slate-200 transition-all cursor-pointer focus:outline-none"
+                  className="flex items-center gap-2 px-3.5 py-2 bg-surface border border-line hover:border-amber-500/50 rounded-xl text-sm font-medium text-foreground transition-all cursor-pointer focus:outline-none"
                 >
                   <div
                     className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center font-bold text-xs"
@@ -111,19 +119,19 @@ export default function Navbar() {
                     {user.full_name.charAt(0)}
                   </div>
                   <span className="max-w-[120px] truncate">{user.full_name}</span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-muted" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute left-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 space-y-1 z-50 animate-in fade-in slide-in-from-top-2">
-                    <div className="px-3 py-2 border-b border-slate-800 mb-1">
-                      <p className="text-xs text-slate-400">حساب العميل</p>
-                      <p className="text-sm font-bold text-slate-200 truncate">{user.full_name}</p>
+                  <div className="absolute left-0 mt-2 w-56 bg-surface border border-line rounded-2xl shadow-2xl p-2 space-y-1 z-50 animate-in fade-in slide-in-from-top-2">
+                    <div className="px-3 py-2 border-b border-line mb-1">
+                      <p className="text-xs text-muted">حساب العميل</p>
+                      <p className="text-sm font-bold text-foreground truncate">{user.full_name}</p>
                     </div>
                     <Link
                       href="/dashboard"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-muted hover:text-foreground hover:bg-surface-2 rounded-xl transition-all"
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       لوحة التحكم والطلبات
@@ -145,7 +153,7 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                  className="px-3 py-2 text-sm font-medium text-muted hover:text-foreground transition-colors"
                 >
                   تسجيل الدخول
                 </Link>
@@ -172,7 +180,7 @@ export default function Navbar() {
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white"
+              className="p-2 rounded-xl bg-surface border border-line text-muted hover:text-foreground"
               aria-label="القائمة"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -183,25 +191,25 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-800 bg-[#090d16] px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top duration-200">
+        <div className="md:hidden border-b border-line bg-background px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top duration-200">
           <nav className="space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-base font-medium rounded-xl text-slate-300 hover:bg-slate-900 hover:text-amber-400 transition-colors"
+                className="block px-4 py-3 text-base font-medium rounded-xl text-muted hover:bg-surface hover:text-amber-700 transition-colors"
               >
                 {link.name}
               </Link>
             ))}
           </nav>
 
-          <div className="pt-4 border-t border-slate-800/80 space-y-2">
+          <div className="pt-4 border-t border-line space-y-2">
             {user ? (
               <>
-                <div className="px-4 py-2 text-xs text-slate-400">
-                  مرحباً، <span className="font-bold text-slate-200">{user.full_name}</span>
+                <div className="px-4 py-2 text-xs text-muted">
+                  مرحباً، <span className="font-bold text-foreground">{user.full_name}</span>
                 </div>
                 <Link
                   href="/dashboard"
@@ -226,7 +234,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 text-center text-sm font-bold text-slate-300 bg-slate-900 border border-slate-800 rounded-xl"
+                  className="py-3 text-center text-sm font-bold text-muted bg-surface border border-line rounded-xl"
                 >
                   تسجيل الدخول
                 </Link>

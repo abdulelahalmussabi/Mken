@@ -6,7 +6,6 @@ import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import { useOccasion } from "@/context/OccasionContext";
 import { useApp } from "@/context/AppContext";
-import { OccasionThemeSelector } from "@/components/occasions/OccasionThemeSelector";
 import { UnclaimedClaimBanner } from "@/components/MagicPreviewForm";
 import {
   STOREFRONT_PAGE_IDS,
@@ -24,6 +23,8 @@ import type {
   StorefrontClient,
   StorefrontKind,
 } from "@/types/database";
+import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
+import { useColorScheme } from "@/context/ColorSchemeContext";
 import {
   CalendarCheck,
   Download,
@@ -73,6 +74,7 @@ export interface StorefrontContextValue {
     rating: string;
     reviewsCount: string;
     heroImage: string;
+    logo: string;
     demoNotice: string;
     discountEnabled?: boolean;
   };
@@ -111,6 +113,7 @@ export function StorefrontFrame({
   const pathname = usePathname() || "/";
   const { occasionDetails } = useOccasion();
   const { showToast } = useApp();
+  const { setDarkEnabled } = useColorScheme();
   const [storeClient, setStoreClient] = useState<StorefrontClient | null>(null);
   const [catalog, setCatalog] = useState<StorefrontCatalog | null>(null);
   const [appearance, setAppearance] = useState<AppearancePublic | null>(null);
@@ -133,14 +136,33 @@ export function StorefrontFrame({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (appearance) setDarkEnabled(appearance.darkModeEnabled !== false);
+  }, [appearance, setDarkEnabled]);
+
+  useEffect(() => {
+    return () => setDarkEnabled(true);
+  }, [setDarkEnabled]);
+
+  useEffect(() => {
     if (!slug) {
       setLoadState("missing");
       return;
     }
     let cancelled = false;
     setLoadState("loading");
-    fetch(`/api/clients/${encodeURIComponent(slug)}`)
-      .then((res) => res.json())
+    const path = `/api/clients/${encodeURIComponent(slug)}`;
+    const platformUrl = `https://www.mken.live${path}`;
+    const host = typeof window !== "undefined" ? window.location.hostname.replace(/^www\./, "") : "";
+    const onPlatform = host === "mken.live" || host === "localhost" || host.endsWith(".localhost");
+    const primary = onPlatform ? path : platformUrl;
+    const secondary = onPlatform ? platformUrl : path;
+    const readJson = (res: Response) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status))));
+    const hasLogo = (data: { success?: boolean; client?: { logo?: string }; catalog?: unknown } | null) =>
+      Boolean(data?.success && data.client && data.catalog && isUsableLogoSrc(data.client.logo));
+    fetch(primary)
+      .then(readJson)
+      .then((data) => (hasLogo(data) ? data : Promise.reject(new Error("no-logo"))))
+      .catch(() => fetch(secondary).then(readJson))
       .then((data) => {
         if (cancelled) return;
         if (data?.success && data.client && data.catalog) {
@@ -199,12 +221,28 @@ export function StorefrontFrame({
           storeClient.heroImage ||
           catalog?.services[0]?.image ||
           "",
+        logo: storeClient.logo || "",
         demoNotice: storeClient.demoNotice || `صفحة ${storeClient.name} على منصة مكّن`,
         discountEnabled: storeClient.discountEnabled,
       }
     : null;
 
   const href = (page: StorefrontPageId) => storefrontPageHref(slug, page, pathname);
+
+  useEffect(() => {
+    if (!storeInfo?.logo || !isUsableLogoSrc(storeInfo.logo)) return;
+    let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = storeInfo.logo;
+    if (storeInfo.logo.startsWith("data:")) {
+      const match = storeInfo.logo.match(/^data:([^;]+)/);
+      if (match) link.type = match[1];
+    }
+  }, [storeInfo?.logo]);
 
   const openBooking = (srv?: StorefrontServiceOption) => {
     setSelectedService(srv || currentServices[0] || null);
@@ -276,11 +314,11 @@ export function StorefrontFrame({
 
   if (loadState === "loading" || !storeInfo || !value) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-950 text-slate-200">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background text-foreground">
         {loadState === "missing" ? (
           <>
             <p className="text-lg font-bold">المنشأة غير موجودة</p>
-            <p className="text-sm text-slate-400">لا توجد بيانات معزولة للنطاق {slug || "—"}</p>
+            <p className="text-sm text-muted">لا توجد بيانات معزولة للنطاق {slug || "—"}</p>
           </>
         ) : (
           <>
@@ -311,7 +349,7 @@ export function StorefrontFrame({
 
   return (
     <StorefrontContext.Provider value={value}>
-      <div className="min-h-screen flex flex-col bg-theme-main text-slate-100 font-sans transition-colors duration-500 relative">
+      <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans transition-colors duration-500 relative">
         <div className="w-full py-2 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 text-white text-xs font-bold text-center flex items-center justify-center gap-2 px-4 shadow-md">
           <span>{storeInfo.demoNotice}</span>
         </div>
@@ -319,32 +357,40 @@ export function StorefrontFrame({
           <UnclaimedClaimBanner slug={slug} accentColor={accentColor} />
         ) : null}
 
-        <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80">
+        <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
             <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0"
-                style={{ backgroundColor: accentColor }}
-              >
-                {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
-              </div>
+              {isUsableLogoSrc(storeInfo.logo) ? (
+                <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0 shadow-lg">
+                  {/* data URLs and tenant CDNs are not in next/image remotePatterns */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={storeInfo.logo} alt={storeInfo.name} className="w-full h-full object-contain p-0.5" />
+                </span>
+              ) : (
+                <div
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-slate-950 shadow-lg shrink-0"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
+                </div>
+              )}
               <div className="min-w-0">
-                <h1 className="font-extrabold text-slate-100 tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
+                <h1 className="font-extrabold text-foreground tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
                   {storeInfo.name}
                 </h1>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
+                <p className="text-[11px] text-muted font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
               </div>
             </Link>
 
-            <nav className="hidden lg:flex items-center gap-1 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
+            <nav className="hidden lg:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">
               {navItems.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href as Route}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
                     isActive(item.id)
-                      ? "text-white bg-slate-800"
-                      : "text-slate-200 hover:text-white hover:bg-slate-800"
+                      ? "text-foreground bg-surface-2"
+                      : "text-muted hover:text-foreground hover:bg-surface-2"
                   }`}
                 >
                   {item.label}
@@ -360,7 +406,7 @@ export function StorefrontFrame({
             </nav>
 
             <div className="flex items-center gap-2">
-              <OccasionThemeSelector />
+              <ColorSchemeToggle />
               <Link
                 href={bookHref as Route}
                 className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"
@@ -383,13 +429,13 @@ export function StorefrontFrame({
               ) : null}
             </div>
           </div>
-          <nav className="lg:hidden overflow-x-auto border-t border-slate-800/80 px-3 py-2 flex items-center gap-1">
+          <nav className="lg:hidden overflow-x-auto border-t border-line px-3 py-2 flex items-center gap-1">
             {navItems.map((item) => (
               <Link
                 key={item.id}
                 href={item.href as Route}
                 className={`shrink-0 px-3 py-1.5 text-[11px] font-bold rounded-full ${
-                  isActive(item.id) ? "bg-slate-800 text-white" : "text-slate-300 bg-slate-900/80"
+                  isActive(item.id) ? "bg-surface-2 text-foreground" : "text-muted bg-surface/80"
                 }`}
               >
                 {item.label}
@@ -400,7 +446,7 @@ export function StorefrontFrame({
 
         {children}
 
-        <section className="mt-auto border-t border-slate-800/80 bg-slate-900/70">
+        <section className="mt-auto border-t border-line bg-surface/70">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
@@ -413,7 +459,7 @@ export function StorefrontFrame({
             </button>
             <Link
               href={bookHref as Route}
-              className="px-5 py-3 bg-slate-950 border border-slate-700 text-slate-100 font-bold text-sm rounded-2xl"
+              className="px-5 py-3 bg-background border border-line text-foreground font-bold text-sm rounded-2xl"
             >
               احجز موعد أونلاين
             </Link>
@@ -431,7 +477,7 @@ export function StorefrontFrame({
             {pages.enabled.contact ? (
               <Link
                 href={href("contact") as Route}
-                className="px-5 py-3 bg-slate-800 text-slate-100 font-bold text-sm rounded-2xl"
+                className="px-5 py-3 bg-surface-2 text-foreground font-bold text-sm rounded-2xl"
               >
                 تواصل معنا
               </Link>
@@ -439,18 +485,26 @@ export function StorefrontFrame({
           </div>
         </section>
 
-        <footer className="bg-slate-950 border-t border-slate-800/80 pt-12 pb-8 text-right">
+        <footer className="bg-background border-t border-line pt-12 pb-8 text-right">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-slate-800/60">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-line">
               <div className="space-y-3">
-                <h3 className="font-extrabold text-lg text-slate-100">{storeInfo.name}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{storeInfo.tagline}</p>
+                <div className="flex items-center gap-2.5">
+                  {isUsableLogoSrc(storeInfo.logo) ? (
+                    <span className="w-9 h-9 rounded-xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={storeInfo.logo} alt="" className="w-full h-full object-contain p-0.5" />
+                    </span>
+                  ) : null}
+                  <h3 className="font-extrabold text-lg text-foreground">{storeInfo.name}</h3>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">{storeInfo.tagline}</p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {navItems.map((item) => (
                     <Link
                       key={item.id}
                       href={item.href as Route}
-                      className="text-[11px] text-slate-400 hover:text-white"
+                      className="text-[11px] text-muted hover:text-foreground"
                     >
                       {item.label}
                     </Link>
@@ -458,8 +512,8 @@ export function StorefrontFrame({
                 </div>
               </div>
               <div className="space-y-3">
-                <h4 className="text-xs font-extrabold text-slate-200">تواصل معنا</h4>
-                <ul className="space-y-2 text-xs text-slate-400">
+                <h4 className="text-xs font-extrabold text-foreground">تواصل معنا</h4>
+                <ul className="space-y-2 text-xs text-muted">
                   <li className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
                     <span>{storeInfo.location}</span>
@@ -481,19 +535,19 @@ export function StorefrontFrame({
                 </ul>
               </div>
               <div className="space-y-3">
-                <h4 className="text-xs font-extrabold text-slate-200">إدارة المنشأة</h4>
+                <h4 className="text-xs font-extrabold text-foreground">إدارة المنشأة</h4>
                 <Link
                   href={`/admin/login?client=${slug}` as Route}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 text-xs font-bold"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface hover:bg-surface-2 border border-line text-amber-700 text-xs font-bold"
                 >
                   <Zap className="w-4 h-4" />
                   تسجيل دخول الأدمن / الموظفين
                 </Link>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
               <div>جميع الحقوق محفوظة © {new Date().getFullYear()} {storeInfo.name}</div>
-              <Link href={"/" as Route} className="text-slate-400 hover:text-white font-bold">
+              <Link href={"/" as Route} className="text-muted hover:text-foreground font-bold">
                 مشغّل بواسطة منصة مكّن 🇸🇦
               </Link>
             </div>
@@ -501,15 +555,15 @@ export function StorefrontFrame({
         </footer>
 
         {showAppBanner && (
-          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-slate-900/95 border border-slate-700/90 backdrop-blur-2xl rounded-2xl p-4 shadow-2xl space-y-3 text-right">
+          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-surface/95 border border-line backdrop-blur-2xl rounded-2xl p-4 shadow-2xl space-y-3 text-right">
             <div className="flex items-start justify-between gap-3">
-              <button onClick={() => setShowAppBanner(false)} className="text-slate-400 hover:text-white p-1">
+              <button onClick={() => setShowAppBanner(false)} className="text-muted hover:text-foreground p-1">
                 <X className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col text-right">
-                  <span className="text-xs font-bold text-slate-100">ثبّت تطبيق المنشأة</span>
-                  <span className="text-[11px] text-slate-400">وصول أسرع وتذكير بالمواعيد</span>
+                  <span className="text-xs font-bold text-foreground">ثبّت تطبيق المنشأة</span>
+                  <span className="text-[11px] text-muted">وصول أسرع وتذكير بالمواعيد</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
                   <Download className="w-5 h-5" />
@@ -532,33 +586,33 @@ export function StorefrontFrame({
         ) : null}
 
         {bookingOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl text-right relative">
-              <button onClick={() => setBookingOpen(false)} className="absolute top-5 left-5 text-slate-400 hover:text-white">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
+            <div className="bg-surface border border-line rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl text-right relative">
+              <button onClick={() => setBookingOpen(false)} className="absolute top-5 left-5 text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
-              <h3 className="text-xl font-extrabold text-slate-100 flex items-center gap-2">
+              <h3 className="text-xl font-extrabold text-foreground flex items-center gap-2">
                 <CalendarCheck className="w-5 h-5 text-amber-400" />
                 حجز موعد في {storeInfo.name}
               </h3>
               <form onSubmit={handleBookingSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">الاسم الكامل *</label>
+                  <label className="block text-xs font-bold text-muted mb-1">الاسم الكامل *</label>
                   <input
                     required
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm"
+                    className="w-full px-4 py-3 bg-background border border-line rounded-xl text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">رقم الجوال *</label>
+                  <label className="block text-xs font-bold text-muted mb-1">رقم الجوال *</label>
                   <input
                     type="tel"
                     required
                     value={clientPhone}
                     onChange={(e) => setClientPhone(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm"
+                    className="w-full px-4 py-3 bg-background border border-line rounded-xl text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -567,12 +621,12 @@ export function StorefrontFrame({
                     required
                     value={bookingDate}
                     onChange={(e) => setBookingDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm"
+                    className="w-full px-4 py-3 bg-background border border-line rounded-xl text-sm"
                   />
                   <select
                     value={bookingTime}
                     onChange={(e) => setBookingTime(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm"
+                    className="w-full px-4 py-3 bg-background border border-line rounded-xl text-sm"
                   >
                     <option value="14:00">02:00 مساءً</option>
                     <option value="16:00">04:00 مساءً</option>

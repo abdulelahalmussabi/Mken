@@ -48,18 +48,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-background text-foreground font-sans">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6">
-        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="w-full max-w-md bg-surface/90 border border-line rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center font-extrabold text-2xl text-white mx-auto shadow-lg shadow-orange-500/20">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center font-extrabold text-2xl text-slate-950 mx-auto shadow-lg shadow-orange-500/20">
               م
             </div>
-            <h1 className="text-2xl font-extrabold text-white">إنشاء حساب جديد</h1>
-            <p className="text-slate-400 text-xs">
+            <h1 className="text-2xl font-extrabold text-foreground">إنشاء حساب جديد</h1>
+            <p className="text-muted text-xs">
               انضم إلى المنصة السعودية الأولى لتمكين محلك في نتائج الخرائط
             </p>
           </div>
@@ -73,7 +73,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label htmlFor="full_name" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+              <label htmlFor="full_name" className="block text-xs font-bold text-muted mb-1 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-orange-400" />
                 الاسم الكامل
               </label>
@@ -83,7 +83,7 @@ export default function RegisterPage() {
                 placeholder="أدخل اسمك الكريم"
                 {...register("full_name")}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
               />
               {errors.full_name && (
                 <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
@@ -94,7 +94,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+              <label htmlFor="email" className="block text-xs font-bold text-muted mb-1 flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-orange-400" />
                 البريد الإلكتروني
               </label>
@@ -104,7 +104,7 @@ export default function RegisterPage() {
                 placeholder="example@domain.com"
                 {...register("email")}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
               />
               {errors.email && (
                 <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
@@ -115,7 +115,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+              <label htmlFor="phone" className="block text-xs font-bold text-muted mb-1 flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-orange-400" />
                 رقم الجوال
               </label>
@@ -126,7 +126,7 @@ export default function RegisterPage() {
                 placeholder="0551234567"
                 {...register("phone")}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
               />
               {errors.phone && (
                 <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
@@ -137,7 +137,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+              <label htmlFor="password" className="block text-xs font-bold text-muted mb-1 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-orange-400" />
                 كلمة المرور
               </label>
@@ -147,7 +147,7 @@ export default function RegisterPage() {
                 placeholder="••••••••"
                 {...register("password")}
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
+                className="w-full px-4 py-3 bg-background border border-line rounded-xl text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm dir-ltr text-right"
               />
               {errors.password && (
                 <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
@@ -160,7 +160,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-orange-500/20 disabled:opacity-50 cursor-pointer transition-all mt-2"
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 font-bold text-sm rounded-xl shadow-lg shadow-orange-500/20 disabled:opacity-50 cursor-pointer transition-all mt-2"
             >
               {isSubmitting ? (
                 <>
@@ -176,7 +176,7 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <div className="pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
+          <div className="pt-4 border-t border-line text-center text-xs text-muted">
             لديك حساب بالفعل؟{" "}
             <Link href="/login" className="text-orange-400 font-bold hover:underline">
               تسجيل الدخول

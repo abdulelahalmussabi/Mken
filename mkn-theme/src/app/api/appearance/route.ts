@@ -48,6 +48,7 @@ export async function PUT(request: Request) {
     if (typeof body.forceId === "string") update.forceId = body.forceId;
     if (Array.isArray(body.schedule)) update.schedule = body.schedule as ThemeScheduleItem[];
     if (Array.isArray(body.customThemes)) update.customThemes = body.customThemes as CustomTheme[];
+    if (typeof body.darkModeEnabled === "boolean") update.darkModeEnabled = body.darkModeEnabled;
     if (isObject(body.interfaceCopy)) {
       update.interfaceCopy = body.interfaceCopy as AppearanceUpdate["interfaceCopy"];
     }
