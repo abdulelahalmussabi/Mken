@@ -36,13 +36,7 @@ export default function Navbar() {
   ];
 
   return (
-    <header
-      className={`sticky top-0 z-50 backdrop-blur-xl border-b border-line transition-all ${
-        activeOccasion === "national_day"
-          ? "bg-[#01180d]/92 border-emerald-900/50"
-          : "bg-background/90"
-      }`}
-    >
+    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-line transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">

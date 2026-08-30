@@ -88,9 +88,9 @@ export default function SubscriberStorefrontPage() {
     <>
       {showPromo && (
         <div
-          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-slate-800/80 flex items-center justify-center gap-2 flex-wrap"
+          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-line flex items-center justify-center gap-2 flex-wrap bg-surface text-foreground"
           style={{
-            background: `linear-gradient(90deg, rgba(15,23,42,0.95) 0%, ${accentColor}25 50%, rgba(15,23,42,0.95) 100%)`,
+            background: `linear-gradient(90deg, var(--surface) 0%, ${accentColor}25 50%, var(--surface) 100%)`,
           }}
         >
           <Sparkles className="w-4 h-4 text-amber-400" />
@@ -121,7 +121,7 @@ export default function SubscriberStorefrontPage() {
         </div>
       )}
 
-      <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/60">
+      <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-line">
         <div
           className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-25"
           style={{ backgroundColor: accentColor }}
@@ -129,21 +129,21 @@ export default function SubscriberStorefrontPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6 text-right">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 border border-slate-700 text-slate-200 text-xs font-bold">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold">
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 <span>{heroKicker}</span>
               </div>
               <OccasionSymbolsStrip />
               <div className="space-y-2">
-                <h2 className="text-3xl sm:text-5xl font-black text-slate-100 leading-tight tracking-tight">{storeInfo.name}</h2>
+                <h2 className="text-3xl sm:text-5xl font-black text-foreground leading-tight tracking-tight">{storeInfo.name}</h2>
                 <p
                   className="text-lg sm:text-2xl font-bold bg-clip-text text-transparent leading-snug"
-                  style={{ backgroundImage: `linear-gradient(135deg, #ffffff 0%, ${accentColor} 100%)` }}
+                  style={{ backgroundImage: `linear-gradient(135deg, var(--foreground) 0%, ${accentColor} 100%)` }}
                 >
                   {storeInfo.tagline}
                 </p>
               </div>
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed">{storeInfo.subtitle}</p>
+              <p className="text-base sm:text-lg text-muted leading-relaxed">{storeInfo.subtitle}</p>
               {!servicesPageOn ? (
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
@@ -152,7 +152,7 @@ export default function SubscriberStorefrontPage() {
                     className={`px-4 py-2 rounded-xl text-xs font-bold border ${
                       selectedCategory === "all"
                         ? "bg-amber-500 text-slate-950 border-amber-400"
-                        : "bg-slate-900 text-slate-300 border-slate-800"
+                        : "bg-surface text-muted border-line"
                     }`}
                   >
                     الخدمات المتوفرة
@@ -165,7 +165,7 @@ export default function SubscriberStorefrontPage() {
                       className={`px-4 py-2 rounded-xl text-xs font-bold border ${
                         selectedCategory === srv.id
                           ? "bg-amber-500 text-slate-950 border-amber-400"
-                          : "bg-slate-900 text-slate-300 border-slate-800"
+                          : "bg-surface text-muted border-line"
                       }`}
                     >
                       {srv.badge}
@@ -196,7 +196,7 @@ export default function SubscriberStorefrontPage() {
                 )}
                 <Link
                   href={`/book?tenant=${slug}` as Route}
-                  className="px-6 py-4 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-base rounded-2xl flex items-center gap-2"
+                  className="px-6 py-4 bg-surface hover:bg-surface-2 text-foreground border border-line font-bold text-base rounded-2xl flex items-center gap-2"
                 >
                   <Clock className="w-5 h-5 text-amber-400" />
                   احجز موعد أونلاين
@@ -215,7 +215,7 @@ export default function SubscriberStorefrontPage() {
               </div>
             </div>
             <div className="lg:col-span-5">
-              <div className="relative rounded-3xl overflow-hidden border border-slate-700/80 bg-slate-900/90 shadow-2xl p-4 space-y-4">
+              <div className="relative rounded-3xl overflow-hidden border border-line bg-surface shadow-2xl p-4 space-y-4">
                 {yt ? (
                   <iframe
                     title={storeInfo.name}
@@ -235,13 +235,13 @@ export default function SubscriberStorefrontPage() {
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                       {storeInfo.rating} ({storeInfo.reviewsCount})
                     </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <span className="text-xs text-muted flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5" />
                       {storeInfo.location}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-100">{storeInfo.name} - خيارك الأول</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
+                  <h3 className="text-lg font-bold text-foreground">{storeInfo.name} - خيارك الأول</h3>
+                  <p className="text-xs text-muted leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
                 </div>
               </div>
             </div>
@@ -252,9 +252,9 @@ export default function SubscriberStorefrontPage() {
       {stats.length > 0 ? (
         <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((item) => (
-            <div key={item.label} className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-              <p className="text-xl font-black text-white">{item.value}</p>
-              <p className="text-[11px] text-slate-400 mt-1">{item.label}</p>
+            <div key={item.label} className="p-5 rounded-2xl bg-surface border border-line text-center">
+              <p className="text-xl font-black text-foreground">{item.value}</p>
+              <p className="text-[11px] text-muted mt-1">{item.label}</p>
             </div>
           ))}
         </section>
@@ -262,10 +262,10 @@ export default function SubscriberStorefrontPage() {
 
       {pages.home.partners.length > 0 ? (
         <section className="pb-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs text-slate-400 mb-4">شركاؤنا وأبرز العملاء</p>
+          <p className="text-center text-xs text-muted mb-4">شركاؤنا وأبرز العملاء</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             {pages.home.partners.map((item) => (
-              <div key={item.name} className="px-4 py-2 rounded-full bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200">
+              <div key={item.name} className="px-4 py-2 rounded-full bg-surface border border-line text-xs font-bold text-foreground">
                 {item.image ? <img src={item.image} alt={item.name} className="h-8 inline-block ml-2 rounded" /> : null}
                 {item.name}
               </div>
@@ -279,11 +279,11 @@ export default function SubscriberStorefrontPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {secondaryAds.map((ad) => {
               const card = (
-                <div className="rounded-3xl border border-slate-800 bg-slate-900/80 overflow-hidden text-right">
+                <div className="rounded-3xl border border-line bg-surface overflow-hidden text-right">
                   {ad.image ? <img src={ad.image} alt={ad.title} className="w-full h-40 object-cover" /> : null}
                   <div className="p-5 space-y-2">
-                    <h3 className="text-sm font-extrabold text-white">{ad.title}</h3>
-                    {ad.text ? <p className="text-xs text-slate-400 leading-relaxed">{ad.text}</p> : null}
+                    <h3 className="text-sm font-extrabold text-foreground">{ad.title}</h3>
+                    {ad.text ? <p className="text-xs text-muted leading-relaxed">{ad.text}</p> : null}
                   </div>
                 </div>
               );
@@ -303,8 +303,8 @@ export default function SubscriberStorefrontPage() {
       {gridServices.length > 0 ? (
         <section id="services" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-10">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-100">{servicesHeading}</h2>
-            <p className="text-sm text-slate-400">{servicesIntro}</p>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground">{servicesHeading}</h2>
+            <p className="text-sm text-muted">{servicesIntro}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {gridServices.map((srv) => (
@@ -319,7 +319,7 @@ export default function SubscriberStorefrontPage() {
             ))}
           </div>
           {appearance?.interfaceCopy?.servicesFooter && !servicesPageOn ? (
-            <p className="text-center text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-center text-sm text-muted max-w-2xl mx-auto leading-relaxed">
               {appearance.interfaceCopy.servicesFooter}
             </p>
           ) : null}

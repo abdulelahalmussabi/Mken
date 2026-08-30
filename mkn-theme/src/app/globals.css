@@ -36,64 +36,99 @@ html[data-scheme="dark"] {
   --scrollbar-thumb: #1e293b;
 }
 
-/* Occasion Theme Overrides */
-html[data-occasion="ramadan"], [data-occasion="ramadan"] {
+/* Occasion accents on light — keep the matte-white chrome; festive color only */
+html[data-scheme="light"][data-occasion="ramadan"] {
+  --primary-accent: #b45309;
+  --border-color: rgba(180, 83, 9, 0.18);
+  --badge-glow: rgba(251, 191, 36, 0.28);
+}
+html[data-scheme="light"][data-occasion="eid_fitr"] {
+  --primary-accent: #c2410c;
+  --border-color: rgba(194, 65, 12, 0.18);
+  --badge-glow: rgba(168, 85, 247, 0.22);
+}
+html[data-scheme="light"][data-occasion="eid_adha"] {
+  --primary-accent: #a16207;
+  --border-color: rgba(161, 98, 7, 0.18);
+  --badge-glow: rgba(234, 179, 8, 0.28);
+}
+html[data-scheme="light"][data-occasion="national_day"] {
+  --primary-accent: #15803d;
+  --border-color: rgba(21, 128, 61, 0.18);
+  --badge-glow: rgba(34, 197, 94, 0.22);
+}
+html[data-scheme="light"][data-occasion="founding_day"] {
+  --primary-accent: #b45309;
+  --border-color: rgba(180, 83, 9, 0.18);
+  --badge-glow: rgba(217, 119, 6, 0.25);
+}
+html[data-scheme="light"][data-occasion="flag_day"] {
+  --primary-accent: #047857;
+  --border-color: rgba(4, 120, 87, 0.18);
+  --badge-glow: rgba(52, 211, 153, 0.22);
+}
+html[data-scheme="light"][data-occasion="back_to_school"] {
+  --primary-accent: #0369a1;
+  --border-color: rgba(3, 105, 161, 0.18);
+  --badge-glow: rgba(14, 165, 233, 0.22);
+}
+html[data-scheme="light"][data-occasion="white_friday"] {
+  --primary-accent: #be123c;
+  --border-color: rgba(190, 18, 60, 0.16);
+  --badge-glow: rgba(225, 29, 72, 0.2);
+}
+
+/* Occasion palettes in dark scheme only — never pin the page dark while scheme is light */
+html[data-scheme="dark"][data-occasion="ramadan"] {
   --background: #060b19;
-  --primary-accent: #fbbf24; /* Golden Ramadan Warmth */
+  --primary-accent: #fbbf24;
   --card-bg: rgba(11, 19, 43, 0.85);
   --border-color: rgba(251, 191, 36, 0.25);
   --badge-glow: rgba(251, 191, 36, 0.4);
 }
-
-html[data-occasion="eid_fitr"], [data-occasion="eid_fitr"] {
+html[data-scheme="dark"][data-occasion="eid_fitr"] {
   --background: #14051b;
-  --primary-accent: #f97316; /* Festive Coral & Purple */
+  --primary-accent: #f97316;
   --card-bg: rgba(30, 10, 42, 0.85);
   --border-color: rgba(249, 115, 22, 0.25);
   --badge-glow: rgba(224, 170, 255, 0.4);
 }
-
-html[data-occasion="eid_adha"], [data-occasion="eid_adha"] {
+html[data-scheme="dark"][data-occasion="eid_adha"] {
   --background: #03150d;
-  --primary-accent: #eab308; /* Imperial Kaaba Gold & Deep Emerald */
+  --primary-accent: #eab308;
   --card-bg: rgba(6, 78, 59, 0.5);
   --border-color: rgba(234, 179, 8, 0.3);
   --badge-glow: rgba(234, 179, 8, 0.4);
 }
-
-html[data-occasion="national_day"], [data-occasion="national_day"] {
+html[data-scheme="dark"][data-occasion="national_day"] {
   --background: #01180d;
-  --primary-accent: #22c55e; /* Neon Saudi Green (matches hero CTA) */
+  --primary-accent: #22c55e;
   --card-bg: rgba(0, 50, 25, 0.8);
   --border-color: rgba(34, 197, 94, 0.35);
   --badge-glow: rgba(34, 197, 94, 0.45);
 }
-
-html[data-occasion="founding_day"], [data-occasion="founding_day"] {
+html[data-scheme="dark"][data-occasion="founding_day"] {
   --background: #190a03;
-  --primary-accent: #d97706; /* Terracotta & Diriyah Gold */
+  --primary-accent: #d97706;
   --card-bg: rgba(54, 23, 7, 0.85);
   --border-color: rgba(217, 119, 6, 0.3);
   --badge-glow: rgba(217, 119, 6, 0.4);
 }
-
-html[data-occasion="flag_day"], [data-occasion="flag_day"] {
+html[data-scheme="dark"][data-occasion="flag_day"] {
   --background: #021a12;
-  --primary-accent: #34d399; /* Radiant Emerald Green */
+  --primary-accent: #34d399;
   --card-bg: rgba(4, 40, 26, 0.85);
   --border-color: rgba(52, 211, 153, 0.3);
   --badge-glow: rgba(52, 211, 153, 0.45);
 }
-
-html[data-occasion="back_to_school"], [data-occasion="back_to_school"] {
+html[data-scheme="dark"][data-occasion="back_to_school"] {
   --background: #061018;
   --primary-accent: #0ea5e9;
   --card-bg: rgba(8, 47, 73, 0.8);
   --border-color: rgba(14, 165, 233, 0.3);
   --badge-glow: rgba(250, 204, 21, 0.35);
 }
-
-html[data-occasion="white_friday"], [data-occasion="white_friday"] {
+html[data-scheme="dark"][data-occasion="white_friday"] {
   --background: #050505;
   --primary-accent: #f8fafc;
   --card-bg: rgba(24, 24, 27, 0.88);
@@ -101,7 +136,7 @@ html[data-occasion="white_friday"], [data-occasion="white_friday"] {
   --badge-glow: rgba(225, 29, 72, 0.4);
 }
 
-html[data-occasion] {
+html[data-scheme="dark"][data-occasion] {
   --foreground: #f8fafc;
   --surface: var(--card-bg);
   --surface-2: rgba(255, 255, 255, 0.1);
