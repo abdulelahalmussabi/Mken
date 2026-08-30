@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useOccasion } from "@/context/OccasionContext";
+import { useAdmin } from "@/context/AdminContext";
 import { isolateTenantHref } from "@/lib/mken/tenant-host";
 import type { AppearancePublic } from "@/lib/mken/appearance";
-import { Megaphone, X, Star, Gift, Copy, Check, ArrowLeft } from "lucide-react";
+import { Megaphone, X, Star, Gift, Copy, Check, ArrowLeft, Pencil } from "lucide-react";
 
 export interface TenantPublicAd {
   id: string;
@@ -18,23 +21,30 @@ export interface TenantPublicAd {
 
 export function adsFromAppearance(
   appearance: AppearancePublic | null,
-  slug: string
+  slug: string,
+  occasionFallback?: { title: string; subtitle: string; couponCode: string } | null
 ): TenantPublicAd[] {
-  if (!appearance || !slug) return [];
+  if (!slug) return [];
   const items: TenantPublicAd[] = [];
-  const primary = appearance.ads.primary;
-  if (primary.enabled && (primary.title || primary.text)) {
-    items.push({
-      id: "primary",
-      title: primary.title || "عرض المنشأة",
-      subtitle: primary.text,
-      href: isolateTenantHref(primary.ctaHref, slug),
-      ctaLabel: primary.ctaLabel || "الاستفادة من العرض الآن",
-      couponCode: primary.couponCode,
-      image: primary.image,
-    });
+  const primary = appearance?.ads.primary;
+  const primaryEnabled = primary ? primary.enabled : Boolean(occasionFallback);
+  if (primaryEnabled) {
+    const title = (primary?.title || "").trim() || occasionFallback?.title || "";
+    const subtitle = (primary?.text || "").trim() || occasionFallback?.subtitle || "";
+    const couponCode = (primary?.couponCode || "").trim() || occasionFallback?.couponCode || "";
+    if (title || subtitle || couponCode) {
+      items.push({
+        id: "primary",
+        title: title || "عرض المنشأة",
+        subtitle,
+        href: isolateTenantHref(primary?.ctaHref || `/book?tenant=${slug}`, slug),
+        ctaLabel: primary?.ctaLabel || "الاستفادة من العرض الآن",
+        couponCode,
+        image: primary?.image || "",
+      });
+    }
   }
-  for (const ad of appearance.ads.secondary || []) {
+  for (const ad of appearance?.ads.secondary || []) {
     if (!ad.enabled || !ad.title.trim()) continue;
     items.push({
       id: ad.id,
@@ -51,11 +61,11 @@ export function adsFromAppearance(
 
 export function useTenantPublicAds(slug: string | null): TenantPublicAd[] {
   const { occasionDetails, activeOccasion } = useOccasion();
-  const [tenantAds, setTenantAds] = useState<TenantPublicAd[]>([]);
+  const [tenantAds, setTenantAds] = useState<TenantPublicAd[] | null>(null);
 
   useEffect(() => {
     if (!slug) {
-      setTenantAds([]);
+      setTenantAds(null);
       return;
     }
     let cancelled = false;
@@ -63,7 +73,13 @@ export function useTenantPublicAds(slug: string | null): TenantPublicAd[] {
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data?.success) return;
-        setTenantAds(adsFromAppearance(data.appearance || null, slug));
+        setTenantAds(
+          adsFromAppearance(data.appearance || null, slug, {
+            title: occasionDetails.slogan,
+            subtitle: occasionDetails.discountText,
+            couponCode: occasionDetails.couponCode,
+          })
+        );
       })
       .catch(() => {
         if (!cancelled) setTenantAds([]);
@@ -71,30 +87,15 @@ export function useTenantPublicAds(slug: string | null): TenantPublicAd[] {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, occasionDetails.slogan, occasionDetails.discountText, occasionDetails.couponCode]);
 
   if (!slug) return [];
-
-  const occasionAd: TenantPublicAd | null =
-    activeOccasion !== "none"
-      ? {
-          id: `occasion-${activeOccasion}`,
-          title: occasionDetails.slogan,
-          subtitle: occasionDetails.discountText,
-          href: isolateTenantHref(`/book?tenant=${slug}`, slug),
-          ctaLabel: "الاستفادة من العرض والتسجيل الآن",
-          couponCode: occasionDetails.couponCode,
-          image: "",
-        }
-      : null;
-
-  const merged = occasionAd ? [occasionAd, ...tenantAds] : tenantAds;
-  const seen = new Set<string>();
-  return merged.filter((ad) => {
-    const key = `${ad.title}|${ad.couponCode}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  if (tenantAds) return tenantAds;
+  if (activeOccasion === "none") return [];
+  return adsFromAppearance(null, slug, {
+    title: occasionDetails.slogan,
+    subtitle: occasionDetails.discountText,
+    couponCode: occasionDetails.couponCode,
   });
 }
 
@@ -104,6 +105,7 @@ export const AdsShowcaseModal: React.FC<{
   ads: TenantPublicAd[];
 }> = ({ open, onClose, ads }) => {
   const { copyCoupon, occasionDetails } = useOccasion();
+  const { isAdmin } = useAdmin();
   const [index, setIndex] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -208,8 +210,18 @@ export const AdsShowcaseModal: React.FC<{
           </a>
         </div>
 
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] text-slate-500">عروض هذه المنشأة على منصة مكّن</span>
+        <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
+          {isAdmin ? (
+            <Link
+              href={(current.id === "primary" ? "/admin/ads" : "/admin/ads/secondary") as Route}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-bold hover:bg-amber-500/25"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              تعديل الإعلان
+            </Link>
+          ) : (
+            <span className="text-[11px] text-slate-500">عروض هذه المنشأة على منصة مكّن</span>
+          )}
           <button
             type="button"
             onClick={onClose}

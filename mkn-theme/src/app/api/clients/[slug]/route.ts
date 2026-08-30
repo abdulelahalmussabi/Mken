@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { adminClientView } from "@/data/default-clients";
 import { canEditClient, readAdminSession, sha256Hex } from "@/lib/auth/session";
 import { loadPublicStorefront } from "@/lib/mken/catalog";
-import { resolveBoundTenant } from "@/lib/mken/bound-host";
+import { hostnameFromHeaders, resolveBoundTenant } from "@/lib/mken/bound-host";
+import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import {
   TENANT_TABLE,
   fetchTenantRow,
@@ -12,6 +13,17 @@ import {
   updateTenant,
 } from "@/lib/mken/tenant";
 import type { ClientRecord } from "@/types/database";
+import { logoValidationError } from "@/lib/mken/logo-crop";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Cache-Control, Pragma",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS });
+}
 
 /** Fields a client admin may change on its own record. */
 const CLIENT_EDITABLE: (keyof ClientRecord)[] = [
@@ -23,9 +35,11 @@ const CLIENT_EDITABLE: (keyof ClientRecord)[] = [
   "email",
   "location",
   "heroImage",
+  "logo",
   "theme",
   "couponCode",
   "discountText",
+  "promoTitle",
   "discountEnabled",
 ];
 
@@ -33,31 +47,42 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug: rawSlug } = await params;
-  const slug = rawSlug?.toLowerCase();
-  if (!slug || isPlatformSlug(slug)) {
-    return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
-  }
+  try {
+    const { slug: rawSlug } = await params;
+    const slug = rawSlug?.toLowerCase();
+    if (!slug || isPlatformSlug(slug)) {
+      return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404, headers: CORS });
+    }
 
-  const bound = await resolveBoundTenant(request);
-  if (bound && bound !== slug) {
-    return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
-  }
+    // Sync only — async custom-host DB lookup has timed out (empty 500) on tenant subdomains.
+    const bound = boundTenantFromHostname(hostnameFromHeaders(request.headers));
+    if (bound && bound !== slug) {
+      return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404, headers: CORS });
+    }
 
-  const payload = await loadPublicStorefront(slug);
-  if (!payload) {
-    return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404 });
-  }
+    const payload = await loadPublicStorefront(slug);
+    if (!payload) {
+      return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404, headers: CORS });
+    }
 
-  return NextResponse.json({
-    success: true,
-    client: payload.client,
-    catalog: payload.catalog,
-    appearance: payload.appearance,
-    pages: payload.pages,
-    contactExtras: payload.contactExtras,
-    source: payload.source,
-  });
+    return NextResponse.json(
+      {
+        success: true,
+        client: payload.client,
+        catalog: payload.catalog,
+        appearance: payload.appearance,
+        pages: payload.pages,
+        contactExtras: payload.contactExtras,
+        source: payload.source,
+      },
+      { headers: CORS }
+    );
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "تعذّر تحميل المنشأة" },
+      { status: 500, headers: CORS }
+    );
+  }
 }
 
 export async function PUT(
@@ -101,6 +126,13 @@ export async function PUT(
         { success: false, message: "لا توجد حقول للتحديث" },
         { status: 400 }
       );
+    }
+
+    if (typeof updates.logo === "string") {
+      const logoError = logoValidationError(updates.logo);
+      if (logoError) {
+        return NextResponse.json({ success: false, message: logoError }, { status: 400 });
+      }
     }
 
     const result = await updateTenant(slug, updates);

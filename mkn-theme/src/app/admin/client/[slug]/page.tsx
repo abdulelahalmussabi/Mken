@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
-import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
+import { SAUDI_OCCASIONS, VISITOR_PROMO_HINT, type OccasionId } from "@/context/OccasionContext";
 import {
   Palette,
   Check,
@@ -21,6 +21,7 @@ import {
   Tag,
   ArrowRight,
 } from "lucide-react";
+import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 
 const occasionsList = Object.values(SAUDI_OCCASIONS);
 
@@ -53,6 +54,7 @@ export default function ClientDetailPage() {
   const [location, setLocation] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [discountText, setDiscountText] = useState("");
+  const [promoTitle, setPromoTitle] = useState("");
   const [discountEnabled, setDiscountEnabled] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -64,8 +66,9 @@ export default function ClientDetailPage() {
       setPhone(targetClient.phone || "");
       setWhatsapp(targetClient.whatsapp || "");
       setLocation(targetClient.location || "");
-      setCouponCode(targetClient.couponCode || currentOcc?.couponCode || "");
-      setDiscountText(targetClient.discountText || currentOcc?.discountText || "");
+      setCouponCode(targetClient.couponCode || "");
+      setDiscountText(targetClient.discountText || "");
+      setPromoTitle(targetClient.promoTitle || "");
       setDiscountEnabled(targetClient.discountEnabled ?? true);
     }
   }, [targetClient, currentOcc]);
@@ -109,6 +112,7 @@ export default function ClientDetailPage() {
       location,
       couponCode,
       discountText,
+      promoTitle,
       discountEnabled,
     });
 
@@ -153,6 +157,16 @@ export default function ClientDetailPage() {
             <Building2 className="w-5 h-5 text-amber-400" />
             <h2 className="text-lg font-extrabold text-white">إعدادات المنشأة وبيانات التواصل</h2>
           </div>
+
+          <BrandLogoUploader
+            value={targetClient.logo || ""}
+            onPersist={async (logo) => {
+              const result = await updateClient(targetClient.slug, { logo });
+              if (result.success) showToast(logo ? "تم حفظ الشعار على صفحة الزائر" : "تم إزالة الشعار", "success");
+              else showToast(result.message || "تعذّر حفظ الشعار", "error");
+              return result;
+            }}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
@@ -251,13 +265,23 @@ export default function ClientDetailPage() {
 
             {discountEnabled && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-300">عنوان الإعلان الرئيسي</label>
+                  <input
+                    type="text"
+                    value={promoTitle}
+                    onChange={(e) => setPromoTitle(e.target.value)}
+                    placeholder={currentTheme === "none" ? VISITOR_PROMO_HINT.title : currentOcc?.slogan || VISITOR_PROMO_HINT.title}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-300">كود الخصم المخصص</label>
                   <input
                     type="text"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="MAHRUSA20"
+                    placeholder={VISITOR_PROMO_HINT.coupon}
                     dir="ltr"
                     className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-amber-300 font-mono focus:outline-none focus:border-amber-500"
                   />
@@ -269,7 +293,7 @@ export default function ClientDetailPage() {
                     type="text"
                     value={discountText}
                     onChange={(e) => setDiscountText(e.target.value)}
-                    placeholder="خصم 20% حصري للمستخدمين"
+                    placeholder={VISITOR_PROMO_HINT.text}
                     className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                   />
                 </div>

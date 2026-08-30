@@ -23,6 +23,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "✨ صفحة مجموعة المحروسة للشقق المخدومة — المدينة المنورة",
     adminEmail: "almahrusa@mken.live",
+    logo: "https://www.mken.live/brand/almahrusa.jpg",
     theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
@@ -88,6 +89,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     demoNotice:
       "✨ الموقع الرسمي لمنتجع رواء الاستشفاء الرقمي (rewa.care) على منصة مكّن",
     adminEmail: "rewa@mken.live",
+    logo: "https://www.mken.live/brand/rewa.png",
     theme: "none",
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
@@ -123,10 +125,12 @@ export function storefrontClient(client: ClientRecord): StorefrontClient {
     rating: client.rating,
     reviewsCount: client.reviewsCount,
     heroImage: client.heroImage,
+    logo: client.logo || "",
     demoNotice: client.demoNotice,
     theme: client.theme,
     couponCode: client.couponCode,
     discountText: client.discountText,
+    promoTitle: client.promoTitle,
     discountEnabled: client.discountEnabled,
     claimStatus:
       client.claimStatus === "unclaimed" || client.claimStatus === "pending"

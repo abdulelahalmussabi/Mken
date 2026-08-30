@@ -11,6 +11,7 @@ import {
 } from "@/lib/mken/settings";
 import type { GbpLocation } from "@/lib/mken/gbp";
 import GbpSeoPanel from "@/components/GbpSeoPanel";
+import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 import {
   Building2,
   Save,
@@ -221,6 +222,22 @@ export default function AdminSettingsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const persistLogo = async (logo: string) => {
+    if (!settings) return { success: false, message: "لا توجد إعدادات" };
+    const res = await fetch(`/api/settings${query}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brand: { ...settings.brand, logo } }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, message: data.message || "تعذّر حفظ الشعار" };
+    }
+    setSettings(data.settings);
+    showToast(logo ? "تم حفظ الشعار" : "تم إزالة الشعار", "success");
+    return { success: true };
   };
 
   const connectGbp = async () => {
@@ -490,14 +507,11 @@ export default function AdminSettingsPage() {
                     className={inputClass}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">رابط الشعار</label>
-                  <input
+                <div className="space-y-1.5 md:col-span-2">
+                  <BrandLogoUploader
                     value={settings.brand.logo}
-                    onChange={(e) => patch({ brand: { ...settings.brand, logo: e.target.value } })}
-                    placeholder="assets/logo.png"
-                    dir="ltr"
-                    className={`${inputClass} text-left`}
+                    onPersist={persistLogo}
+                    disabled={saving}
                   />
                 </div>
                 <div className="space-y-1.5">

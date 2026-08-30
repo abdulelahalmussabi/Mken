@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Megaphone, Save } from "lucide-react";
 import { ADMIN_INPUT, useAppearanceEditor } from "@/components/AdminPageTabs";
+import { SAUDI_OCCASIONS, type OccasionId } from "@/context/OccasionContext";
 import type { PrimaryAd } from "@/lib/mken/appearance";
 
 export default function AdsPrimaryPage() {
@@ -18,7 +19,22 @@ export default function AdsPrimaryPage() {
   });
 
   useEffect(() => {
-    if (appearance) setDraft(appearance.ads.primary);
+    if (!appearance) return;
+    const primary = appearance.ads.primary;
+    const occId = appearance.resolvedTheme as OccasionId;
+    const occ =
+      appearance.themeKind === "occasion" && occId !== "none" && occId in SAUDI_OCCASIONS
+        ? SAUDI_OCCASIONS[occId]
+        : null;
+    setDraft({
+      enabled: primary.enabled,
+      title: primary.title || occ?.slogan || "",
+      text: primary.text || occ?.discountText || "",
+      image: primary.image || "",
+      ctaLabel: primary.ctaLabel || "الاستفادة من العرض والتسجيل الآن",
+      ctaHref: primary.ctaHref || "",
+      couponCode: primary.couponCode || occ?.couponCode || "",
+    });
   }, [appearance]);
 
   const patch = (field: keyof PrimaryAd, value: string | boolean) => {
@@ -37,7 +53,9 @@ export default function AdsPrimaryPage() {
         <Megaphone className="w-5 h-5 text-amber-400" />
         <div>
           <h1 className="text-lg font-extrabold text-white">الإعلان الرئيسي</h1>
-          <p className="text-xs text-slate-400 mt-0.5">الشريط أعلى صفحة الزائر وصورة الـ Hero.</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            هذا هو الإعلان الأول في نافذة العروض للزائر. ثيم المناسبة يلوّن الشريط فقط — النص والكود يُحرَّران من هنا.
+          </p>
         </div>
       </div>
 

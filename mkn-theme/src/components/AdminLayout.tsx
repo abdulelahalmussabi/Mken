@@ -28,6 +28,7 @@ import {
   Type,
   Megaphone,
 } from "lucide-react";
+import { PlatformMark } from "@/components/PlatformMark";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { session, authLoading, isSuperAdmin, logoutAdmin, saas } = useAdmin();
@@ -139,9 +140,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             <Link href={isSuperAdmin ? "/admin" : "/admin/client"} className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">
-                م
-              </div>
+              <PlatformMark
+                className="w-9 h-9"
+                fallback={
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">
+                    م
+                  </div>
+                }
+              />
               <div>
                 <span className="font-extrabold text-lg text-white">مكّن</span>
                 <span className="text-xs text-amber-400 font-bold mr-1.5">/ Admin</span>

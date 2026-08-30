@@ -8,6 +8,7 @@ import {
 } from "@/lib/mken/tenant";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import type { ClientRecord } from "@/types/database";
+import { logoValidationError } from "@/lib/mken/logo-crop";
 
 /**
  * Tenant identity settings stored in `config_data`: brand, phone, social
@@ -217,6 +218,9 @@ export function validateSettings(update: SettingsUpdate): string | null {
   if (update.brand?.name !== undefined && !update.brand.name.trim()) {
     return "اسم المنشأة مطلوب";
   }
+
+  const logoError = logoValidationError(update.brand?.logo);
+  if (logoError) return logoError;
 
   if (update.phone !== undefined && update.phone.trim()) {
     const digits = digitsOnly(update.phone);

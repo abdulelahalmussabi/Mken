@@ -7,6 +7,7 @@ import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
 import type { ClientRecord } from "@/types/database";
+import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 import {
   Palette,
   Globe,
@@ -41,7 +42,9 @@ export default function AdminDashboardPage() {
     authLoading,
     isSuperAdmin,
     globalTheme,
+    platformLogo,
     setGlobalTheme,
+    setPlatformLogo,
     clients,
     getClientTheme,
     setClientTheme,
@@ -143,6 +146,25 @@ export default function AdminDashboardPage() {
         {/* ── Section 1: Global Platform Theme ───────────────────────────── */}
         {isSuperAdmin && (
           <section id="global-theme" className="space-y-5">
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-amber-400" />
+                <h2 className="text-lg font-extrabold text-white">شعار المنصة</h2>
+              </div>
+              <p className="text-xs text-slate-400">
+                يظهر في رأس موقع mken.live وتذييله ولوحة التحكم بعد الحفظ مباشرة.
+              </p>
+              <BrandLogoUploader
+                value={platformLogo}
+                onPersist={async (logo) => {
+                  const result = await setPlatformLogo(logo);
+                  if (result.success) showToast(logo ? "تم حفظ شعار المنصة" : "تم إزالة شعار المنصة", "success");
+                  else showToast(result.message || "تعذّر حفظ شعار المنصة", "error");
+                  return result;
+                }}
+              />
+            </div>
+
             <div className="flex items-center gap-3">
               <Globe className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg font-extrabold text-white">الثيم الافتراضي للمنصة</h2>

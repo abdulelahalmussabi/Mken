@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { useOccasion } from "@/context/OccasionContext";
+import { useOccasion, visitorMarketingKicker, tenantSafeCopy } from "@/context/OccasionContext";
 import { OccasionSymbolsStrip } from "@/components/occasions/OccasionSymbolsStrip";
 import { isolateTenantHref } from "@/lib/mken/tenant-host";
 import { useStorefront } from "@/components/storefront/StorefrontFrame";
@@ -16,7 +16,7 @@ function youtubeId(url: string): string | null {
 }
 
 export default function SubscriberStorefrontPage() {
-  const { openModal, occasionDetails } = useOccasion();
+  const { copyCoupon, occasionDetails, activeOccasion } = useOccasion();
   const {
     slug,
     storeInfo,
@@ -26,6 +26,7 @@ export default function SubscriberStorefrontPage() {
     accentColor,
     isCommerce,
     isHotel,
+    isSalon,
     href,
     openBooking,
   } = useStorefront();
@@ -46,7 +47,11 @@ export default function SubscriberStorefrontPage() {
     (isCommerce ? "المنتجات والخدمات التجارية" : isHotel ? "خيارات الإقامة والخدمات" : "الخدمات المتوفرة");
   const servicesIntro =
     appearance?.interfaceCopy?.servicesIntro ||
-    `اختر الخدمة المطلوبة وتصفح أسعارها واستفد من خصم ${occasionDetails.shortName} المباشر`;
+    (isCommerce
+      ? "اختر المنتج وتصفّح الأسعار واطلب بسهولة."
+      : isHotel
+        ? "اختر خيار الإقامة المناسب واطّلع على التفاصيل."
+        : "اختر الخدمة المطلوبة وتصفح أسعارها واحجز مباشرة.");
   const primaryCta = pages.home.ctaLabel || (isCommerce ? "اطلب الآن" : isHotel ? "احجز إقامتك" : "احجز موعدك");
   const secondaryAds = (appearance?.ads?.secondary || []).filter((ad) => ad.enabled);
   const stats =
@@ -62,7 +67,22 @@ export default function SubscriberStorefrontPage() {
   const yt = videoUrl ? youtubeId(videoUrl) : null;
   const ctaHref = pages.home.ctaHref ? isolateTenantHref(pages.home.ctaHref, slug) : "";
 
-  const showPromo = appearance?.ads?.primary ? appearance.ads.primary.enabled : storeInfo.discountEnabled !== false;
+  const primaryAd = appearance?.ads?.primary;
+  const promoTitle = tenantSafeCopy(primaryAd?.title || "");
+  const promoText = tenantSafeCopy(primaryAd?.text || "");
+  const promoCoupon = tenantSafeCopy(primaryAd?.couponCode || "");
+  const showPromo = Boolean(
+    (primaryAd ? primaryAd.enabled : storeInfo.discountEnabled) && (promoTitle || promoText || promoCoupon)
+  );
+  const heroKicker = visitorMarketingKicker({
+    activeOccasion,
+    shortName: occasionDetails.shortName,
+    slogan: occasionDetails.slogan,
+    promoTitle,
+    isHotel,
+    isCommerce,
+    isSalon,
+  });
 
   return (
     <>
@@ -75,13 +95,22 @@ export default function SubscriberStorefrontPage() {
         >
           <Sparkles className="w-4 h-4 text-amber-400" />
           <span>
-            {appearance?.ads?.primary?.title || occasionDetails.slogan} —{" "}
-            <strong>{appearance?.ads?.primary?.text || occasionDetails.discountText}</strong>
+            {promoTitle || occasionDetails.slogan}
+            {(promoText || occasionDetails.discountText) ? (
+              <>
+                {" "}
+                — <strong>{promoText || occasionDetails.discountText}</strong>
+              </>
+            ) : null}
           </span>
-          {(appearance?.ads?.primary?.couponCode || occasionDetails.couponCode) && (
-            <button type="button" onClick={openModal} className="underline text-amber-300 mr-2 hover:opacity-80">
+          {(promoCoupon || occasionDetails.couponCode) && (
+            <button
+              type="button"
+              onClick={() => copyCoupon(promoCoupon || occasionDetails.couponCode)}
+              className="underline text-amber-300 mr-2 hover:opacity-80"
+            >
               كود الخصم:{" "}
-              <strong className="font-mono">{appearance?.ads?.primary?.couponCode || occasionDetails.couponCode}</strong>
+              <strong className="font-mono">{promoCoupon || occasionDetails.couponCode}</strong>
             </button>
           )}
           {appearance?.ads?.primary?.ctaLabel && appearance.ads.primary.ctaHref && (
@@ -102,9 +131,7 @@ export default function SubscriberStorefrontPage() {
             <div className="lg:col-span-7 space-y-6 text-right">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/90 border border-slate-700 text-slate-200 text-xs font-bold">
                 <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>
-                  {occasionDetails.shortName} — {occasionDetails.slogan}
-                </span>
+                <span>{heroKicker}</span>
               </div>
               <OccasionSymbolsStrip />
               <div className="space-y-2">

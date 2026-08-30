@@ -7,6 +7,7 @@ import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import { Shield, Eye, EyeOff, LogIn, ArrowRight } from "lucide-react";
+import { PlatformMark } from "@/components/PlatformMark";
 
 function adminReturnPath(role: "super" | "client" | null | undefined): string {
   if (typeof window === "undefined") return role === "client" ? "/admin/client" : "/admin";
@@ -76,8 +77,15 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md space-y-8 relative z-10">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/30 mx-auto">
-            <Shield className="w-8 h-8 text-slate-950" />
+          <div className="inline-flex items-center justify-center mx-auto">
+            <PlatformMark
+              className="w-16 h-16 rounded-3xl shadow-2xl shadow-amber-500/30"
+              fallback={
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/30">
+                  <Shield className="w-8 h-8 text-slate-950" />
+                </div>
+              }
+            />
           </div>
           <div>
             <h1 className="text-3xl font-black text-white">لوحة تحكم مكّن</h1>

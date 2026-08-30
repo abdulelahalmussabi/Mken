@@ -1,15 +1,18 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { useOccasion } from "@/context/OccasionContext";
 import { useAdmin } from "@/context/AdminContext";
 import { Palette, Sparkles } from "lucide-react";
+import { isAdminPathname } from "@/lib/mken/admin-path";
 
 export const OccasionFloatingButton: React.FC = () => {
   const { occasionDetails, openModal, isMounted } = useOccasion();
   const { isAdmin } = useAdmin();
+  const pathname = usePathname();
 
-  if (!isMounted || !isAdmin) return null;
+  if (!isMounted || !isAdmin || !isAdminPathname(pathname)) return null;
 
   return (
     <div className="fixed bottom-6 left-6 z-50 animate-bounce" style={{ animationDuration: "3s" }}>

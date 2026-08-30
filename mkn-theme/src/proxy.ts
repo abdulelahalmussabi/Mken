@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveBoundTenantFromHostname } from "@/lib/mken/bound-host";
+import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import { attachUnclaimedRobotsHeader } from "@/lib/mken/preview";
 
 const ADMIN_COOKIE = "mkn_admin_session";
@@ -74,6 +75,26 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
  */
 export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
+  const pathname = url.pathname;
+  if (
+    pathname.startsWith("/brand/") ||
+    pathname.startsWith("/_next/") ||
+    /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
+  // Public storefront APIs must not run hostname/DB lookups in the gate.
+  // Bound-host resolve has 500'd `/api/clients/*` on tenant subdomains (empty body),
+  // which left logos stuck on the 🏢 placeholder.
+  const isPublicApi =
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/admin") &&
+    !pathname.startsWith("/api/staff");
+  if (isPublicApi) {
+    return NextResponse.next();
+  }
+
   const hostname = request.headers.get("host") || "";
   const nestedWww = nestedWwwTenant(hostname);
   if (nestedWww) {
@@ -83,8 +104,12 @@ export async function proxy(request: NextRequest) {
     dest.port = "";
     return NextResponse.redirect(dest, 308);
   }
-  const { pathname } = url;
-  const tenant = await resolveBoundTenantFromHostname(hostname);
+  let tenant: string | null = null;
+  try {
+    tenant = await resolveBoundTenantFromHostname(hostname);
+  } catch {
+    tenant = boundTenantFromHostname(hostname);
+  }
 
   if (tenant) {
     const locked = lockBoundTenant(url, pathname, tenant);
@@ -148,6 +173,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   if (tenant && pathname === "/") {
     url.pathname = `/subscriber/${tenant}`;
     return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
@@ -195,11 +224,16 @@ export async function proxy(request: NextRequest) {
   }
 
   const next = NextResponse.next();
-  return tenant ? attachUnclaimedRobotsHeader(next, tenant) : next;
+  if (!tenant) return next;
+  try {
+    return await attachUnclaimedRobotsHeader(next, tenant);
+  } catch {
+    return next;
+  }
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

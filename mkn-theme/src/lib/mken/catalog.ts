@@ -8,6 +8,7 @@ import {
   type StorefrontContactPublic,
   type StorefrontPagesPublic,
 } from "@/lib/mken/pages";
+import { publicBrandSrc } from "@/lib/mken/logo-crop";
 import {
   ensureTenantRow,
   fetchTenantRow,
@@ -545,6 +546,12 @@ function mergeSeedConfig(slug: string, config: MkenConfig): MkenConfig {
             featuredActivity: (config.featuredActivity as string) || seed.featuredActivity,
             featured: (config.featured as string) || seed.featured,
           };
+  }
+  const seedLogo =
+    slug === "rewa" ? publicBrandSrc("rewa.png") : slug === "almahrusa" ? publicBrandSrc("almahrusa.jpg") : "";
+  const currentLogo = (merged.brand?.logo || "").trim();
+  if (seedLogo && !currentLogo) {
+    merged = { ...merged, brand: { ...(merged.brand || {}), logo: seedLogo } };
   }
   return slug === "rewa" ? stripRewaSpa(merged) : merged;
 }

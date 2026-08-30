@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useOccasion, SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
 import { useAdmin } from "@/context/AdminContext";
+import { isAdminPathname } from "@/lib/mken/admin-path";
 import { X, Sparkles, Check, Copy, Layers, Layout, Palette, Calendar, Gift, History, Lightbulb } from "lucide-react";
 
 export const OccasionShowcaseModal: React.FC = () => {
   const { showModal, closeModal, activeOccasion, setOccasion, copyCoupon, currentSlug } = useOccasion();
   const { isAdmin, session, setClientTheme, setGlobalTheme } = useAdmin();
+  const pathname = usePathname();
   const [selectedTab, setSelectedTab] = useState<OccasionId>(activeOccasion);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -15,7 +18,7 @@ export const OccasionShowcaseModal: React.FC = () => {
     if (showModal) setSelectedTab(activeOccasion);
   }, [showModal, activeOccasion]);
 
-  if (!showModal || !isAdmin) return null;
+  if (!showModal || !isAdmin || !isAdminPathname(pathname)) return null;
 
   const persistTheme = (id: OccasionId) => {
     setOccasion(id);

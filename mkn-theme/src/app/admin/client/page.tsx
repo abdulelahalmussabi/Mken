@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
-import { SAUDI_OCCASIONS } from "@/context/OccasionContext";
+import { SAUDI_OCCASIONS, VISITOR_PROMO_HINT } from "@/context/OccasionContext";
 import {
   ExternalLink,
   ShieldCheck,
@@ -19,6 +19,7 @@ import {
   Type,
   Megaphone,
 } from "lucide-react";
+import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 
 export default function ClientAdminPage() {
   const { session, clients, getClientTheme, updateClient, isSuperAdmin } = useAdmin();
@@ -33,8 +34,9 @@ export default function ClientAdminPage() {
   const [phone, setPhone] = useState(myClient?.phone || "");
   const [whatsapp, setWhatsapp] = useState(myClient?.whatsapp || "");
   const [location, setLocation] = useState(myClient?.location || "");
-  const [couponCode, setCouponCode] = useState(myClient?.couponCode || currentOcc.couponCode);
-  const [discountText, setDiscountText] = useState(myClient?.discountText || currentOcc.discountText);
+  const [couponCode, setCouponCode] = useState(myClient?.couponCode || "");
+  const [discountText, setDiscountText] = useState(myClient?.discountText || "");
+  const [promoTitle, setPromoTitle] = useState(myClient?.promoTitle || "");
   const [discountEnabled, setDiscountEnabled] = useState(myClient?.discountEnabled ?? true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -75,6 +77,7 @@ export default function ClientAdminPage() {
       location,
       couponCode,
       discountText,
+      promoTitle,
       discountEnabled,
     });
 
@@ -133,6 +136,16 @@ export default function ClientAdminPage() {
             <Building2 className="w-5 h-5 text-amber-400" />
             <h2 className="text-lg font-extrabold text-white">إعدادات المنشأة وبيانات التواصل</h2>
           </div>
+
+          <BrandLogoUploader
+            value={myClient.logo || ""}
+            onPersist={async (logo) => {
+              const result = await updateClient(myClient.slug, { logo });
+              if (result.success) showToast(logo ? "تم حفظ الشعار على صفحة الزائر" : "تم إزالة الشعار", "success");
+              else showToast(result.message || "تعذّر حفظ الشعار", "error");
+              return result;
+            }}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
@@ -200,6 +213,16 @@ export default function ClientAdminPage() {
 
             {discountEnabled && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-300">عنوان الإعلان الرئيسي</label>
+                  <input
+                    type="text"
+                    value={promoTitle}
+                    onChange={(e) => setPromoTitle(e.target.value)}
+                    placeholder={currentTheme === "none" ? VISITOR_PROMO_HINT.title : currentOcc.slogan}
+                    className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-300">كود الخصم المخصص</label>
                   <input
@@ -218,7 +241,7 @@ export default function ClientAdminPage() {
                     type="text"
                     value={discountText}
                     onChange={(e) => setDiscountText(e.target.value)}
-                    placeholder="مثال: خصم 20% حصري لمستخدمي المنصة"
+                    placeholder={VISITOR_PROMO_HINT.text}
                     className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                   />
                 </div>

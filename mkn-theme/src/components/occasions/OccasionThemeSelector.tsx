@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useOccasion, SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
 import { useAdmin } from "@/context/AdminContext";
 import { Sparkles, Palette, ChevronDown, Check, Info } from "lucide-react";
+import { isAdminPathname } from "@/lib/mken/admin-path";
 
 const GROUP_LABEL: Record<string, string> = {
   national: "وطني رسمي",
@@ -15,6 +17,7 @@ const GROUP_LABEL: Record<string, string> = {
 export const OccasionThemeSelector: React.FC = () => {
   const { activeOccasion, setOccasion, openModal, isMounted, currentSlug } = useOccasion();
   const { isAdmin, session, setClientTheme, setGlobalTheme } = useAdmin();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -28,7 +31,7 @@ export const OccasionThemeSelector: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (!isMounted || !isAdmin) return null;
+  if (!isMounted || !isAdmin || !isAdminPathname(pathname)) return null;
 
   const persistTheme = (id: OccasionId) => {
     setOccasion(id);

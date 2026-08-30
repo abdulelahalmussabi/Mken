@@ -83,7 +83,7 @@ export function localBusinessJsonLd(client: StorefrontClient) {
     name: client.name,
     description: client.subtitle || client.tagline || undefined,
     url: `${siteOrigin()}/subscriber/${client.slug}`,
-    image: client.heroImage || undefined,
+    image: client.logo || client.heroImage || undefined,
     telephone: client.phone || undefined,
     address: client.location
       ? {

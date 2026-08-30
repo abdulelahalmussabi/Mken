@@ -17,16 +17,16 @@ export interface AdminTab {
 }
 
 export function useAdminTenant() {
-  const { isSuperAdmin, clients, session } = useAdmin();
+  const { isSuperAdmin, clients, session, authLoading } = useAdmin();
   const searchParams = useSearchParams();
   const param = searchParams.get("client") || "";
   const tenant = isSuperAdmin ? param || clients[0]?.slug || "" : session?.clientSlug || "";
   const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
-  return { tenant, query, isSuperAdmin, clients };
+  return { tenant, query, isSuperAdmin, clients, authLoading };
 }
 
 export function useAppearanceEditor() {
-  const { tenant, query } = useAdminTenant();
+  const { tenant, query, authLoading } = useAdminTenant();
   const { showToast } = useApp();
   const [appearance, setAppearance] = useState<AppearancePublic | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,13 @@ export function useAppearanceEditor() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    if (!tenant) return;
+    if (authLoading) return;
+    if (!tenant) {
+      setAppearance(null);
+      setLoading(false);
+      setError("اختر المنشأة أولاً");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -52,7 +58,7 @@ export function useAppearanceEditor() {
     } finally {
       setLoading(false);
     }
-  }, [tenant, query]);
+  }, [tenant, query, authLoading]);
 
   useEffect(() => {
     load();

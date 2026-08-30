@@ -78,6 +78,8 @@ export interface ClientRecord {
   rating: string;
   reviewsCount: string;
   heroImage: string;
+  /** Brand mark from `config_data.brand.logo` (data URL or https). */
+  logo?: string;
   demoNotice: string;
   adminEmail: string;
   /** Write-only: accepted when creating a client, never returned by the API. */
@@ -85,6 +87,7 @@ export interface ClientRecord {
   theme: string; // OccasionId
   couponCode?: string;
   discountText?: string;
+  promoTitle?: string;
   discountEnabled?: boolean;
   socialLinks?: SocialLinks;
   active: boolean;
@@ -106,10 +109,12 @@ export type StorefrontClient = Pick<
   | "rating"
   | "reviewsCount"
   | "heroImage"
+  | "logo"
   | "demoNotice"
   | "theme"
   | "couponCode"
   | "discountText"
+  | "promoTitle"
   | "discountEnabled"
   | "claimStatus"
 >;
