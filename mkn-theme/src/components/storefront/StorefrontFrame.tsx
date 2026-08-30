@@ -359,28 +359,31 @@ export function StorefrontFrame({
 
         <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
-            <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
-              {isUsableLogoSrc(storeInfo.logo) ? (
-                <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0 shadow-lg">
-                  {/* data URLs and tenant CDNs are not in next/image remotePatterns */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={storeInfo.logo} alt={storeInfo.name} className="w-full h-full object-contain p-0.5" />
-                </span>
-              ) : (
-                <div
-                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-slate-950 shadow-lg shrink-0"
-                  style={{ backgroundColor: accentColor }}
-                >
-                  {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
+            <div className="flex items-center gap-2 min-w-0">
+              <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
+                {isUsableLogoSrc(storeInfo.logo) ? (
+                  <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-surface border border-line flex items-center justify-center shrink-0 shadow-lg">
+                    {/* data URLs and tenant CDNs are not in next/image remotePatterns */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={storeInfo.logo} alt={storeInfo.name} className="w-full h-full object-contain p-0.5" />
+                  </span>
+                ) : (
+                  <div
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-slate-950 shadow-lg shrink-0"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="font-extrabold text-foreground tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
+                    {storeInfo.name}
+                  </h1>
+                  <p className="text-[11px] text-muted font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
                 </div>
-              )}
-              <div className="min-w-0">
-                <h1 className="font-extrabold text-foreground tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
-                  {storeInfo.name}
-                </h1>
-                <p className="text-[11px] text-muted font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
-              </div>
-            </Link>
+              </Link>
+              <ColorSchemeToggle />
+            </div>
 
             <nav className="hidden lg:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">
               {navItems.map((item) => (
@@ -405,8 +408,7 @@ export function StorefrontFrame({
               </Link>
             </nav>
 
-            <div className="flex items-center gap-2">
-              <ColorSchemeToggle />
+            <div className="flex items-center gap-2 shrink-0">
               <Link
                 href={bookHref as Route}
                 className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"

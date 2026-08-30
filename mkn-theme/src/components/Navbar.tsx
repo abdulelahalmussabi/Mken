@@ -205,6 +205,11 @@ export default function Navbar() {
             ))}
           </nav>
 
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold text-muted">مظهر الصفحة</span>
+            <ColorSchemeToggle />
+          </div>
+
           <div className="pt-4 border-t border-line space-y-2">
             {user ? (
               <>

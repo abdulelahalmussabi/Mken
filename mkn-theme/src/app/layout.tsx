@@ -77,18 +77,18 @@ export default function RootLayout({
         </Script>
         <AdminProvider>
           <AppProvider>
-            <Suspense fallback={null}>
-              <ColorSchemeProvider>
-              <OccasionProvider>
-                <OccasionBanner />
-                <OccasionParticleCanvas />
-                {children}
-                <OccasionFloatingButton />
-                <OccasionShowcaseModal />
-                <Toast />
-              </OccasionProvider>
-              </ColorSchemeProvider>
-            </Suspense>
+            <ColorSchemeProvider>
+              <Suspense fallback={null}>
+                <OccasionProvider>
+                  <OccasionBanner />
+                  <OccasionParticleCanvas />
+                  {children}
+                  <OccasionFloatingButton />
+                  <OccasionShowcaseModal />
+                  <Toast />
+                </OccasionProvider>
+              </Suspense>
+            </ColorSchemeProvider>
           </AppProvider>
         </AdminProvider>
       </body>
