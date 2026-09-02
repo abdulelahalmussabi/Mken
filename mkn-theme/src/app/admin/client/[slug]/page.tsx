@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
-import { SAUDI_OCCASIONS, VISITOR_PROMO_HINT, type OccasionId } from "@/context/OccasionContext";
+import { SAUDI_OCCASIONS, VISITOR_PROMO_HINT } from "@/context/OccasionContext";
 import {
   Palette,
   Check,
@@ -25,6 +25,25 @@ import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 
 const occasionsList = Object.values(SAUDI_OCCASIONS);
 
+type ThemePick = { id: string; name: string; description: string; accentColor: string; coupon?: string };
+
+function themePicksForClient(client?: { customThemes?: { id: string; name: string; accentColor: string }[] } | null): ThemePick[] {
+  const custom = (client?.customThemes || []).map((theme) => ({
+    id: theme.id,
+    name: theme.name,
+    description: "ثيم هوية المنشأة — ألوان الشعار بدل مظهر مكّن القياسي.",
+    accentColor: theme.accentColor,
+  }));
+  const occasions = occasionsList.map((occ) => ({
+    id: occ.id,
+    name: occ.name,
+    description: occ.description,
+    accentColor: occ.accentColor,
+    coupon: occ.couponCode,
+  }));
+  return [...custom, ...occasions];
+}
+
 export default function ClientDetailPage() {
   const params = useParams();
   const slug = (params?.slug as string) || "";
@@ -36,7 +55,7 @@ export default function ClientDetailPage() {
 
   const targetClient = clients.find((c) => c.slug === slug);
   const currentTheme = getClientTheme(slug) || "none";
-  const currentOcc = SAUDI_OCCASIONS[currentTheme];
+  const themePicks = themePicksForClient(targetClient);
 
   useEffect(() => {
     if (authLoading) return;
@@ -71,7 +90,7 @@ export default function ClientDetailPage() {
       setPromoTitle(targetClient.promoTitle || "");
       setDiscountEnabled(targetClient.discountEnabled ?? true);
     }
-  }, [targetClient, currentOcc]);
+  }, [targetClient]);
 
   if (clientsLoading || authLoading) {
     return (
@@ -271,7 +290,7 @@ export default function ClientDetailPage() {
                     type="text"
                     value={promoTitle}
                     onChange={(e) => setPromoTitle(e.target.value)}
-                    placeholder={currentTheme === "none" ? VISITOR_PROMO_HINT.title : currentOcc?.slogan || VISITOR_PROMO_HINT.title}
+                    placeholder={VISITOR_PROMO_HINT.title}
                     className="w-full px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -317,20 +336,20 @@ export default function ClientDetailPage() {
         <section id="theme" className="space-y-5">
           <div className="flex items-center gap-3">
             <Palette className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-extrabold text-white">ثيم الصفحة للمناسبات</h2>
+            <h2 className="text-lg font-extrabold text-white">ثيم الصفحة</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {occasionsList.map((occ) => {
-              const isActive = currentTheme === occ.id;
+            {themePicks.map((opt) => {
+              const isActive = currentTheme === opt.id;
               return (
                 <button
-                  key={occ.id}
+                  key={opt.id}
                   type="button"
                   onClick={async () => {
-                    const result = await setClientTheme(targetClient.slug, occ.id as OccasionId);
+                    const result = await setClientTheme(targetClient.slug, opt.id);
                     if (result.success) {
-                      showToast(`تم تغيير الثيم إلى: ${occ.shortName}`, "success");
+                      showToast(`تم تغيير الثيم إلى: ${opt.name}`, "success");
                     } else {
                       showToast(result.message || "تعذّر تغيير الثيم", "error");
                     }
@@ -351,20 +370,27 @@ export default function ClientDetailPage() {
                   <div className="flex items-center gap-2 mb-3">
                     <span
                       className="w-4 h-4 rounded-full border-2 border-white/20 shrink-0"
-                      style={{ backgroundColor: occ.accentColor }}
+                      style={{ backgroundColor: opt.accentColor }}
                     />
-                    <span className="font-extrabold text-sm text-white">{occ.name}</span>
+                    <span className="font-extrabold text-sm text-white">{opt.name}</span>
                   </div>
 
                   <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2 mb-3">
-                    {occ.description}
+                    {opt.description}
                   </p>
 
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <Gift className="w-3 h-3 text-amber-400" />
-                    <span className="text-slate-500">كود الخصم:</span>
-                    <code className="font-mono font-bold text-amber-300">{couponCode || occ.couponCode}</code>
-                  </div>
+                  {opt.coupon ? (
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <Gift className="w-3 h-3 text-amber-400" />
+                      <span className="text-slate-500">كود الخصم:</span>
+                      <code className="font-mono font-bold text-amber-300">{couponCode || opt.coupon}</code>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <Palette className="w-3 h-3 text-amber-400" />
+                      <span className="font-bold">هوية</span>
+                    </div>
+                  )}
                 </button>
               );
             })}

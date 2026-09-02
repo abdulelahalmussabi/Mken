@@ -33,7 +33,7 @@ export default async function SubscriberLayout({ children, params }: Props) {
   const client = await loadStorefrontSeo(slug);
   const jsonLd =
     client && client.claimStatus !== "unclaimed" && client.claimStatus !== "pending"
-      ? localBusinessJsonLd(client)
+      ? await localBusinessJsonLd(client)
       : null;
 
   return (

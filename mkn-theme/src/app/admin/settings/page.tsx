@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import {
@@ -191,36 +191,61 @@ export default function AdminSettingsPage() {
     window.history.replaceState({}, "", next);
   }, [load, showToast]);
 
-  const save = async () => {
-    if (!settings) return;
+  const persistSettings = async (next: TenantSettings, toast = true) => {
     setSaving(true);
-
     try {
       const res = await fetch(`/api/settings${query}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          brand: settings.brand,
-          phone: settings.phone,
-          heroImage: settings.heroImage,
-          social: settings.social,
-          emails: settings.emails,
-          serviceArea: settings.serviceArea,
+          brand: next.brand,
+          phone: next.phone,
+          heroImage: next.heroImage,
+          social: next.social,
+          emails: next.emails,
+          serviceArea: next.serviceArea,
         }),
       });
       const data = await res.json();
-
       if (!res.ok || !data.success) {
         showToast(data.message || "تعذّر الحفظ", "error");
         return;
       }
-
       setSettings(data.settings);
-      showToast("تم حفظ إعدادات المنشأة", "success");
+      if (toast) showToast("تم حفظ إعدادات المنشأة", "success");
     } catch {
       showToast("تعذّر الاتصال بالخادم", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const save = async () => {
+    if (!settings) return;
+    await persistSettings(settings);
+  };
+
+  const socialSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const patchSocial = (
+    id: string,
+    partial: Partial<TenantSettings["social"][string]>,
+    debounce: boolean
+  ) => {
+    if (!settings) return;
+    const current = settings.social[id] || { enabled: false, value: "" };
+    const entry = {
+      ...current,
+      ...partial,
+      ...(typeof partial.value === "string" && partial.value.trim() ? { enabled: true } : {}),
+    };
+    const next = { ...settings, social: { ...settings.social, [id]: entry } };
+    setSettings(next);
+    if (!entry.enabled || entry.value.trim()) {
+      if (socialSaveTimer.current) clearTimeout(socialSaveTimer.current);
+      const run = () => void persistSettings(next, false);
+      if (debounce) socialSaveTimer.current = setTimeout(run, 700);
+      else run();
     }
   };
 
@@ -694,10 +719,13 @@ export default function AdminSettingsPage() {
             </Section>
 
             <Section title="حسابات التواصل" icon={Share2}>
+              <p className="text-[11px] text-slate-500 mb-2">
+                اكتب اسم الحساب فيُفعَّل تلقائياً ويظهر في الموقع بعد الحفظ. الحسابات المفعّلة تظهر في الصفحة الرئيسية والتذييل.
+              </p>
               <div className="space-y-2">
                 {SOCIAL_PLATFORMS.map((platform) => {
                   const entry = settings.social[platform.id];
-                  const url = entry.enabled ? buildSocialUrl(platform.id, entry.value) : "";
+                  const url = entry.value.trim() ? buildSocialUrl(platform.id, entry.value) : "";
 
                   return (
                     <div
@@ -712,12 +740,7 @@ export default function AdminSettingsPage() {
                         on={entry.enabled}
                         disabled={saving}
                         onChange={() =>
-                          patch({
-                            social: {
-                              ...settings.social,
-                              [platform.id]: { ...entry, enabled: !entry.enabled },
-                            },
-                          })
+                          patchSocial(platform.id, { enabled: !entry.enabled }, false)
                         }
                       />
                       <div className="w-28 shrink-0 text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -726,14 +749,7 @@ export default function AdminSettingsPage() {
                       </div>
                       <input
                         value={entry.value}
-                        onChange={(e) =>
-                          patch({
-                            social: {
-                              ...settings.social,
-                              [platform.id]: { ...entry, value: e.target.value },
-                            },
-                          })
-                        }
+                        onChange={(e) => patchSocial(platform.id, { value: e.target.value }, true)}
                         placeholder={platform.placeholder}
                         inputMode={platform.inputMode === "tel" ? "tel" : "text"}
                         dir="ltr"
@@ -943,6 +959,9 @@ export default function AdminSettingsPage() {
                     className={inputClass}
                   />
                 </div>
+                <p className="text-[11px] text-slate-500 md:col-span-2 lg:col-span-4">
+                  خط العرض والطول المحفوظان هنا إلزاميان لنشر حملات واتساب ميتا. بدونها يُرفض النشر ولا يُستخدم موقع افتراضي.
+                </p>
               </div>
             </Section>
           </>

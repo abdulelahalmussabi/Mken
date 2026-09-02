@@ -1,14 +1,14 @@
 import {
-  fetchTenantRow,
-  getTenantDb,
-  TENANT_TABLE,
+  ensureTenantRow,
   mergeIntoConfig,
   writeTenantConfig,
   type MkenConfig,
 } from "@/lib/mken/tenant";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
-import type { ClientRecord } from "@/types/database";
 import { logoValidationError } from "@/lib/mken/logo-crop";
+import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
+import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
+import { applyRewaDefaults } from "@/lib/mken/rewa-content";
 
 /**
  * Tenant identity settings stored in `config_data`: brand, phone, social
@@ -92,11 +92,21 @@ function str(value: unknown, fallback = ""): string {
 }
 
 function toggleMap(raw: unknown, ids: string[]): Record<string, Toggle> {
-  const incoming = (raw || {}) as Record<string, { enabled?: boolean; value?: unknown }>;
+  const incoming = (raw || {}) as Record<string, unknown>;
   const out: Record<string, Toggle> = {};
   for (const id of ids) {
-    const entry = incoming[id] || {};
-    out[id] = { enabled: entry.enabled === true, value: str(entry.value) };
+    const rawEntry = incoming[id];
+    if (typeof rawEntry === "string") {
+      const value = str(rawEntry);
+      out[id] = { enabled: Boolean(value), value };
+      continue;
+    }
+    const entry = (rawEntry || {}) as { enabled?: unknown; value?: unknown };
+    const on =
+      entry.enabled === true ||
+      entry.enabled === "true" ||
+      entry.enabled === 1;
+    out[id] = { enabled: on, value: str(entry.value) };
   }
   return out;
 }
@@ -194,13 +204,21 @@ export function resolveSettings(config: MkenConfig): TenantSettings {
 export async function fetchTenantSettings(
   slug: string
 ): Promise<{ settings?: TenantSettings; error?: string }> {
-  const row = await fetchTenantRow(slug);
-  if (!row) {
+  const ensured = await ensureTenantRow(slug);
+  if (ensured.error || !ensured.row) {
     const seed = DEFAULT_CLIENTS.find((c) => c.slug === slug);
     if (seed) return { settings: resolveSettings(mergeIntoConfig({}, seed)) };
-    return { error: "المنشأة غير موجودة" };
+    return { error: ensured.error || "المنشأة غير موجودة" };
   }
-  return { settings: resolveSettings(row.config_data || {}) };
+  const config =
+    slug === "rewa"
+      ? applyRewaDefaults(ensured.row.config_data || {})
+      : slug === "almahrusa"
+        ? applyAlmahrusaDefaults(ensured.row.config_data || {})
+        : slug === "rewaq"
+          ? applyRewaqDefaults(ensured.row.config_data || {})
+          : ensured.row.config_data || {};
+  return { settings: resolveSettings(config) };
 }
 
 export interface SettingsUpdate {
@@ -259,8 +277,17 @@ export async function updateTenantSettings(
   slug: string,
   update: SettingsUpdate
 ): Promise<{ settings?: TenantSettings; error?: string }> {
-  const row = await fetchTenantRow(slug);
-  const config: MkenConfig = { ...(row?.config_data || {}) };
+  const ensured = await ensureTenantRow(slug);
+  const base = ensured.row?.config_data || {};
+  const config: MkenConfig = {
+    ...(slug === "rewa"
+      ? applyRewaDefaults(base)
+      : slug === "almahrusa"
+        ? applyAlmahrusaDefaults(base)
+        : slug === "rewaq"
+          ? applyRewaqDefaults(base)
+          : base),
+  };
   const current = resolveSettings(config);
 
   if (update.brand) {
@@ -280,10 +307,12 @@ export async function updateTenantSettings(
     for (const platform of SOCIAL_PLATFORMS) {
       const incoming = update.social[platform.id];
       if (!incoming) continue;
-      next[platform.id] = {
-        enabled: incoming.enabled ?? next[platform.id].enabled,
-        value: incoming.value !== undefined ? str(incoming.value) : next[platform.id].value,
-      };
+      const value = incoming.value !== undefined ? str(incoming.value) : next[platform.id].value;
+      const enabled =
+        incoming.enabled !== undefined
+          ? incoming.enabled
+          : Boolean(value) || next[platform.id].enabled;
+      next[platform.id] = { enabled, value };
     }
     // The legacy site falls back to config.phone when WhatsApp has no number.
     if (next.whatsapp.enabled && !next.whatsapp.value) {

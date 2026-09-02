@@ -36,6 +36,7 @@ async function handleSeed() {
       { email: "almahrosa@mken.live", slug: "almahrosa", name: "مجموعة المحروسة" },
       { email: "almasabi@mken.live", slug: "almasabi", name: "مؤسسة المصعبي للتجارة" },
       { email: "rewa@mken.live", slug: "rewa", name: "منتجع رواء الاستشفاء الرقمي" },
+      { email: "rewaqresident@gmail.com", slug: "rewaq", name: "Rewaq Resident | رواق ريزدنت" },
       { email: "demo@mken.live", slug: "demo", name: "صالون النخبة" },
     ];
 

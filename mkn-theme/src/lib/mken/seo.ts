@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { DEFAULT_CLIENTS, storefrontClient } from "@/data/default-clients";
+import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
+import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
+import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
+import { applyRewaDefaults } from "@/lib/mken/rewa-content";
 import { fetchTenantRow, isPlatformSlug, toClientRecord } from "@/lib/mken/tenant";
 import type { StorefrontClient } from "@/types/database";
 
@@ -29,7 +33,19 @@ export async function loadStorefrontSeo(slug: string): Promise<StorefrontClient 
   const key = slug.trim().toLowerCase();
   if (!key || isPlatformSlug(key)) return null;
   const row = await fetchTenantRow(key);
-  const record = row ? toClientRecord(row) : DEFAULT_CLIENTS.find((client) => client.slug === key);
+  const seed = DEFAULT_CLIENTS.find((client) => client.slug === key);
+  const config = row?.config_data || {};
+  const overlay =
+    key === "rewa"
+      ? applyRewaDefaults(config)
+      : key === "almahrusa"
+        ? applyAlmahrusaDefaults(config)
+        : key === "rewaq"
+          ? applyRewaqDefaults(config)
+          : config;
+  const record = row
+    ? toClientRecord({ ...row, config_data: overlay })
+    : seed;
   return record ? storefrontClient(record) : null;
 }
 
@@ -76,15 +92,45 @@ export function tenantPageMetadata(
   };
 }
 
-export function localBusinessJsonLd(client: StorefrontClient) {
+const SCHEMA_TYPE: Record<StorefrontClient["type"], string> = {
+  salon: "HairSalon",
+  hotel: "LodgingBusiness",
+  restaurant: "Restaurant",
+  cafe: "CafeOrCoffeeShop",
+  other: "LocalBusiness",
+};
+
+function parseHour(value: unknown): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{1,2}:\d{2}$/.test(text)) return null;
+  const [h, m] = text.split(":");
+  return `${h.padStart(2, "0")}:${m}`;
+}
+
+export async function localBusinessJsonLd(client: StorefrontClient) {
+  const row = await fetchTenantRow(client.slug);
+  const config = row?.config_data || {};
+  const website = await tenantWebsiteUrl(client.slug);
+  const area = config.serviceArea || {};
+  const lat = Number(area.center?.lat);
+  const lng = Number(area.center?.lng);
+  const booking =
+    config.booking && typeof config.booking === "object"
+      ? (config.booking as { workingHours?: { start?: unknown; end?: unknown } })
+      : {};
+  const opens = parseHour(booking.workingHours?.start);
+  const closes = parseHour(booking.workingHours?.end);
+  const bookUrl = website.replace(/\/$/, "");
+
   return {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": SCHEMA_TYPE[client.type] || "LocalBusiness",
     name: client.name,
     description: client.subtitle || client.tagline || undefined,
-    url: `${siteOrigin()}/subscriber/${client.slug}`,
+    url: website,
     image: client.logo || client.heroImage || undefined,
     telephone: client.phone || undefined,
+    priceRange: "$$",
     address: client.location
       ? {
           "@type": "PostalAddress",
@@ -92,5 +138,30 @@ export function localBusinessJsonLd(client: StorefrontClient) {
           addressLocality: client.location,
         }
       : undefined,
+    geo:
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
+        : undefined,
+    openingHoursSpecification:
+      opens && closes
+        ? [
+            {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+              opens,
+              closes,
+            },
+          ]
+        : undefined,
+    potentialAction: {
+      "@type": "ReserveAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: bookUrl,
+        inLanguage: "ar",
+        actionPlatform: ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"],
+      },
+      result: { "@type": "Reservation", name: `حجز موعد — ${client.name}` },
+    },
   };
 }

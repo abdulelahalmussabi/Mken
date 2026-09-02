@@ -6,9 +6,23 @@ import type { Route } from "next";
 import { useOccasion, visitorMarketingKicker, tenantSafeCopy } from "@/context/OccasionContext";
 import { OccasionSymbolsStrip } from "@/components/occasions/OccasionSymbolsStrip";
 import { isolateTenantHref } from "@/lib/mken/tenant-host";
-import { useStorefront } from "@/components/storefront/StorefrontFrame";
+import { useStorefront, type StorefrontServiceOption } from "@/components/storefront/StorefrontFrame";
 import { ServiceCard } from "@/components/storefront/StorefrontSitePage";
-import { CalendarCheck, Clock, MapPin, MessageCircle, Sparkles, Star } from "lucide-react";
+import { WhatsappCta } from "@/components/social/NeonSocialIcons";
+import { isAdLive, liveAds, type SecondaryAd } from "@/lib/mken/appearance";
+import { CalendarCheck, Clock, MapPin, Sparkles, Star } from "lucide-react";
+
+function adToServiceOption(ad: SecondaryAd): StorefrontServiceOption {
+  return {
+    id: ad.id,
+    name: ad.title,
+    badge: ad.badge || "حجز",
+    price: ad.price || "السعر عند الطلب",
+    features: ad.features || [],
+    image: ad.image,
+    description: ad.text,
+  };
+}
 
 function youtubeId(url: string): string | null {
   const match = url.match(/(?:youtu\.be\/|v=)([A-Za-z0-9_-]{6,})/);
@@ -29,6 +43,7 @@ export default function SubscriberStorefrontPage() {
     isSalon,
     href,
     openBooking,
+    whatsappHref,
   } = useStorefront();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const servicesPageOn = pages.enabled.services;
@@ -53,7 +68,7 @@ export default function SubscriberStorefrontPage() {
         ? "اختر خيار الإقامة المناسب واطّلع على التفاصيل."
         : "اختر الخدمة المطلوبة وتصفح أسعارها واحجز مباشرة.");
   const primaryCta = pages.home.ctaLabel || (isCommerce ? "اطلب الآن" : isHotel ? "احجز إقامتك" : "احجز موعدك");
-  const secondaryAds = (appearance?.ads?.secondary || []).filter((ad) => ad.enabled);
+  const secondaryAds = liveAds(appearance?.ads?.secondary || []);
   const stats =
     pages.home.stats.length > 0
       ? pages.home.stats
@@ -72,7 +87,9 @@ export default function SubscriberStorefrontPage() {
   const promoText = tenantSafeCopy(primaryAd?.text || "");
   const promoCoupon = tenantSafeCopy(primaryAd?.couponCode || "");
   const showPromo = Boolean(
-    (primaryAd ? primaryAd.enabled : storeInfo.discountEnabled) && (promoTitle || promoText || promoCoupon)
+    (primaryAd
+      ? isAdLive(primaryAd) && (promoTitle || promoText || promoCoupon)
+      : storeInfo.discountEnabled && (promoTitle || promoText || promoCoupon))
   );
   const heroKicker = visitorMarketingKicker({
     activeOccasion,
@@ -201,17 +218,7 @@ export default function SubscriberStorefrontPage() {
                   <Clock className="w-5 h-5 text-amber-400" />
                   احجز موعد أونلاين
                 </Link>
-                {storeInfo.whatsapp ? (
-                  <a
-                    href={`https://wa.me/${storeInfo.whatsapp}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-5 py-4 bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 rounded-2xl font-bold text-sm flex items-center gap-2"
-                  >
-                    <MessageCircle className="w-5 h-5 text-emerald-400" />
-                    واتساب
-                  </a>
-                ) : null}
+                {whatsappHref ? <WhatsappCta href={whatsappHref} size="lg" /> : null}
               </div>
             </div>
             <div className="lg:col-span-5">
@@ -274,50 +281,40 @@ export default function SubscriberStorefrontPage() {
         </section>
       ) : null}
 
-      {secondaryAds.length > 0 ? (
-        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {secondaryAds.map((ad) => {
-              const card = (
-                <div className="rounded-3xl border border-line bg-surface overflow-hidden text-right">
-                  {ad.image ? <img src={ad.image} alt={ad.title} className="w-full h-40 object-cover" /> : null}
-                  <div className="p-5 space-y-2">
-                    <h3 className="text-sm font-extrabold text-foreground">{ad.title}</h3>
-                    {ad.text ? <p className="text-xs text-muted leading-relaxed">{ad.text}</p> : null}
-                  </div>
-                </div>
-              );
-              const adHref = ad.href ? isolateTenantHref(ad.href, slug) : "";
-              return adHref ? (
-                <a key={ad.id} href={adHref}>
-                  {card}
-                </a>
-              ) : (
-                <div key={ad.id}>{card}</div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
-      {gridServices.length > 0 ? (
+      {secondaryAds.length > 0 || gridServices.length > 0 ? (
         <section id="services" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-10">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground">{servicesHeading}</h2>
             <p className="text-sm text-muted">{servicesIntro}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {gridServices.map((srv) => (
-              <ServiceCard
-                key={srv.id}
-                srv={srv}
-                accentColor={accentColor}
-                showPrice={pages.services.showPrices}
-                detailsHref={servicesPageOn ? `${href("services")}` : undefined}
-                onBook={() => openBooking(srv)}
-              />
-            ))}
-          </div>
+          {secondaryAds.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+              {secondaryAds.map((ad) => (
+                <ServiceCard
+                  key={ad.id}
+                  srv={adToServiceOption(ad)}
+                  accentColor={accentColor}
+                  showPrice={pages.services.showPrices}
+                  bookLabel={ad.ctaLabel || "احجز هذه الخدمة الآن"}
+                  onBook={() => openBooking(adToServiceOption(ad))}
+                />
+              ))}
+            </div>
+          ) : null}
+          {gridServices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {gridServices.map((srv) => (
+                <ServiceCard
+                  key={srv.id}
+                  srv={srv}
+                  accentColor={accentColor}
+                  showPrice={pages.services.showPrices}
+                  detailsHref={servicesPageOn ? `${href("services")}` : undefined}
+                  onBook={() => openBooking(srv)}
+                />
+              ))}
+            </div>
+          ) : null}
           {appearance?.interfaceCopy?.servicesFooter && !servicesPageOn ? (
             <p className="text-center text-sm text-muted max-w-2xl mx-auto leading-relaxed">
               {appearance.interfaceCopy.servicesFooter}

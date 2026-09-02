@@ -8,7 +8,9 @@ import {
   generateGbpReply,
   listGbpCompetitors,
   listGbpLocations,
+  listScheduledGbpPosts,
   publishGbpPost,
+  scheduleGbpPost,
   runNapAudit,
   selectGbpLocation,
   syncGbpServices,
@@ -50,6 +52,14 @@ export async function GET(request: Request) {
     });
   }
 
+  if (action === "scheduled-posts") {
+    const listed = await listScheduledGbpPosts(scope.slug);
+    if (listed.error) {
+      return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, tenant: scope.slug, posts: listed.posts });
+  }
+
   const { status, error } = await fetchGbpStatus(scope.slug);
   if (error || !status) {
     return NextResponse.json({ success: false, message: error }, { status: 500 });
@@ -78,6 +88,8 @@ export async function POST(request: Request) {
     reviewText?: string;
     rating?: string;
     text?: string;
+    topic?: string;
+    publishAt?: string;
   } = {};
   try {
     body = await request.json();
@@ -149,6 +161,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
     return NextResponse.json({ success: true, count: result.count });
+  }
+
+  if (body.action === "schedule-post") {
+    const result = await scheduleGbpPost({
+      slug: scope.slug,
+      topic: body.topic || "",
+      content: body.text || "",
+      publishAt: body.publishAt || new Date().toISOString(),
+    });
+    if (result.error && !result.post) {
+      return NextResponse.json({ success: false, message: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      success: true,
+      post: result.post,
+      publishedNow: result.publishedNow,
+      message: result.error,
+    });
   }
 
   if (body.action === "publish-post") {

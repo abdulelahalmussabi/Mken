@@ -1,0 +1,49 @@
+{
+  "brand": {
+    "name": "Rewaq Resident | رواق ريزدنت",
+    "tagline": "شقق مفروشة في مذينب، المدينة المنورة — حجز مباشر",
+    "logo": ""
+  },
+  "enabledActivities": ["hotels"],
+  "enabled": ["deluxe-room", "suite-room", "standard-room", "family-suite"],
+  "featuredActivity": "hotels",
+  "featured": "deluxe-room",
+  "heroFocus": "deluxe-room",
+  "phone": "0541303411",
+  "location": "اسيد بن كعب، مذينب، المدينة المنورة 42317",
+  "subtitle": "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. تسجيل الوصول من 16:00.",
+  "rating": "4.8",
+  "reviewsCount": "105 تقييم على Google",
+  "mapsUrl": "https://www.google.com/maps?cid=2595755909754175028",
+  "heroImage": "/rewaq/hero.web.jpg",
+  "adminEmail": "rewaqresident@gmail.com",
+  "theme": "custom-rewaq",
+  "customThemes": [
+    { "id": "custom-rewaq", "name": "هوية رواق ريزدنت", "accentColor": "#7A4E2D", "badgeBg": "#C4A35A", "bgGradient": "#1C1410" }
+  ],
+  "occasionPack": { "forceId": "custom-rewaq", "mode": "manual", "enabled": false },
+  "googleBusiness": {
+    "enabled": true,
+    "mapsUrl": "https://www.google.com/maps?cid=2595755909754175028"
+  },
+  "social": {
+    "whatsapp": { "enabled": true, "value": "966541303411" }
+  },
+  "emails": {
+    "inquiries": { "enabled": true, "value": "rewaqresident@gmail.com" }
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "المدينة المنورة",
+    "center": { "lat": 24.4358546, "lng": 39.6748747 },
+    "radiusKm": 12,
+    "coverageNote": "اسيد بن كعب، مذينب، المدينة المنورة 42317 — CMPF+8W",
+    "showAsFullCity": true
+  },
+  "booking": {
+    "enabled": true,
+    "mode": "stay",
+    "workingHours": { "start": "16:00", "end": "23:30" }
+  }
+}

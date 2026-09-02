@@ -2,6 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Order, Message, Profile } from "@/types/database";
+import {
+  isLegacyMockVisitor,
+  profileFromAuthUser,
+} from "@/lib/auth/visitor-oauth";
 
 interface AppContextType {
   user: Profile | null;
@@ -105,12 +109,14 @@ const INITIAL_MESSAGES: Record<string, Message[]> = {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Lazy initial state avoiding set-state-in-effect
   const [user, setUser] = useState<Profile | null>(() => {
-    if (typeof window === "undefined") return INITIAL_USER;
+    if (typeof window === "undefined") return null;
     try {
       const savedUser = localStorage.getItem("mkn_user");
-      return savedUser ? JSON.parse(savedUser) : INITIAL_USER;
+      if (!savedUser) return null;
+      const parsed = JSON.parse(savedUser) as Profile;
+      return isLegacyMockVisitor(parsed) ? null : parsed;
     } catch {
-      return INITIAL_USER;
+      return null;
     }
   });
 
@@ -136,9 +142,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
-  // Save changes
   useEffect(() => {
-    if (user) localStorage.setItem("mkn_user", JSON.stringify(user));
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    void import("@/lib/supabase/client")
+      .then(async ({ supabase }) => {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (data.session?.user) setUser(profileFromAuthUser(data.session.user));
+        const sub = supabase.auth.onAuthStateChange((event, session) => {
+          if (session?.user) setUser(profileFromAuthUser(session.user));
+          else if (event === "SIGNED_OUT") setUser(null);
+        });
+        unsubscribe = () => sub.data.subscription.unsubscribe();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user && !isLegacyMockVisitor(user)) localStorage.setItem("mkn_user", JSON.stringify(user));
     else localStorage.removeItem("mkn_user");
   }, [user]);
 
@@ -156,12 +182,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginMockUser = (email: string, fullName?: string, phone?: string) => {
-    // Customer dashboard identity (localStorage). Not HMAC admin/staff. Do not
-    // mint mkn_admin_session here — see P-07 in docs/PERMISSIONS-WORK-TABLE.md.
+    // Email form remains local until password auth is wired. Google/Apple use
+    // Supabase Auth and must not mint mkn_admin_session — see P-07.
     const newUser: Profile = {
       id: user?.id || `usr-${Date.now().toString().slice(-4)}`,
       full_name: fullName || email.split("@")[0],
       phone: phone || "0500000000",
+      email,
+      provider: "email",
       created_at: new Date().toISOString(),
     };
     setUser(newUser);
@@ -171,6 +199,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("mkn_user");
+    void import("@/lib/supabase/client")
+      .then(({ supabase }) => supabase.auth.signOut())
+      .catch(() => undefined);
     showToast("تم تسجيل الخروج بنجاح.", "info");
   };
 

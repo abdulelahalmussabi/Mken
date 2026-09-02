@@ -36,14 +36,14 @@ const PLATFORM_CONFIG: Record<
   }
 > = {
   twitter: {
-    nameAr: "┘à┘╪╡╪ر ≡إـ (╪ز┘ê┘è╪ز╪▒)",
+    nameAr: "إكس (تويتر)",
     neonColor: "#38bdf8",
     glowColor: "rgba(56, 189, 248, 0.75)",
     bgTint: "rgba(14, 165, 233, 0.08)",
     borderGlow: "rgba(56, 189, 248, 0.4)",
   },
   tiktok: {
-    nameAr: "╪ز┘è┘â ╪ز┘ê┘â (TikTok)",
+    nameAr: "تيك توك",
     neonColor: "#00f2fe",
     secondaryNeon: "#fe0979",
     glowColor: "rgba(0, 242, 254, 0.7)",
@@ -51,7 +51,7 @@ const PLATFORM_CONFIG: Record<
     borderGlow: "rgba(254, 9, 121, 0.45)",
   },
   instagram: {
-    nameAr: "╪ح┘╪│╪ز╪║╪▒╪د┘à (Instagram)",
+    nameAr: "إنستغرام",
     neonColor: "#f43f5e",
     secondaryNeon: "#fbbf24",
     glowColor: "rgba(244, 63, 94, 0.75)",
@@ -59,70 +59,70 @@ const PLATFORM_CONFIG: Record<
     borderGlow: "rgba(236, 72, 153, 0.4)",
   },
   snapchat: {
-    nameAr: "╪│┘╪د╪ذ ╪┤╪د╪ز (Snapchat)",
+    nameAr: "سناب شات",
     neonColor: "#facc15",
     glowColor: "rgba(250, 204, 21, 0.8)",
     bgTint: "rgba(250, 204, 21, 0.08)",
     borderGlow: "rgba(250, 204, 21, 0.45)",
   },
   whatsapp: {
-    nameAr: "┘ê╪د╪ز╪│╪د╪ذ (WhatsApp)",
+    nameAr: "واتساب",
     neonColor: "#22c55e",
     glowColor: "rgba(34, 197, 94, 0.8)",
     bgTint: "rgba(34, 197, 94, 0.08)",
     borderGlow: "rgba(34, 197, 94, 0.45)",
   },
   youtube: {
-    nameAr: "┘è┘ê╪ز┘è┘ê╪ذ (YouTube)",
+    nameAr: "يوتيوب",
     neonColor: "#ef4444",
     glowColor: "rgba(239, 68, 68, 0.8)",
     bgTint: "rgba(239, 68, 68, 0.08)",
     borderGlow: "rgba(239, 68, 68, 0.45)",
   },
   facebook: {
-    nameAr: "┘┘è╪│╪ذ┘ê┘â (Facebook)",
+    nameAr: "فيسبوك",
     neonColor: "#3b82f6",
     glowColor: "rgba(59, 130, 246, 0.8)",
     bgTint: "rgba(59, 130, 246, 0.08)",
     borderGlow: "rgba(59, 130, 246, 0.45)",
   },
   linkedin: {
-    nameAr: "┘┘è┘┘â╪» ╪ح┘ (LinkedIn)",
+    nameAr: "لينكد إن",
     neonColor: "#0284c7",
     glowColor: "rgba(2, 132, 199, 0.8)",
     bgTint: "rgba(2, 132, 199, 0.08)",
     borderGlow: "rgba(2, 132, 199, 0.45)",
   },
   pinterest: {
-    nameAr: "╪ذ┘è┘╪ز┘è╪▒┘è╪│╪ز (Pinterest)",
+    nameAr: "بينتريست",
     neonColor: "#e11d48",
     glowColor: "rgba(225, 29, 72, 0.8)",
     bgTint: "rgba(225, 29, 72, 0.08)",
     borderGlow: "rgba(225, 29, 72, 0.45)",
   },
   telegram: {
-    nameAr: "╪ز┘è┘┘è╪ش╪▒╪د┘à (Telegram)",
+    nameAr: "تيليجرام",
     neonColor: "#0ea5e9",
     glowColor: "rgba(14, 165, 233, 0.8)",
     bgTint: "rgba(14, 165, 233, 0.08)",
     borderGlow: "rgba(14, 165, 233, 0.45)",
   },
   maps: {
-    nameAr: "╪«╪▒╪د╪خ╪╖ ╪ش┘ê╪ش┘ (Google Maps)",
+    nameAr: "خرائط جوجل",
     neonColor: "#10b981",
     glowColor: "rgba(16, 185, 129, 0.8)",
     bgTint: "rgba(16, 185, 129, 0.08)",
     borderGlow: "rgba(16, 185, 129, 0.45)",
   },
   phone: {
-    nameAr: "╪د╪ز╪╡╪د┘ ┘ç╪د╪ز┘┘è",
+    nameAr: "اتصال هاتفي",
     neonColor: "#f59e0b",
     glowColor: "rgba(245, 158, 11, 0.8)",
     bgTint: "rgba(245, 158, 11, 0.08)",
     borderGlow: "rgba(245, 158, 11, 0.45)",
   },
   website: {
-    nameAr: "╪د┘┘à┘ê┘é╪╣ ╪د┘╪ح┘┘â╪ز╪▒┘ê┘┘è",
+    nameAr: "الموقع الإلكتروني",
     neonColor: "#06b6d4",
     glowColor: "rgba(6, 182, 212, 0.8)",
     bgTint: "rgba(6, 182, 212, 0.08)",
@@ -517,6 +517,72 @@ export function NeonSocialButton({
       <span className="absolute -bottom-8 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none text-[10px] font-bold text-white bg-slate-950/95 px-2.5 py-1 rounded-md border border-slate-700 whitespace-nowrap z-30 shadow-xl">
         {title || cfg.nameAr}
       </span>
+    </a>
+  );
+}
+
+const WA = PLATFORM_CONFIG.whatsapp;
+
+export function WhatsappMark({ size = 20, className = "" }: { size?: number; className?: string }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center ${className}`} aria-hidden>
+      <NeonSocialGlyph platform="whatsapp" size={size} />
+    </span>
+  );
+}
+
+export function WhatsappCta({
+  href,
+  label = "واتساب",
+  size = "md",
+  floating = false,
+  compactOnMobile = false,
+  className = "",
+}: {
+  href: string;
+  label?: string;
+  size?: "sm" | "md" | "lg";
+  floating?: boolean;
+  compactOnMobile?: boolean;
+  className?: string;
+}) {
+  const glyph = floating ? 32 : { sm: 18, md: 22, lg: 24 }[size];
+  const pad = {
+    sm: "px-3 py-2 text-xs rounded-xl gap-1.5",
+    md: "px-5 py-3 text-sm rounded-2xl gap-2",
+    lg: "px-5 py-4 text-sm rounded-2xl gap-2",
+  }[size];
+
+  if (floating) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="تواصل معنا عبر واتساب"
+        className={`fixed bottom-5 left-5 z-50 w-14 h-14 rounded-2xl inline-flex items-center justify-center border shadow-2xl transition hover:-translate-y-0.5 hover:scale-105 ${className}`}
+        style={{ borderColor: WA.borderGlow, backgroundColor: "rgba(6, 32, 20, 0.94)" }}
+      >
+        <WhatsappMark size={glyph} />
+        <span className="sr-only">تواصل معنا عبر واتساب</span>
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center justify-center font-bold border shadow-md transition hover:-translate-y-0.5 ${pad} ${className}`}
+      style={{
+        borderColor: WA.borderGlow,
+        backgroundColor: "rgba(6, 32, 20, 0.92)",
+        color: "#86efac",
+      }}
+    >
+      <WhatsappMark size={glyph} />
+      {label ? <span className={compactOnMobile ? "hidden sm:inline" : undefined}>{label}</span> : null}
     </a>
   );
 }

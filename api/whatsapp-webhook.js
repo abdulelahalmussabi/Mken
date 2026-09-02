@@ -4,6 +4,7 @@ const aiAgent = require('./_lib/whatsapp-ai-agent');
 const cannedReplies = require('./_lib/whatsapp-canned-replies');
 const activityRouter = require('./_lib/activity-router');
 const handoffEngine = require('./_lib/handoff-engine');
+const reviewFunnel = require('./_lib/review-funnel');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -351,6 +352,16 @@ module.exports = async function handler(req, res) {
       // Optionally notify the assigned staff (could be push notification later)
       // For now, just acknowledge silently — the human handles it.
       return res.status(200).json({ status: 'success', message: 'Routed to human agent', sessionId: session.id });
+    }
+
+    try {
+      const reviewReply = await reviewFunnel.handleRatingReply(supabase, tenantSlug, cleanPhoneStr, bodyText);
+      if (reviewReply) {
+        await sendServerWhatsAppReply(cleanPhoneStr, reviewReply, wa, supabase, tenantSlug);
+        return res.status(200).json({ status: 'success', message: 'Review funnel handled' });
+      }
+    } catch (e) {
+      // Table may not exist yet — continue to the normal reply engine
     }
 
     // 5. Smart Reply Engine

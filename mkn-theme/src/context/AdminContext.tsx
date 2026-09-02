@@ -40,8 +40,8 @@ interface AdminContextType {
   setPlatformLogo: (logo: string) => Promise<SaveResult>;
 
   // Per-Client Themes
-  getClientTheme: (slug: string) => OccasionId | null;
-  setClientTheme: (slug: string, theme: OccasionId) => Promise<SaveResult>;
+  getClientTheme: (slug: string) => string | null;
+  setClientTheme: (slug: string, theme: string) => Promise<SaveResult>;
 
   // Clients Management
   clients: ClientRecord[];
@@ -276,9 +276,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ── Client Themes ─────────────────────────────────────────────────────────
   const getClientTheme = useCallback(
-    (slug: string): OccasionId | null => {
+    (slug: string): string | null => {
       const client = clients.find((c) => c.slug === slug);
-      return client ? (client.theme as OccasionId) : null;
+      return client?.theme || null;
     },
     [clients]
   );
@@ -316,7 +316,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const setClientTheme = useCallback(
-    (slug: string, theme: OccasionId) => updateClient(slug, { theme }),
+    (slug: string, theme: string) => updateClient(slug, { theme }),
     [updateClient]
   );
 

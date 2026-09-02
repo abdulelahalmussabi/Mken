@@ -1,7 +1,11 @@
+import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
+import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
+import { applyRewaDefaults } from "@/lib/mken/rewa-content";
 import { fetchTenantRow, getTenantDb, TENANT_TABLE } from "@/lib/mken/tenant";
 import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { fetchTenantCatalog } from "@/lib/mken/catalog";
 import { buildNapAuditReport, planNapSync, type NapReport, type NapSiteSnapshot } from "@/lib/mken/nap";
+import { generateGeminiText } from "@/lib/mken/gemini";
 
 export interface GbpStatus {
   connected: boolean;
@@ -267,27 +271,6 @@ export interface GbpCompetitor {
   placeId?: string;
 }
 
-async function callGemini(promptText: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) throw new Error("GEMINI_API_KEY غير معيّن على الخادم");
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] }),
-    }
-  );
-  if (!response.ok) throw new Error("فشل طلب Gemini");
-  const data = (await response.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("تعذّر قراءة رد Gemini");
-  return text;
-}
-
 function trimGbpPostText(text: string): string {
   if (!text || text.length <= GBP_POST_MAX_CHARS) return text || "";
   return `${text.slice(0, GBP_POST_MAX_CHARS - 1).trim()}…`;
@@ -298,7 +281,15 @@ export async function loadNapSiteSnapshot(
 ): Promise<{ site?: NapSiteSnapshot & { lat: number; lng: number; category: string }; error?: string }> {
   const row = await fetchTenantRow(slug);
   if (!row) return { error: "المنشأة غير موجودة" };
-  const config = row.config_data || {};
+  const raw = row.config_data || {};
+  const config =
+    slug === "rewa"
+      ? applyRewaDefaults(raw)
+      : slug === "almahrusa"
+        ? applyAlmahrusaDefaults(raw)
+        : slug === "rewaq"
+          ? applyRewaqDefaults(raw)
+          : raw;
   const booking =
     config.booking && typeof config.booking === "object"
       ? (config.booking as Record<string, unknown>)
@@ -437,7 +428,7 @@ export async function generateGbpPost(
 6. لا تتجاوز ${GBP_POST_MAX_CHARS} حرفاً في النص النهائي.`;
 
   try {
-    return { text: trimGbpPostText(await callGemini(systemPrompt)) };
+    return { text: trimGbpPostText(await generateGeminiText(systemPrompt)) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر توليد المنشور" };
   }
@@ -464,7 +455,7 @@ export async function generateGbpReply(
 4. حافظ على الإيجاز والاحترافية.`;
 
   try {
-    return { text: await callGemini(systemPrompt) };
+    return { text: await generateGeminiText(systemPrompt) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر توليد الرد" };
   }
@@ -521,7 +512,7 @@ export async function listGbpCompetitors(
 3. تأكد من أن الأسماء لمنافسين حقيقيين أو واقعيين جداً في تلك المدينة.`;
 
   try {
-    let cleanJson = (await callGemini(prompt)).trim();
+    let cleanJson = (await generateGeminiText(prompt)).trim();
     if (cleanJson.startsWith("```")) {
       cleanJson = cleanJson.replace(/^```(json)?/, "").replace(/```$/, "").trim();
     }
@@ -679,4 +670,160 @@ export async function publishGbpPost(
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر نشر المنشور" };
   }
+}
+
+export const GBP_POST_STATUSES = ["PENDING", "PUBLISHED", "FAILED"] as const;
+export type GbpPostStatus = (typeof GBP_POST_STATUSES)[number];
+
+export interface ScheduledGbpPost {
+  id: string;
+  tenantSlug: string;
+  topic: string;
+  content: string;
+  imageUrl: string;
+  callToAction: string;
+  ctaUrl: string;
+  status: GbpPostStatus;
+  publishAt: string;
+  publishedAt: string | null;
+  errorLog: string;
+  createdAt: string;
+}
+
+interface GbpPostRow {
+  id: string;
+  tenant_slug?: string | null;
+  topic?: string | null;
+  content?: string | null;
+  image_url?: string | null;
+  call_to_action?: string | null;
+  cta_url?: string | null;
+  status?: string | null;
+  publish_at?: string | null;
+  published_at?: string | null;
+  error_log?: string | null;
+  created_at?: string | null;
+}
+
+function toScheduledPost(row: GbpPostRow): ScheduledGbpPost {
+  const status = (GBP_POST_STATUSES as readonly string[]).includes(row.status || "")
+    ? (row.status as GbpPostStatus)
+    : "PENDING";
+  return {
+    id: row.id,
+    tenantSlug: row.tenant_slug || "",
+    topic: row.topic || "",
+    content: row.content || "",
+    imageUrl: row.image_url || "",
+    callToAction: row.call_to_action || "BOOK",
+    ctaUrl: row.cta_url || "",
+    status,
+    publishAt: row.publish_at || "",
+    publishedAt: row.published_at || null,
+    errorLog: row.error_log || "",
+    createdAt: row.created_at || "",
+  };
+}
+
+export async function listScheduledGbpPosts(
+  slug: string
+): Promise<{ posts?: ScheduledGbpPost[]; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const { data, error } = await db
+    .from("mken_gbp_scheduled_posts")
+    .select("*")
+    .eq("tenant_slug", slug)
+    .order("publish_at", { ascending: false })
+    .limit(40);
+  if (error) {
+    if (/does not exist|42P01/i.test(error.message)) return { posts: [] };
+    return { error: error.message };
+  }
+  return { posts: ((data || []) as GbpPostRow[]).map(toScheduledPost) };
+}
+
+export async function scheduleGbpPost(input: {
+  slug: string;
+  topic: string;
+  content: string;
+  publishAt: string;
+}): Promise<{ post?: ScheduledGbpPost; publishedNow?: boolean; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const topic = input.topic.trim().slice(0, 80) || "عرض";
+  const content = input.content.trim().slice(0, 1500);
+  if (!content) return { error: "اكتب نص المنشور أولاً" };
+  const at = new Date(input.publishAt);
+  if (!Number.isFinite(at.getTime())) return { error: "موعد النشر غير صالح" };
+
+  const website = await tenantWebsiteUrl(input.slug);
+  const { data, error } = await db
+    .from("mken_gbp_scheduled_posts")
+    .insert({
+      tenant_slug: input.slug,
+      topic,
+      content,
+      call_to_action: "BOOK",
+      cta_url: website,
+      status: "PENDING",
+      publish_at: at.toISOString(),
+    })
+    .select("*")
+    .maybeSingle();
+  if (error || !data) return { error: error?.message || "تعذّر جدولة المنشور" };
+
+  const post = toScheduledPost(data as GbpPostRow);
+  if (at.getTime() <= Date.now() + 15_000) {
+    const published = await publishOneScheduledPost(post);
+    return { post: published.post || post, publishedNow: !published.error, error: published.error };
+  }
+  return { post };
+}
+
+async function publishOneScheduledPost(
+  post: ScheduledGbpPost
+): Promise<{ post?: ScheduledGbpPost; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const { status } = await fetchGbpStatus(post.tenantSlug);
+  const locationId = status?.selectedLocationId || "";
+  const result = await publishGbpPost(post.tenantSlug, locationId, post.content);
+  const now = new Date().toISOString();
+  if (result.error) {
+    await db
+      .from("mken_gbp_scheduled_posts")
+      .update({ status: "FAILED", error_log: result.error, published_at: now })
+      .eq("id", post.id);
+    return { error: result.error };
+  }
+  const { data } = await db
+    .from("mken_gbp_scheduled_posts")
+    .update({ status: "PUBLISHED", published_at: now, error_log: null })
+    .eq("id", post.id)
+    .select("*")
+    .maybeSingle();
+  return { post: data ? toScheduledPost(data as GbpPostRow) : post };
+}
+
+export async function publishDueGbpPosts(): Promise<{ published: number; failed: number }> {
+  const db = getTenantDb();
+  if (!db) return { published: 0, failed: 0 };
+  const { data, error } = await db
+    .from("mken_gbp_scheduled_posts")
+    .select("*")
+    .eq("status", "PENDING")
+    .lte("publish_at", new Date().toISOString())
+    .order("publish_at", { ascending: true })
+    .limit(12);
+  if (error || !data?.length) return { published: 0, failed: 0 };
+
+  let published = 0;
+  let failed = 0;
+  for (const row of data as GbpPostRow[]) {
+    const result = await publishOneScheduledPost(toScheduledPost(row));
+    if (result.error) failed += 1;
+    else published += 1;
+  }
+  return { published, failed };
 }

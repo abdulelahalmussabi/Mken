@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
-import { SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
+import { SAUDI_OCCASIONS } from "@/context/OccasionContext";
 import type { ClientRecord } from "@/types/database";
 import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 import {
@@ -35,6 +35,24 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const occasionsList = Object.values(SAUDI_OCCASIONS);
+
+type ThemePick = { id: string; name: string; shortName: string; accentColor: string };
+
+function themePicksForClient(client?: Pick<ClientRecord, "customThemes"> | null): ThemePick[] {
+  const custom = (client?.customThemes || []).map((theme) => ({
+    id: theme.id,
+    name: theme.name,
+    shortName: theme.name,
+    accentColor: theme.accentColor,
+  }));
+  const occasions = occasionsList.map((occ) => ({
+    id: occ.id,
+    name: occ.name,
+    shortName: occ.shortName,
+    accentColor: occ.accentColor,
+  }));
+  return [...custom, ...occasions];
+}
 
 export default function AdminDashboardPage() {
   const {
@@ -93,7 +111,7 @@ export default function AdminDashboardPage() {
       demoNotice: newClient.demoNotice || `✨ موقع ${newClient.name} على منصة مكّن`,
       adminEmail: newClient.adminEmail || "",
       adminPassword: newClient.adminPassword || "",
-      theme: (newClient.theme as OccasionId) || "none",
+      theme: newClient.theme || "none",
       active: true,
       createdAt: new Date().toISOString(),
     });
@@ -178,7 +196,7 @@ export default function AdminDashboardPage() {
                   <button
                     key={occ.id}
                     onClick={async () => {
-                      const result = await setGlobalTheme(occ.id as OccasionId);
+                      const result = await setGlobalTheme(occ.id);
                       if (result.success) {
                         showToast(`تم اعتماد ثيم المنصة: ${occ.shortName}`, "success");
                       } else {
@@ -293,8 +311,8 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewClient((prev) => ({ ...prev, theme: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                   >
-                    {occasionsList.map((occ) => (
-                      <option key={occ.id} value={occ.id}>{occ.name}</option>
+                    {themePicksForClient().map((opt) => (
+                      <option key={opt.id} value={opt.id}>{opt.name}</option>
                     ))}
                   </select>
                 </div>
@@ -326,8 +344,9 @@ export default function AdminDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {clients.map((client) => {
+                    const picks = themePicksForClient(client);
                     const clientTheme = getClientTheme(client.slug) || "none";
-                    const occ = SAUDI_OCCASIONS[clientTheme];
+                    const current = picks.find((opt) => opt.id === clientTheme) || picks.find((opt) => opt.id === "none");
                     const isEditing = editingSlug === client.slug;
 
                     return (
@@ -358,7 +377,7 @@ export default function AdminDashboardPage() {
                               onChange={async (e) => {
                                 const result = await setClientTheme(
                                   client.slug,
-                                  e.target.value as OccasionId
+                                  e.target.value
                                 );
                                 setEditingSlug(null);
                                 if (!result.success) {
@@ -367,17 +386,17 @@ export default function AdminDashboardPage() {
                               }}
                               className="px-3 py-1.5 bg-slate-950 border border-amber-500/50 rounded-xl text-xs text-slate-100 focus:outline-none"
                             >
-                              {occasionsList.map((o) => (
-                                <option key={o.id} value={o.id}>{o.name}</option>
+                              {picks.map((opt) => (
+                                <option key={opt.id} value={opt.id}>{opt.name}</option>
                               ))}
                             </select>
                           ) : (
                             <div className="flex items-center gap-2">
                               <span
                                 className="w-3 h-3 rounded-full border border-white/20"
-                                style={{ backgroundColor: occ?.accentColor }}
+                                style={{ backgroundColor: current?.accentColor }}
                               />
-                              <span className="text-xs text-slate-300 font-bold">{occ?.shortName}</span>
+                              <span className="text-xs text-slate-300 font-bold">{current?.shortName || clientTheme}</span>
                             </div>
                           )}
                         </td>

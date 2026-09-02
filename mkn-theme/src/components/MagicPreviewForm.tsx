@@ -24,6 +24,67 @@ type LivePlace = {
   attribution: string;
 };
 
+const PREVIEW_CLIENT_TIMEOUT_MS = 15000;
+const PREVIEW_CONNECT_ERROR = "تعذّر الاتصال بخادم المعاينة حالياً، يرجى تحديث الصفحة والمحاولة مجدداً.";
+
+/** Apex mken.live 308s every /api/* to www with a non-JSON body. Always hit www from apex. */
+function previewApiUrl(path = ""): string {
+  if (typeof window === "undefined") return `/api/preview${path}`;
+  const host = window.location.hostname.toLowerCase();
+  const origin = host === "mken.live" ? "https://www.mken.live" : window.location.origin;
+  return `${origin}/api/preview${path}`;
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof DOMException && err.name === "AbortError") ||
+    (err instanceof Error && (err.name === "AbortError" || /aborted|timeout/i.test(err.message)))
+  );
+}
+
+async function readPreviewJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text) {
+    if (res.status === 429) throw new Error("تجاوزت حد الطلبات. أعد المحاولة بعد 10 دقائق.");
+    if (res.status === 403) throw new Error("فشل التحقق. حدّث الصفحة وحاول مجدداً.");
+    if (res.status === 504 || res.status === 408 || res.status === 502) {
+      throw new Error("انتهت مهلة قراءة خرائط جوجل. استخدم رابط maps.app.goo.gl أو معرّف المكان الذي يبدأ بـ ChIJ.");
+    }
+    throw new Error(PREVIEW_CONNECT_ERROR);
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(PREVIEW_CONNECT_ERROR);
+  }
+}
+
+async function previewFetch(path = "", init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(previewApiUrl(path), {
+      ...init,
+      credentials: "omit",
+      mode: "cors",
+      signal: init?.signal ?? AbortSignal.timeout(PREVIEW_CLIENT_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (isAbortError(err)) {
+      throw new Error("انتهت مهلة الاتصال بالخادم. جرّب رابط خرائط أقصر أو معرّف المكان ChIJ.");
+    }
+    throw new Error(PREVIEW_CONNECT_ERROR);
+  }
+}
+
+async function loadChallenge(): Promise<string> {
+  try {
+    const res = await previewFetch("?action=challenge");
+    const data = await readPreviewJson(res);
+    return typeof data.challenge === "string" ? data.challenge : "";
+  } catch {
+    return "";
+  }
+}
+
 export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; accentColor: string }) {
   const [placeName, setPlaceName] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
@@ -36,18 +97,16 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/preview?action=challenge")
-      .then((res) => res.json())
+    loadChallenge().then((token) => {
+      if (token) setChallenge(token);
+    });
+    previewFetch(`?action=live&slug=${encodeURIComponent(slug)}`)
+      .then((res) => readPreviewJson(res))
       .then((data) => {
-        if (data?.challenge) setChallenge(data.challenge);
-      })
-      .catch(() => undefined);
-    fetch(`/api/preview?action=live&slug=${encodeURIComponent(slug)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.place?.name) setPlaceName(data.place.name);
-        if (data?.place?.mapsUrl) setMapsUrl(data.place.mapsUrl);
-        if (data?.claimStatus === "pending" || data?.claimStatus === "claimed") {
+        const place = data.place as LivePlace | undefined;
+        if (place?.name) setPlaceName(place.name);
+        if (place?.mapsUrl) setMapsUrl(place.mapsUrl);
+        if (data.claimStatus === "pending" || data.claimStatus === "claimed") {
           setClaimStatus(data.claimStatus);
         }
       })
@@ -60,21 +119,30 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
     try {
       const turnstile = (document.querySelector("[name='cf-turnstile-response']") as HTMLInputElement | null)
         ?.value;
-      const res = await fetch("/api/preview", {
+      let token = challenge;
+      if (!token) {
+        token = await loadChallenge();
+        if (token) setChallenge(token);
+      }
+      const res = await previewFetch("", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "claim-start",
           slug,
           phone,
-          challenge,
+          challenge: token,
           turnstileToken: turnstile,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || "تعذّر إرسال الرمز");
+      const data = await readPreviewJson(res);
+      if (!res.ok || !data?.success) throw new Error(String(data?.message || "تعذّر إرسال الرمز"));
       setStep("otp");
-      setMessage(data.devOtp ? `رمز التطوير: ${data.devOtp}` : data.message);
+      setMessage(
+        typeof data.devOtp === "string"
+          ? `رمز التطوير: ${data.devOtp}`
+          : String(data.message || "")
+      );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "تعذّر إرسال الرمز");
     } finally {
@@ -86,18 +154,18 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/preview", {
+      const res = await previewFetch("", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "claim-verify", slug, phone, otp }),
       });
-      const data = await res.json();
-      if (!res.ok || !data?.success) throw new Error(data?.message || "فشل التحقق");
-      if (data.googleAuthUrl) {
+      const data = await readPreviewJson(res);
+      if (!res.ok || !data?.success) throw new Error(String(data?.message || "فشل التحقق"));
+      if (typeof data.googleAuthUrl === "string" && data.googleAuthUrl) {
         window.location.href = data.googleAuthUrl;
         return;
       }
-      window.location.href = data.settingsUrl || "/admin/settings";
+      window.location.href = typeof data.settingsUrl === "string" ? data.settingsUrl : "/admin/settings";
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "فشل التحقق");
     } finally {
@@ -185,12 +253,9 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
   const [result, setResult] = useState<{ previewUrl: string; place: LivePlace; slug: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/preview?action=challenge")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.challenge) setChallenge(data.challenge);
-      })
-      .catch(() => undefined);
+    loadChallenge().then((token) => {
+      if (token) setChallenge(token);
+    });
     if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) return;
     if (document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) return;
     const script = document.createElement("script");
@@ -206,7 +271,12 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
     try {
       const turnstile = (document.querySelector("[name='cf-turnstile-response']") as HTMLInputElement | null)
         ?.value;
-      const res = await fetch("/api/preview", {
+      let token = challenge;
+      if (!token) {
+        token = await loadChallenge();
+        if (token) setChallenge(token);
+      }
+      const res = await previewFetch("", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,16 +284,20 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           mapsUrl,
           phone,
           consent,
-          challenge,
+          challenge: token,
           turnstileToken: turnstile,
           website: honeypot,
         }),
       });
-      const data = await res.json();
+      const data = await readPreviewJson(res);
       if (!res.ok || !data?.success) {
-        throw new Error(data?.message || "تعذّر إنشاء المعاينة");
+        throw new Error(String(data?.message || "تعذّر إنشاء المعاينة"));
       }
-      setResult({ previewUrl: data.previewUrl, place: data.place, slug: data.slug });
+      setResult({
+        previewUrl: String(data.previewUrl || ""),
+        place: data.place as LivePlace,
+        slug: String(data.slug || ""),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذّر إنشاء المعاينة");
     } finally {

@@ -22,6 +22,8 @@ export const EVENT_LABELS: Record<string, string> = {
   chatbot_reply: "رد المساعد الذكي",
   crm_reply: "رد مباشر (CRM)",
   marketing_campaign: "حملة تسويقية",
+  review_request: "طلب تقييم بعد الزيارة",
+  review_followup: "متابعة تقييم",
 };
 
 export const PROVIDER_LABELS: Record<string, string> = {
@@ -478,7 +480,7 @@ export async function sendOutboundWhatsapp(
   tenantSlug: string,
   phoneRaw: string,
   bodyRaw: string,
-  eventType: "test" | "crm_reply"
+  eventType: "test" | "crm_reply" | "review_request" | "review_followup"
 ): Promise<{ error?: string }> {
   const row = await fetchTenantRow(tenantSlug);
   if (!row) return { error: "المنشأة غير موجودة" };

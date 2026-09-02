@@ -6,7 +6,7 @@ import { attachUnclaimedRobotsHeader } from "@/lib/mken/preview";
 
 const ADMIN_COOKIE = "mkn_admin_session";
 
-const SHORT_TENANT_ALIASES = new Set(["almahrusa", "demo", "almasabi", "rewa"]);
+const SHORT_TENANT_ALIASES = new Set(["almahrusa", "demo", "almasabi", "rewa", "rewaq"]);
 const SKIP_NESTED_WWW = new Set(["www", "admin", "mken", "license", "licenses", "api"]);
 const PLATFORM_ADMIN_PATHS = new Set(["/admin", "/admin/", "/admin/licenses"]);
 
@@ -220,6 +220,11 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/rewa") {
     url.pathname = "/subscriber/rewa";
+    return NextResponse.rewrite(url);
+  }
+
+  if (pathname === "/rewaq") {
+    url.pathname = "/subscriber/rewaq";
     return NextResponse.rewrite(url);
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { EyeOff, FileText, Save } from "lucide-react";
+import { EyeOff, FileText, Pencil, Save } from "lucide-react";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 import {
@@ -9,6 +9,8 @@ import {
   STOREFRONT_PAGE_META,
   emptyPages,
   isToggleablePageId,
+  resolvePageLabel,
+  type StorefrontPageId,
   type StorefrontPagesPublic,
   type ToggleablePageId,
 } from "@/lib/mken/pages";
@@ -84,6 +86,7 @@ export default function InterfacePagesPage() {
   const [formEnabled, setFormEnabled] = useState(true);
   const [mapEnabled, setMapEnabled] = useState(true);
   const [hoursNote, setHoursNote] = useState("");
+  const [labelDrafts, setLabelDrafts] = useState<Record<StorefrontPageId, string>>(emptyPages().labels);
 
   const hydrate = (data: StorefrontPagesPublic) => {
     setPages(data);
@@ -107,6 +110,11 @@ export default function InterfacePagesPage() {
     setFormEnabled(data.contact.formEnabled);
     setMapEnabled(data.contact.mapEnabled);
     setHoursNote(data.contact.hoursNote);
+    const nextLabels = emptyPages().labels;
+    for (const id of STOREFRONT_PAGE_IDS) {
+      nextLabels[id] = data.labels?.[id]?.trim() || STOREFRONT_PAGE_META[id].label;
+    }
+    setLabelDrafts(nextLabels);
   };
 
   const load = useCallback(async () => {
@@ -155,7 +163,17 @@ export default function InterfacePagesPage() {
   };
 
   const togglePage = async (id: ToggleablePageId, next: boolean) => {
-    await put({ enabled: { [id]: next } }, next ? `تم فتح صفحة ${STOREFRONT_PAGE_META[id].label}` : `تم إغلاق صفحة ${STOREFRONT_PAGE_META[id].label}`, `toggle-${id}`);
+    const name = resolvePageLabel({ labels: labelDrafts }, id);
+    await put({ enabled: { [id]: next } }, next ? `تم فتح صفحة ${name}` : `تم إغلاق صفحة ${name}`, `toggle-${id}`);
+  };
+
+  const labelsPayload = () => {
+    const labels = emptyPages().labels;
+    for (const id of STOREFRONT_PAGE_IDS) {
+      const value = (labelDrafts[id] || "").trim();
+      labels[id] = value === STOREFRONT_PAGE_META[id].label ? "" : value;
+    }
+    return labels;
   };
 
   return (
@@ -166,7 +184,7 @@ export default function InterfacePagesPage() {
           <div>
             <h1 className="text-lg font-extrabold text-white">صفحات موقع العميل</h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              افتح أو أغلق أي صفحة حسب حاجة النشاط. الصفحة المغلقة تختفي من القائمة وتعيد 404 للزائر.
+              افتح أو أغلق أي صفحة، وعدّل اسمها كما يظهر في قائمة الموقع للزائر. الصفحة المغلقة تختفي من القائمة وتعيد 404.
             </p>
           </div>
         </div>
@@ -176,7 +194,13 @@ export default function InterfacePagesPage() {
         ) : error ? (
           <p className="text-sm text-rose-300 font-bold">{error}</p>
         ) : (
-          <div className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void put({ labels: labelsPayload() }, "تم حفظ أسماء القوائم", "labels");
+            }}
+            className="space-y-3"
+          >
             {STOREFRONT_PAGE_IDS.map((id) => {
               const meta = STOREFRONT_PAGE_META[id];
               const on = pages.enabled[id];
@@ -186,16 +210,25 @@ export default function InterfacePagesPage() {
                   key={id}
                   className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-950 border border-slate-800"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-white flex items-center gap-2">
-                      {meta.label}
-                      {locked ? <span className="text-[10px] text-slate-500">دائمة</span> : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold text-amber-400/90 mb-1.5">اسم القائمة (قابل للتعديل)</p>
+                    <div className="flex items-center gap-2">
+                      <Pencil className="w-4 h-4 text-amber-400 shrink-0" />
+                      <input
+                        className="w-full flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-amber-500/40 rounded-xl text-sm font-extrabold text-white text-right focus:outline-none focus:border-amber-500"
+                        value={labelDrafts[id]}
+                        onChange={(e) => setLabelDrafts((prev) => ({ ...prev, [id]: e.target.value }))}
+                        placeholder={meta.label}
+                        maxLength={40}
+                        aria-label={`اسم قائمة ${meta.label}`}
+                      />
+                      {locked ? <span className="text-[10px] text-slate-500 shrink-0">دائمة</span> : null}
                       {!on && !locked ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
                           <EyeOff className="w-3 h-3" /> مغلقة
                         </span>
                       ) : null}
-                    </p>
+                    </div>
                     <p className="text-[11px] text-slate-400 mt-1">{meta.description}</p>
                   </div>
                   <Toggle
@@ -209,7 +242,15 @@ export default function InterfacePagesPage() {
                 </div>
               );
             })}
-          </div>
+            <button
+              type="submit"
+              disabled={saving === "labels"}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-amber-500 text-slate-950 font-extrabold text-sm rounded-xl disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              حفظ أسماء القوائم
+            </button>
+          </form>
         )}
       </div>
 

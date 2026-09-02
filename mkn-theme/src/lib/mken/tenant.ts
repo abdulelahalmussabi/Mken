@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
-import type { ClientRecord, ClientType } from "@/types/database";
+import type { ClientRecord, ClientType, SocialLinks } from "@/types/database";
 import { isStaleSeedLogo, logoValidationError, publicBrandSrc } from "@/lib/mken/logo-crop";
 
 /**
@@ -81,7 +81,7 @@ export interface MkenConfig {
   colorScheme?: {
     darkEnabled?: boolean;
   };
-  ads?: {
+    ads?: {
     primary?: {
       enabled?: boolean;
       title?: string;
@@ -90,6 +90,8 @@ export interface MkenConfig {
       ctaLabel?: string;
       ctaHref?: string;
       couponCode?: string;
+      startDate?: string;
+      endDate?: string;
     };
     secondary?: {
       id: string;
@@ -98,6 +100,30 @@ export interface MkenConfig {
       text?: string;
       image?: string;
       href?: string;
+      features?: string[];
+      badge?: string;
+      price?: string;
+      ctaLabel?: string;
+      startDate?: string;
+      endDate?: string;
+    }[];
+  };
+  /** Monthly Geo-Grid + daily ad-copy usage keyed by Asia/Riyadh calendar. */
+  localGrowth?: { geoMonth?: string; geoUsed?: number; genDay?: string; genUsed?: number };
+  /** Per-tenant Meta placement. Token stays in Vercel env (META_ADS_ACCESS_TOKEN). */
+  adsMeta?: { adAccountId?: string; pageId?: string };
+  /** Per-tenant Google Ads customer. OAuth refresh token is a dedicated column, never returned to the browser. */
+  adsGoogle?: {
+    customerId?: string;
+    loginCustomerId?: string;
+    descriptiveName?: string;
+    pendingAccounts?: {
+      customerId: string;
+      name: string;
+      manager: boolean;
+      testAccount: boolean;
+      currency: string;
+      loginCustomerId: string;
     }[];
   };
   /** Same shape as js/services-store.js `config.subscription`. */
@@ -133,8 +159,12 @@ export interface MkenConfig {
   demoNotice?: string;
   adminEmail?: string;
   adminPasswordHash?: string;
-  /** Five public site pages + enable flags. See lib/mken/pages.ts */
+  /** Five public site pages, enable flags, and custom nav labels. See lib/mken/pages.ts */
   pages?: unknown;
+  /** Tenant-only catalog rows (not in the global services.json). */
+  customServices?: unknown;
+  /** Public Google Maps listing URL (maps.app.goo.gl or maps.google.com). */
+  mapsUrl?: string;
   booking?: {
     workingHours?: { start?: string; end?: string };
     [key: string]: unknown;
@@ -188,6 +218,14 @@ export function getTenantDb(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/** Service-role only — bypasses RLS. Use for server writes the anon key cannot perform. */
+export function getServiceRoleDb(): SupabaseClient | null {
+  const url = firstEnv(process.env.SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = firstEnv(process.env.SUPABASE_SERVICE_ROLE_KEY, process.env.SUPABASE_SERVICE_KEY);
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
   const ACTIVITY_TYPES: Record<string, ClientType> = {
   hotels: "hotel",
   "barber-salon": "salon",
@@ -203,12 +241,128 @@ function toClientType(activity?: string): ClientType {
   return (activity && ACTIVITY_TYPES[activity]) || "other";
 }
 
+function customThemesFromConfig(
+  config: MkenConfig,
+  slug: string
+): { id: string; name: string; accentColor: string }[] {
+  const raw = config.customThemes;
+  const themes: { id: string; name: string; accentColor: string }[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (!item || typeof item !== "object") continue;
+      const id = typeof item.id === "string" ? item.id.trim() : "";
+      const name = typeof item.name === "string" ? item.name.trim() : "";
+      const accentColor = typeof item.accentColor === "string" ? item.accentColor : "";
+      if (!id || !name) continue;
+      themes.push({ id, name, accentColor: accentColor || "#c2410c" });
+    }
+  }
+  if (
+    slug === "rewa" &&
+    !themes.some((theme) => theme.id === "custom-rewa" || theme.name.includes("رواء"))
+  ) {
+    themes.unshift({ id: "custom-rewa", name: "هوية رواء", accentColor: "#1A3F66" });
+  }
+  if (
+    slug === "rewaq" &&
+    !themes.some((theme) => theme.id === "custom-rewaq" || theme.name.includes("رواق ريزدنت"))
+  ) {
+    themes.unshift({ id: "custom-rewaq", name: "هوية رواق ريزدنت", accentColor: "#7A4E2D" });
+  }
+  return themes;
+}
+
+function socialHref(platformId: string, rawValue: string): string {
+  const value = (rawValue || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  const handle = value.replace(/^@+/, "");
+  switch (platformId) {
+    case "whatsapp": {
+      const digits = value.replace(/\D/g, "");
+      return digits ? `https://wa.me/${digits}` : "";
+    }
+    case "instagram":
+      return `https://instagram.com/${encodeURIComponent(handle)}`;
+    case "twitter":
+    case "x":
+      return `https://x.com/${encodeURIComponent(handle)}`;
+    case "facebook":
+      return `https://facebook.com/${encodeURIComponent(handle)}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${encodeURIComponent(handle)}`;
+    case "snapchat":
+      return `https://www.snapchat.com/add/${encodeURIComponent(handle)}`;
+    case "telegram":
+      return `https://t.me/${encodeURIComponent(handle)}`;
+    case "youtube": {
+      if (/^(channel|c|user)\//i.test(handle)) return `https://www.youtube.com/${handle}`;
+      return `https://www.youtube.com/@${encodeURIComponent(handle)}`;
+    }
+    case "linkedin": {
+      if (/^(in|company)\//i.test(value)) {
+        return `https://www.linkedin.com/${value.replace(/^\/+/, "")}`;
+      }
+      return `https://www.linkedin.com/in/${encodeURIComponent(handle)}`;
+    }
+    case "pinterest":
+      return `https://www.pinterest.com/${encodeURIComponent(handle)}`;
+    case "maps":
+    case "map":
+      return value;
+    case "website":
+      return /^https?:\/\//i.test(value) ? value : `https://${value.replace(/^\/+/, "")}`;
+    case "phone":
+      return `tel:${value.replace(/[^\d+]/g, "")}`;
+    default:
+      return "";
+  }
+}
+
+function socialConfigFromLinks(links?: SocialLinks): Record<string, Toggle> {
+  if (!links) return {};
+  const out: Record<string, Toggle> = {};
+  for (const [id, raw] of Object.entries(links)) {
+    if (!raw) continue;
+    const key = id === "x" ? "twitter" : id === "map" ? "maps" : id;
+    out[key] = { enabled: true, value: String(raw) };
+  }
+  return out;
+}
+
+/** Convert `config.social` toggles into public `socialLinks` URLs. */
+export function buildSocialLinksMap(
+  socialConfig: Record<string, Toggle> | undefined
+): SocialLinks {
+  const links: SocialLinks = {};
+  if (!socialConfig) return links;
+  for (const [id, entry] of Object.entries(socialConfig)) {
+    const raw = typeof entry === "string" ? entry : entry?.value;
+    const enabled =
+      typeof entry === "string" ? Boolean(String(raw).trim()) : entry?.enabled !== false;
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (!enabled || !value) continue;
+    const href = socialHref(id, value);
+    if (!href) continue;
+    if (id === "twitter" || id === "x") {
+      links.twitter = href;
+      links.x = href;
+    } else if (id === "maps" || id === "map") {
+      links.map = href;
+    } else {
+      (links as Record<string, string>)[id] = href;
+    }
+  }
+  return links;
+}
+
 export function toClientRecord(row: TenantRow): ClientRecord {
   const config = row.config_data || {};
   const brand = config.brand || {};
   const pack = config.occasionPack || {};
   const forceId = typeof pack.forceId === "string" ? pack.forceId : "none";
   const seed = DEFAULT_CLIENTS.find((client) => client.slug === row.tenant_slug);
+  const customThemes = customThemesFromConfig(config, row.tenant_slug);
 
   return {
     slug: row.tenant_slug,
@@ -234,6 +388,14 @@ export function toClientRecord(row: TenantRow): ClientRecord {
         : "claimed",
     adminEmail: config.adminEmail || row.email || "",
     theme: forceId.startsWith("custom-") || isOccasionTheme(forceId) ? forceId : "none",
+    customThemes,
+    socialLinks: {
+      ...(seed?.socialLinks || {}),
+      ...buildSocialLinksMap({
+        ...socialConfigFromLinks(seed?.socialLinks),
+        ...(config.social || {}),
+      }),
+    },
     couponCode: pack.promo?.code || (config.ads?.primary as { couponCode?: string } | undefined)?.couponCode,
     discountText: pack.promo?.text || (config.ads?.primary as { text?: string } | undefined)?.text,
     promoTitle: (config.ads?.primary as { title?: string } | undefined)?.title,
@@ -257,9 +419,17 @@ export function mergeIntoConfig(
     if (updates.logo !== undefined) next.brand.logo = updates.logo;
   }
 
+  if (updates.socialLinks) {
+    next.social = {
+      ...socialConfigFromLinks(updates.socialLinks),
+      ...(config.social || {}),
+      ...(next.social || {}),
+    };
+  }
+
   if (updates.whatsapp !== undefined) {
     next.social = {
-      ...(config.social || {}),
+      ...(next.social || config.social || {}),
       whatsapp: { enabled: true, value: updates.whatsapp },
     };
   }
@@ -302,6 +472,22 @@ export function mergeIntoConfig(
         ...(updates.promoTitle !== undefined && { title: updates.promoTitle }),
       },
     };
+  }
+
+  if (updates.theme === "custom-rewa") {
+    const existing = Array.isArray(next.customThemes) ? next.customThemes : [];
+    if (!existing.some((theme) => theme.id === "custom-rewa")) {
+      next.customThemes = [
+        {
+          id: "custom-rewa",
+          name: "هوية رواء",
+          accentColor: "#1A3F66",
+          badgeBg: "#C4A35A",
+          bgGradient: "#0D2136",
+        },
+        ...existing,
+      ];
+    }
   }
 
   if (updates.phone !== undefined) next.phone = updates.phone;
@@ -354,7 +540,6 @@ export async function writeTenantConfig(
     { config_data: config },
   ];
 
-  let lastError = "";
   for (const patch of patches) {
     const { data, error } = await db
       .from(TENANT_TABLE)
@@ -362,19 +547,34 @@ export async function writeTenantConfig(
       .eq("tenant_slug", slug)
       .select(TENANT_COLUMNS);
     if (error) {
-      lastError = error.message;
       if (isMissingColumnError(error)) continue;
-      // Fallback gracefully to memory config if DB table update has RLS/permission issues
-      return {
-        row: {
-          tenant_slug: slug,
-          config_data: config,
-          subscription_status: "active",
-        },
-      };
+      break;
     }
     if (data?.length) return { row: data[0] as TenantRow };
   }
+
+  const upserts: Record<string, unknown>[] = [
+    {
+      tenant_slug: slug,
+      config_data: config,
+      subscription_status: "active",
+      updated_at: new Date().toISOString(),
+    },
+    { tenant_slug: slug, config_data: config, subscription_status: "active" },
+    { tenant_slug: slug, config_data: config },
+  ];
+  for (const payload of upserts) {
+    const { data, error } = await db
+      .from(TENANT_TABLE)
+      .upsert(payload, { onConflict: "tenant_slug" })
+      .select(TENANT_COLUMNS);
+    if (error) {
+      if (isMissingColumnError(error)) continue;
+      continue;
+    }
+    if (data?.length) return { row: data[0] as TenantRow };
+  }
+
   return {
     row: {
       tenant_slug: slug,
@@ -456,9 +656,14 @@ export async function ensureTenantRow(slug: string): Promise<{ row?: TenantRow; 
   if (existing.row) return { row: existing.row };
 
   const seed = DEFAULT_CLIENTS.find((client) => client.slug === slug);
-  if (!seed) return { error: "المنشأة غير موجودة" };
-
-  const config = mergeIntoConfig({}, seed);
+  const config: MkenConfig = seed
+    ? mergeIntoConfig({}, seed)
+    : {
+        brand: { name: slug, tagline: "", logo: "" },
+        phone: "",
+        social: {},
+        emails: {},
+      };
   MEMORY_TENANT_CONFIG[slug] = config;
 
   const db = getTenantDb();
@@ -469,9 +674,9 @@ export async function ensureTenantRow(slug: string): Promise<{ row?: TenantRow; 
   const payloads: Record<string, unknown>[] = [
     {
       tenant_slug: slug,
-      email: seed.adminEmail || seed.email,
-      phone: seed.phone || "",
-      subscription_status: seed.active ? "active" : "inactive",
+      email: seed?.adminEmail || seed?.email || "",
+      phone: seed?.phone || "",
+      subscription_status: seed?.active === false ? "inactive" : "active",
       config_data: config,
     },
     { tenant_slug: slug, config_data: config },

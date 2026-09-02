@@ -11,6 +11,7 @@ import {
   STOREFRONT_PAGE_IDS,
   STOREFRONT_PAGE_META,
   emptyPages,
+  resolvePageLabel,
   storefrontPageHref,
   type StorefrontContactPublic,
   type StorefrontPageId,
@@ -27,16 +28,81 @@ import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { BrandCutout } from "@/components/PlatformMark";
 import { useColorScheme } from "@/context/ColorSchemeContext";
 import { isUsableLogoSrc } from "@/lib/mken/logo-crop";
+import { NeonSocialGlyph, WhatsappCta, WhatsappMark, type SocialPlatform } from "@/components/social/NeonSocialIcons";
+import NeonSocialRow from "@/components/social/NeonSocialRow";
+import {
+  buildBookingWhatsappText,
+  buildInquiryWhatsappText,
+  buildWhatsappClickUrl,
+  openWhatsappClick,
+} from "@/lib/mken/wa-click";
+import { newBookingId, submitPublicBooking } from "@/lib/mken/book-request";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 import {
   CalendarCheck,
   Download,
   Loader2,
+  LogIn,
+  LogOut,
   MapPin,
-  MessageCircle,
   Phone,
   X,
   Zap,
 } from "lucide-react";
+
+const SOCIAL_GLYPH_IDS = new Set<string>([
+  "twitter",
+  "tiktok",
+  "instagram",
+  "snapchat",
+  "whatsapp",
+  "youtube",
+  "facebook",
+  "linkedin",
+  "telegram",
+]);
+
+function isSocialPlatform(id: string): id is SocialPlatform {
+  return SOCIAL_GLYPH_IDS.has(id);
+}
+
+export function StorefrontSocialLinks({
+  items,
+  size = "sm",
+  excludeWhatsapp = true,
+}: {
+  items: StorefrontContactPublic["social"];
+  size?: "sm" | "md";
+  excludeWhatsapp?: boolean;
+}) {
+  const rows = items.filter((row) => row.url && (excludeWhatsapp ? row.id !== "whatsapp" : true));
+  if (!rows.length) return null;
+  const box = size === "md" ? "w-12 h-12" : "w-10 h-10";
+  const glyph = size === "md" ? 28 : 22;
+  return (
+    <nav className="flex flex-wrap items-center gap-2" aria-label="حسابات التواصل">
+      {rows.map((row) => (
+        <a
+          key={row.id}
+          href={row.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={row.name}
+          className={`inline-flex items-center justify-center rounded-2xl bg-surface-2 border border-line hover:border-amber-500/50 hover:bg-surface transition ${box}`}
+        >
+          {isSocialPlatform(row.id) ? (
+            <NeonSocialGlyph platform={row.id} size={glyph} />
+          ) : (
+            <span className="text-base" aria-hidden>
+              {row.icon || row.name}
+            </span>
+          )}
+          <span className="sr-only">{row.name}</span>
+        </a>
+      ))}
+    </nav>
+  );
+}
 
 export interface StorefrontServiceOption {
   id: string;
@@ -47,6 +113,7 @@ export interface StorefrontServiceOption {
   image: string;
   description: string;
   popular?: boolean;
+  category?: string;
 }
 
 type LoadState = "loading" | "ready" | "missing";
@@ -81,6 +148,7 @@ export interface StorefrontContextValue {
     discountEnabled?: boolean;
   };
   href: (page: StorefrontPageId) => string;
+  whatsappHref: string;
   openBooking: (srv?: StorefrontServiceOption) => void;
 }
 
@@ -102,6 +170,7 @@ function catalogServiceToOption(service: StorefrontCatalogService): StorefrontSe
     image: service.image,
     description: service.description || "",
     popular: service.popular,
+    category: service.category || "",
   };
 }
 
@@ -114,7 +183,7 @@ export function StorefrontFrame({
 }) {
   const pathname = usePathname() || "/";
   const { occasionDetails } = useOccasion();
-  const { showToast } = useApp();
+  const { showToast, user, logout } = useApp();
   const { setDarkEnabled } = useColorScheme();
   const [storeClient, setStoreClient] = useState<StorefrontClient | null>(null);
   const [catalog, setCatalog] = useState<StorefrontCatalog | null>(null);
@@ -138,6 +207,12 @@ export function StorefrontFrame({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
+    setClientName((current) => current || user.full_name || "");
+    setClientPhone((current) => current || user.phone || "");
+  }, [user]);
+
+  useEffect(() => {
     if (appearance) setDarkEnabled(appearance.darkModeEnabled !== false);
   }, [appearance, setDarkEnabled]);
 
@@ -154,17 +229,14 @@ export function StorefrontFrame({
     setLoadState("loading");
     const path = `/api/clients/${encodeURIComponent(slug)}`;
     const platformUrl = `https://www.mken.live${path}`;
-    const host = typeof window !== "undefined" ? window.location.hostname.replace(/^www\./, "") : "";
-    const onPlatform = host === "mken.live" || host === "localhost" || host.endsWith(".localhost");
-    const primary = onPlatform ? path : platformUrl;
-    const secondary = onPlatform ? platformUrl : path;
     const readJson = (res: Response) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status))));
     const hasLogo = (data: { success?: boolean; client?: { logo?: string }; catalog?: unknown } | null) =>
       Boolean(data?.success && data.client && data.catalog && isUsableLogoSrc(data.client.logo));
-    fetch(primary)
+    const fetchOpts: RequestInit = { cache: "no-store" };
+    fetch(path, fetchOpts)
       .then(readJson)
       .then((data) => (hasLogo(data) ? data : Promise.reject(new Error("no-logo"))))
-      .catch(() => fetch(secondary).then(readJson))
+      .catch(() => fetch(platformUrl, fetchOpts).then(readJson))
       .then((data) => {
         if (cancelled) return;
         if (data?.success && data.client && data.catalog) {
@@ -231,6 +303,14 @@ export function StorefrontFrame({
 
   const href = (page: StorefrontPageId) => storefrontPageHref(slug, page, pathname);
 
+  const inquiryWaHref = useMemo(
+    () =>
+      storeInfo?.whatsapp
+        ? buildWhatsappClickUrl(storeInfo.whatsapp, buildInquiryWhatsappText(storeInfo.name))
+        : "",
+    [storeInfo?.whatsapp, storeInfo?.name]
+  );
+
   useEffect(() => {
     if (!storeInfo?.logo || !isUsableLogoSrc(storeInfo.logo)) return;
     let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
@@ -270,6 +350,7 @@ export function StorefrontFrame({
       currentServices,
       storeInfo,
       href,
+      whatsappHref: inquiryWaHref,
       openBooking,
     };
   }, [
@@ -288,30 +369,59 @@ export function StorefrontFrame({
     servicesNavLabel,
     currentServices,
     storeInfo,
+    inquiryWaHref,
   ]);
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeInfo) return;
+    if (!storeInfo || isSubmitting) return;
     if (!clientName.trim() || !clientPhone.trim()) {
       showToast("يرجى ملء كافة البيانات المطلوب إدخالها", "error");
       return;
     }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const appointmentId = newBookingId();
+    const fields = {
+      businessName: storeInfo.name,
+      customerName: clientName,
+      customerPhone: clientPhone,
+      serviceName: selectedService?.name || "خدمة عامة",
+      servicePrice: selectedService?.price,
+      date: bookingDate || "اليوم",
+      time: bookingTime,
+      appointmentId,
+    };
+    const save = submitPublicBooking({
+      id: appointmentId,
+      tenant: slug,
+      customerName: clientName,
+      customerPhone: clientPhone,
+      date: bookingDate || new Date().toISOString().slice(0, 10),
+      time: bookingTime,
+      serviceId: selectedService?.id,
+      serviceName: selectedService?.name,
+      servicePrice: selectedService?.price,
+    });
+
+    const href = buildWhatsappClickUrl(storeInfo.whatsapp, buildBookingWhatsappText(fields));
+    if (href) {
       setBookingOpen(false);
-      showToast(`تم تأكيد طلب حجزك في ${storeInfo.name} بنجاح!`, "success");
-      const msg = encodeURIComponent(
-        `السلام عليكم، أود تأكيد موعد حجز في *${storeInfo.name}*:\n` +
-          `• الخدمة: ${selectedService?.name || "خدمة عامة"}\n` +
-          `• السعر: ${selectedService?.price || ""}\n` +
-          `• التاريخ والوقت: ${bookingDate || "اليوم"} - الساعة ${bookingTime}\n` +
-          `• الاسم: ${clientName}\n` +
-          `• الجوال: ${clientPhone}`
-      );
-      window.open(`https://wa.me/${storeInfo.whatsapp}?text=${msg}`, "_blank");
-    }, 800);
+      setIsSubmitting(false);
+      showToast(`تم حفظ حجزك في ${storeInfo.name} — أكمل الإرسال من واتساب`, "success");
+      openWhatsappClick(href);
+      void save;
+      return;
+    }
+
+    const result = await save;
+    setIsSubmitting(false);
+    if (result.error) {
+      showToast(result.error, "error");
+      return;
+    }
+    setBookingOpen(false);
+    showToast(`تم حفظ حجزك في ${storeInfo.name}. سنتواصل معك قريباً`, "success");
   };
 
   if (loadState === "loading" || !storeInfo || !value) {
@@ -334,7 +444,7 @@ export function StorefrontFrame({
 
   const navItems = STOREFRONT_PAGE_IDS.filter((id) => pages.enabled[id]).map((id) => ({
     id,
-    label: id === "services" ? servicesNavLabel : STOREFRONT_PAGE_META[id].label,
+    label: resolvePageLabel(pages, id, id === "services" ? servicesNavLabel : undefined),
     href: href(id),
   }));
 
@@ -360,7 +470,7 @@ export function StorefrontFrame({
         ) : null}
 
         <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-line">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
                 {isUsableLogoSrc(storeInfo.logo) ? (
@@ -374,7 +484,7 @@ export function StorefrontFrame({
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h1 className="font-extrabold text-foreground tracking-tight whitespace-nowrap leading-none text-[clamp(0.72rem,1.7vw,1.15rem)] max-sm:truncate">
+                  <h1 className="font-extrabold text-foreground tracking-tight leading-tight text-[clamp(0.72rem,1.7vw,1.05rem)] line-clamp-2">
                     {storeInfo.name}
                   </h1>
                   <p className="text-[11px] text-muted font-medium mt-0.5 truncate">{storeInfo.tagline}</p>
@@ -407,6 +517,29 @@ export function StorefrontFrame({
             </nav>
 
             <div className="flex items-center gap-2 shrink-0">
+              {user ? (
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <span className="max-w-[7rem] truncate text-[11px] font-bold text-foreground">
+                    {user.full_name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="p-2 rounded-xl bg-surface border border-line text-muted hover:text-foreground"
+                    title="تسجيل الخروج"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href={`/login?next=${encodeURIComponent("/")}` as Route}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line text-xs font-bold text-foreground hover:border-amber-500/50"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  دخول الزائر
+                </Link>
+              )}
               <Link
                 href={bookHref as Route}
                 className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"
@@ -417,15 +550,7 @@ export function StorefrontFrame({
                 <span className="sm:hidden">احجز</span>
               </Link>
               {storeInfo.whatsapp ? (
-                <a
-                  href={`https://wa.me/${storeInfo.whatsapp}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">واتساب</span>
-                </a>
+                <WhatsappCta href={inquiryWaHref} size="sm" compactOnMobile />
               ) : null}
             </div>
           </div>
@@ -463,17 +588,7 @@ export function StorefrontFrame({
             >
               احجز موعد أونلاين
             </Link>
-            {storeInfo.whatsapp ? (
-              <a
-                href={`https://wa.me/${storeInfo.whatsapp}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-5 py-3 bg-emerald-700 text-white font-bold text-sm rounded-2xl flex items-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                واتساب
-              </a>
-            ) : null}
+            {inquiryWaHref ? <WhatsappCta href={inquiryWaHref} size="md" /> : null}
             {pages.enabled.contact ? (
               <Link
                 href={href("contact") as Route}
@@ -521,15 +636,33 @@ export function StorefrontFrame({
                       <span dir="ltr">{storeInfo.phone}</span>
                     </li>
                   ) : null}
-                  {storeInfo.whatsapp ? (
+                  {inquiryWaHref ? (
                     <li className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-sky-400 shrink-0" />
-                      <a href={`https://wa.me/${storeInfo.whatsapp}`} target="_blank" rel="noreferrer">
+                      <WhatsappMark size={18} />
+                      <a href={inquiryWaHref} target="_blank" rel="noreferrer">
                         محادثة واتساب مباشرة
                       </a>
                     </li>
                   ) : null}
                 </ul>
+                {contactExtras.social.some((row) => row.url) || storeClient?.socialLinks ? (
+                  <div className="pt-1 space-y-2">
+                    <p className="text-[11px] font-bold text-foreground">تابعنا</p>
+                    <NeonSocialRow
+                      socialLinks={
+                        storeClient?.socialLinks && Object.values(storeClient.socialLinks).some(Boolean)
+                          ? storeClient.socialLinks
+                          : Object.fromEntries(
+                              contactExtras.social
+                                .filter((row) => row.url)
+                                .map((row) => [row.id === "twitter" ? "twitter" : row.id, row.url])
+                            )
+                      }
+                      size="md"
+                      align="right"
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="space-y-3">
                 <h4 className="text-xs font-extrabold text-foreground">إدارة المنشأة</h4>
@@ -570,17 +703,7 @@ export function StorefrontFrame({
           </div>
         )}
 
-        {storeInfo.whatsapp ? (
-          <a
-            href={`https://wa.me/${storeInfo.whatsapp}`}
-            target="_blank"
-            rel="noreferrer"
-            className="fixed bottom-5 left-5 z-50 w-14 h-14 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full flex items-center justify-center shadow-2xl"
-            title="تواصل معنا عبر واتساب"
-          >
-            <MessageCircle className="w-7 h-7 fill-white text-emerald-500" />
-          </a>
-        ) : null}
+        {inquiryWaHref ? <WhatsappCta href={inquiryWaHref} floating /> : null}
 
         {bookingOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
@@ -593,6 +716,22 @@ export function StorefrontFrame({
                 حجز موعد في {storeInfo.name}
               </h3>
               <form onSubmit={handleBookingSubmit} className="space-y-4">
+                {!user ? (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted font-medium">دخول سريع لتعبئة الاسم من حسابك</p>
+                    <SocialAuthButtons compact nextPath="/" />
+                    <div className="flex items-center gap-3 text-[11px] text-muted">
+                      <span className="flex-1 h-px bg-line" />
+                      أو يدوياً
+                      <span className="flex-1 h-px bg-line" />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-emerald-600 font-bold">
+                    مسجّل كـ {user.full_name}
+                    {user.provider === "google" ? " عبر جوجل" : user.provider === "apple" ? " عبر آبل" : ""}
+                  </p>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-muted mb-1">الاسم الكامل *</label>
                   <input
@@ -635,10 +774,10 @@ export function StorefrontFrame({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-3.5 text-slate-950 font-extrabold text-sm rounded-xl"
+                  className="w-full py-3.5 text-slate-950 font-extrabold text-sm rounded-xl disabled:opacity-60"
                   style={{ backgroundColor: accentColor }}
                 >
-                  {isSubmitting ? "جاري إرسال الطلب..." : "تأكيد الحجز ومتابعة عبر الواتساب"}
+                  {isSubmitting ? "جاري حفظ الحجز..." : "تأكيد الحجز ومتابعة عبر الواتساب"}
                 </button>
               </form>
             </div>

@@ -28,6 +28,7 @@ import {
 } from "@/lib/mken/preview";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 function json(request: Request, body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: previewCorsHeaders(request) });
@@ -55,6 +56,15 @@ export async function OPTIONS(request: Request) {
 }
 
 export async function GET(request: Request) {
+  try {
+    return await handlePreviewGet(request);
+  } catch (err) {
+    console.error("preview GET", err);
+    return json(request, { success: false, message: "تعذّر الاتصال بخادم المعاينة حالياً." }, 500);
+  }
+}
+
+async function handlePreviewGet(request: Request) {
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "challenge";
   const ip = clientIp(request);
@@ -102,7 +112,37 @@ export async function GET(request: Request) {
   return json(request, { success: false, message: "إجراء غير معروف" }, 400);
 }
 
+const PREVIEW_POST_DEADLINE_MS = 9000;
+
 export async function POST(request: Request) {
+  try {
+    return await Promise.race([
+      handlePreviewPost(request),
+      new Promise<NextResponse>((resolve) => {
+        setTimeout(
+          () =>
+            resolve(
+              json(
+                request,
+                {
+                  success: false,
+                  message:
+                    "انتهت مهلة قراءة خرائط جوجل. استخدم رابط maps.app.goo.gl أو معرّف المكان الذي يبدأ بـ ChIJ.",
+                },
+                504
+              )
+            ),
+          PREVIEW_POST_DEADLINE_MS
+        );
+      }),
+    ]);
+  } catch (err) {
+    console.error("preview POST", err);
+    return json(request, { success: false, message: "تعذّر إنشاء المعاينة حالياً. حدّث الصفحة وحاول مجدداً." }, 500);
+  }
+}
+
+async function handlePreviewPost(request: Request) {
   const ip = clientIp(request);
   let body: {
     action?: string;
@@ -131,11 +171,11 @@ export async function POST(request: Request) {
     if (body.consent !== true) {
       return json(request, { success: false, message: "يلزم الموافقة الصريحة على معالجة البيانات" }, 400);
     }
-    const ipLimit = isRateLimited(`preview:ip:${ip}`, PREVIEW_RATE_IP_LIMIT, PREVIEW_RATE_IP_WINDOW_MS);
-    if (ipLimit.limited) {
+    const ipPeek = isRateLimited(`preview:ip:${ip}`, PREVIEW_RATE_IP_LIMIT, PREVIEW_RATE_IP_WINDOW_MS, false);
+    if (ipPeek.limited) {
       return json(
         request,
-        { success: false, message: "تجاوزت حد الطلبات. أعد المحاولة بعد 10 دقائق.", retryAfterSec: ipLimit.retryAfterSec },
+        { success: false, message: "تجاوزت حد الطلبات. أعد المحاولة بعد 10 دقائق.", retryAfterSec: ipPeek.retryAfterSec },
         429
       );
     }
@@ -166,9 +206,25 @@ export async function POST(request: Request) {
         503
       );
     }
+    const ipLimit = isRateLimited(`preview:ip:${ip}`, PREVIEW_RATE_IP_LIMIT, PREVIEW_RATE_IP_WINDOW_MS);
+    if (ipLimit.limited) {
+      return json(
+        request,
+        { success: false, message: "تجاوزت حد الطلبات. أعد المحاولة بعد 10 دقائق.", retryAfterSec: ipLimit.retryAfterSec },
+        429
+      );
+    }
     const placeId = await resolvePlaceId(body.mapsUrl || "");
     if (!placeId) {
-      return json(request, { success: false, message: "تعذّر قراءة رابط خرائط جوجل. الصق الرابط أو معرّف المكان." }, 400);
+      return json(
+        request,
+        {
+          success: false,
+          message:
+            "تعذّر قراءة رابط خرائط جوجل. افتح الرابط في المتصفح والصق العنوان الكامل من شريط العنوان، أو معرّف المكان الذي يبدأ بـ ChIJ.",
+        },
+        400
+      );
     }
     const place = await fetchLivePlaceDetails(placeId);
     if (!place) {

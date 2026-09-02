@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { adminClientView } from "@/data/default-clients";
 import { canEditClient, readAdminSession, sha256Hex } from "@/lib/auth/session";
 import { loadPublicStorefront } from "@/lib/mken/catalog";
+import { ALMAHRUSA_LOCATION, almahrusaStorefrontMap } from "@/lib/mken/almahrusa-content";
+import { REWAQ_LOCATION, rewaqStorefrontMap } from "@/lib/mken/rewaq-content";
+import { REWA_LOCATION, rewaStorefrontMap } from "@/lib/mken/rewa-content";
+
 import { hostnameFromHeaders, resolveBoundTenant } from "@/lib/mken/bound-host";
 import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import {
@@ -20,6 +24,9 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Cache-Control, Pragma",
 };
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS });
@@ -65,19 +72,41 @@ export async function GET(
       return NextResponse.json({ success: false, message: "المنشأة غير موجودة" }, { status: 404, headers: CORS });
     }
 
+    const client = { ...payload.client };
+    const contactExtras = { ...payload.contactExtras };
+    if (slug === "rewa") {
+      contactExtras.map = rewaStorefrontMap();
+      if (!client.location || client.location.includes("جدة")) {
+        client.location = REWA_LOCATION;
+      }
+    }
+    if (slug === "almahrusa") {
+      contactExtras.map = almahrusaStorefrontMap();
+      if (!client.location || client.location.includes("جدة")) {
+        client.location = ALMAHRUSA_LOCATION;
+      }
+    }
+    if (slug === "rewaq") {
+      contactExtras.map = rewaqStorefrontMap();
+      if (!client.location || client.location.includes("جدة") || client.location.includes("الحماوات")) {
+        client.location = REWAQ_LOCATION;
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
-        client: payload.client,
+        client,
         catalog: payload.catalog,
         appearance: payload.appearance,
         pages: payload.pages,
-        contactExtras: payload.contactExtras,
+        contactExtras,
         source: payload.source,
       },
       { headers: CORS }
     );
-  } catch {
+  } catch (err) {
+    console.error("[clients GET]", err);
     return NextResponse.json(
       { success: false, message: "تعذّر تحميل المنشأة" },
       { status: 500, headers: CORS }

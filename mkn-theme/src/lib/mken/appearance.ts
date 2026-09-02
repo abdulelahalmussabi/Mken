@@ -5,6 +5,12 @@ import {
   type MkenConfig,
 } from "@/lib/mken/tenant";
 import { isolateTenantHref } from "@/lib/mken/tenant-host";
+import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
+import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
+import { applyRewaDefaults } from "@/lib/mken/rewa-content";
+import { isAdLive, liveAds, riyadhTodayYmd } from "@/lib/mken/ad-schedule";
+
+export { isAdLive, liveAds, riyadhTodayYmd };
 
 export type ThemeMode = "manual" | "seasonal";
 export type ThemeKind = "occasion" | "custom" | "none";
@@ -37,6 +43,10 @@ export interface PrimaryAd {
   ctaLabel: string;
   ctaHref: string;
   couponCode: string;
+  /** YYYY-MM-DD in Asia/Riyadh. Empty = no start bound. */
+  startDate: string;
+  /** YYYY-MM-DD in Asia/Riyadh. Empty = does not expire. */
+  endDate: string;
 }
 
 export interface SecondaryAd {
@@ -46,6 +56,12 @@ export interface SecondaryAd {
   text: string;
   image: string;
   href: string;
+  features: string[];
+  badge: string;
+  price: string;
+  ctaLabel: string;
+  startDate: string;
+  endDate: string;
 }
 
 export interface AppearancePublic {
@@ -91,7 +107,25 @@ const EMPTY_PRIMARY: PrimaryAd = {
   ctaLabel: "",
   ctaHref: "",
   couponCode: "",
+  startDate: "",
+  endDate: "",
 };
+
+const DEFAULT_AD_CTA = "احجز هذه الخدمة الآن";
+
+function optionalYmd(value: unknown): string {
+  const raw = str(value).trim();
+  if (!raw) return "";
+  return isYmd(raw) ? raw : "";
+}
+
+function readFeatures(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => str(item).trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
 
 function str(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -204,11 +238,13 @@ function readPrimaryAd(config: MkenConfig): PrimaryAd {
     ctaLabel: str(primary.ctaLabel),
     ctaHref: str(primary.ctaHref),
     couponCode: str(primary.couponCode, str(pack.promo?.code)),
+    startDate: optionalYmd(primary.startDate),
+    endDate: optionalYmd(primary.endDate),
   };
 }
 
 function readSecondaryAds(config: MkenConfig): SecondaryAd[] {
-  const ads = (config.ads || {}) as { secondary?: SecondaryAd[] };
+  const ads = (config.ads || {}) as { secondary?: Partial<SecondaryAd>[] };
   if (!Array.isArray(ads.secondary)) return [];
   return ads.secondary
     .map((item) => {
@@ -223,6 +259,12 @@ function readSecondaryAds(config: MkenConfig): SecondaryAd[] {
         text: str(item.text),
         image: str(item.image),
         href: str(item.href),
+        features: readFeatures(item.features),
+        badge: str(item.badge),
+        price: str(item.price),
+        ctaLabel: str(item.ctaLabel, DEFAULT_AD_CTA),
+        startDate: optionalYmd(item.startDate),
+        endDate: optionalYmd(item.endDate),
       };
     })
     .filter((item): item is SecondaryAd => Boolean(item));
@@ -308,7 +350,43 @@ export function validateAppearance(update: AppearanceUpdate): string | null {
     const themes = normalizeCustomThemes(update.customThemes);
     if (typeof themes === "string") return themes;
   }
+  if (update.ads?.primary) {
+    const start = str(update.ads.primary.startDate).trim();
+    const end = str(update.ads.primary.endDate).trim();
+    if (start && !isYmd(start)) return "تاريخ بداية الإعلان الرئيسي غير صالح";
+    if (end && !isYmd(end)) return "تاريخ نهاية الإعلان الرئيسي غير صالح";
+    if (start && end && end < start) return "تاريخ نهاية الإعلان الرئيسي أقدم من بدايته";
+  }
+  if (update.ads?.secondary) {
+    for (const ad of update.ads.secondary) {
+      const start = str(ad?.startDate).trim();
+      const end = str(ad?.endDate).trim();
+      if (start && !isYmd(start)) return "تاريخ بداية أحد الإعلانات غير صالح";
+      if (end && !isYmd(end)) return "تاريخ نهاية أحد الإعلانات غير صالح";
+      if (start && end && end < start) return "تاريخ نهاية أحد الإعلانات أقدم من بدايته";
+    }
+  }
   return null;
+}
+
+function normalizeSecondaryAd(item: SecondaryAd): SecondaryAd | null {
+  const title = str(item?.title).trim();
+  if (!title) return null;
+  const id = str(item?.id).trim() || `ad-${Date.now().toString(36)}`;
+  return {
+    id,
+    enabled: Boolean(item.enabled),
+    title: title.slice(0, 80),
+    text: str(item.text).slice(0, 500),
+    image: str(item.image).slice(0, 500),
+    href: str(item.href).slice(0, 300),
+    features: readFeatures(item.features).map((feat) => feat.slice(0, 80)),
+    badge: str(item.badge).slice(0, 40),
+    price: str(item.price).slice(0, 40),
+    ctaLabel: str(item.ctaLabel, DEFAULT_AD_CTA).slice(0, 40),
+    startDate: optionalYmd(item.startDate),
+    endDate: optionalYmd(item.endDate),
+  };
 }
 
 export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): MkenConfig {
@@ -355,8 +433,19 @@ export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): M
       secondary: readSecondaryAds(config),
     };
     next.ads = {
-      primary: update.ads.primary ? { ...currentAds.primary, ...update.ads.primary } : currentAds.primary,
-      secondary: update.ads.secondary ?? currentAds.secondary,
+      primary: update.ads.primary
+        ? {
+            ...currentAds.primary,
+            ...update.ads.primary,
+            startDate: optionalYmd(update.ads.primary.startDate ?? currentAds.primary.startDate),
+            endDate: optionalYmd(update.ads.primary.endDate ?? currentAds.primary.endDate),
+          }
+        : currentAds.primary,
+      secondary: update.ads.secondary
+        ? update.ads.secondary
+            .map(normalizeSecondaryAd)
+            .filter((item): item is SecondaryAd => Boolean(item))
+        : currentAds.secondary,
     };
   }
 
@@ -364,13 +453,34 @@ export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): M
   return next;
 }
 
+function configForAppearance(slug: string, config: MkenConfig): MkenConfig {
+  if (slug === "rewa") return applyRewaDefaults(config);
+  if (slug === "almahrusa") return applyAlmahrusaDefaults(config);
+  if (slug === "rewaq") return applyRewaqDefaults(config);
+  return config;
+}
+
 export async function fetchAppearance(
   slug: string
 ): Promise<{ appearance?: AppearancePublic; error?: string }> {
   // Titles, phrases, and ads all persist through this tenant row.
   const seed = await ensureTenantRow(slug);
-  if (seed.row) return { appearance: appearanceFromConfig(seed.row.config_data || {}) };
-  return { error: seed.error || "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
+  if (!seed.row) return { error: seed.error || "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
+
+  const stored = seed.row.config_data || {};
+  const next = configForAppearance(slug, stored);
+  const adsChanged =
+    (slug === "rewa" || slug === "almahrusa" || slug === "rewaq") &&
+    JSON.stringify(next.ads || null) !== JSON.stringify(stored.ads || null);
+  if (
+    (slug === "rewa" && (next.customThemes !== stored.customThemes || adsChanged)) ||
+    (slug === "almahrusa" && (next.customThemes !== stored.customThemes || adsChanged || next.phone !== stored.phone)) ||
+    (slug === "rewaq" && (next.customThemes !== stored.customThemes || adsChanged || next.phone !== stored.phone))
+  ) {
+    const written = await writeTenantConfig(slug, next);
+    if (written.row) return { appearance: appearanceFromConfig(written.row.config_data || next) };
+  }
+  return { appearance: appearanceFromConfig(next) };
 }
 
 function isolateAdsUpdate(slug: string, update: AppearanceUpdate): AppearanceUpdate {
@@ -396,7 +506,10 @@ export async function updateAppearance(
 
   const written = await writeTenantConfig(
     slug,
-    mergeAppearance(ensured.row.config_data || {}, isolateAdsUpdate(slug, update))
+    mergeAppearance(
+      configForAppearance(slug, ensured.row.config_data || {}),
+      isolateAdsUpdate(slug, update)
+    )
   );
   if (written.error || !written.row) return { error: written.error || "تعذّر الحفظ" };
   return { appearance: appearanceFromConfig(written.row.config_data || {}) };

@@ -7,6 +7,7 @@ import {
   type AppointmentStatus,
   type PaymentStatus,
 } from "@/lib/mken/appointments";
+import { sendMetaCapiEvent } from "@/lib/mken/meta-ads";
 
 export async function PATCH(
   request: Request,
@@ -62,6 +63,15 @@ export async function PATCH(
         { success: false, message: error || "تعذّر تحديث الموعد" },
         { status: 500 }
       );
+    }
+
+    if (updates.paymentStatus === "paid") {
+      void sendMetaCapiEvent({
+        eventName: "Purchase",
+        phone: appointment.phone,
+        eventId: `pay_${appointment.id}`,
+        value: appointment.paymentAmount || undefined,
+      });
     }
 
     return NextResponse.json({ success: true, appointment });

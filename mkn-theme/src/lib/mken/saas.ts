@@ -102,10 +102,36 @@ export function saasFeaturesFromConfig(
   return { ...SAAS_TIERS.basic, hasCustomDomain: addonDomain };
 }
 
+export function geoGridMonthlyCredits(tier: SaasTierId): number {
+  if (tier === "unlimited") return 40;
+  if (tier === "growth" || tier === "custom") return 8;
+  return 2;
+}
+
+export function geoGridCreditCost(gridSize: "3x3" | "5x5" | "7x7"): number {
+  if (gridSize === "7x7") return 4;
+  if (gridSize === "5x5") return 2;
+  return 1;
+}
+
+export function geoGridAllowedSizes(tier: SaasTierId): Array<"3x3" | "5x5" | "7x7"> {
+  if (tier === "unlimited") return ["3x3", "5x5", "7x7"];
+  if (tier === "growth" || tier === "custom") return ["3x3", "5x5"];
+  return ["3x3"];
+}
+
+export function adGenerateDailyLimit(tier: SaasTierId): number {
+  if (tier === "unlimited") return 40;
+  if (tier === "growth" || tier === "custom") return 12;
+  return 3;
+}
+
 export const SAAS_FEATURE_MESSAGES = {
   whatsapp: "سجل واتساب غير متاح في باقتك الحالية. يتطلب الباقة المتقدمة أو أعلى.",
   commerce: "المتجر الإلكتروني يتطلب الباقة المتقدمة 🌟",
   invoices: "الفواتير والمخزون يتطلبان الباقة الاحترافية.",
   customDomain: "الدومين الخاص إضافة سنوية تُفعَّل من خيارات الاشتراك.",
+  geoGrid: "نفدت أرصدة فحص الرانك لهذا الشهر. رقِّ الباقة أو انتظر بداية الشهر التالي.",
+  adGenerate: "بلغت حد توليد الإعلانات لهذا اليوم. رقِّ الباقة أو عُد غداً.",
 } as const;
 

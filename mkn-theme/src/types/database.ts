@@ -4,6 +4,8 @@ export interface Profile {
   id: string;
   full_name: string;
   phone?: string;
+  email?: string;
+  provider?: string;
   created_at: string;
 }
 
@@ -84,7 +86,8 @@ export interface ClientRecord {
   adminEmail: string;
   /** Write-only: accepted when creating a client, never returned by the API. */
   adminPassword?: string;
-  theme: string; // OccasionId
+  theme: string; // OccasionId or custom-*
+  customThemes?: { id: string; name: string; accentColor: string }[];
   couponCode?: string;
   discountText?: string;
   promoTitle?: string;
@@ -116,6 +119,7 @@ export type StorefrontClient = Pick<
   | "discountText"
   | "promoTitle"
   | "discountEnabled"
+  | "socialLinks"
   | "claimStatus"
 >;
 
@@ -132,6 +136,7 @@ export interface StorefrontCatalogService {
   image: string;
   popular?: boolean;
   duration: string;
+  category?: string;
 }
 
 export interface StorefrontCatalogActivity {

@@ -21,6 +21,7 @@ import {
   LogIn,
   UserPlus,
 } from "lucide-react";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 // Login Schema
 const loginSchema = z.object({
@@ -108,8 +109,16 @@ export default function AuthPage() {
             </div>
             <h1 className="text-2xl font-extrabold text-white">حساب العميل في منصة مكّن</h1>
             <p className="text-slate-400 text-xs">
-              سجّل دخولك لمتابعة طلبات تحسين خرائط Google والتواصل مع فريق العمل
+              ادخل بحساب جوجل أو آبل لمتابعة طلباتك، أو أنشئ حساباً بالبريد
             </p>
+          </div>
+
+          <SocialAuthButtons onError={setAuthError} />
+
+          <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <span className="flex-1 h-px bg-slate-800" />
+            أو بالبريد
+            <span className="flex-1 h-px bg-slate-800" />
           </div>
 
           {/* Auth Tabs */}

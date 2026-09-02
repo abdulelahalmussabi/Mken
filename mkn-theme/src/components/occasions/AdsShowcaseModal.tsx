@@ -6,7 +6,7 @@ import type { Route } from "next";
 import { useOccasion } from "@/context/OccasionContext";
 import { useAdmin } from "@/context/AdminContext";
 import { isolateTenantHref } from "@/lib/mken/tenant-host";
-import type { AppearancePublic } from "@/lib/mken/appearance";
+import { isAdLive, type AppearancePublic } from "@/lib/mken/appearance";
 import { Megaphone, X, Star, Gift, Copy, Check, ArrowLeft, Pencil } from "lucide-react";
 
 export interface TenantPublicAd {
@@ -27,7 +27,7 @@ export function adsFromAppearance(
   if (!slug) return [];
   const items: TenantPublicAd[] = [];
   const primary = appearance?.ads.primary;
-  const primaryEnabled = primary ? primary.enabled : Boolean(occasionFallback);
+  const primaryEnabled = primary ? isAdLive(primary) : Boolean(occasionFallback);
   if (primaryEnabled) {
     const title = (primary?.title || "").trim() || occasionFallback?.title || "";
     const subtitle = (primary?.text || "").trim() || occasionFallback?.subtitle || "";
@@ -45,13 +45,13 @@ export function adsFromAppearance(
     }
   }
   for (const ad of appearance?.ads.secondary || []) {
-    if (!ad.enabled || !ad.title.trim()) continue;
+    if (!isAdLive(ad) || !ad.title.trim()) continue;
     items.push({
       id: ad.id,
       title: ad.title,
       subtitle: ad.text,
       href: isolateTenantHref(ad.href, slug),
-      ctaLabel: "الاستفادة من العرض الآن",
+      ctaLabel: ad.ctaLabel || "احجز هذه الخدمة الآن",
       couponCode: "",
       image: ad.image,
     });

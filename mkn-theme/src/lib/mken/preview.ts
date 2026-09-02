@@ -17,7 +17,7 @@ import { sha256Hex } from "@/lib/auth/session";
  */
 
 export const PREVIEW_TTL_DAYS = 7;
-export const PREVIEW_RATE_IP_LIMIT = 1;
+export const PREVIEW_RATE_IP_LIMIT = 3;
 export const PREVIEW_RATE_IP_WINDOW_MS = 10 * 60 * 1000;
 export const PREVIEW_RATE_PHONE_LIMIT = 3;
 export const PREVIEW_RATE_PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -241,8 +241,18 @@ export function normalizeSaudiPhone(input: string): string | null {
   return n;
 }
 
+function normalizeMapsInput(input: string): string {
+  let value = stripBidiMarks(input).replace(/\u00a0/g, " ").trim();
+  const urlMatch = value.match(/https?:\/\/[^\s<>"']+/i);
+  if (urlMatch) return urlMatch[0].replace(/[)\].,،؛]+$/g, "");
+  if (/^(?:www\.)?(?:maps\.app\.goo\.gl|goo\.gl|share\.google)\//i.test(value)) {
+    return `https://${value}`;
+  }
+  return value;
+}
+
 export function extractPlaceIdCandidate(input: string): string | null {
-  const trimmed = input.trim();
+  const trimmed = normalizeMapsInput(input);
   if (/^(?:ChIJ|GhIJ|EhIJ)[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
   let decoded = trimmed;
   try {
@@ -279,36 +289,160 @@ export function extractLatLngFromMapsUrl(url: string): { lat: number; lng: numbe
   return null;
 }
 
+function extractCidFromMapsUrl(url: string): string | null {
+  const match = url.match(/!1s0x[0-9a-f]+:0x([0-9a-f]+)/i);
+  if (!match?.[1]) return null;
+  try {
+    return BigInt(`0x${match[1]}`).toString(10);
+  } catch {
+    return null;
+  }
+}
+
+function extractMapsUrlFromHtml(html: string): string | null {
+  const refresh =
+    html.match(/http-equiv=["']refresh["'][^>]*content=["'][^"']*url=['"]?([^"'>]+)/i) ||
+    html.match(/content=["'][^"']*url=['"]?([^"'>]+)[^"']*["'][^>]*http-equiv=["']refresh["']/i);
+  if (refresh?.[1]) return refresh[1].replace(/&amp;/g, "&");
+  const canonical =
+    html.match(/rel=["']canonical["'][^>]*href=["']([^"']+)/i) ||
+    html.match(/href=["']([^"']+)["'][^>]*rel=["']canonical["']/i);
+  if (canonical?.[1]?.includes("/maps/")) return canonical[1];
+  const href = html.match(/https?:\/\/(?:www\.)?google\.[a-z.]+\/maps\/[^"'<\s]+/i);
+  return href?.[0]?.replace(/&amp;/g, "&") || null;
+}
+
+const MAPS_FETCH_HEADERS = {
+  "User-Agent": MAPS_FETCH_UA,
+  Accept: "text/html,application/xhtml+xml",
+  "Accept-Language": "ar,en;q=0.8",
+};
+
+const GOOGLE_FETCH_MS = 3500;
+const RESOLVE_PLACE_MS = 5000;
+const PLACE_DETAILS_MS = 3500;
+const CACHE_READ_MS = 800;
+
+async function mapsFetch(url: string, init: RequestInit = {}, timeoutMs = GOOGLE_FETCH_MS): Promise<Response | null> {
+  try {
+    return await fetch(url, {
+      cache: "no-store",
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function mapsFetchJson<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T | null> {
+  const res = await mapsFetch(url, init, timeoutMs);
+  if (!res?.ok) return null;
+  try {
+    const text = await res.text();
+    if (!text) return null;
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      }
+    );
+  });
+}
+
 async function resolveMapsShortUrl(url: string): Promise<string> {
-  let current = unwrapGoogleConsentUrl(url.trim());
+  let current = unwrapGoogleConsentUrl(normalizeMapsInput(url));
   const parsed = safeUrl(current);
   if (!parsed || !isShortMapsHost(parsed.hostname)) return current;
 
-  for (let hop = 0; hop < 8; hop++) {
+  for (let hop = 0; hop < 5; hop++) {
     current = unwrapGoogleConsentUrl(current);
     const host = safeUrl(current)?.hostname || "";
     if (host && !isShortMapsHost(host) && !host.includes("consent.google")) break;
-    try {
-      const res = await fetch(current, {
-        method: "GET",
-        redirect: "manual",
-        headers: {
-          "User-Agent": MAPS_FETCH_UA,
-          Accept: "text/html,application/xhtml+xml",
-        },
-      });
-      const location = res.headers.get("location");
-      if (location && res.status >= 300 && res.status < 400) {
-        current = new URL(location, current).href;
-        continue;
-      }
-      if (res.url) current = res.url;
-      break;
-    } catch {
-      break;
+    const res = await mapsFetch(
+      current,
+      { method: "GET", redirect: "manual", headers: MAPS_FETCH_HEADERS },
+      3500
+    );
+    if (!res) break;
+    const location = res.headers.get("location");
+    if (location && res.status >= 300 && res.status < 400) {
+      current = new URL(location, current).href;
+      continue;
+    }
+    const html = await res.text().catch(() => "");
+    const fromHtml = html ? extractMapsUrlFromHtml(html) : null;
+    if (fromHtml) {
+      current = new URL(fromHtml, current).href;
+      continue;
+    }
+    if (res.url && res.url !== current) {
+      current = res.url;
+      continue;
+    }
+    break;
+  }
+
+  if (isShortMapsHost(safeUrl(current)?.hostname || "")) {
+    const followed = await mapsFetch(
+      current,
+      { method: "GET", redirect: "follow", headers: MAPS_FETCH_HEADERS },
+      3500
+    );
+    if (followed?.url) current = followed.url;
+    if (followed && isShortMapsHost(safeUrl(current)?.hostname || "")) {
+      const html = await followed.text().catch(() => "");
+      const fromHtml = html ? extractMapsUrlFromHtml(html) : null;
+      if (fromHtml) current = new URL(fromHtml, current).href;
     }
   }
   return unwrapGoogleConsentUrl(current);
+}
+
+async function findPlaceIdFromTextNew(
+  query: string,
+  bias?: { lat: number; lng: number }
+): Promise<string | null> {
+  const key = mapsKey();
+  if (!key || !query.trim()) return null;
+  const body: Record<string, unknown> = {
+    textQuery: query.trim(),
+    languageCode: "ar",
+  };
+  if (bias) {
+    body.locationBias = {
+      circle: {
+        center: { latitude: bias.lat, longitude: bias.lng },
+        radius: 400,
+      },
+    };
+  }
+  const data = await mapsFetchJson<{ places?: Array<{ id?: string }> }>(
+    "https://places.googleapis.com/v1/places:searchText",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.id",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+  return data?.places?.[0]?.id || null;
 }
 
 async function findPlaceIdFromText(
@@ -325,23 +459,61 @@ async function findPlaceIdFromText(
     key,
   });
   if (bias) params.set("locationbias", `point:${bias.lat},${bias.lng}`);
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?${params.toString()}`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
+  const data = await mapsFetchJson<{
     status?: string;
     candidates?: Array<{ place_id?: string }>;
-  };
-  if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-    console.error("findplacefromtext", data.status);
+  }>(`https://maps.googleapis.com/maps/api/place/findplacefromtext/json?${params.toString()}`);
+  if (data) {
+    if (data.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+      console.error("findplacefromtext", data.status);
+    }
+    if (data.candidates?.[0]?.place_id) return data.candidates[0].place_id;
   }
-  return data.candidates?.[0]?.place_id || null;
+  return findPlaceIdFromTextNew(query, bias);
+}
+
+async function findPlaceIdFromCid(cid: string): Promise<string | null> {
+  const key = mapsKey();
+  if (!key) return null;
+  const data = await mapsFetchJson<{ result?: { place_id?: string } }>(
+    `https://maps.googleapis.com/maps/api/place/details/json?cid=${encodeURIComponent(cid)}&fields=place_id&language=ar&key=${key}`
+  );
+  return data?.result?.place_id || null;
+}
+
+async function findPlaceIdFromLatLng(
+  bias: { lat: number; lng: number },
+  name?: string | null
+): Promise<string | null> {
+  const key = mapsKey();
+  if (!key) return null;
+  const params = new URLSearchParams({
+    latlng: `${bias.lat},${bias.lng}`,
+    language: "ar",
+    key,
+  });
+  const data = await mapsFetchJson<{
+    results?: Array<{ place_id?: string; formatted_address?: string; types?: string[] }>;
+  }>(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`);
+  if (!data) return null;
+  const results = data.results || [];
+  if (name) {
+    const needle = name.slice(0, 8);
+    const hit = results.find((row) => (row.formatted_address || "").includes(needle));
+    if (hit?.place_id) return hit.place_id;
+  }
+  const poi = results.find((row) =>
+    (row.types || []).some((type) => type === "establishment" || type === "point_of_interest" || type === "premise")
+  );
+  return poi?.place_id || results[0]?.place_id || null;
 }
 
 export async function resolvePlaceId(mapsInput: string): Promise<string | null> {
-  const trimmed = mapsInput.trim();
+  return withTimeout(resolvePlaceIdUncapped(mapsInput), RESOLVE_PLACE_MS);
+}
+
+async function resolvePlaceIdUncapped(mapsInput: string): Promise<string | null> {
+  const trimmed = normalizeMapsInput(mapsInput);
   if (!trimmed) return null;
   const direct = extractPlaceIdCandidate(trimmed);
   if (direct) return direct;
@@ -352,16 +524,21 @@ export async function resolvePlaceId(mapsInput: string): Promise<string | null> 
 
   const name = extractPlaceNameFromMapsUrl(expanded);
   const bias = extractLatLngFromMapsUrl(expanded);
+  const cid = extractCidFromMapsUrl(expanded);
+
+  if (cid) {
+    const fromCid = await findPlaceIdFromCid(cid);
+    if (fromCid) return fromCid;
+  }
   if (name) {
     const fromName = await findPlaceIdFromText(name, bias || undefined);
     if (fromName) return fromName;
   }
   if (bias) {
-    const fromCoords = await findPlaceIdFromText(
-      name || `${bias.lat},${bias.lng}`,
-      bias
-    );
+    const fromCoords = await findPlaceIdFromText(name || `${bias.lat},${bias.lng}`, bias);
     if (fromCoords) return fromCoords;
+    const fromGeo = await findPlaceIdFromLatLng(bias, name);
+    if (fromGeo) return fromGeo;
   }
   return findPlaceIdFromText(name || expanded, bias || undefined);
 }
@@ -378,6 +555,7 @@ async function readUpstash(key: string): Promise<string | null> {
     const res = await fetch(`${url}/get/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(CACHE_READ_MS),
     });
     if (!res.ok) return null;
     const body = (await res.json()) as { result?: string | null };
@@ -400,6 +578,7 @@ async function writeUpstash(key: string, value: string, ttlSec: number): Promise
       },
       body: JSON.stringify(["SET", key, value, "EX", String(ttlSec)]),
       cache: "no-store",
+      signal: AbortSignal.timeout(CACHE_READ_MS),
     });
   } catch {
     /* session cache is best-effort */
@@ -426,22 +605,26 @@ async function writePlacesCache(placeId: string, value: LivePlaceDetails): Promi
 }
 
 export async function fetchLivePlaceDetails(placeId: string): Promise<LivePlaceDetails | null> {
-  const cached = await readPlacesCache(placeId);
+  const cached = await withTimeout(readPlacesCache(placeId), CACHE_READ_MS);
   if (cached) return cached;
-  const fetched = await fetchLivePlaceDetailsFromGoogle(placeId);
-  if (fetched) await writePlacesCache(placeId, fetched);
+  const fetched = await withTimeout(fetchLivePlaceDetailsFromGoogle(placeId), PLACE_DETAILS_MS);
+  if (fetched) void writePlacesCache(placeId, fetched);
   return fetched;
 }
 
 async function fetchLivePlaceDetailsFromGoogle(placeId: string): Promise<LivePlaceDetails | null> {
   const key = mapsKey();
   if (!key) return null;
+  const legacy = await fetchLivePlaceDetailsLegacy(placeId, key);
+  if (legacy) return legacy;
+  return fetchLivePlaceDetailsNew(placeId, key);
+}
+
+async function fetchLivePlaceDetailsLegacy(placeId: string, key: string): Promise<LivePlaceDetails | null> {
   const url =
     "https://maps.googleapis.com/maps/api/place/details/json" +
     `?place_id=${encodeURIComponent(placeId)}&fields=${PLACE_DETAILS_FIELDS}&language=ar&key=${key}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
+  const data = await mapsFetchJson<{
     status?: string;
     result?: {
       place_id?: string;
@@ -465,8 +648,8 @@ async function fetchLivePlaceDetailsFromGoogle(placeId: string): Promise<LivePla
       }>;
       photos?: Array<{ photo_reference?: string; html_attributions?: string[] }>;
     };
-  };
-  if (data.status !== "OK" || !data.result?.place_id) return null;
+  }>(url);
+  if (!data || data.status !== "OK" || !data.result?.place_id) return null;
   const result = data.result;
   const resolvedId = data.result.place_id;
   return {
@@ -500,14 +683,74 @@ async function fetchLivePlaceDetailsFromGoogle(placeId: string): Promise<LivePla
   };
 }
 
+async function fetchLivePlaceDetailsNew(placeId: string, key: string): Promise<LivePlaceDetails | null> {
+  const result = await mapsFetchJson<{
+    id?: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    internationalPhoneNumber?: string;
+    websiteUri?: string;
+    googleMapsUri?: string;
+    rating?: number;
+    userRatingCount?: number;
+    types?: string[];
+    regularOpeningHours?: { weekdayDescriptions?: string[] };
+    reviews?: Array<{
+      authorAttribution?: { displayName?: string; uri?: string; photoUri?: string };
+      rating?: number;
+      text?: { text?: string };
+      relativePublishTimeDescription?: string;
+      publishTime?: string;
+    }>;
+    photos?: Array<{ name?: string; authorAttributions?: Array<{ displayName?: string }> }>;
+  }>(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=ar`, {
+    headers: {
+      "X-Goog-Api-Key": key,
+      "X-Goog-FieldMask":
+        "id,displayName,formattedAddress,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,regularOpeningHours,types,reviews,photos",
+    },
+  });
+  if (!result?.id) return null;
+  return {
+    placeId: result.id,
+    name: result.displayName?.text || "",
+    address: result.formattedAddress,
+    mapsUrl: result.googleMapsUri,
+    phone: result.internationalPhoneNumber,
+    website: result.websiteUri,
+    rating: result.rating,
+    ratingsTotal: result.userRatingCount,
+    weekdayText: result.regularOpeningHours?.weekdayDescriptions,
+    types: result.types,
+    reviews: (result.reviews || []).map((review) => ({
+      authorName: review.authorAttribution?.displayName || "",
+      authorUrl: review.authorAttribution?.uri,
+      profilePhotoUrl: review.authorAttribution?.photoUri,
+      rating: review.rating,
+      text: review.text?.text,
+      relativeTime: review.relativePublishTimeDescription,
+      publishTime: review.publishTime,
+    })),
+    photos: (result.photos || [])
+      .filter((photo) => photo.name)
+      .slice(0, 6)
+      .map((photo) => ({
+        reference: photo.name as string,
+        attributions: (photo.authorAttributions || []).map((row) => row.displayName || "").filter(Boolean),
+      })),
+    attribution: "Google Maps",
+  };
+}
+
 export async function proxyPlacePhoto(photoReference: string): Promise<Response | null> {
   const key = mapsKey();
-  if (!key || !photoReference || photoReference.length > 400) return null;
-  const url =
-    "https://maps.googleapis.com/maps/api/place/photo" +
-    `?maxwidth=800&photo_reference=${encodeURIComponent(photoReference)}&key=${key}`;
-  const res = await fetch(url, { redirect: "follow", cache: "no-store" });
-  if (!res.ok) return null;
+  if (!key || !photoReference || photoReference.length > 1500) return null;
+  const url = photoReference.startsWith("places/")
+    ? `https://places.googleapis.com/v1/${photoReference}/media?maxWidthPx=800&key=${key}`
+    : "https://maps.googleapis.com/maps/api/place/photo" +
+      `?maxwidth=800&photo_reference=${encodeURIComponent(photoReference)}&key=${key}`;
+  const res = await mapsFetch(url, { redirect: "follow" }, 5000);
+  if (!res?.ok) return null;
   const contentType = res.headers.get("content-type") || "image/jpeg";
   return new Response(res.body, {
     status: 200,
@@ -929,13 +1172,18 @@ export async function verifyTurnstile(token: string | undefined, ip: string): Pr
   const secret = (process.env.TURNSTILE_SECRET_KEY || "").trim();
   if (!secret) return true;
   if (!token) return false;
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ secret, response: token, remoteip: ip }),
-  });
-  const data = (await res.json().catch(() => ({}))) as { success?: boolean };
-  return data.success === true;
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret, response: token, remoteip: ip }),
+      signal: AbortSignal.timeout(2500),
+    });
+    const data = (await res.json().catch(() => ({}))) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    return false;
+  }
 }
 
 export function previewCorsHeaders(request: Request): HeadersInit {
@@ -945,6 +1193,10 @@ export function previewCorsHeaders(request: Request): HeadersInit {
     "https://www.mken.live",
     "http://localhost:3113",
     "http://127.0.0.1:3113",
+    "http://localhost:3120",
+    "http://127.0.0.1:3120",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
   ]);
   const site = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
   if (site) allowed.add(site);
@@ -953,6 +1205,7 @@ export function previewCorsHeaders(request: Request): HeadersInit {
     "Access-Control-Allow-Origin": allow || "https://mken.live",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
 }
@@ -960,5 +1213,5 @@ export function previewCorsHeaders(request: Request): HeadersInit {
 export function previewSiteOrigin(): string {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
   if (explicit) return explicit;
-  return "https://mken.live";
+  return "https://www.mken.live";
 }

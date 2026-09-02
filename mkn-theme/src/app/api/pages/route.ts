@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { resolveTenantScope } from "@/lib/auth/scope";
 import {
   fetchPages,
+  isStorefrontPageId,
   isToggleablePageId,
   updatePages,
   validatePages,
   type PagesUpdate,
+  type StorefrontPageId,
   type ToggleablePageId,
 } from "@/lib/mken/pages";
 
@@ -49,6 +51,13 @@ export async function PUT(request: Request) {
         if (isToggleablePageId(key) && typeof value === "boolean") enabled[key] = value;
       }
       if (Object.keys(enabled).length) update.enabled = enabled;
+    }
+    if (isObject(body.labels)) {
+      const labels: Partial<Record<StorefrontPageId, string>> = {};
+      for (const [key, value] of Object.entries(body.labels)) {
+        if (isStorefrontPageId(key) && typeof value === "string") labels[key] = value;
+      }
+      if (Object.keys(labels).length) update.labels = labels;
     }
     if (isObject(body.home)) update.home = body.home as PagesUpdate["home"];
     if (isObject(body.about)) update.about = body.about as PagesUpdate["about"];

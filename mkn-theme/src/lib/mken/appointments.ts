@@ -1,4 +1,4 @@
-import { getTenantDb } from "@/lib/mken/tenant";
+import { getServiceRoleDb, getTenantDb } from "@/lib/mken/tenant";
 
 /**
  * Appointments live in `mken_appointments`, keyed by `tenant_slug`, and are
@@ -120,9 +120,12 @@ export async function fetchAppointmentsForStaff(
 
   const allowed = new Set(activities);
   const scoped = appointments.filter((item) => {
-    if (item.staffId !== staffId) return false;
+    const assignedToMe = item.staffId === staffId;
+    const unassignedWeb = !item.staffId;
+    if (!assignedToMe && !unassignedWeb) return false;
+    if (unassignedWeb) return true;
     if (!allowed.size) return true;
-    if (!item.activityId) return true;
+    if (!item.activityId || item.activityId === "storefront") return true;
     return allowed.has(item.activityId);
   });
 
@@ -153,4 +156,117 @@ export async function updateAppointment(
   if (error) return { error: error.message };
   if (!data?.length) return { error: "الموعد غير موجود" };
   return { appointment: toAppointment(data[0] as AppointmentRow) };
+}
+
+export type PublicBookingInput = {
+  id?: string;
+  tenantSlug: string;
+  customerName: string;
+  phone: string;
+  date: string;
+  time: string;
+  serviceId?: string;
+  serviceName?: string;
+  servicePrice?: string;
+  notes?: string;
+  coupon?: string;
+};
+
+const APT_ID_RE = /^apt_[a-z0-9]+_[a-z0-9]+$/i;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
+
+function clip(value: string, max: number): string {
+  return value.trim().slice(0, max);
+}
+
+function newAppointmentId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `apt_${Date.now().toString(36)}_${rand}`;
+}
+
+function addDaysIso(delta: number): string {
+  const now = new Date();
+  now.setUTCDate(now.getUTCDate() + delta);
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function plusYearsIso(years: number): string {
+  const now = new Date();
+  now.setUTCFullYear(now.getUTCFullYear() + years);
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Public storefront/book-page insert. Status is always pending; client cannot set payment/staff. */
+export async function createPublicAppointment(
+  input: PublicBookingInput
+): Promise<{ appointment?: Appointment; error?: string }> {
+  const db = getServiceRoleDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+
+  const tenantSlug = clip(input.tenantSlug, 80).toLowerCase();
+  const customerName = clip(input.customerName, 80);
+  const phone = clip(input.phone, 24);
+  const phoneDigits = phone.replace(/\D/g, "");
+  const date = clip(input.date, 10);
+  const time = clip(input.time, 5);
+  const serviceId = clip(input.serviceId || "general", 80) || "general";
+  const serviceName = clip(input.serviceName || "", 120);
+  const servicePrice = clip(input.servicePrice || "", 40);
+  const notes = clip(input.notes || "", 500);
+  const coupon = clip(input.coupon || "", 40);
+
+  if (!tenantSlug) return { error: "المنشأة غير محددة" };
+  if (customerName.length < 2) return { error: "الاسم غير صالح" };
+  if (phoneDigits.length < 8 || phoneDigits.length > 15) return { error: "رقم الجوال غير صالح" };
+  if (!DATE_RE.test(date)) return { error: "تاريخ الحجز غير صالح" };
+  if (!TIME_RE.test(time)) return { error: "وقت الحجز غير صالح" };
+
+  const minDate = addDaysIso(-1);
+  const maxDate = plusYearsIso(1);
+  if (date < minDate) return { error: "لا يمكن الحجز في تاريخ سابق" };
+  if (date > maxDate) return { error: "تاريخ الحجز بعيد جداً" };
+
+  const id = input.id && APT_ID_RE.test(input.id) ? input.id : newAppointmentId();
+  const noteParts = [
+    serviceName ? `الخدمة: ${serviceName}` : "",
+    servicePrice ? `السعر: ${servicePrice}` : "",
+    coupon ? `كود الخصم: ${coupon}` : "",
+    notes,
+  ].filter(Boolean);
+
+  const row = {
+    id,
+    tenant_slug: tenantSlug,
+    activity_id: "storefront",
+    service_id: serviceId,
+    date,
+    time,
+    customer_name: customerName,
+    phone,
+    notes: noteParts.join(" | ") || null,
+    status: "pending",
+    payment_status: "unpaid",
+    stay_booking: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const existing = await db
+    .from("mken_appointments")
+    .select("*")
+    .eq("id", id)
+    .eq("tenant_slug", tenantSlug)
+    .maybeSingle();
+  if (existing.data) return { appointment: toAppointment(existing.data as AppointmentRow) };
+
+  const { data, error } = await db.from("mken_appointments").insert(row).select("*").single();
+  if (error) return { error: error.message };
+  return { appointment: toAppointment(data as AppointmentRow) };
 }

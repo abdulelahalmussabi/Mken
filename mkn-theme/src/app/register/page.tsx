@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserPlus, User, Mail, Lock, Phone, AlertCircle, Loader2 } from "lucide-react";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 const registerSchema = z.object({
   full_name: z.string().min(3, { message: "الاسم الكامل يجب أن يتكون من 3 حروف على الأقل" }),
@@ -60,8 +61,16 @@ export default function RegisterPage() {
             </div>
             <h1 className="text-2xl font-extrabold text-foreground">إنشاء حساب جديد</h1>
             <p className="text-muted text-xs">
-              انضم إلى المنصة السعودية الأولى لتمكين محلك في نتائج الخرائط
+              انضم بحساب جوجل أو آبل، أو أنشئ حساباً بالبريد
             </p>
+          </div>
+
+          <SocialAuthButtons onError={setAuthError} />
+
+          <div className="flex items-center gap-3 text-[11px] text-muted">
+            <span className="flex-1 h-px bg-line" />
+            أو بالبريد
+            <span className="flex-1 h-px bg-line" />
           </div>
 
           {authError && (

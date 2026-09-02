@@ -330,6 +330,11 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [tenantTheme, setTenantTheme] = useState<OccasionId | null>(null);
   const [skipPlatformFallback, setSkipPlatformFallback] = useState(false);
   const [hostSlug, setHostSlug] = useState<string | null>(null);
+  const [brandTheme, setBrandTheme] = useState<{
+    accentColor: string;
+    badgeBg: string;
+    bgGradient: string;
+  } | null>(null);
   const [adCopy, setAdCopy] = useState<{ title: string; text: string; coupon: string }>({
     title: "",
     text: "",
@@ -401,6 +406,7 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setPreviewId(null);
     setTenantTheme(null);
     setSkipPlatformFallback(false);
+    setBrandTheme(null);
     setAdCopy({ title: "", text: "", coupon: "" });
     if (!currentSlug) return;
 
@@ -411,12 +417,25 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (cancelled || !data?.success) return;
         const resolved = data.appearance?.resolvedTheme || data.client?.theme;
         const kind = data.appearance?.themeKind;
+        const custom = data.appearance?.customTheme;
         if (kind === "occasion" && isOccasionId(resolved) && resolved !== "none") {
           setTenantTheme(resolved);
           setSkipPlatformFallback(true);
         } else if (kind === "custom" || kind === "none" || data.appearance) {
           setTenantTheme("none");
           setSkipPlatformFallback(true);
+          if (
+            kind === "custom" &&
+            custom &&
+            typeof custom.accentColor === "string" &&
+            custom.accentColor
+          ) {
+            setBrandTheme({
+              accentColor: custom.accentColor,
+              badgeBg: String(custom.badgeBg || custom.accentColor),
+              bgGradient: String(custom.bgGradient || "#020617"),
+            });
+          }
         } else if (isOccasionId(resolved) && resolved !== "none") {
           setTenantTheme(resolved);
           setSkipPlatformFallback(true);
@@ -473,6 +492,22 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [activeOccasion]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (!brandTheme) {
+      root.style.removeProperty("--primary-accent");
+      root.style.removeProperty("--badge-glow");
+      return;
+    }
+    root.style.setProperty("--primary-accent", brandTheme.accentColor);
+    root.style.setProperty("--badge-glow", `${brandTheme.accentColor}33`);
+    return () => {
+      root.style.removeProperty("--primary-accent");
+      root.style.removeProperty("--badge-glow");
+    };
+  }, [brandTheme]);
+
   const copyCoupon = (code: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(code);
@@ -484,24 +519,30 @@ export const OccasionProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const occasionDetails = useMemo(() => {
     const base = SAUDI_OCCASIONS[activeOccasion] || SAUDI_OCCASIONS.none;
+    const themed = brandTheme
+      ? {
+          ...base,
+          accentColor: brandTheme.accentColor,
+        }
+      : base;
     const onTenant = Boolean(currentSlug);
     if (!onTenant) {
       return {
-        ...base,
-        slogan: adCopy.title || base.slogan,
-        discountText: adCopy.text || base.discountText,
-        couponCode: adCopy.coupon || base.couponCode,
+        ...themed,
+        slogan: adCopy.title || themed.slogan,
+        discountText: adCopy.text || themed.discountText,
+        couponCode: adCopy.coupon || themed.couponCode,
       };
     }
 
     const isStandard = activeOccasion === "none";
     return {
-      ...base,
-      slogan: tenantSafeCopy(adCopy.title) || (isStandard ? "" : base.slogan),
+      ...themed,
+      slogan: tenantSafeCopy(adCopy.title) || (isStandard ? "" : themed.slogan),
       discountText: tenantSafeCopy(adCopy.text),
       couponCode: tenantSafeCopy(adCopy.coupon),
     };
-  }, [activeOccasion, adCopy, currentSlug]);
+  }, [activeOccasion, adCopy, brandTheme, currentSlug]);
 
   return (
     <OccasionContext.Provider

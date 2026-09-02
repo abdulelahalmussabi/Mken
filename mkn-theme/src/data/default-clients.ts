@@ -8,24 +8,26 @@ import { publicBrandSrc } from "@/lib/mken/logo-crop";
 export const DEFAULT_CLIENTS: ClientRecord[] = [
   {
     slug: "almahrusa",
-    name: "مجموعة المحروسة",
-    tagline: "إقامة مميزة وخدمة استثنائية",
+    name: "المحروسة للشقق المفروشة | Mahrousa Apartment",
+    tagline: "شقق مفروشة راقية بالمدينة المنورة — حجز مباشر",
     subtitle:
-      "شقق مخدومة وغرف مفروشة في المدينة المنورة — احجز مسبقاً واستمتع بإقامة مريحة قريبة من الحرم.",
+      "شقق مفروشة مجهزة بالكامل في المدينة المنورة 42522 — وحدات بإطلالة حديقة وأسرّة ملكية وغرف فردية، مع واي فاي ومطبخ وموقف سيارات.",
     type: "hotel",
-    phone: "0551234567",
-    whatsapp: "966551234567",
-    email: "info@almahrusa.sa",
-    location: "المدينة المنورة، المملكة العربية السعودية",
-    rating: "4.9",
-    reviewsCount: "382 تقييم موثق",
-    heroImage:
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-    demoNotice:
-      "✨ صفحة مجموعة المحروسة للشقق المخدومة — المدينة المنورة",
+    phone: "0554453287",
+    whatsapp: "966554453287",
+    email: "stayinmedina@gmail.com",
+    location: "شداد بن عارض، المدينة المنورة 42522",
+    rating: "4.7",
+    reviewsCount: "32 تقييم على Google",
+    heroImage: "/almahrusa/hero.web.jpg",
+    demoNotice: "صفحة المحروسة للشقق المفروشة — المدينة المنورة على منصة مكّن",
+    socialLinks: {
+      whatsapp: "https://wa.me/966554453287",
+    },
     adminEmail: "almahrusa@mken.live",
     logo: publicBrandSrc("almahrusa.png"),
-    theme: "none",
+    theme: "custom-almahrusa",
+    customThemes: [{ id: "custom-almahrusa", name: "هوية المحروسة", accentColor: "#6B2D91" }],
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
   },
@@ -77,12 +79,12 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     name: "منتجع رواء الاستشفاء الرقمي",
     tagline: "رواء.. توازن واسترخاء",
     subtitle:
-      "منتجع صحي واستشفائي متكامل يضم عيادات الأسنان والسمنة والتغذية، نادي الدفاع عن النفس، واستضافة الفعاليات الصحية الدورية بالمدينة المنورة.",
+      "منتجع استشفائي متكامل في المدينة المنورة: طب بديل، مجمع طبي، تأهيل، رياضة، دايت، جمعية وفعاليات، شقق خدمية، وكوفي مهى المدينة.",
     type: "other",
     phone: "0148462524",
-    whatsapp: "966148462524",
+    whatsapp: "966549462524",
     email: "rewa@mken.live",
-    location: "المدينة المنورة، المملكة العربية السعودية",
+    location: "الحماوات، المدينة المنورة، المملكة العربية السعودية",
     rating: "4.9",
     reviewsCount: "210 تقييم موثق",
     heroImage:
@@ -92,8 +94,39 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     adminEmail: "rewa@mken.live",
     logo: publicBrandSrc("rewa.png"),
     theme: "none",
+    customThemes: [{ id: "custom-rewa", name: "هوية رواء", accentColor: "#1A3F66" }],
+    socialLinks: {
+      instagram: "https://instagram.com/rewa.100000",
+      tiktok: "https://www.tiktok.com/@rewa.1000",
+      snapchat: "https://www.snapchat.com/add/rewa.1000",
+      whatsapp: "https://wa.me/966549462524",
+    },
     active: true,
     createdAt: new Date("2026-01-01").toISOString(),
+  },
+  {
+    slug: "rewaq",
+    name: "Rewaq Resident | رواق ريزدنت",
+    tagline: "شقق مفروشة في مذينب، المدينة المنورة — حجز مباشر",
+    subtitle:
+      "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. تسجيل الوصول من 16:00.",
+    type: "hotel",
+    phone: "0541303411",
+    whatsapp: "966541303411",
+    email: "rewaqresident@gmail.com",
+    location: "اسيد بن كعب، مذينب، المدينة المنورة 42317",
+    rating: "4.8",
+    reviewsCount: "105 تقييم على Google",
+    heroImage: "/rewaq/hero.web.jpg",
+    demoNotice: "رواق ريزدنت — مذينب، المدينة المنورة على منصة مكّن",
+    socialLinks: {
+      whatsapp: "https://wa.me/966541303411",
+    },
+    adminEmail: "rewaqresident@gmail.com",
+    theme: "custom-rewaq",
+    customThemes: [{ id: "custom-rewaq", name: "هوية رواق ريزدنت", accentColor: "#7A4E2D" }],
+    active: true,
+    createdAt: new Date("2026-09-02").toISOString(),
   },
 ];
 
@@ -133,6 +166,7 @@ export function storefrontClient(client: ClientRecord): StorefrontClient {
     discountText: client.discountText,
     promoTitle: client.promoTitle,
     discountEnabled: client.discountEnabled,
+    socialLinks: client.socialLinks,
     claimStatus:
       client.claimStatus === "unclaimed" || client.claimStatus === "pending"
         ? client.claimStatus

@@ -2,12 +2,47 @@ import activitiesJson from "@/data/catalog/activities.json";
 import servicesJson from "@/data/catalog/services.json";
 import { DEFAULT_CLIENTS, storefrontClient } from "@/data/default-clients";
 import { appearanceFromConfig, type AppearancePublic } from "@/lib/mken/appearance";
+import { isAdLive, liveAds } from "@/lib/mken/ad-schedule";
 import {
   pagesFromConfig,
   publicContactFromConfig,
   type StorefrontContactPublic,
   type StorefrontPagesPublic,
 } from "@/lib/mken/pages";
+import {
+  applyAlmahrusaDefaults,
+  ALMAHRUSA_LOCATION,
+  ALMAHRUSA_MAP_CENTER,
+  ALMAHRUSA_MAPS_URL,
+  ALMAHRUSA_PHONE,
+  ALMAHRUSA_WHATSAPP,
+  almahrusaStorefrontMap,
+  hasAlmahrusaIdentityTheme,
+} from "@/lib/mken/almahrusa-content";
+import {
+  applyRewaqDefaults,
+  REWAQ_LOCATION,
+  REWAQ_MAP_CENTER,
+  REWAQ_MAPS_URL,
+  REWAQ_PHONE,
+  REWAQ_WHATSAPP,
+  rewaqStorefrontMap,
+  hasRewaqIdentityTheme,
+} from "@/lib/mken/rewaq-content";
+import {
+  applyRewaDefaults,
+  hasRewaIdentityTheme,
+  REWA_ACTIVITY_IDS,
+  REWA_CUSTOM_SERVICES,
+  REWA_LOCATION,
+  REWA_MAP_CENTER,
+  REWA_MAP_CITY,
+  REWA_MAPS_URL,
+  REWA_PHONE,
+  REWA_PROMO_ADS,
+  REWA_WHATSAPP,
+  rewaStorefrontMap,
+} from "@/lib/mken/rewa-content";
 import { isStaleSeedLogo, publicBrandSrc } from "@/lib/mken/logo-crop";
 import {
   ensureTenantRow,
@@ -122,6 +157,43 @@ function asOverrideMap(value: unknown): Record<string, Record<string, unknown>> 
   return value && typeof value === "object" ? (value as Record<string, Record<string, unknown>>) : {};
 }
 
+function customServicesFromConfig(config: MkenConfig): CatalogService[] {
+  const raw = config.customServices;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set(SERVICES.map((s) => s.id));
+  const out: CatalogService[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const activityId = typeof row.activityId === "string" ? row.activityId.trim() : "";
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    if (!id || !activityId || !title) continue;
+    if (!/^[a-z0-9-]{3,80}$/.test(id)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const heroImage = typeof row.heroImage === "string" ? row.heroImage.trim() : "";
+    const service: CatalogService & { heroImage?: string } = {
+      id,
+      activityId,
+      icon: typeof row.icon === "string" ? row.icon : "",
+      title,
+      shortTitle: typeof row.shortTitle === "string" ? row.shortTitle : title,
+      description: typeof row.description === "string" ? row.description : "",
+      features: asStringArray(row.features),
+      category: typeof row.category === "string" ? row.category : "",
+      price: typeof row.price === "string" ? row.price : "",
+    };
+    if (heroImage) service.heroImage = heroImage;
+    out.push(service);
+  }
+  return out;
+}
+
+function catalogServiceList(config: MkenConfig): CatalogService[] {
+  return [...SERVICES, ...customServicesFromConfig(config)];
+}
+
 function pickOverrides<T extends readonly string[]>(
   raw: Record<string, unknown>,
   fields: T
@@ -142,11 +214,16 @@ export function resolveCatalog(config: MkenConfig): TenantCatalog {
   const featuredActivity = typeof config.featuredActivity === "string" ? config.featuredActivity : "";
   const featuredService = typeof config.featured === "string" ? config.featured : "";
 
-  const services: ResolvedService[] = SERVICES.map((service) => {
+  const catalogList = catalogServiceList(config);
+  const services: ResolvedService[] = catalogList.map((service) => {
     const raw = serviceOverrides[service.id] || {};
     const overrides: ServiceOverrides = pickOverrides(raw, SERVICE_OVERRIDE_FIELDS);
     if (typeof raw.roomCount === "number" && raw.roomCount >= 1) overrides.roomCount = raw.roomCount;
     if (Array.isArray(raw.features)) overrides.features = asStringArray(raw.features);
+    const definedHero = (service as CatalogService & { heroImage?: string }).heroImage;
+    if (!overrides.heroImage && typeof definedHero === "string" && definedHero.trim()) {
+      overrides.heroImage = definedHero.trim();
+    }
 
     return {
       ...service,
@@ -195,10 +272,17 @@ export interface CatalogUpdate {
  * Drops services whose activity is disabled, mirroring the legacy
  * `pruneEnabledServices` so the public site never renders orphan services.
  */
-function pruneServices(enabledActivities: string[], enabled: string[]): string[] {
+function pruneServices(
+  enabledActivities: string[],
+  enabled: string[],
+  extras: CatalogService[] = []
+): string[] {
   const allowed = new Set(enabledActivities);
+  const known = new Map<string, CatalogService>();
+  for (const service of SERVICES) known.set(service.id, service);
+  for (const service of extras) known.set(service.id, service);
   return enabled.filter((id) => {
-    const service = SERVICES.find((s) => s.id === id);
+    const service = known.get(id);
     return service ? allowed.has(service.activityId) : false;
   });
 }
@@ -212,9 +296,14 @@ export async function updateTenantCatalog(
   const row = ensured.row;
 
   const config: MkenConfig = { ...(row.config_data || {}) };
+  const extras = [
+    ...customServicesFromConfig(config),
+    ...(slug === "rewa" ? REWA_CUSTOM_SERVICES : []),
+  ];
+  const extraById = new Map(extras.map((service) => [service.id, service]));
 
   const activityIds = new Set(ACTIVITIES.map((a) => a.id));
-  const serviceIds = new Set(SERVICES.map((s) => s.id));
+  const serviceIds = new Set([...SERVICES.map((s) => s.id), ...extraById.keys()]);
 
   const nextActivities =
     update.enabledActivities !== undefined
@@ -226,7 +315,7 @@ export async function updateTenantCatalog(
       ? update.enabled.filter((id) => serviceIds.has(id))
       : asStringArray(config.enabled);
 
-  const nextEnabled = pruneServices(nextActivities, requestedServices);
+  const nextEnabled = pruneServices(nextActivities, requestedServices, [...extraById.values()]);
   config.enabledActivities = nextActivities;
   config.enabled = nextEnabled;
 
@@ -285,7 +374,14 @@ export async function updateTenantCatalog(
 
   config.updatedAt = new Date().toISOString();
 
-  const toWrite = slug === "rewa" ? stripRewaSpa(config) : config;
+  const toWrite =
+    slug === "rewa"
+      ? applyRewaDefaults(stripRewaSpa(config))
+      : slug === "almahrusa"
+        ? applyAlmahrusaDefaults(config)
+        : slug === "rewaq"
+          ? applyRewaqDefaults(config)
+          : config;
   const written = await writeTenantConfig(slug, toWrite);
   if (written.error || !written.row) {
     return { error: written.error || "تعذّر الحفظ: لا توجد صلاحية كتابة على بيانات المنشأة" };
@@ -332,9 +428,15 @@ const IMAGE_POOLS: Record<string, string[]> = {
 const SEED_CONFIG: Record<string, MkenConfig> = {
   almahrusa: {
     enabledActivities: ["hotels"],
-    enabled: ["standard-room", "deluxe-room", "suite-room", "family-suite"],
+    enabled: ["deluxe-room", "suite-room", "standard-room", "family-suite"],
     featuredActivity: "hotels",
-    featured: "standard-room",
+    featured: "deluxe-room",
+  },
+  rewaq: {
+    enabledActivities: ["hotels"],
+    enabled: ["deluxe-room", "suite-room", "standard-room", "family-suite"],
+    featuredActivity: "hotels",
+    featured: "deluxe-room",
   },
   almasabi: {
     enabledActivities: ["commerce"],
@@ -356,16 +458,18 @@ const SEED_CONFIG: Record<string, MkenConfig> = {
     featured: "mens-haircut",
   },
   rewa: {
-    enabledActivities: ["healthcare", "fitness", "events"],
-    enabled: [
-      "dental-checkup",
-      "gp-consultation",
-      "nutrition-consult",
-      "personal-training",
-      "event-planning",
-    ],
+    enabledActivities: [...REWA_ACTIVITY_IDS],
+    enabled: REWA_CUSTOM_SERVICES.map((service) => service.id),
     featuredActivity: "healthcare",
-    featured: "dental-checkup",
+    featured: "rewa-hijama",
+    customServices: REWA_CUSTOM_SERVICES,
+    ads: { secondary: [...REWA_PROMO_ADS] },
+    social: {
+      whatsapp: { enabled: true, value: "966549462524" },
+      instagram: { enabled: true, value: "rewa.100000" },
+      tiktok: { enabled: true, value: "rewa.1000" },
+      snapchat: { enabled: true, value: "rewa.1000" },
+    },
   },
 };
 
@@ -433,6 +537,7 @@ export function toPublicCatalog(catalog: TenantCatalog): StorefrontCatalog {
         image: serviceImage(service.activityId, index, service.overrides.heroImage),
         popular: service.featured,
         duration: serviceDuration(service, storefrontKind(service.activityId)),
+        category: service.overrides.category || service.category || "",
       };
     });
 
@@ -468,8 +573,6 @@ function scrubSpaCopy(text: string): string {
 
 const REWA_CLINIC_HERO =
   "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80";
-const REWA_PHONE = "0148462524";
-const REWA_WHATSAPP = "966148462524";
 
 function stripRewaSpa(config: MkenConfig): MkenConfig {
   const seed = SEED_CONFIG.rewa;
@@ -519,9 +622,14 @@ function stripRewaSpa(config: MkenConfig): MkenConfig {
     next.ads = { ...next.ads, primary: { ...next.ads.primary, enabled: false } };
   }
   next.phone = REWA_PHONE;
+  const social = (next.social || {}) as Record<string, { enabled?: boolean; value?: string }>;
+  const savedWhatsapp = typeof social.whatsapp?.value === "string" ? social.whatsapp.value.trim() : "";
   next.social = {
-    ...(next.social || {}),
-    whatsapp: { enabled: true, value: REWA_WHATSAPP },
+    ...social,
+    whatsapp: {
+      enabled: social.whatsapp?.enabled !== false,
+      value: savedWhatsapp || REWA_WHATSAPP,
+    },
   };
   return next;
 }
@@ -553,7 +661,11 @@ function mergeSeedConfig(slug: string, config: MkenConfig): MkenConfig {
   if (seedLogo && (!currentLogo || isStaleSeedLogo(currentLogo))) {
     merged = { ...merged, brand: { ...(merged.brand || {}), logo: seedLogo } };
   }
-  return slug === "rewa" ? stripRewaSpa(merged) : merged;
+  // Rewa / المحروسة overlays live in their apply*Defaults helpers.
+  if (slug === "rewa") return applyRewaDefaults(stripRewaSpa(merged));
+  if (slug === "almahrusa") return applyAlmahrusaDefaults(merged);
+  if (slug === "rewaq") return applyRewaqDefaults(merged);
+  return merged;
 }
 
 export interface PublicStorefront {
@@ -573,27 +685,169 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
   const fallback = DEFAULT_CLIENTS.find((client) => client.slug === key);
   if (!row && !fallback) return null;
 
-  const merged = mergeSeedConfig(key, row?.config_data || {});
+  let merged = mergeSeedConfig(key, row?.config_data || {});
+  if (key === "rewa") {
+    merged = {
+      ...merged,
+      mapsUrl: REWA_MAPS_URL,
+      location:
+        !merged.location || String(merged.location).includes("جدة")
+          ? REWA_LOCATION
+          : merged.location,
+      serviceArea: {
+        enabled: true,
+        displayOnHomepage: true,
+        city: REWA_MAP_CITY,
+        center: { ...REWA_MAP_CENTER },
+        radiusKm: 20,
+        coverageNote: "منتجع رواء الاستشفاء الرقمي — المدينة المنورة",
+        showAsFullCity: true,
+      },
+    };
+    const stored = row?.config_data || {};
+    const storedLat = Number(stored.serviceArea?.center?.lat);
+    const pinAlreadySaved =
+      stored.mapsUrl === REWA_MAPS_URL &&
+      Number.isFinite(storedLat) &&
+      Math.abs(storedLat - REWA_MAP_CENTER.lat) < 0.0001;
+    const identitySaved = hasRewaIdentityTheme(stored);
+    const social = stored.social || {};
+    const socialSaved = Boolean(
+      social.instagram?.value && social.tiktok?.value && social.snapchat?.value && social.whatsapp?.value
+    );
+    if (row && (!pinAlreadySaved || !identitySaved || !socialSaved)) {
+      void writeTenantConfig(key, applyRewaDefaults({
+        ...stored,
+        mapsUrl: REWA_MAPS_URL,
+        location: merged.location,
+        serviceArea: merged.serviceArea,
+      }));
+    }
+  }
+  if (key === "almahrusa") {
+    merged = applyAlmahrusaDefaults(merged);
+    const stored = row?.config_data || {};
+    const storedLat = Number(stored.serviceArea?.center?.lat);
+    const pinAlreadySaved =
+      stored.mapsUrl === ALMAHRUSA_MAPS_URL &&
+      Number.isFinite(storedLat) &&
+      Math.abs(storedLat - ALMAHRUSA_MAP_CENTER.lat) < 0.0001;
+    const phoneSaved = Boolean(stored.phone && String(stored.phone).includes("554453287"));
+    const identitySaved = hasAlmahrusaIdentityTheme(stored);
+    const photosSaved =
+      typeof stored.heroImage === "string" && /\/almahrusa\/.+\.web\.jpg/i.test(stored.heroImage);
+    const storedPages = stored.pages && typeof stored.pages === "object" ? stored.pages : {};
+    const storedWork =
+      "work" in storedPages && storedPages.work && typeof storedPages.work === "object" ? storedPages.work : {};
+    const storedGallery = "gallery" in storedWork ? (storedWork as { gallery?: unknown }).gallery : [];
+    const gallery0 =
+      Array.isArray(storedGallery) && storedGallery[0] && typeof storedGallery[0] === "object"
+        ? String((storedGallery[0] as { image?: string }).image || "")
+        : "";
+    const gallerySaved = gallery0.includes(".web.jpg");
+    const discountOff = stored.occasionPack?.enabled !== true;
+    if (row && (!pinAlreadySaved || !phoneSaved || !identitySaved || !photosSaved || !gallerySaved || !discountOff)) {
+      void writeTenantConfig(key, merged);
+    }
+  }
+  if (key === "rewaq") {
+    merged = applyRewaqDefaults(merged);
+    const stored = row?.config_data || {};
+    const storedLat = Number(stored.serviceArea?.center?.lat);
+    const pinAlreadySaved =
+      stored.mapsUrl === REWAQ_MAPS_URL &&
+      Number.isFinite(storedLat) &&
+      Math.abs(storedLat - REWAQ_MAP_CENTER.lat) < 0.0001;
+    const phoneSaved = Boolean(stored.phone && String(stored.phone).includes("541303411"));
+    const identitySaved = hasRewaqIdentityTheme(stored);
+    const photosSaved =
+      typeof stored.heroImage === "string" && /\/rewaq\/.+\.web\.jpg/i.test(stored.heroImage);
+    const storedPages = stored.pages && typeof stored.pages === "object" ? stored.pages : {};
+    const storedWork =
+      "work" in storedPages && storedPages.work && typeof storedPages.work === "object" ? storedPages.work : {};
+    const storedGallery = "gallery" in storedWork ? (storedWork as { gallery?: unknown }).gallery : [];
+    const gallery0 =
+      Array.isArray(storedGallery) && storedGallery[0] && typeof storedGallery[0] === "object"
+        ? String((storedGallery[0] as { image?: string }).image || "")
+        : "";
+    const gallerySaved = gallery0.includes(".web.jpg");
+    const discountOff = stored.occasionPack?.enabled !== true;
+    if (row && (!pinAlreadySaved || !phoneSaved || !identitySaved || !photosSaved || !gallerySaved || !discountOff)) {
+      void writeTenantConfig(key, merged);
+    }
+  }
   const catalog = toPublicCatalog(resolveCatalog(merged));
   const client = row
     ? storefrontClient(toClientRecord({ ...row, config_data: merged }))
     : storefrontClient(fallback!);
   if (key === "rewa") {
     client.subtitle = merged.subtitle || client.subtitle;
-    client.phone = REWA_PHONE;
-    client.whatsapp = REWA_WHATSAPP;
+    client.phone = merged.phone || REWA_PHONE;
+    client.whatsapp =
+      (typeof merged.social?.whatsapp?.value === "string" && merged.social.whatsapp.value.trim()) ||
+      client.whatsapp ||
+      REWA_WHATSAPP;
+    client.location = merged.location || REWA_LOCATION;
+  }
+  if (key === "almahrusa") {
+    client.name = merged.brand?.name || client.name;
+    client.tagline = merged.brand?.tagline || client.tagline;
+    client.subtitle = merged.subtitle || client.subtitle;
+    client.phone = merged.phone || ALMAHRUSA_PHONE;
+    client.whatsapp =
+      (typeof merged.social?.whatsapp?.value === "string" && merged.social.whatsapp.value.trim()) ||
+      client.whatsapp ||
+      ALMAHRUSA_WHATSAPP;
+    client.location = merged.location || ALMAHRUSA_LOCATION;
+    client.heroImage = merged.heroImage || client.heroImage;
+    client.rating = merged.rating || client.rating;
+    client.reviewsCount = merged.reviewsCount || client.reviewsCount;
+  }
+  if (key === "rewaq") {
+    client.name = merged.brand?.name || client.name;
+    client.tagline = merged.brand?.tagline || client.tagline;
+    client.subtitle = merged.subtitle || client.subtitle;
+    client.phone = merged.phone || REWAQ_PHONE;
+    client.whatsapp =
+      (typeof merged.social?.whatsapp?.value === "string" && merged.social.whatsapp.value.trim()) ||
+      client.whatsapp ||
+      REWAQ_WHATSAPP;
+    client.location = merged.location || REWAQ_LOCATION;
+    client.heroImage = merged.heroImage || client.heroImage;
+    client.rating = merged.rating || client.rating;
+    client.reviewsCount = merged.reviewsCount || client.reviewsCount;
   }
   const appearance = appearanceFromConfig(merged);
-  if (appearance.themeKind === "occasion" || appearance.themeKind === "custom") {
-    client.theme = appearance.resolvedTheme;
+  const publicAppearance: AppearancePublic = {
+    ...appearance,
+    ads: {
+      primary: isAdLive(appearance.ads.primary)
+        ? appearance.ads.primary
+        : { ...appearance.ads.primary, enabled: false },
+      secondary: liveAds(appearance.ads.secondary),
+    },
+  };
+  if (publicAppearance.themeKind === "occasion" || publicAppearance.themeKind === "custom") {
+    client.theme = publicAppearance.resolvedTheme;
+  }
+
+  const contactExtras = publicContactFromConfig(merged);
+  if (key === "rewa") {
+    contactExtras.map = rewaStorefrontMap();
+  }
+  if (key === "almahrusa") {
+    contactExtras.map = almahrusaStorefrontMap();
+  }
+  if (key === "rewaq") {
+    contactExtras.map = rewaqStorefrontMap();
   }
 
   return {
     client,
     catalog,
-    appearance,
+    appearance: publicAppearance,
     pages: pagesFromConfig(merged),
-    contactExtras: publicContactFromConfig(merged),
+    contactExtras,
     source: row ? "database" : "default",
   };
 }

@@ -27,6 +27,19 @@ function activityTitle(id: string): string {
   return ACTIVITIES.find((item) => item.id === id)?.title || id;
 }
 
+function statusLabel(status: string): string {
+  if (status === "confirmed") return "مؤكد";
+  if (status === "cancelled") return "ملغي";
+  return "قيد الانتظار";
+}
+
+function serviceLabel(item: Appointment): string {
+  const fromNotes = (item.notes || "").match(/الخدمة:\s*([^|]+)/);
+  if (fromNotes?.[1]) return fromNotes[1].trim();
+  if (item.activityId && item.activityId !== "storefront") return activityTitle(item.activityId);
+  return item.serviceId && item.serviceId !== "general" ? item.serviceId : "موعد من الموقع";
+}
+
 function bufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -263,7 +276,7 @@ export default function StaffHomePage() {
 
         <section className="space-y-3">
           <h2 className="text-sm font-extrabold text-white flex items-center gap-2 justify-end">
-            المهام المسندة
+            المواعيد والحجوزات
             <CalendarDays className="w-4 h-4 text-sky-400" />
           </h2>
           {error && (
@@ -272,22 +285,22 @@ export default function StaffHomePage() {
             </p>
           )}
           {!error && appointments.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-10">لا توجد مهام مسندة إليك حالياً.</p>
+            <p className="text-sm text-slate-500 text-center py-10">لا توجد مواعيد حالياً.</p>
           )}
           {appointments.map((item) => (
             <article key={item.id} className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-400">
-                  {item.status}
+                  {statusLabel(item.status)}
+                  {!item.staffId ? " · من الموقع" : ""}
                 </span>
-                <h3 className="font-extrabold text-white text-sm">
-                  {item.activityId ? activityTitle(item.activityId) : item.serviceId || "موعد"}
-                </h3>
+                <h3 className="font-extrabold text-white text-sm">{serviceLabel(item)}</h3>
               </div>
               <p className="text-xs text-slate-300">{item.customerName}</p>
               <p className="text-xs text-slate-500">
                 {item.date} — {item.time}
               </p>
+              {item.notes ? <p className="text-xs text-slate-500">{item.notes}</p> : null}
               {item.locationAddress && (
                 <p className="text-xs text-slate-500 flex items-center gap-1 justify-end">
                   {item.locationAddress}

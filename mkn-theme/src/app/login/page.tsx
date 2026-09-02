@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { LogIn, Mail, Lock, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
@@ -66,8 +67,16 @@ export default function LoginPage() {
             )}
             <h1 className="text-2xl font-extrabold text-foreground">تسجيل الدخول إلى منصة مكّن</h1>
             <p className="text-muted text-xs">
-              أدخل بيانات حسابك للمتابعة وإدارة طلبات المحل التجاري
+              ادخل بحساب جوجل أو آبل، أو بالبريد لإدارة طلباتك
             </p>
+          </div>
+
+          <SocialAuthButtons onError={setAuthError} />
+
+          <div className="flex items-center gap-3 text-[11px] text-muted">
+            <span className="flex-1 h-px bg-line" />
+            أو بالبريد
+            <span className="flex-1 h-px bg-line" />
           </div>
 
           {authError && (

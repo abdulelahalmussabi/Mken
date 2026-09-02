@@ -218,10 +218,16 @@ export async function POST(request: Request) {
         );
       }
       if (
-        normalizedEmail === "rewa@mken.live" ||
-        normalizedEmail === "rewaa@mken.live" ||
-        normalizedEmail.includes("rewa")
+        normalizedEmail === "rewaqresident@gmail.com" ||
+        normalizedEmail === "rewaq@mken.live"
       ) {
+        return issue(
+          request,
+          { email: "rewaqresident@gmail.com", role: "client", clientSlug: "rewaq" },
+          "مرحباً بك في لوحة تحكم رواق ريزدنت!"
+        );
+      }
+      if (normalizedEmail === "rewa@mken.live" || normalizedEmail === "rewaa@mken.live") {
         return issue(
           request,
           { email: "rewa@mken.live", role: "client", clientSlug: "rewa" },

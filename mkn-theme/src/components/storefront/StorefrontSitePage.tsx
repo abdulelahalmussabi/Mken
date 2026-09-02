@@ -10,14 +10,19 @@ import {
   Clock,
   Mail,
   MapPin,
-  MessageCircle,
   Phone,
   Quote,
   Star,
   Users,
 } from "lucide-react";
-import { defaultProcessSteps, type ToggleablePageId } from "@/lib/mken/pages";
-import { useStorefront, type StorefrontServiceOption } from "@/components/storefront/StorefrontFrame";
+import { defaultProcessSteps, resolvePageLabel, type ToggleablePageId } from "@/lib/mken/pages";
+import { StorefrontSocialLinks, useStorefront, type StorefrontServiceOption } from "@/components/storefront/StorefrontFrame";
+import { WhatsappCta } from "@/components/social/NeonSocialIcons";
+import {
+  buildContactWhatsappText,
+  buildWhatsappClickUrl,
+  openWhatsappClick,
+} from "@/lib/mken/wa-click";
 
 function SectionTitle({ title, intro }: { title: string; intro?: string }) {
   return (
@@ -33,12 +38,14 @@ function ServiceCard({
   accentColor,
   showPrice,
   detailsHref,
+  bookLabel,
   onBook,
 }: {
   srv: StorefrontServiceOption;
   accentColor: string;
   showPrice: boolean;
   detailsHref?: string;
+  bookLabel?: string;
   onBook: () => void;
 }) {
   return (
@@ -78,7 +85,7 @@ function ServiceCard({
           style={{ backgroundColor: accentColor }}
         >
           <CalendarCheck className="w-4 h-4" />
-          احجز هذه الخدمة الآن
+          {bookLabel || "احجز هذه الخدمة الآن"}
         </button>
         {detailsHref ? (
           <Link href={detailsHref as Route} className="w-full py-2 text-center text-xs font-bold text-muted hover:text-foreground">
@@ -95,7 +102,7 @@ function AboutBody() {
   const story = pages.about.story || storeInfo.subtitle || storeInfo.tagline;
   return (
     <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14 text-right">
-      <SectionTitle title={`من نحن — ${storeInfo.name}`} intro={story} />
+      <SectionTitle title={`${resolvePageLabel(pages, "about")} — ${storeInfo.name}`} intro={story} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {pages.about.vision ? (
           <div className="p-6 rounded-3xl bg-surface/80 border border-line space-y-2">
@@ -164,25 +171,63 @@ function AboutBody() {
   );
 }
 
+function groupedServices(services: StorefrontServiceOption[]): { category: string; items: StorefrontServiceOption[] }[] {
+  const groups: { category: string; items: StorefrontServiceOption[] }[] = [];
+  const index = new Map<string, number>();
+  for (const srv of services) {
+    const category = srv.category?.trim() || "خدمات أخرى";
+    const existing = index.get(category);
+    if (existing === undefined) {
+      index.set(category, groups.length);
+      groups.push({ category, items: [srv] });
+    } else {
+      groups[existing].items.push(srv);
+    }
+  }
+  return groups;
+}
+
 function ServicesBody() {
   const { pages, appearance, currentServices, accentColor, openBooking, servicesNavLabel } = useStorefront();
-  const heading = appearance?.interfaceCopy?.servicesHeading || servicesNavLabel;
+  const heading = appearance?.interfaceCopy?.servicesHeading || resolvePageLabel(pages, "services", servicesNavLabel);
   const intro = appearance?.interfaceCopy?.servicesIntro || "اختر الخدمة المناسبة واطّلع على التفاصيل والفوائد.";
   const steps = pages.services.processSteps.length ? pages.services.processSteps : defaultProcessSteps();
+  const groups = groupedServices(currentServices);
+  const useGroups =
+    groups.length > 1 || Boolean(groups[0] && groups[0].category !== "خدمات أخرى");
   return (
     <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
       <SectionTitle title={heading} intro={intro} />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {currentServices.map((srv) => (
-          <ServiceCard
-            key={srv.id}
-            srv={srv}
-            accentColor={accentColor}
-            showPrice={pages.services.showPrices}
-            onBook={() => openBooking(srv)}
-          />
-        ))}
-      </div>
+      {useGroups
+        ? groups.map((group) => (
+            <section key={group.category} className="space-y-6">
+              <h3 className="text-xl font-extrabold text-foreground text-right">{group.category}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {group.items.map((srv) => (
+                  <ServiceCard
+                    key={srv.id}
+                    srv={srv}
+                    accentColor={accentColor}
+                    showPrice={pages.services.showPrices}
+                    onBook={() => openBooking(srv)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {currentServices.map((srv) => (
+                <ServiceCard
+                  key={srv.id}
+                  srv={srv}
+                  accentColor={accentColor}
+                  showPrice={pages.services.showPrices}
+                  onBook={() => openBooking(srv)}
+                />
+              ))}
+            </div>
+          )}
       <div className="space-y-6">
         <h3 className="text-xl font-extrabold text-foreground text-center">آلية العمل</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -203,11 +248,18 @@ function ServicesBody() {
 }
 
 function WorkBody() {
-  const { pages, storeInfo } = useStorefront();
+  const { pages, storeInfo, isHotel } = useStorefront();
   const empty = !pages.work.gallery.length && !pages.work.cases.length && !pages.work.testimonials.length;
   return (
     <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-      <SectionTitle title={`أعمال ${storeInfo.name}`} intro="نماذج حقيقية وقصص نجاح من عملائنا." />
+      <SectionTitle
+        title={resolvePageLabel(pages, "work")}
+        intro={
+          isHotel
+            ? "صور حقيقية للوحدات والمرافق."
+            : "المرافق، الدورات، والفعاليات كما يعيشها الضيف في المنتجع."
+        }
+      />
       {empty ? (
         <p className="text-center text-sm text-muted">سيتم عرض معرض الأعمال ودراسات الحالة هنا بعد إضافتها من لوحة المحتوى.</p>
       ) : null}
@@ -257,7 +309,7 @@ function WorkBody() {
 }
 
 function ContactBody() {
-  const { storeInfo, pages, contactExtras, accentColor } = useStorefront();
+  const { storeInfo, pages, contactExtras, accentColor, whatsappHref } = useStorefront();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -271,17 +323,25 @@ function ContactBody() {
 
   const send = (e: React.FormEvent) => {
     e.preventDefault();
-    const body = encodeURIComponent(
-      `طلب تواصل مع ${storeInfo.name}:\n• الاسم: ${name}\n• الجوال: ${phone}\n• البريد: ${email}\n• الرسالة: ${message}`
+    const href = buildWhatsappClickUrl(
+      storeInfo.whatsapp,
+      buildContactWhatsappText({
+        businessName: storeInfo.name,
+        name,
+        phone,
+        email,
+        message,
+      })
     );
-    window.open(`https://wa.me/${storeInfo.whatsapp}?text=${body}`, "_blank");
+    if (!href) return;
+    openWhatsappClick(href);
   };
 
   const map = pages.contact.mapEnabled ? contactExtras.map : null;
 
   return (
     <div className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 text-right">
-      <SectionTitle title="اتصل بنا" intro="يسعدنا تواصلك عبر النموذج أو واتساب أو بيانات الاتصال المباشرة." />
+      <SectionTitle title={resolvePageLabel(pages, "contact")} intro="يسعدنا تواصلك عبر النموذج أو واتساب أو بيانات الاتصال المباشرة." />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {pages.contact.formEnabled ? (
           <form onSubmit={send} className="p-6 rounded-3xl bg-surface/80 border border-line space-y-4">
@@ -303,10 +363,8 @@ function ContactBody() {
           <div className="p-6 rounded-3xl bg-surface/80 border border-line space-y-3 text-sm text-muted">
             <p className="flex items-center gap-2"><MapPin className="w-4 h-4 text-amber-400" />{storeInfo.location}</p>
             {storeInfo.phone ? <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-emerald-400" /><span dir="ltr">{storeInfo.phone}</span></p> : null}
-            {storeInfo.whatsapp ? (
-              <a className="flex items-center gap-2 text-emerald-300" href={`https://wa.me/${storeInfo.whatsapp}`} target="_blank" rel="noreferrer">
-                <MessageCircle className="w-4 h-4" /> محادثة فورية عبر واتساب
-              </a>
+            {whatsappHref ? (
+              <WhatsappCta href={whatsappHref} size="md" label="محادثة فورية عبر واتساب" />
             ) : null}
             {contactExtras.emails.map((row) => (
               <p key={row.id} className="flex items-center gap-2">
@@ -320,23 +378,33 @@ function ContactBody() {
                 ساعات العمل: {hours}
               </p>
             ) : null}
-            {contactExtras.social.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {contactExtras.social.map((row) => (
-                  <a key={row.id} href={row.url} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-full bg-surface-2 text-xs">
-                    {row.name}
-                  </a>
-                ))}
+            {contactExtras.social.some((row) => row.id !== "whatsapp" && row.url) ? (
+              <div className="pt-2 space-y-2">
+                <p className="text-xs font-bold text-foreground">تابعنا</p>
+                <StorefrontSocialLinks items={contactExtras.social} size="md" />
               </div>
             ) : null}
           </div>
           {map ? (
-            <iframe
-              title="موقع المنشأة"
-              className="w-full h-64 rounded-3xl border border-line"
-              src={`https://maps.google.com/maps?q=${map.lat},${map.lng}&z=15&output=embed`}
-              loading="lazy"
-            />
+            <div className="space-y-2">
+              <iframe
+                title="موقع المنشأة"
+                className="w-full h-64 rounded-3xl border border-line"
+                src={`https://maps.google.com/maps?q=${map.lat},${map.lng}&z=16&output=embed`}
+                loading="lazy"
+              />
+              {map.mapsUrl ? (
+                <a
+                  href={map.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 text-sm font-bold text-amber-300 hover:text-amber-200"
+                >
+                  <MapPin className="w-4 h-4" />
+                  افتح الموقع على خرائط جوجل
+                </a>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

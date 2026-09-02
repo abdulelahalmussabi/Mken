@@ -21,11 +21,12 @@ import {
   ShieldCheck,
   Tag,
   Send,
-  MessageCircle,
   Download,
   X,
   Loader2,
 } from "lucide-react";
+import { WhatsappCta } from "@/components/social/NeonSocialIcons";
+
 interface ServiceOption {
   id: string;
   name: string;
@@ -206,18 +207,9 @@ function BookAppointmentContent() {
               <span>موقع المنشأة</span>
             </Link>
 
-            <a
-              href={inquiryWaHref || undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5"
-              onClick={(e) => {
-                if (!inquiryWaHref) e.preventDefault();
-              }}
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">تواصل واتساب</span>
-            </a>
+            {inquiryWaHref ? (
+              <WhatsappCta href={inquiryWaHref} size="sm" label="تواصل واتساب" compactOnMobile />
+            ) : null}
           </div>
         </div>
       </header>

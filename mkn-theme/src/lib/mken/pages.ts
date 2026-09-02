@@ -1,3 +1,6 @@
+import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
+import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
+import { applyRewaDefaults } from "@/lib/mken/rewa-content";
 import { isPlatformHostname } from "@/lib/mken/tenant-host";
 import {
   EMAIL_TYPES,
@@ -104,6 +107,8 @@ export interface ContentTestimonial {
 
 export interface StorefrontPagesPublic {
   enabled: Record<StorefrontPageId, boolean>;
+  /** Custom nav labels. Empty string means the default title for that page. */
+  labels: Record<StorefrontPageId, string>;
   home: {
     heroVideoUrl: string;
     ctaLabel: string;
@@ -138,19 +143,28 @@ export interface StorefrontPagesPublic {
 
 export interface StorefrontContactPublic {
   emails: { id: string; name: string; value: string }[];
-  social: { id: string; name: string; url: string; label: string }[];
+  social: { id: string; name: string; url: string; label: string; icon?: string }[];
   hoursStart: string;
   hoursEnd: string;
-  map: { lat: number; lng: number; city: string } | null;
+  map: { lat: number; lng: number; city: string; mapsUrl?: string } | null;
 }
 
 export type PagesUpdate = {
   enabled?: Partial<Record<ToggleablePageId, boolean>>;
+  labels?: Partial<Record<StorefrontPageId, string>>;
   home?: Partial<StorefrontPagesPublic["home"]>;
   about?: Partial<StorefrontPagesPublic["about"]>;
   services?: Partial<StorefrontPagesPublic["services"]>;
   work?: Partial<StorefrontPagesPublic["work"]>;
   contact?: Partial<StorefrontPagesPublic["contact"]>;
+};
+
+const EMPTY_LABELS: Record<StorefrontPageId, string> = {
+  home: "",
+  about: "",
+  services: "",
+  work: "",
+  contact: "",
 };
 
 const EMPTY_PAGES: StorefrontPagesPublic = {
@@ -161,6 +175,7 @@ const EMPTY_PAGES: StorefrontPagesPublic = {
     work: true,
     contact: true,
   },
+  labels: { ...EMPTY_LABELS },
   home: {
     heroVideoUrl: "",
     ctaLabel: "",
@@ -197,7 +212,7 @@ const LIMITS = {
   stats: 6,
   partners: 12,
   featured: 4,
-  values: 8,
+  values: 12,
   team: 12,
   credentials: 8,
   steps: 8,
@@ -206,6 +221,7 @@ const LIMITS = {
   testimonials: 12,
   text: 4000,
   short: 200,
+  label: 40,
 };
 
 function str(value: unknown, fallback = ""): string {
@@ -243,6 +259,31 @@ export function isToggleablePageId(value: string): value is ToggleablePageId {
   return (TOGGLEABLE_PAGE_IDS as readonly string[]).includes(value);
 }
 
+export function defaultPageLabel(id: StorefrontPageId): string {
+  return STOREFRONT_PAGE_META[id].label;
+}
+
+export function resolvePageLabel(
+  pages: Pick<StorefrontPagesPublic, "labels"> | null | undefined,
+  id: StorefrontPageId,
+  fallback?: string
+): string {
+  const custom = pages?.labels?.[id]?.trim();
+  if (custom) return custom;
+  const kindFallback = fallback?.trim();
+  if (kindFallback) return kindFallback;
+  return defaultPageLabel(id);
+}
+
+function readLabels(raw: unknown): Record<StorefrontPageId, string> {
+  const source = raw && typeof raw === "object" ? (raw as Partial<Record<StorefrontPageId, string>>) : {};
+  const labels = { ...EMPTY_LABELS };
+  for (const id of STOREFRONT_PAGE_IDS) {
+    labels[id] = clip(source[id], LIMITS.label);
+  }
+  return labels;
+}
+
 export function defaultProcessSteps(): ContentStep[] {
   return [
     { title: "اطلب الخدمة", text: "تواصل معنا أو احجز موعدك أونلاين." },
@@ -270,6 +311,7 @@ export function pagesFromConfig(config: MkenConfig): StorefrontPagesPublic {
       work: enabledRaw.work !== false,
       contact: enabledRaw.contact !== false,
     },
+    labels: readLabels(raw.labels),
     home: {
       heroVideoUrl: clip(home.heroVideoUrl, 500),
       ctaLabel: clip(home.ctaLabel, LIMITS.short),
@@ -345,7 +387,9 @@ export function pagesFromConfig(config: MkenConfig): StorefrontPagesPublic {
         (item) => {
           const row = (item || {}) as ContentGalleryItem;
           const image = clip(row.image, 500);
-          return image && isHttpUrl(image) ? { image, caption: clip(row.caption, LIMITS.short) } : null;
+          return image && (isHttpUrl(image) || image.startsWith("/"))
+            ? { image, caption: clip(row.caption, LIMITS.short) }
+            : null;
         },
         LIMITS.gallery
       ),
@@ -403,13 +447,24 @@ export function publicContactFromConfig(config: MkenConfig): StorefrontContactPu
     if (!entry?.enabled || !entry.value) return null;
     const url = buildSocialUrl(platform.id, entry.value);
     if (!url) return null;
-    return { id: platform.id, name: platform.name, url, label: platform.name };
-  }).filter((row): row is StorefrontContactPublic["social"][number] => Boolean(row));
+    return { id: platform.id, name: platform.name, url, label: platform.name, icon: platform.icon };
+  }).filter((row): row is NonNullable<typeof row> => row !== null);
 
   const area = settings.serviceArea;
+  const mapsUrl = typeof config.mapsUrl === "string" ? config.mapsUrl.trim() : "";
+  const rawCenter = config.serviceArea?.center;
+  const pinLat = Number(rawCenter?.lat);
+  const pinLng = Number(rawCenter?.lng);
+  const lat = Number.isFinite(pinLat) ? pinLat : area.center.lat;
+  const lng = Number.isFinite(pinLng) ? pinLng : area.center.lng;
   const map =
-    area.enabled && Number.isFinite(area.center.lat) && Number.isFinite(area.center.lng)
-      ? { lat: area.center.lat, lng: area.center.lng, city: area.city }
+    area.enabled && Number.isFinite(lat) && Number.isFinite(lng)
+      ? {
+          lat,
+          lng,
+          city: (typeof config.serviceArea?.city === "string" && config.serviceArea.city.trim()) || area.city,
+          ...(mapsUrl ? { mapsUrl } : {}),
+        }
       : null;
 
   return {
@@ -433,10 +488,23 @@ function mergeEnabled(
   return next;
 }
 
+function mergeLabels(
+  current: StorefrontPagesPublic["labels"],
+  update?: Partial<Record<StorefrontPageId, string>>
+): StorefrontPagesPublic["labels"] {
+  const next = { ...current };
+  if (!update) return next;
+  for (const id of STOREFRONT_PAGE_IDS) {
+    if (typeof update[id] === "string") next[id] = clip(update[id], LIMITS.label);
+  }
+  return next;
+}
+
 export function mergePages(config: MkenConfig, update: PagesUpdate): MkenConfig {
   const current = pagesFromConfig(config);
   const next: StorefrontPagesPublic = {
     enabled: mergeEnabled(current.enabled, update.enabled),
+    labels: mergeLabels(current.labels, update.labels),
     home: { ...current.home, ...(update.home || {}) },
     about: { ...current.about, ...(update.about || {}) },
     services: { ...current.services, ...(update.services || {}) },
@@ -456,6 +524,11 @@ export function validatePages(update: PagesUpdate): string | null {
       if (!isToggleablePageId(key) && key !== "home") return "معرّف الصفحة غير صالح";
     }
   }
+  if (update.labels) {
+    for (const key of Object.keys(update.labels)) {
+      if (!isStorefrontPageId(key)) return "معرّف الصفحة غير صالح";
+    }
+  }
   const video = update.home?.heroVideoUrl;
   if (video && video.trim() && !isHttpUrl(video.trim()) && !/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(video)) {
     if (!isHttpUrl(clip(video, 500))) return "رابط فيديو الواجهة يجب أن يبدأ بـ http أو https";
@@ -467,7 +540,17 @@ export async function fetchPages(
   slug: string
 ): Promise<{ pages?: StorefrontPagesPublic; error?: string }> {
   const seed = await ensureTenantRow(slug);
-  if (seed.row) return { pages: pagesFromConfig(seed.row.config_data || {}) };
+  if (seed.row) {
+    const config =
+      slug === "rewa"
+        ? applyRewaDefaults(seed.row.config_data || {})
+        : slug === "almahrusa"
+          ? applyAlmahrusaDefaults(seed.row.config_data || {})
+          : slug === "rewaq"
+            ? applyRewaqDefaults(seed.row.config_data || {})
+            : seed.row.config_data || {};
+    return { pages: pagesFromConfig(config) };
+  }
   return { error: seed.error || "المنشأة غير موجودة أو قاعدة البيانات غير مهيأة" };
 }
 
@@ -477,7 +560,17 @@ export async function updatePages(
 ): Promise<{ pages?: StorefrontPagesPublic; error?: string }> {
   const ensured = await ensureTenantRow(slug);
   if (ensured.error || !ensured.row) return { error: ensured.error || "المنشأة غير موجودة" };
-  const written = await writeTenantConfig(slug, mergePages(ensured.row.config_data || {}, update));
+  const nextConfig = mergePages(ensured.row.config_data || {}, update);
+  const written = await writeTenantConfig(
+    slug,
+    slug === "rewa"
+      ? applyRewaDefaults(nextConfig)
+      : slug === "almahrusa"
+        ? applyAlmahrusaDefaults(nextConfig)
+        : slug === "rewaq"
+          ? applyRewaqDefaults(nextConfig)
+          : nextConfig
+  );
   if (written.error || !written.row) return { error: written.error || "تعذّر الحفظ" };
   return { pages: pagesFromConfig(written.row.config_data || {}) };
 }

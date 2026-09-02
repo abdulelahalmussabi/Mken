@@ -270,6 +270,11 @@ DO $$ BEGIN
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_token_expiry TIMESTAMPTZ;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_business_location_id TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_refresh_token TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_access_token TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_token_expiry TIMESTAMPTZ;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_customer_id TEXT;
+    ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_login_customer_id TEXT;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS google_place_id TEXT;
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS claim_status TEXT DEFAULT 'claimed';
     ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS preview_expires_at TIMESTAMPTZ;
