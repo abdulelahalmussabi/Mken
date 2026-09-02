@@ -369,8 +369,8 @@ export function applyAlmahrusaDefaults(config: MkenConfig): MkenConfig {
   const enabled = Array.isArray(next.enabled)
     ? next.enabled.filter((id): id is string => typeof id === "string")
     : [];
-  next.enabled = ALMAHRUSA_SERVICE_IDS.filter((id) => enabled.length === 0 || enabled.includes(id));
-  if (!next.enabled.length) next.enabled = [...ALMAHRUSA_SERVICE_IDS];
+  const nextEnabled = ALMAHRUSA_SERVICE_IDS.filter((id) => enabled.length === 0 || enabled.includes(id));
+  next.enabled = nextEnabled.length ? nextEnabled : [...ALMAHRUSA_SERVICE_IDS];
   next.featuredActivity = "hotels";
   next.featured = "deluxe-room";
 

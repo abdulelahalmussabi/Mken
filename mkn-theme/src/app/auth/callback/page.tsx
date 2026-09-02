@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 import { Loader2 } from "lucide-react";
 import { visitorSafeNext } from "@/lib/auth/visitor-oauth";
 
@@ -20,7 +21,7 @@ function AuthCallbackInner() {
 
     const code = searchParams.get("code");
     if (!code) {
-      router.replace(next);
+      router.replace(next as Route);
       return;
     }
 
@@ -33,7 +34,7 @@ function AuthCallbackInner() {
           setError(exchangeError.message);
           return;
         }
-        router.replace(next);
+        router.replace(next as Route);
       })
       .catch(() => {
         if (!cancelled) setError("تعذّر إكمال تسجيل الدخول");
