@@ -419,3 +419,47 @@ a:hover { color: var(--lp-primary-hover); }
 .lp-preview-form__consent input { margin-top: 4px; }
 .lp-preview-form__status { font-size: 0.85rem; color: var(--lp-muted); }
 .lp-hp { position: absolute; left: -9999px; opacity: 0; height: 0; }
+
+/* صفحات قانونية عامة — /privacy و /terms */
+.lp-legal {
+  padding: 40px 20px 64px;
+  max-width: 800px;
+}
+.lp-legal article + article { padding-top: 8px; }
+.lp-legal__kicker {
+  color: var(--lp-muted);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+.lp-legal h1 {
+  font-size: 1.75rem;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.lp-legal h2 {
+  font-size: 1.15rem;
+  margin: 28px 0 10px;
+}
+.lp-legal h3 {
+  font-size: 1rem;
+  margin: 18px 0 8px;
+  color: var(--lp-primary);
+}
+.lp-legal p, .lp-legal li { color: #e2e8f0; margin-bottom: 10px; }
+.lp-legal ul, .lp-legal ol { padding-inline-start: 1.4rem; margin-bottom: 12px; }
+.lp-legal li { margin-bottom: 6px; }
+.lp-legal code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--lp-surface);
+  border: 1px solid var(--lp-line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.lp-legal__rule {
+  border: 0;
+  border-top: 1px solid var(--lp-line);
+  margin: 48px 0;
+}

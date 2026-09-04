@@ -146,6 +146,14 @@ export default function Footer() {
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
           <div className="flex items-center gap-4">
+            <a href="https://mken.live/privacy" className="hover:text-amber-400 transition-colors">
+              سياسة الخصوصية
+            </a>
+            <span>•</span>
+            <a href="https://mken.live/terms" className="hover:text-amber-400 transition-colors">
+              شروط الخدمة
+            </a>
+            <span>•</span>
             <span>ثيم المناسبة النشط: <strong className="text-amber-700">{occasionDetails.shortName}</strong></span>
             <span>•</span>
             <span>السعودية 🇸🇦</span>

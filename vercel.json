@@ -11,6 +11,10 @@
     }
   },
   "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/privacy/", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/terms/", "destination": "/terms.html" },
     { "source": "/api/v1/push-subscribe", "destination": "/api/v1/push?action=subscribe" },
     { "source": "/api/v1/push-notify", "destination": "/api/v1/push?action=notify" },
     { "source": "/api/v1/push-test", "destination": "/api/v1/push?action=test" },

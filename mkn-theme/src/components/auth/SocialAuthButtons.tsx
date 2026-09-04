@@ -85,6 +85,17 @@ export default function SocialAuthButtons({
         {compact ? "آبل" : "الدخول بحساب آبل"}
       </button>
       {error ? <p className="text-[11px] text-rose-400 font-medium text-center">{error}</p> : null}
+      <p className="text-[11px] text-muted text-center leading-relaxed pt-1">
+        بتسجيل الدخول عبر جوجل فإنك توافق على{" "}
+        <a href="https://mken.live/privacy" className="text-amber-400 hover:underline">
+          سياسة الخصوصية
+        </a>{" "}
+        و{" "}
+        <a href="https://mken.live/terms" className="text-amber-400 hover:underline">
+          شروط الخدمة
+        </a>
+        . نستخدم الاسم والبريد فقط للمصادقة وإنشاء الحساب.
+      </p>
     </div>
   );
 }
