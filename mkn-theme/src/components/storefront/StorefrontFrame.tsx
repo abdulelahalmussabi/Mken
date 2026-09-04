@@ -27,7 +27,7 @@ import type {
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { BrandCutout } from "@/components/PlatformMark";
 import { useColorScheme } from "@/context/ColorSchemeContext";
-import { isUsableLogoSrc } from "@/lib/mken/logo-crop";
+import { isUsableLogoSrc, publicMediaSrc } from "@/lib/mken/logo-crop";
 import { NeonSocialGlyph, WhatsappCta, WhatsappMark, type SocialPlatform } from "@/components/social/NeonSocialIcons";
 import NeonSocialRow from "@/components/social/NeonSocialRow";
 import {
@@ -240,10 +240,60 @@ export function StorefrontFrame({
       .then((data) => {
         if (cancelled) return;
         if (data?.success && data.client && data.catalog) {
-          setStoreClient(data.client);
-          setCatalog(data.catalog);
-          setAppearance(data.appearance || null);
-          setPages(data.pages || emptyPages());
+          setStoreClient({
+            ...data.client,
+            heroImage: publicMediaSrc(data.client.heroImage || ""),
+            logo: publicMediaSrc(data.client.logo || "") || data.client.logo,
+          });
+          setCatalog({
+            ...data.catalog,
+            services: (data.catalog.services || []).map((service: StorefrontCatalogService) => ({
+              ...service,
+              image: publicMediaSrc(service.image || ""),
+            })),
+          });
+          setAppearance(
+            data.appearance
+              ? {
+                  ...data.appearance,
+                  ads: {
+                    primary: {
+                      ...data.appearance.ads.primary,
+                      image: publicMediaSrc(data.appearance.ads.primary?.image || ""),
+                    },
+                    secondary: (data.appearance.ads.secondary || []).map((ad: { image?: string }) => ({
+                      ...ad,
+                      image: publicMediaSrc(ad.image || ""),
+                    })),
+                  },
+                }
+              : null
+          );
+          const nextPages = data.pages || emptyPages();
+          setPages({
+            ...nextPages,
+            home: {
+              ...nextPages.home,
+              partners: (nextPages.home?.partners || []).map((partner: { image?: string }) => ({
+                ...partner,
+                image: publicMediaSrc(partner.image || ""),
+              })),
+            },
+            about: {
+              ...nextPages.about,
+              team: (nextPages.about?.team || []).map((person: { image?: string }) => ({
+                ...person,
+                image: publicMediaSrc(person.image || ""),
+              })),
+            },
+            work: {
+              ...nextPages.work,
+              gallery: (nextPages.work?.gallery || []).map((item: { image?: string }) => ({
+                ...item,
+                image: publicMediaSrc(item.image || ""),
+              })),
+            },
+          });
           setContactExtras(
             data.contactExtras || {
               emails: [],

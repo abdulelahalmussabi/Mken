@@ -43,7 +43,7 @@ import {
   REWA_WHATSAPP,
   rewaStorefrontMap,
 } from "@/lib/mken/rewa-content";
-import { isStaleSeedLogo, publicBrandSrc } from "@/lib/mken/logo-crop";
+import { isStaleSeedLogo, publicBrandSrc, publicMediaSrc } from "@/lib/mken/logo-crop";
 import {
   ensureTenantRow,
   fetchTenantRow,
@@ -677,6 +677,62 @@ export interface PublicStorefront {
   source: "database" | "default";
 }
 
+export function withPublicMedia(payload: PublicStorefront): PublicStorefront {
+  const img = publicMediaSrc;
+  return {
+    ...payload,
+    client: {
+      ...payload.client,
+      heroImage: img(payload.client.heroImage || ""),
+      logo: img(payload.client.logo || "") || payload.client.logo,
+    },
+    catalog: {
+      ...payload.catalog,
+      services: payload.catalog.services.map((service) => ({
+        ...service,
+        image: img(service.image || ""),
+      })),
+    },
+    appearance: {
+      ...payload.appearance,
+      ads: {
+        primary: {
+          ...payload.appearance.ads.primary,
+          image: img(payload.appearance.ads.primary.image || ""),
+        },
+        secondary: payload.appearance.ads.secondary.map((ad) => ({
+          ...ad,
+          image: img(ad.image || ""),
+        })),
+      },
+    },
+    pages: {
+      ...payload.pages,
+      home: {
+        ...payload.pages.home,
+        partners: payload.pages.home.partners.map((partner) => ({
+          ...partner,
+          image: img(partner.image || ""),
+        })),
+      },
+      about: {
+        ...payload.pages.about,
+        team: payload.pages.about.team.map((person) => ({
+          ...person,
+          image: img(person.image || ""),
+        })),
+      },
+      work: {
+        ...payload.pages.work,
+        gallery: payload.pages.work.gallery.map((item) => ({
+          ...item,
+          image: img(item.image || ""),
+        })),
+      },
+    },
+  };
+}
+
 export async function loadPublicStorefront(slug: string): Promise<PublicStorefront | null> {
   const key = slug.trim().toLowerCase();
   if (!key || isPlatformSlug(key)) return null;
@@ -842,12 +898,12 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
     contactExtras.map = rewaqStorefrontMap();
   }
 
-  return {
+  return withPublicMedia({
     client,
     catalog,
     appearance: publicAppearance,
     pages: pagesFromConfig(merged),
     contactExtras,
     source: row ? "database" : "default",
-  };
+  });
 }

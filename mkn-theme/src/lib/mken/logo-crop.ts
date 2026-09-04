@@ -185,11 +185,38 @@ export function isUsableLogoSrc(value: string | undefined | null): boolean {
 /** Bump when seed PNGs change so CDN/browser caches drop old opaque boards. */
 export const BRAND_CUTOUT_VERSION = "2";
 
+const APEX_ORIGIN = "https://www.mken.live";
+
+function isAbsoluteMedia(path: string): boolean {
+  return /^(https?:\/\/|data:|blob:)/i.test(path);
+}
+
+function onTenantPublicHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.endsWith(".mken.live") && host !== "www.mken.live" && host !== "mken.live";
+}
+
+/**
+ * Tenant subdomains 404 some `/public` files (e.g. `/almahrusa/hero.web.jpg`).
+ * Serve those from the apex host in production and on live tenant hosts.
+ */
+export function publicMediaSrc(path: string): string {
+  const trimmed = (path || "").trim();
+  if (!trimmed || isAbsoluteMedia(trimmed)) return trimmed;
+  const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  if (onTenantPublicHost()) return `${APEX_ORIGIN}${normalized}`;
+  if (typeof window === "undefined" && process.env.NODE_ENV === "production") {
+    return `${APEX_ORIGIN}${normalized}`;
+  }
+  return normalized;
+}
+
 /** Same-origin in dev; apex in production so tenant hosts do not 404 static brand files. */
 export function publicBrandSrc(filename: string): string {
   const file = filename.replace(/^\/+/, "").replace(/^brand\//, "");
   const path =
-    process.env.NODE_ENV === "development" ? `/brand/${file}` : `https://www.mken.live/brand/${file}`;
+    process.env.NODE_ENV === "development" ? `/brand/${file}` : `${APEX_ORIGIN}/brand/${file}`;
   return `${path}?v=${BRAND_CUTOUT_VERSION}`;
 }
 
