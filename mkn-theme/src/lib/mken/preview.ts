@@ -57,10 +57,35 @@ export interface LivePlaceDetails {
   rating?: number;
   ratingsTotal?: number;
   weekdayText?: string[];
+  openingPeriods?: Array<{
+    openDay?: number;
+    openTime?: { hours: number; minutes: number };
+    closeTime?: { hours: number; minutes: number };
+  }>;
   types?: string[];
   reviews: LivePlaceReview[];
   photos: LivePlacePhoto[];
   attribution: "Google Maps";
+}
+
+function placesTimeParts(time?: string): { hours: number; minutes: number } | undefined {
+  if (!time || !/^\d{3,4}$/.test(time)) return undefined;
+  const padded = time.padStart(4, "0");
+  return { hours: Number(padded.slice(0, 2)), minutes: Number(padded.slice(2)) };
+}
+
+function openingPeriodsFromLegacy(
+  periods?: Array<{ open?: { day?: number; time?: string }; close?: { day?: number; time?: string } }>
+): LivePlaceDetails["openingPeriods"] {
+  if (!periods?.length) return undefined;
+  return periods
+    .map((period) => {
+      const openTime = placesTimeParts(period.open?.time);
+      const closeTime = placesTimeParts(period.close?.time);
+      if (!openTime || !closeTime || period.open?.day == null) return null;
+      return { openDay: period.open.day, openTime, closeTime };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
 }
 
 const PLACE_DETAILS_FIELDS = [
@@ -636,7 +661,10 @@ async function fetchLivePlaceDetailsLegacy(placeId: string, key: string): Promis
       rating?: number;
       user_ratings_total?: number;
       types?: string[];
-      opening_hours?: { weekday_text?: string[] };
+      opening_hours?: {
+        weekday_text?: string[];
+        periods?: Array<{ open?: { day?: number; time?: string }; close?: { day?: number; time?: string } }>;
+      };
       reviews?: Array<{
         author_name?: string;
         author_url?: string;
@@ -662,6 +690,7 @@ async function fetchLivePlaceDetailsLegacy(placeId: string, key: string): Promis
     rating: result.rating,
     ratingsTotal: result.user_ratings_total,
     weekdayText: result.opening_hours?.weekday_text,
+    openingPeriods: openingPeriodsFromLegacy(result.opening_hours?.periods),
     types: result.types,
     reviews: (result.reviews || []).map((review) => ({
       authorName: review.author_name || "",
@@ -694,7 +723,13 @@ async function fetchLivePlaceDetailsNew(placeId: string, key: string): Promise<L
     rating?: number;
     userRatingCount?: number;
     types?: string[];
-    regularOpeningHours?: { weekdayDescriptions?: string[] };
+    regularOpeningHours?: {
+      weekdayDescriptions?: string[];
+      periods?: Array<{
+        open?: { day?: number; hour?: number; minute?: number };
+        close?: { day?: number; hour?: number; minute?: number };
+      }>;
+    };
     reviews?: Array<{
       authorAttribution?: { displayName?: string; uri?: string; photoUri?: string };
       rating?: number;
@@ -721,6 +756,16 @@ async function fetchLivePlaceDetailsNew(placeId: string, key: string): Promise<L
     rating: result.rating,
     ratingsTotal: result.userRatingCount,
     weekdayText: result.regularOpeningHours?.weekdayDescriptions,
+    openingPeriods: (result.regularOpeningHours?.periods || [])
+      .map((period) => {
+        if (period.open?.day == null || period.open.hour == null || period.close?.hour == null) return null;
+        return {
+          openDay: period.open.day,
+          openTime: { hours: period.open.hour, minutes: period.open.minute || 0 },
+          closeTime: { hours: period.close.hour, minutes: period.close.minute || 0 },
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row)),
     types: result.types,
     reviews: (result.reviews || []).map((review) => ({
       authorName: review.authorAttribution?.displayName || "",

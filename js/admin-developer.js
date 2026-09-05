@@ -1121,9 +1121,9 @@
     if (site.website) previewLines.push('• الموقع: ' + site.website);
 
     var confirmMsg =
-      'سيتم تحديث بيانات جوجل بيزنس من mken للحقول غير المتطابقة فقط:\n\n' +
-      previewLines.join('\n') +
-      '\n\nملاحظة: تغيير الاسم قد يتطلب موافقة Google.\n\nهل تريد المتابعة؟';
+      'سيتم تحديث الهاتف ورابط الموقع غير المتطابقين فقط.\n\n' +
+      previewLines.filter(function (line) { return line.indexOf('الاسم') === -1; }).join('\n') +
+      '\n\nاسم المنشأة لن يُحدَّث حمايةً للحساب (قد يؤدي تغييره إلى تعليق الصفحة).\n\nهل تريد المتابعة؟';
 
     if (!confirm(confirmMsg)) return;
 
@@ -1170,9 +1170,9 @@
     var cfg = store.loadConfig() || {};
     
     var center = (cfg.serviceArea && cfg.serviceArea.center) || {};
-    var lat = center.lat || 21.485811;
-    var lng = center.lng || 39.192505;
-    var city = (cfg.serviceArea && cfg.serviceArea.city) || 'جدة';
+    var lat = center.lat || '';
+    var lng = center.lng || '';
+    var city = (cfg.serviceArea && cfg.serviceArea.city) || '';
     
     var category = '';
     if (cfg.featuredActivity) {
@@ -1182,7 +1182,13 @@
       }
     }
     if (!category) {
-      category = 'خدمات وتجميل';
+      toast('عيّن النشاط الرئيسي للمنشأة قبل فحص المنافسين', 'warning');
+      return;
+    }
+
+    if (!city) {
+      toast('أدخل مدينة المنشأة في نطاق الخدمة قبل فحص المنافسين', 'warning');
+      return;
     }
 
     var runScanBtn = document.getElementById('gbpRunScanBtn');
@@ -1217,7 +1223,12 @@
         if (data.success && data.competitors) {
           renderCompetitorsList(data.competitors);
           generateSEORecommendations(data.competitors);
-          toast('اكتمل فحص المنافسين والتحليل بنجاح', 'success');
+          toast(
+            data.source === 'gemini_simulation'
+              ? 'نتائج تقديرية — ليست من خرائط جوجل مباشرة'
+              : 'اكتمل فحص المنافسين والتحليل بنجاح',
+            'success'
+          );
         } else {
           toast('فشل جلب بيانات المنافسين', 'error');
         }
@@ -1250,7 +1261,17 @@
       
       var tdName = document.createElement('td');
       tdName.style.padding = '8px';
-      tdName.textContent = comp.name || 'غير معروف';
+      if (comp.mapsUrl || comp.placeId) {
+        var mapsLink = document.createElement('a');
+        mapsLink.href = comp.mapsUrl || ('https://www.google.com/maps/search/?api=1&query_place_id=' + encodeURIComponent(comp.placeId));
+        mapsLink.target = '_blank';
+        mapsLink.rel = 'noreferrer';
+        mapsLink.textContent = (comp.name || 'غير معروف') + ' — معاينة في خرائط جوجل';
+        mapsLink.style.color = '#7dd3fc';
+        tdName.appendChild(mapsLink);
+      } else {
+        tdName.textContent = comp.name || 'غير معروف';
+      }
       
       var tdRating = document.createElement('td');
       tdRating.style.padding = '8px';

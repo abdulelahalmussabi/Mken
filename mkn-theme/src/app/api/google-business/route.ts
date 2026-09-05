@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { resolveTenantScope } from "@/lib/auth/scope";
 import {
   buildGoogleAuthUrl,
+  bindMapsListing,
   disconnectGbp,
   fetchGbpStatus,
   generateGbpPost,
@@ -15,6 +16,7 @@ import {
   selectGbpLocation,
   syncGbpServices,
   syncNapFromMken,
+  syncNapToMken,
 } from "@/lib/mken/gbp";
 import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
 
@@ -30,15 +32,17 @@ export async function GET(request: Request) {
   const action = new URL(request.url).searchParams.get("action") || "status";
 
   if (action === "auth-url") {
-    const built = buildGoogleAuthUrl(scope.slug);
+    const requestHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+    const built = buildGoogleAuthUrl(scope.slug, requestHost);
     if (built.error || !built.url) {
       return NextResponse.json({ success: false, message: built.error }, { status: 503 });
     }
-    return NextResponse.json({ success: true, url: built.url });
+    return NextResponse.json({ success: true, tenant: scope.slug, url: built.url });
   }
 
   if (action === "locations") {
-    const listed = await listGbpLocations(scope.slug);
+    const refresh = new URL(request.url).searchParams.get("refresh") === "1";
+    const listed = await listGbpLocations(scope.slug, { refresh });
     if (listed.error && listed.locations.length === 0 && !listed.connected) {
       return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
     }
@@ -83,6 +87,10 @@ export async function POST(request: Request) {
     action?: string;
     locationId?: string;
     syncWebsite?: boolean;
+    includeName?: boolean;
+    mapsUrl?: string;
+    selectedFields?: string[];
+    serviceIds?: string[];
     prompt?: string;
     serviceName?: string;
     reviewText?: string;
@@ -95,6 +103,20 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     body = {};
+  }
+
+  if (body.action === "bind-maps-url") {
+    const result = await bindMapsListing(scope.slug, body.mapsUrl || "");
+    if (result.error) {
+      return NextResponse.json({ success: false, message: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      success: true,
+      mapsUrl: result.mapsUrl,
+      mapsPlaceId: result.mapsPlaceId,
+      city: result.city,
+      message: "تم حفظ رابط الخرائط. يمكنك فحص NAP وجلب المنافسين الآن.",
+    });
   }
 
   if (body.action === "select-location") {
@@ -114,7 +136,26 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "sync-nap") {
-    const result = await syncNapFromMken(scope.slug, body.locationId || "");
+    const result = await syncNapFromMken(scope.slug, body.locationId || "", {
+      includeName: body.includeName === true,
+    });
+    if (result.error) {
+      return NextResponse.json({ success: false, message: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      success: true,
+      report: result.report,
+      updated: result.updated || [],
+      skipped: result.skipped || [],
+      message: result.message,
+    });
+  }
+
+  if (body.action === "sync-nap-reverse") {
+    const selectedFields = (body.selectedFields || []).filter(
+      (field): field is "phone" | "city" | "name" => field === "phone" || field === "city" || field === "name"
+    );
+    const result = await syncNapToMken(scope.slug, body.locationId || "", selectedFields);
     if (result.error) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
@@ -152,11 +193,12 @@ export async function POST(request: Request) {
       success: true,
       competitors: result.competitors,
       source: result.source,
+      query: result.query,
     });
   }
 
   if (body.action === "sync-services") {
-    const result = await syncGbpServices(scope.slug, body.locationId || "");
+    const result = await syncGbpServices(scope.slug, body.locationId || "", body.serviceIds);
     if (result.error) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }

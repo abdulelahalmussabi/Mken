@@ -411,22 +411,38 @@ async function handleCompetitors(req, res) {
   const { lat, lng, category, city } = req.body || {};
   const mapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-  if (mapsApiKey) {
+  if (mapsApiKey && (category || city)) {
     try {
-      const query = encodeURIComponent((category || 'خدمات') + ' ' + (city || ''));
-      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&location=${lat || '21.485811'},${lng || '39.192505'}&radius=5000&key=${mapsApiKey}`;
+      const params = new URLSearchParams({
+        query: [category, city].filter(Boolean).join(' '),
+        language: 'ar',
+        region: 'sa',
+        key: mapsApiKey,
+      });
+      if (lat && lng) {
+        params.set('location', lat + ',' + lng);
+        params.set('radius', '12000');
+      }
+      const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?' + params.toString();
       
       const response = await fetch(url);
       if (!response.ok) throw new Error('Places API returned ' + response.status);
       
       const data = await response.json();
       const results = (data.results || []).slice(0, 5).map(function (item) {
+        const name = item.name || '';
+        const address = item.formatted_address || '';
+        const placeId = item.place_id || '';
+        const mapsUrl = placeId
+          ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name || 'place') + '&query_place_id=' + encodeURIComponent(placeId)
+          : (name ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name + ' ' + address) : '');
         return {
-          name: item.name,
+          name: name,
           rating: item.rating || 0,
           userRatingsTotal: item.user_ratings_total || 0,
-          address: item.formatted_address || '',
-          placeId: item.place_id
+          address: address,
+          placeId: placeId,
+          mapsUrl: mapsUrl
         };
       });
       return res.status(200).json({ success: true, competitors: results, source: 'google_places' });
@@ -435,18 +451,17 @@ async function handleCompetitors(req, res) {
     }
   }
 
-  const prompt = `أريد منك جلب أو محاكاة 4 منافسين حقيقيين ومشهورين في نفس مجال ونشاط المنشأة في هذه المدينة.
-النشاط: "${category || 'صالون حلاقة ورعاية'}"
-المدينة: "${city || 'جدة'}"
+  if (!city || !category) {
+    return res.status(400).json({
+      error: 'تعذّر جلب المنافسين. أرسل مدينة المنشأة ونشاطها بدون افتراض جدة أو صالون.',
+    });
+  }
 
-شروط الإرجاع:
-1. أرجع النتيجة على شكل مصفوفة JSON صالحة ومباشرة فقط دون أي نصوص تمهيدية أو شرح أو علامات ترميز (ممنوع كتابة \`\`\`json أو أي شيء، فقط أرجع مصفوفة JSON تبدأ بـ [ وتنتهي بـ ]).
-2. يجب أن يحتوي كل عنصر في المصفوفة على الحقول التالية:
-   - "name": اسم المنافس باللغة العربية.
-   - "rating": تقييم تقريبي بين 3.8 و 4.9 (عدد عشري).
-   - "userRatingsTotal": عدد التقييمات التقريبي بين 50 و 1500 (عدد صحيح).
-   - "address": عنوان تقريبي في المدينة المذكورة.
-3. تأكد من أن الأسماء لمنافسين حقيقيين أو واقعيين جداً في تلك المدينة.`;
+  const prompt = `أرجع 4 منافسين محليين في نفس النشاط ونفس المدينة فقط.
+النشاط: "${category}"
+المدينة: "${city}"
+ممنوع ذكر مدن أخرى أو أنشطة مختلفة.
+أرجع مصفوفة JSON فقط تبدأ بـ [ وتنتهي بـ ] بالحقول: name, rating, userRatingsTotal, address.`;
 
   try {
     const aiText = await callGemini(prompt);
@@ -454,16 +469,23 @@ async function handleCompetitors(req, res) {
     if (cleanJson.startsWith('```')) {
       cleanJson = cleanJson.replace(/^```(json)?/, '').replace(/```$/, '').trim();
     }
-    const competitors = JSON.parse(cleanJson);
+    const competitors = JSON.parse(cleanJson).map(function (item) {
+      const name = item.name || '';
+      const address = item.address || '';
+      return {
+        name: name,
+        rating: item.rating || 0,
+        userRatingsTotal: item.userRatingsTotal || 0,
+        address: address,
+        mapsUrl: name
+          ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([name, address, city].filter(Boolean).join(' '))
+          : ''
+      };
+    });
     return res.status(200).json({ success: true, competitors: competitors, source: 'gemini_simulation' });
   } catch (err) {
     console.error('Gemini Competitor Simulation failed:', err);
-    const safetyCompetitors = [
-      { name: 'صالون الأناقة والجمال الراقي', rating: 4.6, userRatingsTotal: 340, address: 'شارع التحلية، جدة' },
-      { name: 'صالون الحلاقة الذهبي للرجال', rating: 4.4, userRatingsTotal: 180, address: 'شارع الأمير سلطان، جدة' },
-      { name: 'مركز عناية الرجل المتكامل', rating: 4.7, userRatingsTotal: 520, address: 'حي النعيم، جدة' }
-    ];
-    return res.status(200).json({ success: true, competitors: safetyCompetitors, source: 'static_fallback' });
+    return res.status(502).json({ error: 'تعذّر جلب منافسين من خرائط جوجل لهذه المدينة والنشاط.' });
   }
 }
 
@@ -500,7 +522,7 @@ async function handleSyncNap(req, res) {
   const auth = await authorizeGbpAiRequest(req, res, 'sync-nap');
   if (!auth) return;
 
-  const { locationId, site } = req.body || {};
+  const { locationId, site, includeName } = req.body || {};
   const tenant = auth.tenantSlug;
 
   if (!locationId) {
@@ -512,7 +534,7 @@ async function handleSyncNap(req, res) {
 
   const accessToken = await getValidAccessToken(tenant);
   const gbpLocation = await fetchGbpLocation(locationId, accessToken);
-  const plan = planNapSync(site, gbpLocation);
+  const plan = planNapSync(site, gbpLocation, { includeName: includeName === true });
 
   if (!plan.updateMask) {
     return res.status(200).json({

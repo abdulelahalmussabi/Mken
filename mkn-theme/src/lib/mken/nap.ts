@@ -55,7 +55,13 @@ export interface GbpLocationDetail {
     administrativeArea?: string;
     postalCode?: string;
   };
-  regularHours?: { periods?: Array<{ openDay?: number; openTime?: { hours?: number; minutes?: number }; closeTime?: { hours?: number; minutes?: number } }> };
+  regularHours?: {
+    periods?: Array<{
+      openDay?: number | string;
+      openTime?: { hours?: number; minutes?: number };
+      closeTime?: { hours?: number; minutes?: number };
+    }>;
+  };
   primaryCategory?: { displayName?: string; name?: string };
 }
 
@@ -113,6 +119,103 @@ function formatGbpAddress(storefrontAddress: GbpLocationDetail["storefrontAddres
 }
 
 const DAY_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const DAY_LABELS: Record<string, string> = {
+  SUNDAY: "الأحد",
+  MONDAY: "الإثنين",
+  TUESDAY: "الثلاثاء",
+  WEDNESDAY: "الأربعاء",
+  THURSDAY: "الخميس",
+  FRIDAY: "الجمعة",
+  SATURDAY: "السبت",
+};
+const SAUDI_CITIES = [
+  "المدينة المنورة",
+  "مكة المكرمة",
+  "جدة",
+  "الرياض",
+  "الدمام",
+  "الخبر",
+  "الظهران",
+  "الطائف",
+  "أبها",
+  "تبوك",
+  "بريدة",
+  "حائل",
+  "نجران",
+  "جازان",
+  "ينبع",
+  "الجبيل",
+];
+
+function dayLabel(openDay?: number | string): string {
+  if (typeof openDay === "number" && openDay >= 0 && openDay < DAY_NAMES.length) {
+    return DAY_NAMES[openDay];
+  }
+  const key = String(openDay || "").toUpperCase();
+  return DAY_LABELS[key] || (openDay != null ? String(openDay) : "");
+}
+
+export function cityFromGbpAddress(
+  storefrontAddress: GbpLocationDetail["storefrontAddress"],
+  fallbackText = ""
+): string {
+  const locality = String(storefrontAddress?.locality || "").trim();
+  if (locality) return locality;
+  const blob = `${formatGbpAddress(storefrontAddress)} ${fallbackText}`;
+  const normalized = normalizeText(blob);
+  for (const city of SAUDI_CITIES) {
+    if (normalized.includes(normalizeText(city))) return city;
+  }
+  return "";
+}
+
+export function parseClockMinutes(value: string): number | null {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function periodMinutes(time?: { hours?: number; minutes?: number }): number | null {
+  if (!time || time.hours == null || !Number.isFinite(time.hours)) return null;
+  const hours = Math.max(0, Math.min(23, time.hours));
+  const minutes = Math.max(0, Math.min(59, time.minutes || 0));
+  return hours * 60 + minutes;
+}
+
+function mkenCoversGbpRange(windowStart: number, windowEnd: number, open: number, close: number): boolean {
+  const tol = 15;
+  const mkenWrap = windowEnd <= windowStart;
+  const gbpWrap = close <= open;
+
+  if (!mkenWrap && !gbpWrap) {
+    return open + tol >= windowStart && close - tol <= windowEnd;
+  }
+  if (!mkenWrap && gbpWrap) return false;
+  if (mkenWrap && gbpWrap) {
+    return open + tol >= windowStart && close - tol <= windowEnd;
+  }
+  return open + tol >= windowStart || close - tol <= windowEnd;
+}
+
+export function checkHoursMatch(
+  site: NapSiteSnapshot,
+  regularHours: GbpLocationDetail["regularHours"]
+): boolean {
+  const start = parseClockMinutes(site.hoursStart);
+  const end = parseClockMinutes(site.hoursEnd);
+  const periods = regularHours?.periods || [];
+  if (start == null || end == null || !periods.length) return false;
+
+  return periods.every((period) => {
+    const open = periodMinutes(period.openTime);
+    const close = periodMinutes(period.closeTime);
+    if (open == null || close == null) return false;
+    return mkenCoversGbpRange(start, end, open, close);
+  });
+}
 
 function formatTimeOfDay(timeObj?: { hours?: number; minutes?: number }): string {
   if (!timeObj) return "";
@@ -124,7 +227,7 @@ function formatTimeOfDay(timeObj?: { hours?: number; minutes?: number }): string
 function formatGbpHours(regularHours: GbpLocationDetail["regularHours"]): string {
   if (!regularHours?.periods?.length) return "";
   const summaries = regularHours.periods.slice(0, 3).map((period) => {
-    const day = DAY_NAMES[period.openDay ?? -1] || `يوم ${period.openDay}`;
+    const day = dayLabel(period.openDay) || "يوم";
     return `${day} ${formatTimeOfDay(period.openTime)}–${formatTimeOfDay(period.closeTime)}`;
   });
   let text = summaries.join(" | ");
@@ -173,8 +276,16 @@ function compareField(
 export function buildNapAuditReport(site: NapSiteSnapshot, gbpLocation: GbpLocationDetail | null): NapReport {
   const gbp = gbpLocation || {};
   const gbpAddress = formatGbpAddress(gbp.storefrontAddress);
-  const gbpCity = gbp.storefrontAddress?.locality || gbpAddress;
+  const gbpCity = cityFromGbpAddress(gbp.storefrontAddress, gbpAddress);
   const gbpCategory = gbp.primaryCategory?.displayName || gbp.primaryCategory?.name || "";
+  const hoursSite = formatSiteHours(site);
+  const hoursGbp = formatGbpHours(gbp.regularHours);
+  let hoursStatus: NapStatus;
+  if (!hoursSite && !hoursGbp) hoursStatus = "missing_both";
+  else if (!hoursSite) hoursStatus = "missing_site";
+  else if (!hoursGbp) hoursStatus = "missing_gbp";
+  else if (checkHoursMatch(site, gbp.regularHours)) hoursStatus = "match";
+  else hoursStatus = "mismatch";
 
   const items: NapItem[] = [
     compareField(
@@ -183,7 +294,7 @@ export function buildNapAuditReport(site: NapSiteSnapshot, gbpLocation: GbpLocat
       site.name || "",
       gbp.title || "",
       (a, b) => normalizeText(a) === normalizeText(b),
-      "تأكد أن اسم العلامة في مكّن يطابق الاسم الرسمي على جوجل."
+      "مزامنة الاسم غير مفعّلة افتراضياً: تغييره على جوجل قد يعرّض الصفحة للتعليق."
     ),
     compareField(
       "phone",
@@ -205,26 +316,27 @@ export function buildNapAuditReport(site: NapSiteSnapshot, gbpLocation: GbpLocat
       "city",
       "المدينة / العنوان (Address)",
       site.city || "",
-      gbpCity,
+      gbpCity || gbpAddress,
       (a, b) => {
         const na = normalizeText(a);
         const nb = normalizeText(b);
         return na === nb || Boolean(na && nb.includes(na)) || Boolean(nb && na.includes(nb));
       },
-      "راجع المدينة في نطاق الخدمة ومطابقة العنوان على GBP."
+      gbpAddress && gbpCity && gbpAddress !== gbpCity
+        ? `المدينة للمقارنة: ${gbpCity}. العنوان الكامل على جوجل يُراجع يدوياً.`
+        : "راجع المدينة في نطاق الخدمة ومطابقة العنوان على GBP."
     ),
-    compareField(
-      "hours",
-      "ساعات العمل (Hours)",
-      formatSiteHours(site),
-      formatGbpHours(gbp.regularHours),
-      (a, b) => {
-        if (!a || !b) return false;
-        const extract = (s: string) => String(s).replace(/\D/g, "").slice(0, 8);
-        return extract(a) === extract(b);
-      },
-      "ساعات مكّن مبسّطة للحجز — قارن يدوياً مع جدول GBP إن اختلفت."
-    ),
+    {
+      id: "hours",
+      label: "ساعات العمل (Hours)",
+      siteValue: hoursSite || "—",
+      gbpValue: hoursGbp || "—",
+      status: hoursStatus,
+      hint:
+        hoursStatus === "match"
+          ? "ساعات الحجز في مكّن تغطي فترات الدوام على جوجل."
+          : "تطابق إذا غطّت ساعات الحجز في مكّن فترات جوجل (اختلاف شكل الجدول لا يُعد خطأ).",
+    },
   ];
 
   if (gbpCategory) {
@@ -264,7 +376,25 @@ export function buildNapAuditReport(site: NapSiteSnapshot, gbpLocation: GbpLocat
   };
 }
 
-export function planNapSync(site: NapSiteSnapshot, gbpLocation: GbpLocationDetail | null): NapSyncPlan {
+export interface NapSyncOptions {
+  includeName?: boolean;
+}
+
+export function napSkipReasonLabel(reason: string): string {
+  if (reason === "name_protected") return "محمي — لا يُزامَن الاسم إلا بتأكيد صريح";
+  if (reason === "already_match") return "متطابق مسبقاً";
+  if (reason === "missing_on_site") return "ناقص في مكّن";
+  if (reason === "missing_on_gbp") return "ناقص في جوجل";
+  if (reason === "not_selected") return "غير محدّد في هذه المزامنة";
+  if (reason === "manual_only") return "يتطلب تعديلاً يدوياً على جوجل";
+  return reason;
+}
+
+export function planNapSync(
+  site: NapSiteSnapshot,
+  gbpLocation: GbpLocationDetail | null,
+  options?: NapSyncOptions
+): NapSyncPlan {
   const report = buildNapAuditReport(site, gbpLocation);
   const patchBody: Record<string, unknown> = {};
   const updated: NapSyncPlan["updated"] = [];
@@ -307,6 +437,10 @@ export function planNapSync(site: NapSiteSnapshot, gbpLocation: GbpLocationDetai
   });
 
   trySync("name", () => {
+    if (!options?.includeName) {
+      skipped.push({ field: "name", label: fieldLabels.name, reason: "name_protected" });
+      return;
+    }
     if (!site.name) return;
     patchBody.title = String(site.name).trim();
     updated.push({ field: "name", label: fieldLabels.name, value: String(patchBody.title) });
@@ -326,4 +460,62 @@ export function planNapSync(site: NapSiteSnapshot, gbpLocation: GbpLocationDetai
     updated,
     skipped,
   };
+}
+
+export type ReverseNapField = "phone" | "city" | "name";
+
+export interface ReverseNapPlan {
+  report: NapReport;
+  updates: { field: ReverseNapField; label: string; value: string }[];
+  skipped: { field: string; label: string; reason: string }[];
+  configPatch: { phone?: string; city?: string; brandName?: string };
+}
+
+export function planReverseNapSync(
+  site: NapSiteSnapshot,
+  gbpLocation: GbpLocationDetail | null,
+  selectedFields: ReverseNapField[]
+): ReverseNapPlan {
+  const report = buildNapAuditReport(site, gbpLocation);
+  const selected = new Set(selectedFields);
+  const updates: ReverseNapPlan["updates"] = [];
+  const skipped: ReverseNapPlan["skipped"] = [];
+  const configPatch: ReverseNapPlan["configPatch"] = {};
+  const gbp = gbpLocation || {};
+  const labels: Record<ReverseNapField, string> = {
+    phone: "الهاتف",
+    city: "المدينة",
+    name: "اسم العلامة",
+  };
+
+  const consider = (field: ReverseNapField, gbpRaw: string, apply: (value: string) => void) => {
+    const value = gbpRaw.trim();
+    const item = report.items.find((entry) => entry.id === field);
+    if (!selected.has(field)) {
+      skipped.push({ field, label: labels[field], reason: "not_selected" });
+      return;
+    }
+    if (!value) {
+      skipped.push({ field, label: labels[field], reason: "missing_on_gbp" });
+      return;
+    }
+    if (item?.status === "match") {
+      skipped.push({ field, label: labels[field], reason: "already_match" });
+      return;
+    }
+    apply(value);
+    updates.push({ field, label: labels[field], value });
+  };
+
+  consider("phone", gbp.phoneNumbers?.primaryPhone || gbp.phoneNumbers?.primary_phone || "", (value) => {
+    configPatch.phone = formatPhoneForGbp(value) || value;
+  });
+  consider("city", cityFromGbpAddress(gbp.storefrontAddress, formatGbpAddress(gbp.storefrontAddress)), (value) => {
+    configPatch.city = value;
+  });
+  consider("name", gbp.title || "", (value) => {
+    configPatch.brandName = value;
+  });
+
+  return { report, updates, skipped, configPatch };
 }

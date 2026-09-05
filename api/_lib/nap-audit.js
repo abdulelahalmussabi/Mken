@@ -223,11 +223,12 @@ function formatPhoneForGbp(phone) {
   return d ? '+' + d : '';
 }
 
-function planNapSync(site, gbpLocation) {
+function planNapSync(site, gbpLocation, options) {
   const report = buildNapAuditReport(site, gbpLocation);
   const patchBody = {};
   const updated = [];
   const skipped = [];
+  const includeName = Boolean(options && options.includeName);
   const fieldLabels = {
     website: 'الموقع الإلكتروني',
     phone: 'الهاتف',
@@ -268,6 +269,10 @@ function planNapSync(site, gbpLocation) {
   });
 
   trySync('name', function () {
+    if (!includeName) {
+      skipped.push({ field: 'name', label: fieldLabels.name, reason: 'name_protected' });
+      return;
+    }
     if (!site.name) return;
     patchBody.title = String(site.name).trim();
     updated.push({ field: 'name', label: fieldLabels.name, value: patchBody.title });

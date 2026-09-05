@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import type { NapReport, NapStatus } from "@/lib/mken/nap";
+import { napSkipReasonLabel, type NapReport, type NapStatus } from "@/lib/mken/nap";
 import type { GbpCompetitor } from "@/lib/mken/gbp";
 
 function napLabel(status: NapStatus): string {
@@ -23,12 +23,14 @@ function napClass(status: NapStatus): string {
 export default function GbpSeoPanel({
   query,
   locationId,
+  mapsBound,
   busy,
   setBusy,
   onToast,
 }: {
   query: string;
   locationId: string;
+  mapsBound?: boolean;
   busy: boolean;
   setBusy: (value: boolean) => void;
   onToast: (message: string, type: "success" | "error") => void;
@@ -40,8 +42,18 @@ export default function GbpSeoPanel({
   const [rating, setRating] = useState("5");
   const [replyText, setReplyText] = useState("");
   const [competitors, setCompetitors] = useState<GbpCompetitor[]>([]);
+  const [competitorSource, setCompetitorSource] = useState("");
+  const [competitorQuery, setCompetitorQuery] = useState("");
+  const [includeName, setIncludeName] = useState(false);
+  const [skipped, setSkipped] = useState<{ field: string; label: string; reason: string }[]>([]);
   const [serviceName, setServiceName] = useState("");
   const [serviceTitles, setServiceTitles] = useState<string[]>([]);
+  const [catalogServices, setCatalogServices] = useState<Array<{ id: string; title: string; price: string }>>([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [showServices, setShowServices] = useState(false);
+  const [showReverse, setShowReverse] = useState(false);
+  const [reverseFields, setReverseFields] = useState({ phone: true, city: true, name: false });
+  const canAudit = Boolean(locationId || mapsBound);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,11 +61,25 @@ export default function GbpSeoPanel({
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data.success) return;
-        const titles = ((data.services || []) as Array<{ enabled?: boolean; available?: boolean; title?: string; overrides?: { title?: string } }>)
+        const rows = ((data.services || []) as Array<{
+          id?: string;
+          enabled?: boolean;
+          available?: boolean;
+          title?: string;
+          price?: string;
+          priceLabel?: string;
+          overrides?: { title?: string; price?: string };
+        }>)
           .filter((service) => service.enabled && service.available)
-          .map((service) => service.overrides?.title || service.title || "")
-          .filter(Boolean);
-        setServiceTitles(titles);
+          .map((service) => ({
+            id: service.id || "",
+            title: service.overrides?.title || service.title || "",
+            price: service.overrides?.price || service.price || service.priceLabel || "",
+          }))
+          .filter((service) => service.id && service.title);
+        setCatalogServices(rows);
+        setServiceTitles(rows.map((service) => service.title));
+        setSelectedServiceIds(rows.map((service) => service.id));
       })
       .catch(() => {
         /* keep empty */
@@ -90,7 +116,14 @@ export default function GbpSeoPanel({
   const fetchCompetitors = async () => {
     const data = await postJson("competitors");
     setCompetitors(data.competitors || []);
-    onToast("تم جلب المنافسين", "success");
+    setCompetitorSource(data.source || "");
+    setCompetitorQuery(data.query || "");
+    onToast(
+      data.source === "gemini_simulation"
+        ? "نتائج تقديرية — ليست من خرائط جوجل مباشرة"
+        : "تم جلب المنافسين من خرائط جوجل",
+      "success"
+    );
   };
 
   return (
@@ -98,11 +131,12 @@ export default function GbpSeoPanel({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={busy || !locationId}
+          disabled={busy || !canAudit}
           onClick={() =>
             run(async () => {
               const data = await postJson("nap-audit");
               setReport(data.report);
+              setSkipped([]);
               onToast("تم فحص NAP", "success");
             })
           }
@@ -115,14 +149,37 @@ export default function GbpSeoPanel({
           disabled={busy || !locationId}
           onClick={() =>
             run(async () => {
-              const data = await postJson("sync-nap");
+              if (includeName) {
+                const ok = window.confirm(
+                  "تغيير اسم المنشأة على جوجل قد يعرّض الصفحة للتعليق. هل تريد تضمين الاسم في هذه المزامنة؟"
+                );
+                if (!ok) return;
+              }
+              const data = await postJson("sync-nap", { includeName });
               setReport(data.report);
-              onToast(data.message || "تمت المزامنة", "success");
+              setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
+              const nameHeld = (data.skipped || []).some(
+                (item: { reason?: string }) => item.reason === "name_protected"
+              );
+              onToast(
+                nameHeld
+                  ? `${data.message || "تمت المزامنة"} — اسم المنشأة لم يُحدَّث حمايةً للحساب.`
+                  : data.message || "تمت المزامنة",
+                "success"
+              );
             })
           }
           className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-600 text-white disabled:opacity-50"
         >
           مزامنة NAP إلى جوجل
+        </button>
+        <button
+          type="button"
+          disabled={busy || !canAudit}
+          onClick={() => setShowReverse((open) => !open)}
+          className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
+        >
+          استيراد من جوجل إلى مكّن
         </button>
         <button
           type="button"
@@ -135,17 +192,118 @@ export default function GbpSeoPanel({
         <button
           type="button"
           disabled={busy || !locationId}
-          onClick={() =>
-            run(async () => {
-              const data = await postJson("sync-services");
-              onToast(`تمت مزامنة ${data.count || 0} خدمة إلى جوجل`, "success");
-            })
-          }
+          onClick={() => setShowServices((open) => !open)}
           className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50"
         >
           مزامنة الخدمات إلى جوجل
         </button>
       </div>
+
+      {showReverse ? (
+        <div className="p-3 rounded-2xl border border-sky-500/30 bg-sky-950/20 space-y-2">
+          <p className="text-[11px] font-bold text-sky-100">استيراد من جوجل إلى مكّن</p>
+          <p className="text-[11px] text-slate-400">
+            الهاتف الموثّق والمدينة واسم العلامة فقط. ساعات العمل والعنوان التفصيلي لا تُستورد تلقائياً.
+          </p>
+          {([
+            ["phone", "رقم الهاتف الموثّق"] as const,
+            ["city", "المدينة"] as const,
+            ["name", "اسم العلامة"] as const,
+          ]).map(([key, label]) => (
+            <label key={key} className="flex items-start gap-2 text-[11px] text-slate-200">
+              <input
+                type="checkbox"
+                checked={reverseFields[key]}
+                onChange={(e) => setReverseFields((prev) => ({ ...prev, [key]: e.target.checked }))}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                {label}
+                {key === "name" ? (
+                  <span className="block text-amber-200">سيستبدل اسم المنشأة في مكّن، دون تغيير الاسم على جوجل.</span>
+                ) : null}
+              </span>
+            </label>
+          ))}
+          <button
+            type="button"
+            disabled={busy || !canAudit}
+            onClick={() =>
+              run(async () => {
+                const selectedFields = (Object.keys(reverseFields) as Array<keyof typeof reverseFields>).filter(
+                  (key) => reverseFields[key]
+                );
+                const data = await postJson("sync-nap-reverse", { selectedFields });
+                setReport(data.report);
+                setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
+                setShowReverse(false);
+                onToast(data.message || "تم الاستيراد إلى مكّن", "success");
+              })
+            }
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-600 text-white disabled:opacity-50"
+          >
+            تطبيق الاستيراد
+          </button>
+        </div>
+      ) : null}
+
+      {showServices ? (
+        <div className="p-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 space-y-2">
+          <p className="text-[11px] font-bold text-emerald-100">اختر الخدمات للمزامنة مع السعر بالريال ورابط الحجز</p>
+          <div className="max-h-56 overflow-y-auto space-y-1.5">
+            {catalogServices.map((service) => (
+              <label key={service.id} className="flex items-center justify-between gap-2 text-[11px] text-slate-200">
+                <span className="flex items-center gap-2 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={selectedServiceIds.includes(service.id)}
+                    onChange={(e) =>
+                      setSelectedServiceIds((prev) =>
+                        e.target.checked ? [...prev, service.id] : prev.filter((id) => id !== service.id)
+                      )
+                    }
+                  />
+                  <span className="truncate">{service.title}</span>
+                </span>
+                <span className="shrink-0 text-slate-400">{service.price || "بدون سعر"}</span>
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={busy || !locationId || !selectedServiceIds.length}
+            onClick={() =>
+              run(async () => {
+                const data = await postJson("sync-services", { serviceIds: selectedServiceIds });
+                setShowServices(false);
+                onToast(`تمت مزامنة ${data.count || 0} خدمة إلى جوجل بالسعر ورابط الحجز`, "success");
+              })
+            }
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50"
+          >
+            مزامنة المحددة
+          </button>
+        </div>
+      ) : null}
+
+      <label
+        className={`flex items-start gap-2 p-3 rounded-2xl border text-[11px] leading-relaxed ${
+          includeName
+            ? "border-rose-500/40 bg-rose-950/30 text-rose-100"
+            : "border-amber-500/30 bg-amber-500/10 text-amber-100"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={includeName}
+          onChange={(e) => setIncludeName(e.target.checked)}
+          className="mt-0.5 shrink-0"
+        />
+        <span>
+          <span className="block font-bold">تضمين اسم المنشأة في المزامنة</span>
+          مغلق افتراضياً. تغيير الاسم على جوجل قد يؤدي إلى تعليق الصفحة — لا تفعّله إلا إذا كان الاسم في مكّن هو الاسم الرسمي المعتمد.
+        </span>
+      </label>
 
       {report ? (
         <div className="space-y-2">
@@ -168,28 +326,57 @@ export default function GbpSeoPanel({
                     <td className="p-2 text-slate-300">{item.label}</td>
                     <td className="p-2 text-slate-400">{item.siteValue}</td>
                     <td className="p-2 text-slate-400">{item.gbpValue}</td>
-                    <td className={`p-2 font-bold ${napClass(item.status)}`}>{napLabel(item.status)}</td>
+                    <td className={`p-2 font-bold ${napClass(item.status)}`} title={item.hint}>
+                      {napLabel(item.status)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {skipped.length ? (
+            <ul className="text-[11px] text-slate-400 space-y-0.5">
+              {skipped.map((item) => (
+                <li key={`${item.field}-${item.reason}`}>
+                  {item.label}: {napSkipReasonLabel(item.reason)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 
       {competitors.length ? (
-        <ul className="space-y-1.5">
-          {competitors.map((comp) => (
-            <li
-              key={`${comp.name}-${comp.address}`}
-              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200"
-            >
-              <span className="font-bold">{comp.name}</span>
-              <span className="text-slate-500"> — {comp.rating}★ ({comp.userRatingsTotal})</span>
-              <p className="text-[11px] text-slate-500 mt-0.5">{comp.address}</p>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-2">
+          <p className="text-[11px] text-slate-400">
+            {competitorSource === "google_places"
+              ? "المصدر: خرائط جوجل"
+              : "المصدر: تقدير تقريبي — ليست بيانات خرائط مباشرة"}
+            {competitorQuery ? ` — البحث: ${competitorQuery}` : ""}
+          </p>
+          <ul className="space-y-1.5">
+            {competitors.map((comp) => (
+              <li
+                key={`${comp.placeId || comp.name}-${comp.address}`}
+                className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200"
+              >
+                <span className="font-bold">{comp.name}</span>
+                <span className="text-slate-500"> — {comp.rating}★ ({comp.userRatingsTotal})</span>
+                <p className="text-[11px] text-slate-500 mt-0.5">{comp.address}</p>
+                {comp.mapsUrl ? (
+                  <a
+                    href={comp.mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block mt-1 text-[11px] font-bold text-sky-300 hover:text-sky-200"
+                  >
+                    معاينة في خرائط جوجل
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
