@@ -70,11 +70,28 @@ export async function disconnectGbp(slug: string): Promise<{ error?: string }> {
   return error ? { error: "تعذّر إلغاء الربط" } : {};
 }
 
+/** Canonical GBP OAuth callback. Must match Google Cloud → Credentials → Authorized redirect URIs exactly. */
+export const GBP_OAUTH_CALLBACK_PATH = "/api/google-business/callback";
+
+export function gbpRedirectUri(): string {
+  let uri = (process.env.GOOGLE_REDIRECT_URI || "").trim();
+  if (!uri) {
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.mken.live").replace(/\/$/, "");
+    uri = `${site}${GBP_OAUTH_CALLBACK_PATH}`;
+  }
+  uri = uri.replace("://mken.live/", "://www.mken.live/");
+  uri = uri.replace("/api/google_business", "/api/google-business");
+  if (/\/api\/google-business\/?(\?|$)/.test(uri) && !uri.includes("/callback")) {
+    uri = uri.replace(/\/api\/google-business\/?/, GBP_OAUTH_CALLBACK_PATH).replace(/\?.*$/, "");
+  }
+  return uri.replace(/\/$/, "");
+}
+
 export function buildGoogleAuthUrl(tenantSlug: string): { url?: string; error?: string } {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
-  if (!clientId || !redirectUri) {
-    return { error: "GOOGLE_CLIENT_ID و GOOGLE_REDIRECT_URI غير معيّنين على الخادم" };
+  const redirectUri = gbpRedirectUri();
+  if (!clientId) {
+    return { error: "GOOGLE_CLIENT_ID غير معيّن على الخادم" };
   }
 
   const params = new URLSearchParams({
@@ -88,6 +105,57 @@ export function buildGoogleAuthUrl(tenantSlug: string): { url?: string; error?: 
   });
 
   return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+}
+
+export async function completeGbpOAuth(
+  slug: string,
+  code: string
+): Promise<{ error?: string }> {
+  const key = slug.trim().toLowerCase();
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const redirectUri = gbpRedirectUri();
+  if (!clientId || !clientSecret) {
+    return { error: "GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET غير معيّنين على الخادم" };
+  }
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    }),
+  });
+  const tokenData = (await tokenRes.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+  if (!tokenRes.ok || !tokenData.access_token) {
+    return {
+      error: tokenData.error_description || tokenData.error || "فشل تبادل رمز جوجل",
+    };
+  }
+
+  const expiry = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
+  const update: Record<string, string> = {
+    google_access_token: tokenData.access_token,
+    google_token_expiry: expiry,
+    updated_at: new Date().toISOString(),
+  };
+  if (tokenData.refresh_token) update.google_refresh_token = tokenData.refresh_token;
+
+  const { error } = await db.from(TENANT_TABLE).update(update).eq("tenant_slug", key);
+  if (error) return { error: "تعذّر حفظ توكن جوجل لهذه المنشأة" };
+  return {};
 }
 
 async function getValidAccessToken(slug: string): Promise<string> {

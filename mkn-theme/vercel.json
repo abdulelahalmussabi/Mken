@@ -24,6 +24,16 @@
       ]
     }
   ],
+  "rewrites": [
+    {
+      "source": "/api/google_business/callback",
+      "destination": "/api/google-business/callback"
+    },
+    {
+      "source": "/api/google_business",
+      "destination": "/api/google-business"
+    }
+  ],
   "redirects": [
     {
       "source": "/dashboarc/:path*",
