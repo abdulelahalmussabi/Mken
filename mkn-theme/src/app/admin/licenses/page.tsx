@@ -150,9 +150,7 @@ export default function AdminLicensesPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <a
-              href="https://license.mken.live/admin"
-              target="_blank"
-              rel="noreferrer"
+              href="https://license.mken.live"
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-300 hover:bg-slate-800"
             >
               <ExternalLink className="w-3.5 h-3.5" />

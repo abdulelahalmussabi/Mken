@@ -96,6 +96,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const hostname = request.headers.get("host") || "";
+  const hostOnly = hostname.split(":")[0].toLowerCase();
+  if (hostOnly === "license.mken.live" || hostOnly === "licenses.mken.live") {
+    if (pathname === "/" || pathname === "/admin" || pathname === "/admin.html") {
+      url.pathname = "/admin/licenses";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
   const nestedWww = nestedWwwTenant(hostname);
   if (nestedWww) {
     const dest = new URL(request.url);
