@@ -131,7 +131,7 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/admin.html") {
     url.pathname = url.searchParams.has("google_connect")
-      ? "/admin/settings"
+      ? "/admin/ads/local-seo"
       : tenant
         ? "/admin/client"
         : "/admin";

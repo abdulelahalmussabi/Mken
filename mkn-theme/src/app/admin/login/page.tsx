@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
-import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import { Shield, Eye, EyeOff, LogIn, ArrowRight } from "lucide-react";
 import { PlatformMark } from "@/components/PlatformMark";
 
@@ -25,7 +24,7 @@ function adminReturnPath(role: "super" | "client" | null | undefined): string {
     if (desc) next.set("error_desc", desc);
     const tenant = search.get("tenant") || search.get("client");
     if (tenant) next.set("client", tenant);
-    return `/admin/settings?${next.toString()}`;
+    return `/admin/ads/local-seo?${next.toString()}`;
   }
   return role === "client" ? "/admin/client" : "/admin";
 }
@@ -59,8 +58,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const bound = boundTenantFromHostname(window.location.hostname);
-      const next = result.role === "client" || bound ? "/admin/client" : "/admin";
+      const next = adminReturnPath(result.role);
       window.location.assign(next);
     } catch {
       setError("تعذّر الاتصال بالخادم");

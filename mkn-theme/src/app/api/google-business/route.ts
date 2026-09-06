@@ -193,7 +193,13 @@ export async function POST(request: Request) {
     if (result.error || !result.text) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
-    return NextResponse.json({ success: true, text: result.text });
+    return NextResponse.json({
+      success: true,
+      text: result.text,
+      ctaUrl: result.ctaUrl,
+      ctaLabel: result.ctaLabel || "احجز",
+      city: result.city || "",
+    });
   }
 
   if (body.action === "generate-reply") {
@@ -245,7 +251,9 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "publish-post") {
-    const result = await publishGbpPost(scope.slug, body.locationId || "", body.text || "");
+    const result = await publishGbpPost(scope.slug, body.locationId || "", body.text || "", {
+      campaign: body.serviceName || body.topic || "",
+    });
     if (result.error) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }

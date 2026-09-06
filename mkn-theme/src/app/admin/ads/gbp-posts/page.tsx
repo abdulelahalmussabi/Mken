@@ -12,6 +12,7 @@ type ScheduledGbpPost = {
   status: string;
   publishAt: string;
   errorLog: string;
+  ctaUrl?: string;
 };
 
 const STATUS: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function GbpPostsPage() {
   const [error, setError] = useState("");
   const [topic, setTopic] = useState("عرض الأسبوع");
   const [text, setText] = useState("");
+  const [ctaUrl, setCtaUrl] = useState("");
   const [publishAt, setPublishAt] = useState("");
 
   const load = useCallback(async () => {
@@ -75,6 +77,7 @@ export default function GbpPostsPage() {
         return;
       }
       setText(data.text || "");
+      setCtaUrl(typeof data.ctaUrl === "string" ? data.ctaUrl : "");
     } finally {
       setGenerating(false);
     }
@@ -96,6 +99,7 @@ export default function GbpPostsPage() {
       }
       showToast(data.publishedNow ? "نُشر المنشور على الخرائط" : "تمت الجدولة", "success");
       setText("");
+      setCtaUrl("");
       await load();
     } finally {
       setSaving(false);
@@ -110,12 +114,21 @@ export default function GbpPostsPage() {
           <div>
             <h1 className="text-lg font-extrabold text-white">جدولة منشورات خرائط جوجل</h1>
             <p className="text-xs text-slate-400 mt-1 leading-6">
-              يُنشر تلقائياً في الموعد عبر الربط الحالي لجوجل بيزنس. اربط الفرع من الإعدادات إن لم يكن مربوطاً.
+              يُنشر تلقائياً في الموعد عبر الربط الحالي لجوجل بيزنس. اربط الفرع من التواجد المحلي إن لم يكن مربوطاً. زر الحجز يُرسل برابط UTM.
             </p>
           </div>
         </div>
         <input className={ADMIN_INPUT} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="موضوع المنشور" />
         <textarea className={ADMIN_INPUT} rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="نص المنشور" />
+        {ctaUrl ? (
+          <p className="text-[11px] text-slate-400 break-all" dir="ltr">
+            CTA UTM: {ctaUrl}
+          </p>
+        ) : (
+          <p className="text-[11px] text-slate-500">
+            عند النشر يُضاف زر احجز برابط الموقع مع utm_source=google_posts و utm_medium=local_pack.
+          </p>
+        )}
         <input
           className={ADMIN_INPUT}
           type="datetime-local"
@@ -152,6 +165,11 @@ export default function GbpPostsPage() {
             </p>
             <p className="text-xs text-slate-400 mt-1">{post.publishAt ? new Date(post.publishAt).toLocaleString("ar-SA") : ""}</p>
             <p className="text-xs text-slate-300 mt-2 leading-6">{post.content}</p>
+            {post.ctaUrl ? (
+              <p className="text-[11px] text-slate-500 mt-2 break-all" dir="ltr">
+                {post.ctaUrl}
+              </p>
+            ) : null}
             {post.errorLog ? <p className="text-[11px] text-rose-300 mt-2">{post.errorLog}</p> : null}
           </article>
         ))

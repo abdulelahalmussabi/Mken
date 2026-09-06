@@ -581,6 +581,24 @@ const GBP_POST_MAX_CHARS = 1500;
 const GBP_LOCATION_READ_MASK =
   "title,phoneNumbers,websiteUri,storefrontAddress,regularHours,primaryCategory";
 
+export function withGbpPostUtm(url: string, campaign = "gbp_post"): string {
+  const name = campaign.trim().slice(0, 80) || "gbp_post";
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("utm_source", "google_posts");
+    parsed.searchParams.set("utm_medium", "local_pack");
+    parsed.searchParams.set("utm_campaign", name);
+    return parsed.toString();
+  } catch {
+    const join = url.includes("?") ? "&" : "?";
+    return `${url}${join}utm_source=google_posts&utm_medium=local_pack&utm_campaign=${encodeURIComponent(name)}`;
+  }
+}
+
+export async function gbpLocalPostCtaUrl(slug: string, campaign?: string): Promise<string> {
+  return withGbpPostUtm(await tenantWebsiteUrl(slug), campaign);
+}
+
 export interface GbpCompetitor {
   name: string;
   rating: number;
@@ -890,28 +908,36 @@ export async function generateGbpPost(
   slug: string,
   prompt: string,
   serviceName: string
-): Promise<{ text?: string; error?: string }> {
+): Promise<{ text?: string; ctaUrl?: string; ctaLabel?: string; city?: string; error?: string }> {
   const trimmed = prompt.trim();
   if (!trimmed) return { error: "اكتب فكرة المنشور أولاً" };
   if (trimmed.length > 2000) return { error: "النص أطول من 2000 حرف" };
 
   const snap = await loadNapSiteSnapshot(slug);
   const businessName = snap.site?.name || slug;
+  const city = snap.site?.city || "";
+  const campaign = (serviceName || "gbp_post").trim() || "gbp_post";
   const systemPrompt = `أنت خبير سيو محلي (Local SEO) متمرس. اكتب منشور تسويقي جذاب وملائم لخرائط جوجل (Google Business Profile) باللغة العربية.
 اسم المنشأة: "${businessName}"
+المدينة: "${city}"
 الخدمة أو العرض المستهدف: "${serviceName || ""}"
 تفاصيل إضافية من التاجر: "${trimmed}"
 
 شروط الكتابة:
 1. اكتب بنبرة مهنية وترحيبية تلائم الجمهور السعودي والعربي، واستخدم الرموز التعبيرية (Emojis) بشكل معقول.
 2. ركز على حث العميل على اتخاذ إجراء (Call to Action) مثل الحجز أو الاتصال.
-3. استخدم كلمات مفتاحية طبيعية ومحسنة لمحركات البحث المحلية.
+3. استخدم كلمات مفتاحية طبيعية ومحسنة لمحركات البحث المحلية، واذكر المدينة إن وُجدت بشكل انسيابي.
 4. لا تذكر أي روابط أو أرقام هواتف إلا إذا حددها المستخدم.
 5. اجعل المنشور قصيراً ومباشراً ومناسباً لمتصفحي خرائط جوجل.
 6. لا تتجاوز ${GBP_POST_MAX_CHARS} حرفاً في النص النهائي.`;
 
   try {
-    return { text: trimGbpPostText(await generateGeminiText(systemPrompt)) };
+    return {
+      text: trimGbpPostText(await generateGeminiText(systemPrompt)),
+      ctaUrl: await gbpLocalPostCtaUrl(slug, campaign),
+      ctaLabel: "احجز",
+      city,
+    };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر توليد المنشور" };
   }
@@ -1301,7 +1327,8 @@ function parseSarMoney(price: string): { currencyCode: "SAR"; units: string; nan
 export async function publishGbpPost(
   slug: string,
   locationId: string,
-  text: string
+  text: string,
+  opts?: { campaign?: string; ctaUrl?: string }
 ): Promise<{ error?: string }> {
   const summary = text.trim();
   if (!locationId.trim()) return { error: "اختر فرعاً أولاً" };
@@ -1323,7 +1350,7 @@ export async function publishGbpPost(
         topicType: "STANDARD",
         callToAction: {
           actionType: "BOOK",
-          url: await tenantWebsiteUrl(slug),
+          url: opts?.ctaUrl?.trim() || (await gbpLocalPostCtaUrl(slug, opts?.campaign)),
         },
       }),
     });
@@ -1419,7 +1446,7 @@ export async function scheduleGbpPost(input: {
   const at = new Date(input.publishAt);
   if (!Number.isFinite(at.getTime())) return { error: "موعد النشر غير صالح" };
 
-  const website = await tenantWebsiteUrl(input.slug);
+  const website = await gbpLocalPostCtaUrl(input.slug, topic);
   const { data, error } = await db
     .from("mken_gbp_scheduled_posts")
     .insert({
@@ -1450,7 +1477,10 @@ async function publishOneScheduledPost(
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
   const { status } = await fetchGbpStatus(post.tenantSlug);
   const locationId = status?.selectedLocationId || "";
-  const result = await publishGbpPost(post.tenantSlug, locationId, post.content);
+  const result = await publishGbpPost(post.tenantSlug, locationId, post.content, {
+    campaign: post.topic,
+    ctaUrl: post.ctaUrl,
+  });
   const now = new Date().toISOString();
   if (result.error) {
     await db

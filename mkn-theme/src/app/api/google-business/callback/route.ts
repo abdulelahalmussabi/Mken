@@ -13,7 +13,7 @@ function settingsRedirect(
   const proto = request.headers.get("x-forwarded-proto") || (hostHeader.includes("localhost") ? "http" : "https");
   const host = gbpReturnHost(returnHost || hostHeader, slug);
   const origin = `${proto}://${host}`;
-  const url = new URL("/admin/settings", origin);
+  const url = new URL("/admin/ads/local-seo", origin);
   if (slug) url.searchParams.set("client", slug);
   url.searchParams.set("google_connect", status);
   if (message) url.searchParams.set("error_desc", message.slice(0, 180));

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { napSkipReasonLabel, type NapReport, type NapStatus } from "@/lib/mken/nap";
 import type { GbpCompetitor } from "@/lib/mken/gbp";
 
@@ -44,11 +46,130 @@ function ratingDelta(own: number, other: number): string {
   return `أقل بـ ${Math.abs(diff)}`;
 }
 
+type GeoScanLite = {
+  keyword: string;
+  gridSize: string;
+  averageRank: number | null;
+  top3Percentage: number | null;
+  cells: Array<{ rank: number | null; inPack?: boolean }>;
+};
+
+function geoCellClass(rank: number | null): string {
+  if (rank == null) return "bg-slate-800 text-slate-500";
+  if (rank <= 3) return "bg-emerald-500/20 text-emerald-200";
+  if (rank <= 10) return "bg-amber-500/20 text-amber-200";
+  return "bg-rose-500/20 text-rose-200";
+}
+
+function postSeoScore(text: string, city: string, serviceName: string): { score: number; notes: string[] } {
+  const body = text.trim();
+  if (!body) return { score: 0, notes: [] };
+  const notes: string[] = [];
+  let score = 20;
+  if (body.length >= 80 && body.length <= 500) {
+    score += 25;
+    notes.push("طول مناسب لخرائط جوجل");
+  } else if (body.length > 500) {
+    score += 10;
+    notes.push("اختصر النص ليظهر كاملاً على الخرائط");
+  } else {
+    notes.push("أضف جملة عن العرض أو الموقع");
+  }
+  if (city && body.includes(city.replace(/^ال/, ""))) {
+    score += 20;
+    notes.push("المدينة مذكورة");
+  } else if (city) {
+    notes.push(`أضف «${city}» بشكل طبيعي`);
+  }
+  if (serviceName && body.includes(serviceName.slice(0, 8))) {
+    score += 15;
+    notes.push("الخدمة مذكورة");
+  }
+  if (/احجز|تواصل|اطلب|زرنا|اتصل/.test(body)) {
+    score += 20;
+    notes.push("حث على الإجراء موجود في النص");
+  } else {
+    notes.push("أضف فعل حجز أو تواصل");
+  }
+  return { score: Math.min(100, score), notes };
+}
+
+function GbpPostPreview({
+  text,
+  ctaLabel,
+  ctaUrl,
+  city,
+  serviceName,
+}: {
+  text: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  city: string;
+  serviceName: string;
+}) {
+  const seo = postSeoScore(text, city, serviceName);
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-bold text-slate-300">معاينة بطاقة المنشور</p>
+      <div className="rounded-2xl border border-slate-700 bg-white p-3 text-right space-y-2">
+        <p className="text-[10px] font-bold text-slate-500">Google</p>
+        <p className="text-xs leading-6 text-slate-800 whitespace-pre-wrap">{text}</p>
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="text-[11px] font-extrabold text-blue-700">{ctaLabel || "احجز"}</span>
+          {ctaUrl ? (
+            <span className="text-[10px] text-slate-500 truncate" dir="ltr">
+              {ctaUrl.replace(/^https?:\/\//, "").slice(0, 42)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px] text-slate-400">
+          <span>قوة السيو المحلي</span>
+          <span className="font-bold text-slate-200">{seo.score}%</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+          <div
+            className={`h-full ${seo.score >= 70 ? "bg-emerald-500" : seo.score >= 40 ? "bg-amber-500" : "bg-rose-500"}`}
+            style={{ width: `${seo.score}%` }}
+          />
+        </div>
+        <ul className="text-[11px] text-slate-500 space-y-0.5">
+          {seo.notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+        {ctaUrl ? (
+          <p className="text-[10px] text-slate-500 break-all" dir="ltr">
+            CTA: {ctaUrl}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function withPostUtm(url: string, campaign = "gbp_post"): string {
+  const name = campaign.trim().slice(0, 80) || "gbp_post";
+  if (!url.trim()) return "";
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("utm_source", "google_posts");
+    parsed.searchParams.set("utm_medium", "local_pack");
+    parsed.searchParams.set("utm_campaign", name);
+    return parsed.toString();
+  } catch {
+    const join = url.includes("?") ? "&" : "?";
+    return `${url}${join}utm_source=google_posts&utm_medium=local_pack&utm_campaign=${encodeURIComponent(name)}`;
+  }
+}
+
 export default function GbpSeoPanel({
   query,
   locationId,
   mapsBound,
   auditNonce,
+  websiteUrl,
   busy,
   setBusy,
   onToast,
@@ -57,6 +178,7 @@ export default function GbpSeoPanel({
   locationId: string;
   mapsBound?: boolean;
   auditNonce?: number;
+  websiteUrl?: string;
   busy: boolean;
   setBusy: (value: boolean) => void;
   onToast: (message: string, type: "success" | "error") => void;
@@ -65,6 +187,10 @@ export default function GbpSeoPanel({
   const [auditError, setAuditError] = useState("");
   const [postPrompt, setPostPrompt] = useState("");
   const [postText, setPostText] = useState("");
+  const [postCtaUrl, setPostCtaUrl] = useState("");
+  const [postCtaLabel, setPostCtaLabel] = useState("احجز");
+  const [postCity, setPostCity] = useState("");
+  const [geoScan, setGeoScan] = useState<GeoScanLite | null>(null);
   const [reviewText, setReviewText] = useState("");
   const [rating, setRating] = useState("5");
   const [replyText, setReplyText] = useState("");
@@ -167,6 +293,15 @@ export default function GbpSeoPanel({
         setCompetitorQuery(data.query || "");
       } catch {
         /* optional on auto-load */
+      }
+      try {
+        const geoRes = await fetch(`/api/ads/geo-grid${query}`);
+        const geo = await geoRes.json();
+        if (!cancelled && geoRes.ok && geo.success && Array.isArray(geo.scans) && geo.scans[0]) {
+          setGeoScan(geo.scans[0]);
+        }
+      } catch {
+        /* optional */
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -573,7 +708,7 @@ export default function GbpSeoPanel({
                   <th className="p-2">المنشأة</th>
                   <th className="p-2">التقييم</th>
                   <th className="p-2">عدد الآراء</th>
-                  <th className="p-2">مقابل المحروسة</th>
+                  <th className="p-2">مقابل منشأتك</th>
                   <th className="p-2">الخرائط</th>
                 </tr>
               </thead>
@@ -617,6 +752,50 @@ export default function GbpSeoPanel({
         </div>
       ) : null}
 
+      {geoScan ? (
+        <div className="space-y-2 p-3 rounded-2xl border border-slate-800 bg-slate-950/50">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-xs font-bold text-slate-200">آخر لقطة Geo-Grid</p>
+            <Link
+              href={`/admin/ads/geo-grid${query}` as Route}
+              className="text-[11px] font-bold text-sky-300 hover:text-sky-200"
+            >
+              فتح تتبع الرانك
+            </Link>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            {geoScan.keyword || "بدون كلمة"} · شبكة {geoScan.gridSize} · متوسط الرانك {geoScan.averageRank ?? "—"} · ظهور
+            الحزمة الثلاثية {geoScan.top3Percentage != null ? `${geoScan.top3Percentage}%` : "—"}
+          </p>
+          {geoScan.cells?.length ? (
+            <div
+              className="grid gap-1 max-w-xs"
+              style={{
+                gridTemplateColumns: `repeat(${geoScan.gridSize === "7x7" ? 7 : geoScan.gridSize === "5x5" ? 5 : 3}, minmax(0, 1fr))`,
+              }}
+            >
+              {geoScan.cells.map((cell, index) => (
+                <div
+                  key={`${geoScan.keyword}-${index}`}
+                  className={`rounded-md py-1.5 text-center text-[10px] font-extrabold ${geoCellClass(cell.rank)}`}
+                >
+                  {cell.rank ?? "—"}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-500">لا توجد شبكة محفوظة بعد. شغّل فحصاً من تتبع الرانك.</p>
+          )}
+        </div>
+      ) : canAudit ? (
+        <p className="text-[11px] text-slate-500">
+          لا توجد لقطة رانك بعد.{" "}
+          <Link href={`/admin/ads/geo-grid${query}` as Route} className="font-bold text-sky-300">
+            افتح تتبع الرانك
+          </Link>
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="space-y-2">
           <label className="block text-xs font-bold text-slate-300">توليد منشور سيو محلي</label>
@@ -649,6 +828,9 @@ export default function GbpSeoPanel({
                 run(async () => {
                   const data = await postJson("generate-post", { prompt: postPrompt, serviceName });
                   setPostText(data.text || "");
+                  setPostCtaUrl(typeof data.ctaUrl === "string" ? data.ctaUrl : "");
+                  setPostCtaLabel(typeof data.ctaLabel === "string" && data.ctaLabel ? data.ctaLabel : "احجز");
+                  setPostCity(typeof data.city === "string" ? data.city : "");
                   onToast("تم توليد المنشور", "success");
                 })
               }
@@ -667,6 +849,20 @@ export default function GbpSeoPanel({
             >
               نسخ
             </button>
+            {postCtaUrl || withPostUtm(websiteUrl || "", serviceName) ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  const url = postCtaUrl || withPostUtm(websiteUrl || "", serviceName);
+                  void navigator.clipboard.writeText(url);
+                  onToast("تم نسخ رابط UTM", "success");
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
+              >
+                نسخ UTM
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={busy || !postText}
@@ -675,7 +871,7 @@ export default function GbpSeoPanel({
                   if (!canWrite) {
                     throw new Error("النشر على جوجل يحتاج فرعاً محفوظاً بعد فتح الحصّة. يمكنك نسخ النص الآن.");
                   }
-                  await postJson("publish-post", { text: postText });
+                  await postJson("publish-post", { text: postText, serviceName });
                   onToast("نُشر المنشور على جوجل بيزنس", "success");
                 })
               }
@@ -684,12 +880,20 @@ export default function GbpSeoPanel({
               نشر على جوجل
             </button>
           </div>
+          <textarea
+            value={postText}
+            onChange={(e) => setPostText(e.target.value)}
+            rows={postText ? 5 : 3}
+            placeholder="أو اكتب نص المنشور يدوياً لمعاينة البطاقة…"
+            className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 text-right"
+          />
           {postText ? (
-            <textarea
-              value={postText}
-              onChange={(e) => setPostText(e.target.value)}
-              rows={5}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 text-right"
+            <GbpPostPreview
+              text={postText}
+              ctaLabel={postCtaLabel}
+              ctaUrl={postCtaUrl || withPostUtm(websiteUrl || "", serviceName)}
+              city={postCity}
+              serviceName={serviceName}
             />
           ) : null}
         </div>
