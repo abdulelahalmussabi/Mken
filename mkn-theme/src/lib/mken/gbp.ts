@@ -36,6 +36,7 @@ export interface GbpStatus {
   locations?: GbpLocation[];
   mapsUrl?: string;
   mapsPlaceId?: string;
+  mapsListingName?: string;
 }
 
 export interface GbpLocation {
@@ -47,9 +48,13 @@ export interface GbpLocation {
   city: string;
 }
 
+export function isGbpQuotaError(message: string): boolean {
+  return /quota exceeded|rate.?limit|resource.?exhausted|الحصّة 0|Basic API Access/i.test(message);
+}
+
 function explainGbpGoogleError(message: string): string {
-  if (/quota exceeded|rate.?limit|resource.?exhausted/i.test(message)) {
-    return "واجهة Google Business Profile غير مفعّلة على المشروع (الحصّة 0). لا تلغِ الربط. املأ نموذج Application for Basic API Access ثم انتظر حتى تصبح الحصّة 300.";
+  if (isGbpQuotaError(message)) {
+    return "مزامنة فروع حساب بيزنس غير متاحة حالياً على منصة مكّن. أبقِ الربط واستخدم رابط الخرائط للسيو المحلي.";
   }
   return message;
 }
@@ -235,6 +240,10 @@ export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus
   const mapsUrl = typeof row?.config_data?.mapsUrl === "string" ? row.config_data.mapsUrl.trim() : "";
   const mapsPlaceId =
     typeof row?.config_data?.preview?.placeId === "string" ? row.config_data.preview.placeId.trim() : "";
+  const mapsListingName =
+    typeof (row?.config_data as { mapsListingName?: string } | null | undefined)?.mapsListingName === "string"
+      ? (row?.config_data as { mapsListingName?: string }).mapsListingName?.trim()
+      : "";
 
   return {
     status: {
@@ -244,6 +253,7 @@ export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus
       locations: normalizeCachedLocations(row?.config_data?.gbp?.locations),
       mapsUrl: mapsUrl || undefined,
       mapsPlaceId: mapsPlaceId || undefined,
+      mapsListingName: mapsListingName || undefined,
     },
   };
 }
@@ -822,7 +832,9 @@ async function resolveGbpSnapshot(
   locationId: string,
   site: NapSiteSnapshot & { ownPlaceId?: string; mapsUrl?: string }
 ): Promise<GbpLocationDetail | null> {
-  if (locationId.trim()) {
+  const cached = locationId.trim() ? await readGbpLocationDbCache(slug) : [];
+  const gbpReadable = Boolean(locationId.trim() && cached.some((loc) => loc.id === locationId));
+  if (gbpReadable) {
     try {
       return await fetchGbpLocationDetail(slug, locationId);
     } catch {

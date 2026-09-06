@@ -31,7 +31,7 @@ function isGoogleMapsShareUrl(value: string): boolean {
 export async function bindMapsListing(
   slug: string,
   mapsUrl: string
-): Promise<{ mapsUrl?: string; mapsPlaceId?: string; city?: string; error?: string }> {
+): Promise<{ mapsUrl?: string; mapsPlaceId?: string; city?: string; listingTitle?: string; error?: string }> {
   const trimmed = mapsUrl.trim();
   if (!trimmed) return { error: "الصق رابط خرائط جوجل أو place_id" };
   if (!isGoogleMapsShareUrl(trimmed)) {
@@ -59,6 +59,7 @@ export async function bindMapsListing(
   config.preview = preview;
 
   const details = placeId ? await fetchLivePlaceDetails(placeId).catch(() => null) : null;
+  if (details?.name) config.mapsListingName = details.name;
   const area =
     config.serviceArea && typeof config.serviceArea === "object" ? { ...config.serviceArea } : {};
   const currentCity = typeof area.city === "string" ? area.city.trim() : "";
@@ -78,5 +79,6 @@ export async function bindMapsListing(
     mapsUrl: trimmed,
     mapsPlaceId: placeId || undefined,
     city: typeof area.city === "string" ? area.city : inferredCity,
+    listingTitle: details?.name || (typeof config.mapsListingName === "string" ? config.mapsListingName : undefined),
   };
 }

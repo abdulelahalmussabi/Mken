@@ -6,6 +6,7 @@ import {
   fetchGbpStatus,
   generateGbpPost,
   generateGbpReply,
+  isGbpQuotaError,
   listCompetitorAudits,
   listGbpCompetitors,
   listGbpLocations,
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
       selectedLocationId: listed.selectedLocationId,
       locations: listed.locations,
       message: listed.error || undefined,
+      quotaBlocked: Boolean(listed.error && isGbpQuotaError(listed.error)),
     });
   }
 
@@ -141,6 +143,7 @@ export async function POST(request: Request) {
       mapsUrl: result.mapsUrl,
       mapsPlaceId: result.mapsPlaceId,
       city: result.city,
+      listingTitle: result.listingTitle,
       message: "تم حفظ رابط الخرائط. يمكنك فحص NAP وجلب المنافسين الآن.",
     });
   }
