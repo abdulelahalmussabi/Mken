@@ -694,7 +694,15 @@ export default function GbpSeoPanel({
 
       {matrixRows.length ? (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-slate-200">مصفوفة المنافسين المحليين</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-bold text-slate-200">مصفوفة المنافسين المحليين</p>
+            <Link
+              href={`/admin/ads/local-seo/competitors${query}` as Route}
+              className="text-[11px] font-bold text-sky-300 hover:text-sky-200"
+            >
+              قائمة الفحوصات
+            </Link>
+          </div>
           <p className="text-[11px] text-slate-400">
             {competitorSource === "google_places"
               ? "المصدر: خرائط جوجل"

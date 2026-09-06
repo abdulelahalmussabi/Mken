@@ -6,6 +6,7 @@ import {
   fetchGbpStatus,
   generateGbpPost,
   generateGbpReply,
+  listCompetitorAudits,
   listGbpCompetitors,
   listGbpLocations,
   listScheduledGbpPosts,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/mken/gbp";
 import { bindMapsListing } from "@/lib/mken/maps-listing";
 import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
+import { listReviewRequests } from "@/lib/mken/review-funnel";
 
 export const maxDuration = 30;
 
@@ -65,6 +67,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
     }
     return NextResponse.json({ success: true, tenant: scope.slug, posts: listed.posts });
+  }
+
+  if (action === "competitor-audits") {
+    const listed = await listCompetitorAudits(scope.slug);
+    if (listed.error) {
+      return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
+    }
+    return NextResponse.json({ success: true, tenant: scope.slug, audits: listed.audits || [] });
+  }
+
+  if (action === "review-requests") {
+    const listed = await listReviewRequests(scope.slug);
+    if (listed.error) {
+      return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
+    }
+    return NextResponse.json({
+      success: true,
+      tenant: scope.slug,
+      requests: listed.requests || [],
+      gbpReviewsApi: false,
+    });
   }
 
   const { status, error } = await fetchGbpStatus(scope.slug);

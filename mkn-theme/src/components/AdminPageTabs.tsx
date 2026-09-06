@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
+import { resolveAdminClient, writeStoredAdminClient } from "@/lib/mken/admin-client";
 import type { AppearancePublic, AppearanceUpdate } from "@/lib/mken/appearance";
 
 export const ADMIN_INPUT =
@@ -20,8 +21,14 @@ export function useAdminTenant() {
   const { isSuperAdmin, clients, session, authLoading } = useAdmin();
   const searchParams = useSearchParams();
   const param = searchParams.get("client") || "";
-  const tenant = isSuperAdmin ? param || clients[0]?.slug || "" : session?.clientSlug || "";
+  const slugs = clients.map((client) => client.slug);
+  const tenant = isSuperAdmin
+    ? resolveAdminClient(param, slugs)
+    : session?.clientSlug || "";
   const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
+  useEffect(() => {
+    if (isSuperAdmin && tenant) writeStoredAdminClient(tenant);
+  }, [isSuperAdmin, tenant]);
   return { tenant, query, isSuperAdmin, clients, authLoading };
 }
 
@@ -101,7 +108,7 @@ export function AdminPageTabs({ tabs, query }: { tabs: AdminTab[]; query: string
   return (
     <div dir="rtl" className="flex gap-1 overflow-x-auto border-b border-slate-800">
       {tabs.map((tab) => {
-        const active = pathname === tab.href;
+        const active = pathname === tab.href || (tab.href !== "/admin/ads" && pathname.startsWith(`${tab.href}/`));
         return (
           <Link
             key={tab.href}
@@ -133,9 +140,13 @@ export function AdminSectionLayout({
 
   useEffect(() => {
     if (!isSuperAdmin || !clients.length) return;
-    const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     if (params.get("client")) return;
-    router.replace(`${pathname}?client=${encodeURIComponent(clients[0].slug)}` as Route);
+    const stored = resolveAdminClient("", clients.map((client) => client.slug));
+    if (!stored) return;
+    params.set("client", stored);
+    const qs = params.toString();
+    router.replace((qs ? `${pathname}?${qs}` : pathname) as Route);
   }, [isSuperAdmin, clients, query, pathname, router]);
 
   return (
@@ -145,9 +156,14 @@ export function AdminSectionLayout({
           <label className="block text-xs font-bold text-slate-300">المنشأة</label>
           <select
             value={tenant}
-            onChange={(e) => router.replace(`${pathname}?client=${encodeURIComponent(e.target.value)}` as Route)}
+            onChange={(e) => {
+              const slug = e.target.value;
+              writeStoredAdminClient(slug);
+              router.replace(`${pathname}?client=${encodeURIComponent(slug)}` as Route);
+            }}
             className={ADMIN_INPUT}
           >
+            <option value="">اختر المنشأة</option>
             {clients.map((client) => (
               <option key={client.slug} value={client.slug}>
                 {client.name} ({client.slug})

@@ -224,3 +224,43 @@ export async function handleReviewRatingReply(
 
   return { handled: true, reply: internalFollowupBody() };
 }
+
+export interface ReviewRequestRow {
+  id: string;
+  phone: string;
+  customerName: string;
+  stars: number | null;
+  status: ReviewRequestStatus;
+  appointmentId: string;
+  sentAt: string;
+  ratedAt: string;
+}
+
+export async function listReviewRequests(
+  slug: string
+): Promise<{ requests?: ReviewRequestRow[]; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const { data, error } = await db
+    .from("mken_review_requests")
+    .select("id, phone, customer_name, stars, status, appointment_id, sent_at, rated_at")
+    .eq("tenant_slug", slug)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) {
+    if (/does not exist|42P01/i.test(error.message)) return { requests: [] };
+    return { error: error.message };
+  }
+  return {
+    requests: ((data || []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id || ""),
+      phone: String(row.phone || ""),
+      customerName: String(row.customer_name || ""),
+      stars: row.stars == null ? null : Number(row.stars),
+      status: (row.status as ReviewRequestStatus) || "PENDING",
+      appointmentId: String(row.appointment_id || ""),
+      sentAt: String(row.sent_at || ""),
+      ratedAt: String(row.rated_at || ""),
+    })),
+  };
+}

@@ -608,6 +608,93 @@ export interface GbpCompetitor {
   mapsUrl?: string;
 }
 
+export interface CompetitorAudit {
+  id: string;
+  category: string;
+  city: string;
+  competitors: GbpCompetitor[];
+  own: GbpCompetitor | null;
+  source: string;
+  query: string;
+  auditedAt: string;
+}
+
+function missingRelation(message: string): boolean {
+  return /does not exist|42P01/i.test(message);
+}
+
+async function persistCompetitorAudit(
+  slug: string,
+  input: {
+    category: string;
+    city: string;
+    competitors: GbpCompetitor[];
+    own?: GbpCompetitor;
+    source?: string;
+    query?: string;
+  }
+): Promise<void> {
+  const db = getTenantDb();
+  if (!db || !input.competitors.length) return;
+  const cards = [input.own, ...input.competitors]
+    .filter((row): row is GbpCompetitor => Boolean(row?.name))
+    .map((row) => ({
+      name: row.name,
+      rating: row.rating,
+      userRatingsTotal: row.userRatingsTotal,
+      address: row.address,
+      placeId: row.placeId || "",
+      mapsUrl: row.mapsUrl || "",
+    }));
+  const { error } = await db.from("mken_competitor_audits").insert({
+    tenant_slug: slug,
+    category: input.category.slice(0, 80) || "local",
+    city: input.city.slice(0, 80) || "",
+    competitors: cards,
+    benchmarks: {
+      own: input.own || null,
+      source: input.source || "",
+      query: input.query || "",
+    },
+  });
+  if (error && !missingRelation(error.message)) return;
+}
+
+export async function listCompetitorAudits(
+  slug: string
+): Promise<{ audits?: CompetitorAudit[]; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const { data, error } = await db
+    .from("mken_competitor_audits")
+    .select("id, category, city, competitors, benchmarks, audited_at")
+    .eq("tenant_slug", slug)
+    .order("audited_at", { ascending: false })
+    .limit(12);
+  if (error) {
+    if (missingRelation(error.message)) return { audits: [] };
+    return { error: error.message };
+  }
+  return {
+    audits: ((data || []) as Record<string, unknown>[]).map((row) => {
+      const benchmarks =
+        row.benchmarks && typeof row.benchmarks === "object"
+          ? (row.benchmarks as { own?: GbpCompetitor; source?: string; query?: string })
+          : {};
+      return {
+        id: String(row.id || ""),
+        category: String(row.category || ""),
+        city: String(row.city || ""),
+        competitors: Array.isArray(row.competitors) ? (row.competitors as GbpCompetitor[]) : [],
+        own: benchmarks.own || null,
+        source: benchmarks.source || "",
+        query: benchmarks.query || "",
+        auditedAt: String(row.audited_at || ""),
+      };
+    }),
+  };
+}
+
 function parseRatingValue(raw: unknown): number {
   const n = Number(String(raw ?? "").replace(/[^\d.]/g, ""));
   return Number.isFinite(n) && n > 0 ? Math.min(5, n) : 0;
@@ -1155,6 +1242,14 @@ export async function listGbpCompetitors(
         .filter((item): item is GbpCompetitor => Boolean(item))
         .filter(keepCompetitor)
         .slice(0, 5);
+      await persistCompetitorAudit(slug, {
+        category: gbpCategory || category || query,
+        city,
+        competitors,
+        own,
+        source: "google_places",
+        query,
+      });
       return { competitors, own, source: "google_places", query };
     } catch {
       // Places unavailable — labeled simulation only, never salon stubs.
@@ -1198,6 +1293,14 @@ export async function listGbpCompetitors(
     if (!competitors.length) {
       return { error: "تعذّر العثور على منافسين لهذه المدينة وهذا النشاط." };
     }
+    await persistCompetitorAudit(slug, {
+      category: activityLabel || category,
+      city,
+      competitors,
+      own,
+      source: "gemini_simulation",
+      query,
+    });
     return { competitors, own, source: "gemini_simulation", query };
   } catch {
     return { error: "تعذّر جلب منافسين من خرائط جوجل لهذه المدينة والنشاط." };
