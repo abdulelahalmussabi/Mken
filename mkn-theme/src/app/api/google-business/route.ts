@@ -10,6 +10,7 @@ import {
   listGbpCompetitors,
   listGbpLocations,
   listScheduledGbpPosts,
+  previewNapSync,
   publishGbpPost,
   scheduleGbpPost,
   runNapAudit,
@@ -135,6 +136,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, report: result.report });
   }
 
+  if (body.action === "preview-sync-nap") {
+    const result = await previewNapSync(scope.slug, body.locationId || "", {
+      includeName: body.includeName === true,
+    });
+    if (result.error || !result.report) {
+      return NextResponse.json({ success: false, message: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      success: true,
+      report: result.report,
+      updated: result.updated || [],
+      skipped: result.skipped || [],
+      canWrite: Boolean(result.canWrite),
+      updateMask: result.updateMask || "",
+    });
+  }
+
   if (body.action === "sync-nap") {
     const result = await syncNapFromMken(scope.slug, body.locationId || "", {
       includeName: body.includeName === true,
@@ -192,6 +210,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       competitors: result.competitors,
+      own: result.own || null,
       source: result.source,
       query: result.query,
     });

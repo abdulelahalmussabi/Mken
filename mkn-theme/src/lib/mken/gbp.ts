@@ -4,7 +4,9 @@ import { applyRewaDefaults } from "@/lib/mken/rewa-content";
 import {
   encodeGbpOAuthState,
   googleTokenError,
+  isGoogleReconnectError,
   normalizeGoogleOAuthValue,
+  revokeGoogleOAuthToken,
 } from "@/lib/mken/google-oauth";
 import { fetchTenantRow, getTenantDb, TENANT_TABLE, writeTenantConfig } from "@/lib/mken/tenant";
 import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
@@ -134,17 +136,20 @@ async function writeGbpLocationDbCache(slug: string, locations: GbpLocation[]) {
   await writeTenantConfig(slug, config);
 }
 
-async function listOwnedGbpLocations(token: string): Promise<{ locations: GbpLocation[]; error?: string }> {
+async function listLocationsForParent(
+  token: string,
+  parent: string
+): Promise<{ locations: GbpLocation[]; error?: string }> {
   const locations: GbpLocation[] = [];
   let pageToken = "";
-  for (let page = 0; page < 3; page += 1) {
+  for (let page = 0; page < 5; page += 1) {
     const qs = new URLSearchParams({
       readMask: "name,title,websiteUri,metadata,storefrontAddress",
       pageSize: "100",
     });
     if (pageToken) qs.set("pageToken", pageToken);
     const res = await fetch(
-      `https://mybusinessbusinessinformation.googleapis.com/v1/accounts/-/locations?${qs}`,
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${parent}/locations?${qs}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (!res.ok) {
@@ -162,6 +167,44 @@ async function listOwnedGbpLocations(token: string): Promise<{ locations: GbpLoc
     if (!pageToken) break;
   }
   return { locations };
+}
+
+async function listGbpAccountParents(token: string): Promise<{ parents: string[]; error?: string }> {
+  const res = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    return { parents: [], error: await googleApiError(res, "تعذّر قراءة حسابات Google Business") };
+  }
+  const data = (await res.json()) as { accounts?: Array<{ name?: string }> };
+  const parents = (data.accounts || []).map((account) => account.name || "").filter(Boolean);
+  return { parents };
+}
+
+async function listOwnedGbpLocations(token: string): Promise<{ locations: GbpLocation[]; error?: string }> {
+  const wildcard = await listLocationsForParent(token, "accounts/-");
+  if (wildcard.locations.length) return wildcard;
+
+  const accounts = await listGbpAccountParents(token);
+  if (!accounts.parents.length) {
+    return {
+      locations: [],
+      error:
+        accounts.error ||
+        wildcard.error ||
+        "لا توجد حسابات Google Business Profile على هذا المستخدم. اربط بحساب مدير/مالك الملف الموثّق.",
+    };
+  }
+
+  const locations: GbpLocation[] = [];
+  let lastError = wildcard.error;
+  for (const parent of accounts.parents) {
+    const listed = await listLocationsForParent(token, parent);
+    locations.push(...listed.locations);
+    if (listed.error) lastError = listed.error;
+  }
+  if (locations.length) return { locations };
+  return { locations: [], error: lastError || "الحساب مربوط لكن جوجل لم يُرجع أي فرع للقراءة." };
 }
 
 export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus; error?: string }> {
@@ -210,6 +253,15 @@ export async function disconnectGbp(slug: string): Promise<{ error?: string }> {
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
 
+  const { data: tokens } = await db
+    .from(TENANT_TABLE)
+    .select("google_refresh_token, google_access_token")
+    .eq("tenant_slug", slug)
+    .maybeSingle();
+  const row = tokens as { google_refresh_token?: string | null; google_access_token?: string | null } | null;
+  await revokeGoogleOAuthToken(row?.google_refresh_token);
+  await revokeGoogleOAuthToken(row?.google_access_token);
+
   const { error } = await db
     .from(TENANT_TABLE)
     .update({
@@ -222,9 +274,9 @@ export async function disconnectGbp(slug: string): Promise<{ error?: string }> {
     .eq("tenant_slug", slug);
 
   locationListCache.delete(slug);
-  const row = await fetchTenantRow(slug);
-  if (row?.config_data?.gbp) {
-    const next = { ...row.config_data };
+  const tenantRow = await fetchTenantRow(slug);
+  if (tenantRow?.config_data?.gbp) {
+    const next = { ...tenantRow.config_data };
     delete next.gbp;
     await writeTenantConfig(slug, next);
   }
@@ -312,14 +364,20 @@ export async function completeGbpOAuth(
   if (!tokenRes.ok || !tokenData.access_token) {
     return { error: googleTokenError(tokenData) };
   }
+  if (!tokenData.refresh_token) {
+    return {
+      error:
+        "جوجل لم يُرجع رمز التحديث. أعد الربط واقبل كل الصلاحيات — بدون refresh token لا يمكن جلب الفروع لاحقاً.",
+    };
+  }
 
   const expiry = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
   const update: Record<string, string> = {
     google_access_token: tokenData.access_token,
+    google_refresh_token: tokenData.refresh_token,
     google_token_expiry: expiry,
     updated_at: new Date().toISOString(),
   };
-  if (tokenData.refresh_token) update.google_refresh_token = tokenData.refresh_token;
 
   const { error } = await db.from(TENANT_TABLE).update(update).eq("tenant_slug", key);
   if (error) return { error: "تعذّر حفظ توكن جوجل لهذه المنشأة" };
@@ -344,7 +402,8 @@ async function getValidAccessToken(slug: string): Promise<string> {
     google_token_expiry?: string | null;
   };
 
-  if (!row.google_refresh_token) throw new Error("Google Business account is not connected");
+  const refreshToken = (row.google_refresh_token || "").trim();
+  if (!refreshToken) throw new Error("Google Business account is not connected");
 
   const stillValid =
     row.google_access_token &&
@@ -358,6 +417,11 @@ async function getValidAccessToken(slug: string): Promise<string> {
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_CLIENT_ID و GOOGLE_CLIENT_SECRET غير معيّنين");
   }
+  if (clientSecret.length < 16) {
+    throw new Error(
+      "GOOGLE_CLIENT_SECRET ناقص أو مقصوص. انسخ السر الكامل من Google Cloud عند إنشائه، ثم الصقه في Vercel وأعد النشر."
+    );
+  }
 
   const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -365,15 +429,20 @@ async function getValidAccessToken(slug: string): Promise<string> {
     body: new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
-      refresh_token: row.google_refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
 
-  if (!refreshRes.ok) throw new Error("فشل تجديد توكن جوجل");
-
-  const tokenData = (await refreshRes.json()) as { access_token?: string; expires_in?: number };
-  if (!tokenData.access_token) throw new Error("فشل تجديد توكن جوجل");
+  const tokenData = (await refreshRes.json().catch(() => ({}))) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+  if (!refreshRes.ok || !tokenData.access_token) {
+    throw new Error(googleTokenError(tokenData) || "فشل تجديد توكن جوجل");
+  }
 
   const expiry = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
   await db
@@ -462,7 +531,7 @@ export async function listGbpLocations(
       connected: true,
       selectedLocationId,
       locations: stored,
-      error: stored.length ? undefined : explainGbpGoogleError(message),
+      error: stored.length && !isGoogleReconnectError(message) ? undefined : explainGbpGoogleError(message),
     };
   }
 }
@@ -522,6 +591,16 @@ export interface GbpCompetitor {
   mapsUrl?: string;
 }
 
+function parseRatingValue(raw: unknown): number {
+  const n = Number(String(raw ?? "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) && n > 0 ? Math.min(5, n) : 0;
+}
+
+function parseReviewsTotal(raw: unknown): number {
+  const n = Number(String(raw ?? "").replace(/\D/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 function trimGbpPostText(text: string): string {
   if (!text || text.length <= GBP_POST_MAX_CHARS) return text || "";
   return `${text.slice(0, GBP_POST_MAX_CHARS - 1).trim()}…`;
@@ -547,6 +626,8 @@ export async function loadNapSiteSnapshot(
     category: string;
     ownPlaceId: string;
     mapsUrl: string;
+    rating: number;
+    reviewsTotal: number;
   };
   error?: string;
 }> {
@@ -586,8 +667,17 @@ export async function loadNapSiteSnapshot(
       category: typeof config.featuredActivity === "string" ? config.featuredActivity : "",
       ownPlaceId: typeof preview.placeId === "string" ? preview.placeId.trim() : "",
       mapsUrl: typeof config.mapsUrl === "string" ? config.mapsUrl.trim() : "",
+      rating: parseRatingValue(config.rating),
+      reviewsTotal: parseReviewsTotal(config.reviewsCount),
     },
   };
+}
+
+function missingGbpSnapshotError(site: { mapsUrl?: string; ownPlaceId?: string }): string {
+  if (site.ownPlaceId || site.mapsUrl) {
+    return "تعذّر قراءة بيانات الخرائط لهذا الرابط. أعد حفظ الرابط أو تأكد أن مفتاح خرائط جوجل معيّن على الخادم.";
+  }
+  return "اختر فرعاً أو الصق رابط خرائط جوجل أولاً";
 }
 
 async function fetchGbpLocationDetail(slug: string, locationId: string): Promise<GbpLocationDetail> {
@@ -686,10 +776,40 @@ export async function runNapAudit(
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
   try {
     const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
-    if (!gbp) return { error: "اختر فرعاً أو الصق رابط خرائط جوجل أولاً" };
+    if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
     return { report: buildNapAuditReport(snap.site, gbp) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر فحص NAP" };
+  }
+}
+
+export async function previewNapSync(
+  slug: string,
+  locationId: string,
+  options?: { includeName?: boolean }
+): Promise<{
+  report?: NapReport;
+  updated?: { field: string; label: string; value: string }[];
+  skipped?: { field: string; label: string; reason: string }[];
+  canWrite?: boolean;
+  updateMask?: string;
+  error?: string;
+}> {
+  const snap = await loadNapSiteSnapshot(slug);
+  if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
+  try {
+    const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
+    if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
+    const plan = planNapSync(snap.site, gbp, { includeName: Boolean(options?.includeName) });
+    return {
+      report: plan.report,
+      updated: plan.updated,
+      skipped: plan.skipped,
+      canWrite: Boolean(locationId.trim()),
+      updateMask: plan.updateMask,
+    };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "تعذّر تجهيز مراجعة المزامنة" };
   }
 }
 
@@ -774,7 +894,7 @@ export async function syncNapToMken(
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
 
   const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
-  if (!gbp) return { error: "اختر فرعاً أو الصق رابط خرائط جوجل أولاً" };
+  if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
 
   const plan = planReverseNapSync(snap.site, gbp, selectedFields);
   if (!plan.updates.length) {
@@ -969,11 +1089,25 @@ async function readGbpCategoryLabel(slug: string): Promise<string> {
 
 export async function listGbpCompetitors(
   slug: string
-): Promise<{ competitors?: GbpCompetitor[]; source?: string; query?: string; error?: string }> {
+): Promise<{
+  competitors?: GbpCompetitor[];
+  own?: GbpCompetitor;
+  source?: string;
+  query?: string;
+  error?: string;
+}> {
   const snap = await loadNapSiteSnapshot(slug);
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
 
-  const { city, lat, lng, category, name: ownName, ownPlaceId } = snap.site;
+  const { city, lat, lng, category, name: ownName, ownPlaceId, mapsUrl, rating: ownRating, reviewsTotal } = snap.site;
+  const own: GbpCompetitor = {
+    name: ownName,
+    rating: ownRating || 0,
+    userRatingsTotal: reviewsTotal || 0,
+    address: city,
+    placeId: ownPlaceId,
+    mapsUrl: mapsUrl || competitorMapsUrl(ownName, city, ownPlaceId),
+  };
   const gbpCategory = await readGbpCategoryLabel(slug);
   const query = placesSearchQuery(category, city, gbpCategory);
   const hasActivity = Boolean(
@@ -1031,7 +1165,7 @@ export async function listGbpCompetitors(
         .filter((item): item is GbpCompetitor => Boolean(item))
         .filter(keepCompetitor)
         .slice(0, 5);
-      return { competitors, source: "google_places", query };
+      return { competitors, own, source: "google_places", query };
     } catch {
       // Places unavailable — labeled simulation only, never salon stubs.
     }
@@ -1074,7 +1208,7 @@ export async function listGbpCompetitors(
     if (!competitors.length) {
       return { error: "تعذّر العثور على منافسين لهذه المدينة وهذا النشاط." };
     }
-    return { competitors, source: "gemini_simulation", query };
+    return { competitors, own, source: "gemini_simulation", query };
   } catch {
     return { error: "تعذّر جلب منافسين من خرائط جوجل لهذه المدينة والنشاط." };
   }

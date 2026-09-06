@@ -116,6 +116,7 @@ export default function AdminSettingsPage() {
   const [gbpLocationError, setGbpLocationError] = useState("");
   const [mapsUrlInput, setMapsUrlInput] = useState("");
   const [mapsBound, setMapsBound] = useState(false);
+  const [mapsAuditGen, setMapsAuditGen] = useState(0);
   const [domains, setDomains] = useState<DomainRow[]>([]);
   const [domainEntitled, setDomainEntitled] = useState(false);
   const [domainMessage, setDomainMessage] = useState("");
@@ -351,7 +352,9 @@ export default function AdminSettingsPage() {
       if (locRes.ok && loc.success) {
         setGbpLocations(loc.locations || []);
         if (loc.selectedLocationId) setGbpLocationId(loc.selectedLocationId);
-        const message = loc.locations?.length ? "" : loc.message || "لا توجد فروع في الحساب";
+        const message = loc.locations?.length
+          ? ""
+          : loc.message || "لا توجد فروع في الحساب";
         setGbpLocationError(message);
         if (loc.locations?.length) showToast("تم جلب الفروع", "success");
         else if (loc.message) showToast(loc.message, "error");
@@ -418,6 +421,7 @@ export default function AdminSettingsPage() {
         return;
       }
       setMapsBound(true);
+      setMapsAuditGen((n) => n + 1);
       showToast(data.message || "تم حفظ رابط الخرائط", "success");
     } catch {
       showToast("تعذّر الاتصال بالخادم", "error");
@@ -792,6 +796,12 @@ export default function AdminSettingsPage() {
                       {gbpLocationError ? (
                         <p className="text-[11px] text-amber-400 font-bold">{gbpLocationError}</p>
                       ) : null}
+                      {/صلاحية ربط جوجل انتهت|GOOGLE_CLIENT_SECRET|سر عميل جوجل/.test(gbpLocationError) ? (
+                        <div className="p-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 space-y-2 text-[11px] text-rose-100 leading-relaxed">
+                          <p className="font-bold">الفروع لا تظهر لأن توكن جوجل لم يعد صالحاً — ليست مشكلة قائمة الفروع.</p>
+                          <p>اضغط «إلغاء الربط» ثم «ربط حساب جوجل» بحساب مدير ملف المحروسة، ووافق على كل الصلاحيات.</p>
+                        </div>
+                      ) : null}
                       {/حصّة 0|صفراً|حد طلبات جوجل|Basic API Access/.test(gbpLocationError) ? (
                         <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2 text-[11px] text-amber-100 leading-relaxed">
                           <p className="font-bold">هذا قرار جوجل على المشروع، ليس خطأ ربط المحروسة.</p>
@@ -891,6 +901,7 @@ export default function AdminSettingsPage() {
                       query={query}
                       locationId={gbpLocationId}
                       mapsBound={mapsBound}
+                      auditNonce={mapsAuditGen}
                       busy={gbpBusy}
                       setBusy={setGbpBusy}
                       onToast={showToast}

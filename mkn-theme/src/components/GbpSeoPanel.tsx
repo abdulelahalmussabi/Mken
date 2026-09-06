@@ -4,6 +4,15 @@ import React, { useEffect, useState } from "react";
 import { napSkipReasonLabel, type NapReport, type NapStatus } from "@/lib/mken/nap";
 import type { GbpCompetitor } from "@/lib/mken/gbp";
 
+type SyncField = { field: string; label: string; value: string };
+type SkipField = { field: string; label: string; reason: string };
+type StagingPlan = {
+  report: NapReport;
+  updated: SyncField[];
+  skipped: SkipField[];
+  canWrite: boolean;
+};
+
 function napLabel(status: NapStatus): string {
   if (status === "match") return "متطابق";
   if (status === "mismatch") return "اختلاف";
@@ -20,10 +29,26 @@ function napClass(status: NapStatus): string {
   return "text-slate-400";
 }
 
+function napOverallLabel(overall: NapReport["summary"]["overall"]): string {
+  if (overall === "excellent") return "ممتاز";
+  if (overall === "good") return "جيد";
+  if (overall === "fair") return "متوسط";
+  return "يحتاج معالجة";
+}
+
+function ratingDelta(own: number, other: number): string {
+  if (!own || !other) return "—";
+  const diff = Math.round((other - own) * 10) / 10;
+  if (diff === 0) return "مساوٍ";
+  if (diff > 0) return `أعلى بـ ${diff}`;
+  return `أقل بـ ${Math.abs(diff)}`;
+}
+
 export default function GbpSeoPanel({
   query,
   locationId,
   mapsBound,
+  auditNonce,
   busy,
   setBusy,
   onToast,
@@ -31,21 +56,26 @@ export default function GbpSeoPanel({
   query: string;
   locationId: string;
   mapsBound?: boolean;
+  auditNonce?: number;
   busy: boolean;
   setBusy: (value: boolean) => void;
   onToast: (message: string, type: "success" | "error") => void;
 }) {
   const [report, setReport] = useState<NapReport | null>(null);
+  const [auditError, setAuditError] = useState("");
   const [postPrompt, setPostPrompt] = useState("");
   const [postText, setPostText] = useState("");
   const [reviewText, setReviewText] = useState("");
   const [rating, setRating] = useState("5");
   const [replyText, setReplyText] = useState("");
   const [competitors, setCompetitors] = useState<GbpCompetitor[]>([]);
+  const [ownListing, setOwnListing] = useState<GbpCompetitor | null>(null);
   const [competitorSource, setCompetitorSource] = useState("");
   const [competitorQuery, setCompetitorQuery] = useState("");
   const [includeName, setIncludeName] = useState(false);
-  const [skipped, setSkipped] = useState<{ field: string; label: string; reason: string }[]>([]);
+  const [confirmNameSend, setConfirmNameSend] = useState(false);
+  const [skipped, setSkipped] = useState<SkipField[]>([]);
+  const [staging, setStaging] = useState<StagingPlan | null>(null);
   const [serviceName, setServiceName] = useState("");
   const [serviceTitles, setServiceTitles] = useState<string[]>([]);
   const [catalogServices, setCatalogServices] = useState<Array<{ id: string; title: string; price: string }>>([]);
@@ -54,6 +84,7 @@ export default function GbpSeoPanel({
   const [showReverse, setShowReverse] = useState(false);
   const [reverseFields, setReverseFields] = useState({ phone: true, city: true, name: false });
   const canAudit = Boolean(locationId || mapsBound);
+  const canWrite = Boolean(locationId);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,9 +144,44 @@ export default function GbpSeoPanel({
     }
   };
 
+  useEffect(() => {
+    if (!canAudit) return;
+    let cancelled = false;
+    const load = async () => {
+      setBusy(true);
+      try {
+        const data = await postJson("nap-audit");
+        if (cancelled) return;
+        setReport(data.report);
+        setSkipped([]);
+        setAuditError("");
+      } catch (err) {
+        if (!cancelled) setAuditError(err instanceof Error ? err.message : "تعذّر فحص NAP");
+      }
+      try {
+        const data = await postJson("competitors");
+        if (cancelled) return;
+        setCompetitors(data.competitors || []);
+        setOwnListing(data.own || null);
+        setCompetitorSource(data.source || "");
+        setCompetitorQuery(data.query || "");
+      } catch {
+        /* optional on auto-load */
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when bind/location changes, not on every render
+  }, [canAudit, locationId, mapsBound, auditNonce, query]);
+
   const fetchCompetitors = async () => {
     const data = await postJson("competitors");
     setCompetitors(data.competitors || []);
+    setOwnListing(data.own || null);
     setCompetitorSource(data.source || "");
     setCompetitorQuery(data.query || "");
     onToast(
@@ -126,8 +192,63 @@ export default function GbpSeoPanel({
     );
   };
 
+  const openStaging = async () => {
+    const data = await postJson("preview-sync-nap", { includeName });
+    setReport(data.report);
+    setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
+    setConfirmNameSend(false);
+    setStaging({
+      report: data.report,
+      updated: Array.isArray(data.updated) ? data.updated : [],
+      skipped: Array.isArray(data.skipped) ? data.skipped : [],
+      canWrite: Boolean(data.canWrite),
+    });
+  };
+
+  const applyStaging = async () => {
+    if (!staging) return;
+    if (!staging.canWrite) {
+      onToast("الكتابة إلى جوجل تحتاج فرعاً محفوظاً بعد فتح حصّة Business Information API.", "error");
+      setStaging(null);
+      return;
+    }
+    const nameQueued = staging.updated.some((item) => item.field === "name");
+    if (nameQueued && !confirmNameSend) {
+      onToast("أكّد أن اسم المنشأة مطابق للترخيص قبل إرساله إلى جوجل.", "error");
+      return;
+    }
+    const data = await postJson("sync-nap", { includeName });
+    setReport(data.report);
+    setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
+    setStaging(null);
+    const nameHeld = (data.skipped || []).some((item: { reason?: string }) => item.reason === "name_protected");
+    onToast(
+      nameHeld
+        ? `${data.message || "تمت المزامنة"} — اسم المنشأة لم يُحدَّث حمايةً للحساب.`
+        : data.message || "تمت المزامنة",
+      "success"
+    );
+  };
+
+  const writeHint = canWrite
+    ? "الكتابة إلى جوجل متاحة لهذا الفرع."
+    : mapsBound
+      ? "القراءة عبر رابط الخرائط مفعّلة. المزامنة والخدمات والنشر تنتظر فرعاً من حساب بيزنس بعد فتح الحصّة."
+      : "الصق رابط الخرائط أو اربط فرعاً لبدء الفحص.";
+
+  const nameQueued = Boolean(staging?.updated.some((item) => item.field === "name"));
+  const matrixRows = ownListing ? [ownListing, ...competitors] : competitors;
+
   return (
     <div className="space-y-4 pt-3 border-t border-slate-800">
+      <div className="p-3 rounded-2xl border border-slate-700 bg-slate-950/60 space-y-1">
+        <p className="text-[11px] font-bold text-slate-200">صلاحيات الربط</p>
+        <p className="text-[11px] leading-relaxed text-slate-400">{writeHint}</p>
+        <p className="text-[11px] text-slate-500">
+          قراءة: فحص NAP، المنافسون، الاستيراد إلى مكّن. كتابة: مزامنة NAP، الخدمات، نشر المنشور.
+        </p>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -137,6 +258,7 @@ export default function GbpSeoPanel({
               const data = await postJson("nap-audit");
               setReport(data.report);
               setSkipped([]);
+              setAuditError("");
               onToast("تم فحص NAP", "success");
             })
           }
@@ -146,29 +268,8 @@ export default function GbpSeoPanel({
         </button>
         <button
           type="button"
-          disabled={busy || !locationId}
-          onClick={() =>
-            run(async () => {
-              if (includeName) {
-                const ok = window.confirm(
-                  "تغيير اسم المنشأة على جوجل قد يعرّض الصفحة للتعليق. هل تريد تضمين الاسم في هذه المزامنة؟"
-                );
-                if (!ok) return;
-              }
-              const data = await postJson("sync-nap", { includeName });
-              setReport(data.report);
-              setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
-              const nameHeld = (data.skipped || []).some(
-                (item: { reason?: string }) => item.reason === "name_protected"
-              );
-              onToast(
-                nameHeld
-                  ? `${data.message || "تمت المزامنة"} — اسم المنشأة لم يُحدَّث حمايةً للحساب.`
-                  : data.message || "تمت المزامنة",
-                "success"
-              );
-            })
-          }
+          disabled={busy || !canAudit}
+          onClick={() => run(openStaging)}
           className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-600 text-white disabled:opacity-50"
         >
           مزامنة NAP إلى جوجل
@@ -183,7 +284,7 @@ export default function GbpSeoPanel({
         </button>
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || !canAudit}
           onClick={() => run(fetchCompetitors)}
           className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
         >
@@ -191,13 +292,113 @@ export default function GbpSeoPanel({
         </button>
         <button
           type="button"
-          disabled={busy || !locationId}
-          onClick={() => setShowServices((open) => !open)}
+          disabled={busy}
+          onClick={() => {
+            if (!canWrite) {
+              onToast("مزامنة الخدمات تحتاج فرعاً من حساب بيزنس بعد فتح الحصّة.", "error");
+              return;
+            }
+            setShowServices((open) => !open);
+          }}
           className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50"
         >
           مزامنة الخدمات إلى جوجل
         </button>
       </div>
+
+      {staging ? (
+        <div
+          className="p-3 rounded-2xl border border-sky-500/40 bg-sky-950/30 space-y-3"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="nap-staging-title"
+        >
+          <p id="nap-staging-title" className="text-xs font-bold text-sky-100">
+            مراجعة المزامنة قبل الإرسال
+          </p>
+          {staging.canWrite ? (
+            <p className="text-[11px] text-slate-400">
+              لن يُرسل شيء إلى جوجل حتى تعتمد الحقول. اسم المنشأة يبقى خارجاً ما لم يكن محدّداً أدناه.
+            </p>
+          ) : (
+            <p className="text-[11px] text-amber-200">
+              هذه معاينة فقط. لا يوجد فرع قابل للكتابة — أكمل طلب الحصّة ثم اجلب الفروع قبل الإرسال.
+            </p>
+          )}
+          {staging.updated.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] text-right">
+                <thead>
+                  <tr className="text-slate-500">
+                    <th className="p-2">سيُرسل</th>
+                    <th className="p-2">القيمة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staging.updated.map((item) => (
+                    <tr key={item.field} className="border-t border-slate-800 text-slate-200">
+                      <td className="p-2">{item.label}</td>
+                      <td className="p-2 text-slate-400" dir={item.field === "website" || item.field === "phone" ? "ltr" : undefined}>
+                        {item.value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400">لا توجد حقول ستُرسل — البيانات متطابقة أو غير قابلة للمزامنة التلقائية.</p>
+          )}
+          {staging.skipped.length ? (
+            <ul className="text-[11px] text-slate-400 space-y-0.5">
+              {staging.skipped.map((item) => (
+                <li key={`${item.field}-${item.reason}`}>
+                  {item.label}: {napSkipReasonLabel(item.reason)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {nameQueued ? (
+            <label className="flex items-start gap-2 p-2 rounded-xl border border-rose-500/40 bg-rose-950/40 text-[11px] text-rose-100">
+              <input
+                type="checkbox"
+                checked={confirmNameSend}
+                onChange={(e) => setConfirmNameSend(e.target.checked)}
+                className="mt-0.5 shrink-0"
+              />
+              <span>أؤكد أن الاسم مطابق للسجل التجاري أو رخصة البلدية، وأتحمل خطر تعليق الصفحة على الخرائط.</span>
+            </label>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setStaging(null)}
+              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
+            >
+              إلغاء
+            </button>
+            {staging.canWrite ? (
+              <button
+                type="button"
+                disabled={busy || (nameQueued && !confirmNameSend)}
+                onClick={() => run(applyStaging)}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-sky-700 hover:bg-sky-600 text-white disabled:opacity-50"
+              >
+                اعتماد وإرسال
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStaging(null)}
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white"
+              >
+                فهمت — بانتظار الحصّة
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {showReverse ? (
         <div className="p-3 rounded-2xl border border-sky-500/30 bg-sky-950/20 space-y-2">
@@ -271,7 +472,7 @@ export default function GbpSeoPanel({
           </div>
           <button
             type="button"
-            disabled={busy || !locationId || !selectedServiceIds.length}
+            disabled={busy || !canWrite || !selectedServiceIds.length}
             onClick={() =>
               run(async () => {
                 const data = await postJson("sync-services", { serviceIds: selectedServiceIds });
@@ -307,9 +508,15 @@ export default function GbpSeoPanel({
 
       {report ? (
         <div className="space-y-2">
-          <p className="text-xs text-slate-400">
-            تطابق {report.summary.scorePercent}% — {report.summary.matched}/{report.summary.total}
-          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-bold text-slate-100">
+              تطابق NAP {report.summary.scorePercent}% — {napOverallLabel(report.summary.overall)}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              {report.summary.matched}/{report.summary.total} متطابق · {report.summary.mismatches} اختلاف ·{" "}
+              {report.summary.missing} ناقص
+            </p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-right">
               <thead>
@@ -318,17 +525,17 @@ export default function GbpSeoPanel({
                   <th className="p-2">مكّن</th>
                   <th className="p-2">جوجل</th>
                   <th className="p-2">الحالة</th>
+                  <th className="p-2">الإجراء</th>
                 </tr>
               </thead>
               <tbody>
                 {report.items.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-800">
+                  <tr key={item.id} className="border-t border-slate-800 align-top">
                     <td className="p-2 text-slate-300">{item.label}</td>
                     <td className="p-2 text-slate-400">{item.siteValue}</td>
                     <td className="p-2 text-slate-400">{item.gbpValue}</td>
-                    <td className={`p-2 font-bold ${napClass(item.status)}`} title={item.hint}>
-                      {napLabel(item.status)}
-                    </td>
+                    <td className={`p-2 font-bold ${napClass(item.status)}`}>{napLabel(item.status)}</td>
+                    <td className="p-2 text-[11px] text-slate-500">{item.hint}</td>
                   </tr>
                 ))}
               </tbody>
@@ -344,38 +551,69 @@ export default function GbpSeoPanel({
             </ul>
           ) : null}
         </div>
+      ) : auditError ? (
+        <p className="text-[11px] font-bold text-amber-300">{auditError}</p>
+      ) : canAudit ? (
+        <p className="text-[11px] text-slate-500">جاري فحص NAP…</p>
       ) : null}
 
-      {competitors.length ? (
+      {matrixRows.length ? (
         <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-200">مصفوفة المنافسين المحليين</p>
           <p className="text-[11px] text-slate-400">
             {competitorSource === "google_places"
               ? "المصدر: خرائط جوجل"
               : "المصدر: تقدير تقريبي — ليست بيانات خرائط مباشرة"}
             {competitorQuery ? ` — البحث: ${competitorQuery}` : ""}
           </p>
-          <ul className="space-y-1.5">
-            {competitors.map((comp) => (
-              <li
-                key={`${comp.placeId || comp.name}-${comp.address}`}
-                className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200"
-              >
-                <span className="font-bold">{comp.name}</span>
-                <span className="text-slate-500"> — {comp.rating}★ ({comp.userRatingsTotal})</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">{comp.address}</p>
-                {comp.mapsUrl ? (
-                  <a
-                    href={comp.mapsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-block mt-1 text-[11px] font-bold text-sky-300 hover:text-sky-200"
-                  >
-                    معاينة في خرائط جوجل
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-right">
+              <thead>
+                <tr className="text-slate-500">
+                  <th className="p-2">المنشأة</th>
+                  <th className="p-2">التقييم</th>
+                  <th className="p-2">عدد الآراء</th>
+                  <th className="p-2">مقابل المحروسة</th>
+                  <th className="p-2">الخرائط</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matrixRows.map((row, index) => {
+                  const isOwn = Boolean(ownListing && index === 0);
+                  return (
+                    <tr
+                      key={`${row.placeId || row.name}-${row.address}`}
+                      className={`border-t border-slate-800 ${isOwn ? "bg-emerald-950/30" : ""}`}
+                    >
+                      <td className="p-2 text-slate-200">
+                        {row.name}
+                        {isOwn ? <span className="block text-[10px] text-emerald-300">منشأتك</span> : null}
+                      </td>
+                      <td className="p-2 text-slate-300">{row.rating ? row.rating.toFixed(1) : "—"}</td>
+                      <td className="p-2 text-slate-400">{row.userRatingsTotal || "—"}</td>
+                      <td className="p-2 text-slate-400">
+                        {isOwn ? "المرجع" : ratingDelta(ownListing?.rating || 0, row.rating)}
+                      </td>
+                      <td className="p-2">
+                        {row.mapsUrl ? (
+                          <a
+                            href={row.mapsUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] font-bold text-sky-300 hover:text-sky-200"
+                          >
+                            فتح
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
@@ -431,9 +669,12 @@ export default function GbpSeoPanel({
             </button>
             <button
               type="button"
-              disabled={busy || !locationId || !postText}
+              disabled={busy || !postText}
               onClick={() =>
                 run(async () => {
+                  if (!canWrite) {
+                    throw new Error("النشر على جوجل يحتاج فرعاً محفوظاً بعد فتح الحصّة. يمكنك نسخ النص الآن.");
+                  }
                   await postJson("publish-post", { text: postText });
                   onToast("نُشر المنشور على جوجل بيزنس", "success");
                 })
