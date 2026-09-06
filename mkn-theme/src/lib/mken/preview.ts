@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { buildGoogleAuthUrl } from "@/lib/mken/gbp";
 import {
   TENANT_TABLE,
   getTenantDb,
@@ -314,14 +313,43 @@ export function extractLatLngFromMapsUrl(url: string): { lat: number; lng: numbe
   return null;
 }
 
-function extractCidFromMapsUrl(url: string): string | null {
-  const match = url.match(/!1s0x[0-9a-f]+:0x([0-9a-f]+)/i);
-  if (!match?.[1]) return null;
+export function isReadableMapsListingUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (extractPlaceIdCandidate(trimmed)) return true;
+  if (extractLatLngFromMapsUrl(trimmed)) return true;
+  if (extractCidFromMapsUrl(trimmed)) return true;
+  return /\/maps\/place\//i.test(trimmed);
+}
+
+export function isMapsShareInput(url: string): boolean {
+  const trimmed = normalizeMapsInput(url);
+  if (!trimmed) return false;
+  if (isReadableMapsListingUrl(trimmed)) return true;
+  const parsed = safeUrl(trimmed);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname.toLowerCase();
+  return isShortMapsHost(host) || (host.includes("google.") && path.includes("/maps"));
+}
+
+export function extractCidFromMapsUrl(url: string): string | null {
+  let decoded = url;
   try {
-    return BigInt(`0x${match[1]}`).toString(10);
+    decoded = decodeURIComponent(url);
   } catch {
-    return null;
+    decoded = url;
   }
+  const hex = decoded.match(/!1s0x[0-9a-f]+:0x([0-9a-f]+)/i) || decoded.match(/0x[0-9a-f]+:0x([0-9a-f]+)/i);
+  if (hex?.[1]) {
+    try {
+      return BigInt(`0x${hex[1]}`).toString(10);
+    } catch {
+      /* fall through */
+    }
+  }
+  const decimal = decoded.match(/[?&](?:cid|ludocid)=(\d+)/i);
+  return decimal?.[1] || null;
 }
 
 function extractMapsUrlFromHtml(html: string): string | null {
@@ -343,9 +371,9 @@ const MAPS_FETCH_HEADERS = {
   "Accept-Language": "ar,en;q=0.8",
 };
 
-const GOOGLE_FETCH_MS = 3500;
-const RESOLVE_PLACE_MS = 5000;
-const PLACE_DETAILS_MS = 3500;
+const GOOGLE_FETCH_MS = 8000;
+const RESOLVE_PLACE_MS = 20000;
+const PLACE_DETAILS_MS = 8000;
 const CACHE_READ_MS = 800;
 
 async function mapsFetch(url: string, init: RequestInit = {}, timeoutMs = GOOGLE_FETCH_MS): Promise<Response | null> {
@@ -393,29 +421,35 @@ async function resolveMapsShortUrl(url: string): Promise<string> {
   const parsed = safeUrl(current);
   if (!parsed || !isShortMapsHost(parsed.hostname)) return current;
 
-  for (let hop = 0; hop < 5; hop++) {
+  for (let hop = 0; hop < 6; hop++) {
     current = unwrapGoogleConsentUrl(current);
     const host = safeUrl(current)?.hostname || "";
     if (host && !isShortMapsHost(host) && !host.includes("consent.google")) break;
+
     const res = await mapsFetch(
       current,
       { method: "GET", redirect: "manual", headers: MAPS_FETCH_HEADERS },
-      3500
+      GOOGLE_FETCH_MS
     );
     if (!res) break;
+
     const location = res.headers.get("location");
-    if (location && res.status >= 300 && res.status < 400) {
+    if (location && (res.status === 0 || (res.status >= 300 && res.status < 400))) {
       current = new URL(location, current).href;
+      continue;
+    }
+    if (location) {
+      current = new URL(location, current).href;
+      continue;
+    }
+    if (res.url && res.url !== current) {
+      current = res.url;
       continue;
     }
     const html = await res.text().catch(() => "");
     const fromHtml = html ? extractMapsUrlFromHtml(html) : null;
     if (fromHtml) {
       current = new URL(fromHtml, current).href;
-      continue;
-    }
-    if (res.url && res.url !== current) {
-      current = res.url;
       continue;
     }
     break;
@@ -425,9 +459,13 @@ async function resolveMapsShortUrl(url: string): Promise<string> {
     const followed = await mapsFetch(
       current,
       { method: "GET", redirect: "follow", headers: MAPS_FETCH_HEADERS },
-      3500
+      GOOGLE_FETCH_MS
     );
     if (followed?.url) current = followed.url;
+    const location = followed?.headers.get("location");
+    if (location && isShortMapsHost(safeUrl(current)?.hostname || "")) {
+      current = new URL(location, current).href;
+    }
     if (followed && isShortMapsHost(safeUrl(current)?.hostname || "")) {
       const html = await followed.text().catch(() => "");
       const fromHtml = html ? extractMapsUrlFromHtml(html) : null;
@@ -506,10 +544,35 @@ async function findPlaceIdFromCid(cid: string): Promise<string | null> {
   return data?.result?.place_id || null;
 }
 
+async function findPlaceIdFromNearby(
+  bias: { lat: number; lng: number },
+  name?: string | null
+): Promise<string | null> {
+  const key = mapsKey();
+  if (!key) return null;
+  const params = new URLSearchParams({
+    location: `${bias.lat},${bias.lng}`,
+    radius: "120",
+    language: "ar",
+    key,
+  });
+  if (name?.trim()) params.set("keyword", name.trim().slice(0, 80));
+  const data = await mapsFetchJson<{
+    status?: string;
+    results?: Array<{ place_id?: string }>;
+  }>(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`);
+  if (data?.status && data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+    console.error("nearbysearch", data.status);
+  }
+  return data?.results?.[0]?.place_id || null;
+}
+
 async function findPlaceIdFromLatLng(
   bias: { lat: number; lng: number },
   name?: string | null
 ): Promise<string | null> {
+  const fromNearby = await findPlaceIdFromNearby(bias, name);
+  if (fromNearby) return fromNearby;
   const key = mapsKey();
   if (!key) return null;
   const params = new URLSearchParams({
@@ -531,6 +594,10 @@ async function findPlaceIdFromLatLng(
     (row.types || []).some((type) => type === "establishment" || type === "point_of_interest" || type === "premise")
   );
   return poi?.place_id || results[0]?.place_id || null;
+}
+
+export async function expandMapsShortUrl(url: string): Promise<string> {
+  return resolveMapsShortUrl(url);
 }
 
 export async function resolvePlaceId(mapsInput: string): Promise<string | null> {
@@ -1141,6 +1208,7 @@ export async function verifyClaimOtp(
       updated_at: new Date().toISOString(),
     })
     .eq("tenant_slug", slug);
+  const { buildGoogleAuthUrl } = await import("@/lib/mken/gbp");
   const built = buildGoogleAuthUrl(slug);
   return { googleAuthUrl: built.url };
 }

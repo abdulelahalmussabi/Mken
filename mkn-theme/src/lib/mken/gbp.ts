@@ -24,7 +24,6 @@ import {
 import { generateGeminiText } from "@/lib/mken/gemini";
 import { updateTenantSettings } from "@/lib/mken/settings";
 import {
-  extractLatLngFromMapsUrl,
   fetchLivePlaceDetails,
   resolvePlaceId,
   type LivePlaceDetails,
@@ -687,7 +686,8 @@ async function fetchGbpLocationDetail(slug: string, locationId: string): Promise
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!locationRes.ok) throw new Error("تعذّر جلب بيانات الفرع من جوجل");
-  return locationRes.json() as Promise<GbpLocationDetail>;
+  const body = (await locationRes.json()) as GbpLocationDetail;
+  return body;
 }
 
 function gbpLocationFromPlace(place: LivePlaceDetails): GbpLocationDetail {
@@ -730,43 +730,7 @@ async function resolveGbpSnapshot(
   return place ? gbpLocationFromPlace(place) : null;
 }
 
-export async function bindMapsListing(
-  slug: string,
-  mapsUrl: string
-): Promise<{ mapsUrl?: string; mapsPlaceId?: string; city?: string; error?: string }> {
-  const trimmed = mapsUrl.trim();
-  if (!trimmed) return { error: "الصق رابط خرائط جوجل أو place_id" };
-  const placeId = await resolvePlaceId(trimmed);
-  if (!placeId) return { error: "تعذّر قراءة الرابط. انسخ الرابط من تطبيق خرائط جوجل أو من المشاركة." };
-
-  const row = await fetchTenantRow(slug);
-  if (!row) return { error: "المنشأة غير موجودة" };
-  const config = { ...(row.config_data || {}) };
-  const preview = { ...(config.preview && typeof config.preview === "object" ? config.preview : {}) };
-  preview.placeId = placeId;
-  config.mapsUrl = trimmed;
-  config.preview = preview;
-
-  const details = await fetchLivePlaceDetails(placeId);
-  const area =
-    config.serviceArea && typeof config.serviceArea === "object" ? { ...config.serviceArea } : {};
-  const currentCity = typeof area.city === "string" ? area.city.trim() : "";
-  const inferredCity = details ? cityFromGbpAddress({ addressLines: details.address ? [details.address] : [] }, details.address || "") : "";
-  if (!currentCity && inferredCity) area.city = inferredCity;
-  const coords = extractLatLngFromMapsUrl(trimmed);
-  const center = area.center && typeof area.center === "object" ? { ...area.center } : {};
-  const hasCenter = Number.isFinite(Number(center.lat)) && Number(center.lat) !== 0;
-  if (!hasCenter && coords) area.center = coords;
-  if (Object.keys(area).length) config.serviceArea = area;
-
-  const written = await writeTenantConfig(slug, config);
-  if (written.error) return { error: written.error };
-  return {
-    mapsUrl: trimmed,
-    mapsPlaceId: placeId,
-    city: typeof area.city === "string" ? area.city : inferredCity,
-  };
-}
+export { bindMapsListing } from "@/lib/mken/maps-listing";
 
 export async function runNapAudit(
   slug: string,

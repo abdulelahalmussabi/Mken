@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { resolveTenantScope } from "@/lib/auth/scope";
 import {
   buildGoogleAuthUrl,
-  bindMapsListing,
   disconnectGbp,
   fetchGbpStatus,
   generateGbpPost,
@@ -19,7 +18,10 @@ import {
   syncNapFromMken,
   syncNapToMken,
 } from "@/lib/mken/gbp";
+import { bindMapsListing } from "@/lib/mken/maps-listing";
 import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
+
+export const maxDuration = 30;
 
 export async function GET(request: Request) {
   const scope = await resolveTenantScope(request);
