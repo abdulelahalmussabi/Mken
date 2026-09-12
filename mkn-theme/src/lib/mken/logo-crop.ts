@@ -182,6 +182,37 @@ export function isUsableLogoSrc(value: string | undefined | null): boolean {
   return /^https?:\/\//i.test(trimmed);
 }
 
+/** Tab icon URL. Host-only `/api/brand-icon` follows the tenant subdomain. */
+export function brandIconPath(slug?: string | null): string {
+  const key = (slug || "").trim().toLowerCase();
+  return key ? `/api/brand-icon/${encodeURIComponent(key)}` : "/api/brand-icon";
+}
+
+export function applyDocumentIcon(href: string): void {
+  if (typeof document === "undefined") return;
+  const trimmed = href.trim();
+  if (!trimmed) return;
+  const existing = document.querySelectorAll<HTMLLinkElement>("link[rel='icon'], link[rel='shortcut icon']");
+  if (existing.length) {
+    existing.forEach((link) => {
+      link.href = trimmed;
+      link.removeAttribute("sizes");
+    });
+  } else {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = trimmed;
+    document.head.appendChild(link);
+  }
+  let apple = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+  if (!apple) {
+    apple = document.createElement("link");
+    apple.rel = "apple-touch-icon";
+    document.head.appendChild(apple);
+  }
+  apple.href = trimmed;
+}
+
 /** Bump when seed PNGs change so CDN/browser caches drop old opaque boards. */
 export const BRAND_CUTOUT_VERSION = "2";
 
@@ -222,7 +253,7 @@ export function publicBrandSrc(filename: string): string {
 
 /** JPEG boards or unversioned seed PNGs that still show a black/white plate. */
 export function isStaleSeedLogo(value: string): boolean {
-  if (!/\/brand\/(rewa|almahrusa|mken)\.(png|jpe?g)(\?|$)/i.test(value)) return false;
+  if (!/\/brand\/(rewa|rewaq|almahrusa|mken)\.(png|jpe?g)(\?|$)/i.test(value)) return false;
   if (/\.jpe?g(\?|$)/i.test(value)) return true;
   return !value.includes(`v=${BRAND_CUTOUT_VERSION}`);
 }

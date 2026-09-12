@@ -109,7 +109,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     name: "Rewaq Resident | رواق ريزدنت",
     tagline: "شقق مفروشة في مذينب، المدينة المنورة — حجز مباشر",
     subtitle:
-      "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. تسجيل الوصول من 16:00.",
+      "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. شهري - سنوي.",
     type: "hotel",
     phone: "0541303411",
     whatsapp: "966541303411",
@@ -118,6 +118,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     rating: "4.8",
     reviewsCount: "105 تقييم على Google",
     heroImage: "/rewaq/hero.web.jpg?v=3",
+    logo: publicBrandSrc("rewaq.png"),
     demoNotice: "رواق ريزدنت — مذينب، المدينة المنورة على منصة مكّن",
     socialLinks: {
       whatsapp: "https://wa.me/966541303411",

@@ -656,7 +656,13 @@ function mergeSeedConfig(slug: string, config: MkenConfig): MkenConfig {
           };
   }
   const seedLogo =
-    slug === "rewa" ? publicBrandSrc("rewa.png") : slug === "almahrusa" ? publicBrandSrc("almahrusa.png") : "";
+    slug === "rewa"
+      ? publicBrandSrc("rewa.png")
+      : slug === "almahrusa"
+        ? publicBrandSrc("almahrusa.png")
+        : slug === "rewaq"
+          ? publicBrandSrc("rewaq.png")
+          : "";
   const currentLogo = (merged.brand?.logo || "").trim();
   if (seedLogo && (!currentLogo || isStaleSeedLogo(currentLogo))) {
     merged = { ...merged, brand: { ...(merged.brand || {}), logo: seedLogo } };

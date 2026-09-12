@@ -1,10 +1,11 @@
+import { publicBrandSrc } from "@/lib/mken/logo-crop";
 import type { MkenConfig } from "@/lib/mken/tenant";
 
 /** Exact Google Business name — keep NAP in sync with Maps. Distinct from منتجع رواء (`rewa`). */
 export const REWAQ_NAME = "Rewaq Resident | رواق ريزدنت";
 export const REWAQ_TAGLINE = "شقق مفروشة في مذينب، المدينة المنورة — حجز مباشر";
 export const REWAQ_SUBTITLE =
-  "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. تسجيل الوصول من 16:00.";
+  "شقق مفروشة مجهزة في حي مذينب بالمدينة المنورة 42317 — واي فاي ومطبخ صغير وتكييف وموقف سيارات. شهري - سنوي.";
 export const REWAQ_PHONE = "0541303411";
 export const REWAQ_WHATSAPP = "966541303411";
 export const REWAQ_EMAIL = "rewaqresident@gmail.com";
@@ -252,10 +253,19 @@ export function applyRewaqDefaults(config: MkenConfig): MkenConfig {
     brand.name = REWAQ_NAME;
   }
   if (!brand.tagline || /قريبة من الحرم|رواء\.\./.test(brand.tagline)) brand.tagline = REWAQ_TAGLINE;
+  const logo = typeof brand.logo === "string" ? brand.logo.trim() : "";
+  if (!logo || /rewaq\.jpe?g/i.test(logo) || logo.startsWith("data:image/") || !/\/brand\/rewaq\.png/i.test(logo)) {
+    brand.logo = publicBrandSrc("rewaq.png");
+  }
   next.brand = brand;
 
   if (isStaleRewaqPhone(next.phone)) next.phone = REWAQ_PHONE;
-  if (!next.subtitle || /قريبة من الحرم|طب بديل/.test(String(next.subtitle))) next.subtitle = REWAQ_SUBTITLE;
+  if (
+    !next.subtitle ||
+    /قريبة من الحرم|طب بديل|تسجيل الوصول من 16:00/.test(String(next.subtitle))
+  ) {
+    next.subtitle = REWAQ_SUBTITLE;
+  }
   if (!next.location || /جدة|الحماوات/.test(String(next.location))) next.location = REWAQ_LOCATION;
   next.rating = next.rating && next.rating !== "0" ? next.rating : REWAQ_RATING;
   next.reviewsCount = next.reviewsCount || REWAQ_REVIEWS;
