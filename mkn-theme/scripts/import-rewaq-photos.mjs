@@ -10,7 +10,7 @@ fs.mkdirSync(destDir, { recursive: true });
 const photos = [
   {
     name: "hero.jpg",
-    url: "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmDnKQ0Yfc_HW2a6r5TRqz_KbwsKhzmqRq5ljetajXz9izxrYKNCcVLJCa1VqEUuKFNLgtMq5h1Havho8vn9__VBEwmHHQuR3CC2ENd14Wm9UrNvczBK8HQ2swW2fuz-iCVo35yujapWfdw=s1600",
+    url: "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl3WO4FgHqd92fOXNSG9DXw_VpXVZhxt4jIreRbu7wJSCQk4GL6Fcnv7f17740drB2VBHp1-lpO3CWjI60L6F2Kavw71ltxOhFlw-cpGBwH2J6nmZY-KGZDGkF1RIpHdHl7qI6vyIVDayIw=w4024-h6048-k-no",
   },
   {
     name: "deluxe.jpg",

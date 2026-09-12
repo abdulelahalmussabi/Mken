@@ -117,7 +117,7 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     location: "اسيد بن كعب، مذينب، المدينة المنورة 42317",
     rating: "4.8",
     reviewsCount: "105 تقييم على Google",
-    heroImage: "/rewaq/hero.web.jpg",
+    heroImage: "/rewaq/hero.web.jpg?v=3",
     demoNotice: "رواق ريزدنت — مذينب، المدينة المنورة على منصة مكّن",
     socialLinks: {
       whatsapp: "https://wa.me/966541303411",

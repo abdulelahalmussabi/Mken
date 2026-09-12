@@ -32,7 +32,7 @@ export const REWAQ_IDENTITY_THEME = {
 export const REWAQ_SERVICE_IDS = ["deluxe-room", "suite-room", "standard-room", "family-suite"] as const;
 
 export const REWAQ_LIVE_PHOTOS = {
-  hero: "/rewaq/hero.web.jpg",
+  hero: "/rewaq/hero.web.jpg?v=3",
   deluxe: "/rewaq/deluxe.web.jpg",
   suite: "/rewaq/suite.web.jpg",
   standard: "/rewaq/standard.web.jpg",
@@ -153,7 +153,7 @@ export const REWAQ_PAGES = {
   },
   work: {
     gallery: [
-      { image: REWAQ_LIVE_PHOTOS.hero, caption: "مدخل رواق ريزدنت" },
+      { image: REWAQ_LIVE_PHOTOS.hero, caption: "واجهة رواق ريزدنت" },
       { image: REWAQ_LIVE_PHOTOS.deluxe, caption: "غرفة مفروشة" },
       { image: REWAQ_LIVE_PHOTOS.suite, caption: "غرفة سريرين" },
       { image: REWAQ_LIVE_PHOTOS.standard, caption: "جناح بغرفة نوم" },
