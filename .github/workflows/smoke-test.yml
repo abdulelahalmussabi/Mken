@@ -18,28 +18,59 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
+        cache: npm
 
     - name: Install dependencies (Root)
-      run: npm install
+      run: npm ci
 
     - name: Install dependencies (Scripts)
-      run: |
-        cd scripts
-        npm install
+      run: npm ci
+      working-directory: scripts
 
     - name: Install Playwright Browsers
-      run: |
-        cd scripts
-        npx playwright install chromium --with-deps
+      run: npx playwright install chromium --with-deps
+      working-directory: scripts
 
-    - name: Start local server & run tests
+    - name: Build and start Next.js, run smoke tests
+      env:
+        PORT: "3000"
+        HOSTNAME: "127.0.0.1"
+        BASE_URL: "http://127.0.0.1:3000"
       run: |
-        # Start a local static server in the background
-        npx http-server . -p 8080 &
-        
-        # Wait for server to boot
-        sleep 3
-        
-        # Run Playwright E2E smoke tests
+        set -e
+
+        if npm run build; then
+          echo "Starting production server on port 3000..."
+          npm start &
+        else
+          echo "Build failed — falling back to dev server on port 3000..."
+          npm run dev &
+        fi
+
+        SERVER_PID=$!
+
+        cleanup() {
+          kill "$SERVER_PID" 2>/dev/null || true
+        }
+        trap cleanup EXIT
+
+        echo "Waiting for Next.js at ${BASE_URL}..."
+        for i in $(seq 1 90); do
+          if curl -sf "${BASE_URL}/" > /dev/null; then
+            echo "Server ready after ${i} attempt(s)."
+            break
+          fi
+          if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "Next.js process exited before becoming ready."
+            exit 1
+          fi
+          sleep 2
+        done
+
+        if ! curl -sf "${BASE_URL}/" > /dev/null; then
+          echo "Timed out waiting for Next.js on ${BASE_URL}"
+          exit 1
+        fi
+
         cd scripts
         node smoke-test.mjs

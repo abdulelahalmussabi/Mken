@@ -6,6 +6,9 @@
     "url": "https://github.com/abdulelahalmussabi/Mken.git"
   },
   "type": "module",
+  "scripts": {
+    "smoke": "node smoke-test.mjs"
+  },
   "dependencies": {
     "web-push": "^3.6.7",
     "@supabase/supabase-js": "^2.39.0",
