@@ -105,6 +105,12 @@ export async function POST(request: Request) {
     );
 
     if (failed) {
+      await persistInvoiceZatcaMeta(scope.slug, invoice.id, {
+        zatcaStatus: failed.zatcaStatus,
+        zatcaUuid: failed.zatcaUuid,
+        zatcaXmlHash: failed.zatcaXmlHash,
+        zatcaQrCode: failed.zatcaQrCode,
+      });
       return NextResponse.json(
         {
           success: false,

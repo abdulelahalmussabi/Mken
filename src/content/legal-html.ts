@@ -1,6 +1,6 @@
 export const privacyHtml = `
 <article id="ar" lang="ar" dir="rtl">
-  <p class="lp-legal__kicker">سياسة الخصوصية · آخر تحديث: 4 سبتمبر 2026</p>
+  <p class="lp-legal__kicker">سياسة الخصوصية · آخر تحديث: 14 سبتمبر 2026</p>
   <h1>سياسة الخصوصية لمنصة مكّن</h1>
   <p>تحترم منصة <strong>مكّن</strong> (الموقع: <a href="https://mken.live">https://mken.live</a> والنطاقات الفرعية مثل <span dir="ltr">*.mken.live</span>) خصوصيتك. توضّح هذه الصفحة البيانات التي نجمعها — بما في ذلك بيانات Google عند تسجيل الدخول أو ربط الخدمات — وكيف نستخدمها، ونحفظها، ونحذفها. نلتزم بنظام حماية البيانات الشخصية السعودي (PDPL) الصادر عن سدايا، وبسياسة بيانات مستخدمي خدمات Google APIs بما في ذلك متطلبات الاستخدام المحدود (Limited Use).</p>
   <h2>1. من نحن</h2>
@@ -63,10 +63,10 @@ export const privacyHtml = `
   <p>يمكنك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها أو سحب الموافقة. لطلب حذف بيانات Google أو حساب مكّن:</p>
   <ol>
     <li>ألغِ ربط Google من إعدادات لوحة الإدارة إن وُجد، و/أو أزل صلاحية «مكّن» من <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
-    <li>راسلنا على <a href="mailto:info@mken.live">info@mken.live</a> بعنوان «طلب حذف بيانات» واذكر البريد المستخدم في الحساب.</li>
-    <li>أو راسل واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</li>
+    <li>قدّم طلب الحذف من داخل المنصة عبر <a href="/privacy/delete">/privacy/delete</a> أو من إعدادات لوحة الإدارة (حساب المنشأة فقط). يُسجَّل الطلب ويُنفَّذ على جداول تلك المنشأة.</li>
+    <li>أو راسلنا على <a href="mailto:info@mken.live">info@mken.live</a> بعنوان «طلب حذف بيانات» واذكر البريد المستخدم في الحساب، أو واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</li>
   </ol>
-  <p>نعالج طلب الحذف خلال 30 يوماً ما لم يُلزمنا النظام بالاحتفاظ بسجل معيّن (مثل الفواتير). حذف الحساب يزيل بيانات الملف الشخصي وبيانات Google المرتبطة به من أنظمتنا التشغيلية.</p>
+  <p>نعالج طلب الحذف خلال 30 يوماً ما لم يُلزمنا النظام بالاحتفاظ بسجل معيّن (مثل أرقام الفواتير والزكاة). حذف الحساب يزيل بيانات الملف الشخصي وبيانات Google والمحادثات والمواعيد من أنظمتنا التشغيلية، ويُجهَّل اسم العميل على الفواتير المحتفظ بها.</p>
   <h2>9. ملفات الارتباط والتقنية المشابهة</h2>
   <p>نستخدم ملفات ضرورية للجلسة وتسجيل الدخول وأمن النماذج. لا نضع ملفات إعلان من أطراف ثالثة على صفحة سياسة الخصوصية هذه.</p>
   <h2>10. الأطفال</h2>
@@ -79,7 +79,7 @@ export const privacyHtml = `
 </article>
 <hr>
 <article id="en" lang="en" dir="ltr">
-  <p class="lp-legal__kicker">Privacy Policy · Last updated: 4 September 2026</p>
+  <p class="lp-legal__kicker">Privacy Policy · Last updated: 14 September 2026</p>
   <h1>Mken Privacy Policy</h1>
   <p><strong>Mken</strong> (website: <a href="https://mken.live">https://mken.live</a> and subdomains such as *.mken.live) explains here what data we collect — including Google user data when you sign in or connect Google services — how we use it, how we store it, and how you can request deletion. We comply with the Saudi Personal Data Protection Law (PDPL / SDAIA) and the Google API Services User Data Policy, including the Limited Use requirements.</p>
   <h2>1. Who we are</h2>
@@ -142,10 +142,10 @@ export const privacyHtml = `
   <p>You may request access, correction, deletion, or withdrawal of consent. To delete Google data or your Mken account:</p>
   <ol>
     <li>Disconnect Google from admin settings if available, and/or remove Mken under <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
-    <li>Email <a href="mailto:info@mken.live">info@mken.live</a> with the subject “Data deletion request” and the email on the account.</li>
-    <li>Or message WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</li>
+    <li>Submit an in-app deletion request at <a href="/privacy/delete">/privacy/delete</a> or from tenant admin settings (the tenant account only). The request is recorded and executed against that tenant’s tables.</li>
+    <li>Or email <a href="mailto:info@mken.live">info@mken.live</a> with the subject “Data deletion request” and the email on the account, or WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</li>
   </ol>
-  <p>We process deletion requests within 30 days unless a legal retention duty applies (for example invoices). Account deletion removes profile data and associated Google data from our operational systems.</p>
+  <p>We process deletion requests within 30 days unless a legal retention duty applies (for example e-invoice identifiers). Account deletion removes profile data, Google tokens, conversations, and appointments from operational systems, and anonymizes customer names on retained invoices.</p>
   <h2>9. Cookies</h2>
   <p>We use cookies that are necessary for sessions, sign-in, and form security. This privacy page does not set third-party advertising cookies.</p>
   <h2>10. Children</h2>

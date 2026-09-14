@@ -25,6 +25,7 @@ import {
   Phone,
   Globe,
   FileBadge,
+  Trash2,
 } from "lucide-react";
 
 const inputClass =
@@ -96,7 +97,7 @@ function Section({
 }
 
 export default function AdminSettingsPage() {
-  const { session, isSuperAdmin, clients } = useAdmin();
+  const { session, isSuperAdmin, clients, logoutAdmin } = useAdmin();
   const { showToast } = useApp();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -113,6 +114,8 @@ export default function AdminSettingsPage() {
   const [domainMessage, setDomainMessage] = useState("");
   const [domainInput, setDomainInput] = useState("");
   const [domainBusy, setDomainBusy] = useState(false);
+  const [eraseConfirm, setEraseConfirm] = useState("");
+  const [erasing, setErasing] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin && tenant) writeStoredAdminClient(tenant);
@@ -813,6 +816,58 @@ export default function AdminSettingsPage() {
                 </p>
               </div>
             </Section>
+
+            {!isSuperAdmin && tenant ? (
+              <section className="p-6 rounded-3xl bg-red-950/30 border border-red-900/60 shadow-lg space-y-4">
+                <h2 className="text-sm font-bold text-red-200 flex items-center gap-2 justify-end">
+                  حذف بيانات المنشأة (PDPL)
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </h2>
+                <p className="text-xs text-slate-400 leading-relaxed text-right">
+                  يحذف المواعيد والمحادثات والموظفين والرموز، ويُجهَّل اسم العميل على الفواتير المحتفظ
+                  بها نظامياً. لا يمكن التراجع. اكتب DELETE ثم أكّد.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <input
+                    dir="ltr"
+                    value={eraseConfirm}
+                    onChange={(e) => setEraseConfirm(e.target.value)}
+                    placeholder="DELETE"
+                    className={`${inputClass} sm:max-w-xs text-left`}
+                  />
+                  <button
+                    type="button"
+                    disabled={erasing || eraseConfirm !== "DELETE"}
+                    onClick={async () => {
+                      if (!window.confirm("تأكيد حذف بيانات المنشأة؟ لا يمكن التراجع.")) return;
+                      setErasing(true);
+                      try {
+                        const res = await fetch("/api/privacy/erase", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ tenantSlug: tenant, confirm: eraseConfirm }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                          showToast(data.error || "تعذّر الحذف", "error");
+                          return;
+                        }
+                        await logoutAdmin();
+                        router.push("/" as Route);
+                      } catch {
+                        showToast("تعذّر الاتصال بالخادم", "error");
+                      } finally {
+                        setErasing(false);
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-red-700 hover:bg-red-600 disabled:opacity-40 text-sm font-bold"
+                  >
+                    {erasing ? "جارٍ الحذف…" : "حذف بيانات المنشأة"}
+                  </button>
+                </div>
+              </section>
+            ) : null}
           </>
         )}
       </div>

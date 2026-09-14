@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { getTenantDb, TENANT_TABLE, type MkenConfig } from "@/lib/mken/tenant";
 import type { Invoice, InvoiceItem } from "@/lib/mken/invoices";
 
-/** Sandbox/simulated ZATCA engine — same behavior as legacy api/v1/zatca.js */
+/** Fatoora e-invoicing: sandbox (developer-portal), simulation, or production (core). */
 
 export interface ZatcaConfig {
   active?: boolean;
@@ -79,6 +79,29 @@ function getEncryptionKey(): Buffer | null {
 
 export function hasZatcaEncryptionKey(): boolean {
   return getEncryptionKey() !== null;
+}
+
+export type ZatcaEnvironment = "sandbox" | "simulation" | "production";
+
+export function normalizeZatcaEnvironment(value?: string | null): ZatcaEnvironment {
+  const v = (value || "").trim().toLowerCase();
+  if (v === "simulation" || v === "sim") return "simulation";
+  if (v === "production" || v === "prod" || v === "core" || v === "fatoora") return "production";
+  return "sandbox";
+}
+
+function fatooraBase(env: ZatcaEnvironment): string {
+  const portal = env === "production" ? "core" : env === "simulation" ? "simulation" : "developer-portal";
+  return `https://gw-fatoora.zatca.gov.sa/e-invoicing/${portal}`;
+}
+
+function fatooraHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "Accept-Version": "V2",
+    Accept: "application/json",
+    ...extra,
+  };
 }
 
 function encrypt(text: string): string {
@@ -230,8 +253,8 @@ function generateZatcaTlvQr(
     toTlv(1, seller),
     toTlv(2, vat),
     toTlv(3, time),
-    toTlv(4, String(total)),
-    toTlv(5, String(tax)),
+    toTlv(4, Number(total).toFixed(2)),
+    toTlv(5, Number(tax).toFixed(2)),
   ];
 
   if (xmlHash) {
@@ -315,7 +338,7 @@ function generateInvoiceXml(
     <cbc:UUID>${uuid}</cbc:UUID>
     <cbc:IssueDate>${date}</cbc:IssueDate>
     <cbc:IssueTime>${time}</cbc:IssueTime>
-    <cbc:InvoiceTypeCode name="0100000">388</cbc:InvoiceTypeCode>
+    <cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>
     <cbc:DocumentCurrencyCode>⃁</cbc:DocumentCurrencyCode>
     <cbc:TaxCurrencyCode>⃁</cbc:TaxCurrencyCode>
     <cac:AdditionalDocumentReference>
@@ -456,10 +479,16 @@ export async function getZatcaStatus(tenantSlug: string): Promise<{
       configured: true,
       vatNumber: zatca.vatNumber,
       businessName: zatca.businessName,
-      environment: zatca.environment,
       onboardingDate: zatca.onboardingDate,
       isSimulated: zatca.isSimulated,
-      statusText: zatca.isSimulated ? "نشط (ربط تجريبي محاكي)" : "نشط ومفعل (ربط حقيقي)",
+      environment: normalizeZatcaEnvironment(zatca.environment),
+      statusText: zatca.isSimulated
+        ? "نشط (محاكاة محلية — لم يُربط بفاتورة)"
+        : normalizeZatcaEnvironment(zatca.environment) === "production"
+          ? "نشط على بيئة فاتورة (إنتاج)"
+          : normalizeZatcaEnvironment(zatca.environment) === "simulation"
+            ? "نشط على محاكاة فاتورة"
+            : "نشط على بوابة المطورين (Sandbox)",
     },
   };
 }
@@ -510,9 +539,10 @@ export async function onboardZatca(
   const csrPem = generateCsr(privateKey, publicKey, subjectFields);
   logs.push(`[${new Date().toISOString()}] تم توليد الـ CSR بنجاح.`);
 
-  logs.push(
-    `[${new Date().toISOString()}] إرسال الـ CSR إلى خادم مطوري الهيئة للتحقق واستصدار شهادة الامتثال (CCSID)...`
-  );
+  const env = normalizeZatcaEnvironment(environment);
+  const allowSimulate = env === "sandbox";
+  const base = fatooraBase(env);
+  logs.push(`[${new Date().toISOString()}] بوابة فاتورة: ${base}`);
 
   let complianceCert = "";
   let complianceSecret = "";
@@ -520,14 +550,10 @@ export async function onboardZatca(
   let isSimulated = false;
 
   try {
-    const targetUrl = "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/compliance";
+    const targetUrl = `${base}/compliance`;
     const resZatca = await fetch(targetUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept-Version": "V2",
-        OTP: otp,
-      },
+      headers: fatooraHeaders({ OTP: otp }),
       body: JSON.stringify({ csr: Buffer.from(csrPem).toString("base64") }),
     });
 
@@ -545,7 +571,10 @@ export async function onboardZatca(
       const errText = await resZatca.text();
       throw new Error(errText || `ZATCA Compliance API returned status ${resZatca.status}`);
     }
-  } catch {
+  } catch (err) {
+    if (!allowSimulate) {
+      return { error: `فشل ربط فاتورة (${env}): ${(err as Error).message}` };
+    }
     logs.push(
       `[${new Date().toISOString()}] تعذر إكمال الاتصال الحقيقي (رمز الـ OTP قد يكون منتهياً أو الرقم الضريبي غير مسجل). تفعيل محاكي الامتثال التلقائي...`
     );
@@ -557,10 +586,53 @@ export async function onboardZatca(
     complianceSecret = crypto.randomBytes(16).toString("hex");
   }
 
-  logs.push(`[${new Date().toISOString()}] إرسال فواتير الامتثال التجريبية (تبسيط الفحص الضريبي)...`);
-  logs.push(`[${new Date().toISOString()}] فحص الفاتورة الأولى (Simplified Invoice) ... مقبول (100%)`);
-  logs.push(`[${new Date().toISOString()}] فحص الفاتورة الثانية (Credit Note) ... مقبول (100%)`);
-  logs.push(`[${new Date().toISOString()}] فحص الفاتورة الثالثة (Debit Note) ... مقبول (100%)`);
+  logs.push(`[${new Date().toISOString()}] إرسال فاتورة امتثال مبسطة إلى ${base}/compliance/invoices ...`);
+  if (!isSimulated) {
+    try {
+      const sample = {
+        id: `COMP-${Date.now()}`,
+        uuid: crypto.randomUUID(),
+        customerName: "عميل نقدي",
+        items: [{ title: "فحص امتثال", quantity: 1, price: 100 }],
+        subtotal: 100,
+        taxAmount: 15,
+        totalAmount: 115,
+        createdAt: new Date().toISOString(),
+        icv: 1,
+      };
+      const xml = generateInvoiceXml(sample, {
+        vatNumber,
+        businessName: businessName || "منشأة مكن",
+        street,
+        city,
+        buildingNo,
+      });
+      const hashB64 = crypto.createHash("sha256").update(xml).digest("base64");
+      const authHeader =
+        "Basic " + Buffer.from(`${complianceCert}:${complianceSecret}`).toString("base64");
+      const resComp = await fetch(`${base}/compliance/invoices`, {
+        method: "POST",
+        headers: fatooraHeaders({ Authorization: authHeader }),
+        body: JSON.stringify({
+          invoiceHash: hashB64,
+          uuid: sample.uuid,
+          invoice: Buffer.from(xml).toString("base64"),
+        }),
+      });
+      if (!resComp.ok) {
+        const errText = await resComp.text();
+        throw new Error(errText || `compliance invoices ${resComp.status}`);
+      }
+      logs.push(`[${new Date().toISOString()}] فحص الفاتورة المبسطة مقبول.`);
+    } catch (err) {
+      if (!allowSimulate) {
+        return { error: `فشل فحص الامتثال: ${(err as Error).message}` };
+      }
+      logs.push(`[${new Date().toISOString()}] فحص الامتثال تخطّى: ${(err as Error).message}`);
+    }
+  } else {
+    logs.push(`[${new Date().toISOString()}] فحص الفاتورة الأولى (Simplified Invoice) ... مقبول (محاكى)`);
+  }
 
   logs.push(`[${new Date().toISOString()}] طلب شهادة التشفير الرقمية للإنتاج (PCSID)...`);
   let prodCert = "";
@@ -570,14 +642,10 @@ export async function onboardZatca(
     try {
       const authHeader =
         "Basic " + Buffer.from(`${complianceCert}:${complianceSecret}`).toString("base64");
-      const targetUrl = "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/production";
+      const targetUrl = `${base}/production/csids`;
       const resProd = await fetch(targetUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept-Version": "V2",
-          Authorization: authHeader,
-        },
+        headers: fatooraHeaders({ Authorization: authHeader }),
         body: JSON.stringify({ compliance_request_id: complianceRequestId }),
       });
 
@@ -594,6 +662,9 @@ export async function onboardZatca(
         throw new Error(errText);
       }
     } catch (err) {
+      if (!allowSimulate) {
+        return { error: `فشل استصدار شهادة الإنتاج (PCSID): ${(err as Error).message}` };
+      }
       logs.push(
         `[${new Date().toISOString()}] فشل استصدار شهادة الإنتاج الحقيقية: ${(err as Error).message}. استكمال المحاكي التجريبي...`
       );
@@ -624,7 +695,7 @@ export async function onboardZatca(
   const currentConfig = ((clientRow?.config_data as MkenConfig) || {}) as MkenConfig;
   currentConfig.zatcaConfig = {
     active: true,
-    environment: environment || "sandbox",
+    environment: env,
     vatNumber,
     businessName: businessName || "منشأة مكن",
     businessCategory: businessCategory || "Retail",
@@ -670,7 +741,7 @@ export async function onboardZatca(
   return {
     config: {
       active: true,
-      environment: environment || "sandbox",
+      environment: env,
       vatNumber,
       businessName,
       onboardingDate: new Date().toISOString(),
@@ -698,13 +769,15 @@ export async function reportInvoiceToZatca(
   zatca.secret = decrypt(zatca.secret || "");
 
   const xmlContent = generateInvoiceXml(invoice, zatca);
-  const xmlHash = crypto.createHash("sha256").update(xmlContent).digest("hex");
+  const xmlHashBuf = crypto.createHash("sha256").update(xmlContent).digest();
+  const xmlHashHex = xmlHashBuf.toString("hex");
+  const xmlHashB64 = xmlHashBuf.toString("base64");
   const invoiceUuid = invoice.uuid || crypto.randomUUID();
 
   let digitalSignature = "";
   try {
     const sign = crypto.createSign("SHA256");
-    sign.update(xmlHash);
+    sign.update(xmlHashBuf);
     digitalSignature = sign.sign(zatca.privateKey!, "base64");
   } catch {
     digitalSignature = crypto.randomBytes(64).toString("base64");
@@ -717,32 +790,31 @@ export async function reportInvoiceToZatca(
     timestamp,
     Number(invoice.totalAmount || 0),
     Number(invoice.taxAmount || 0),
-    xmlHash,
+    xmlHashHex,
     digitalSignature,
     zatca.publicKey
   );
 
+  const env = normalizeZatcaEnvironment(zatca.environment);
   let zatcaStatus = "REPORTED";
   let zatcaResponse: Record<string, unknown> = {
     success: true,
     message: "Invoice reported successfully",
   };
 
-  if (!zatca.isSimulated) {
+  if (zatca.isSimulated && env === "sandbox") {
+    zatcaResponse = { success: true, message: "Simulated sandbox report", reportingStatus: "REPORTED" };
+  } else {
     try {
       const authHeader =
         "Basic " + Buffer.from(`${zatca.certificate}:${zatca.secret}`).toString("base64");
-      const targetUrl = "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/invoices/reporting";
+      const targetUrl = `${fatooraBase(env)}/invoices/reporting/single`;
 
       const resZatca = await fetch(targetUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept-Version": "V2",
-          Authorization: authHeader,
-        },
+        headers: fatooraHeaders({ Authorization: authHeader }),
         body: JSON.stringify({
-          invoiceHash: xmlHash,
+          invoiceHash: xmlHashB64,
           uuid: invoiceUuid,
           invoice: Buffer.from(xmlContent).toString("base64"),
         }),
@@ -755,15 +827,18 @@ export async function reportInvoiceToZatca(
 
       zatcaResponse = (await resZatca.json()) as Record<string, unknown>;
       const validationResults = zatcaResponse.validationResults as { status?: string } | undefined;
-      if (validationResults?.status === "ERROR") {
-        zatcaStatus = "FAILED";
+      const reportingStatus = String(zatcaResponse.reportingStatus || "").toUpperCase();
+      if (validationResults?.status === "ERROR" || (reportingStatus && reportingStatus !== "REPORTED")) {
+        zatcaStatus = reportingStatus && reportingStatus !== "REPORTED" ? reportingStatus : "FAILED";
+      } else {
+        zatcaStatus = reportingStatus || "REPORTED";
       }
     } catch (err) {
       return {
         failed: {
           zatcaStatus: "FAILED",
           zatcaUuid: invoiceUuid,
-          zatcaXmlHash: xmlHash,
+          zatcaXmlHash: xmlHashB64,
           zatcaQrCode: qrCodeBase64,
           response: { success: false, error: (err as Error).message },
         },
@@ -775,7 +850,7 @@ export async function reportInvoiceToZatca(
     result: {
       zatcaStatus,
       zatcaUuid: invoiceUuid,
-      zatcaXmlHash: xmlHash,
+      zatcaXmlHash: xmlHashB64,
       zatcaQrCode: qrCodeBase64,
       response: zatcaResponse,
     },

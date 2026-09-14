@@ -31,6 +31,10 @@ export function isPlatformSlug(slug: string | undefined | null): boolean {
   return slug === PLATFORM_SLUG;
 }
 
+export function isDeletedTenantStatus(status: string | undefined | null): boolean {
+  return (status || "").trim().toLowerCase() === "deleted";
+}
+
 export { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
 
 export function isOccasionTheme(value: unknown): value is string {
@@ -669,12 +673,13 @@ export async function fetchTenants(): Promise<ClientRecord[] | null> {
     return DEFAULT_CLIENTS;
   }
   return (data as TenantRow[])
-    .filter((row) => !isPlatformSlug(row.tenant_slug))
+    .filter((row) => !isPlatformSlug(row.tenant_slug) && !isDeletedTenantStatus(row.subscription_status))
     .map(toClientRecord);
 }
 
 export async function fetchTenantRow(slug: string): Promise<TenantRow | null> {
   const result = await fetchTenantRowResult(slug);
+  if (isDeletedTenantStatus(result.row?.subscription_status)) return null;
   return result.row ?? null;
 }
 
@@ -718,7 +723,12 @@ async function fetchTenantRowResult(
 
 export async function ensureTenantRow(slug: string): Promise<{ row?: TenantRow; error?: string }> {
   const existing = await fetchTenantRowResult(slug);
-  if (existing.row) return { row: existing.row };
+  if (existing.row) {
+    if (isDeletedTenantStatus(existing.row.subscription_status)) {
+      return { error: "هذا المعرّف محجوز لحساب محذوف" };
+    }
+    return { row: existing.row };
+  }
 
   const seed = DEFAULT_CLIENTS.find((client) => client.slug === slug);
   const config: MkenConfig = seed

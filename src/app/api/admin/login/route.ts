@@ -29,6 +29,7 @@ const BLOCKED_STATUS = new Set([
   "disabled",
   "inactive",
   "expired",
+  "deleted",
 ]);
 
 const loginBuckets = new Map<string, { windowStart: number; count: number }>();

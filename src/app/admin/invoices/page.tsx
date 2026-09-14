@@ -82,6 +82,7 @@ export default function AdminInvoicesPage() {
     vatNumber: "",
     businessName: "",
     otp: "",
+    environment: "sandbox",
   });
 
   const tenant = isSuperAdmin ? selectedTenant : session?.clientSlug || "";
@@ -170,7 +171,7 @@ export default function AdminInvoicesPage() {
           vatNumber: zatcaForm.vatNumber.trim(),
           businessName: zatcaForm.businessName.trim(),
           otp: zatcaForm.otp.trim(),
-          environment: "sandbox",
+          environment: zatcaForm.environment,
         }),
       });
       const data = await res.json();
@@ -370,17 +371,20 @@ export default function AdminInvoicesPage() {
             ) : zatca?.configured ? (
               <div className="space-y-1 text-right">
                 <p className="text-sm font-extrabold text-white">
-                  {zatca.isSimulated ? "🟢 (تجريبي)" : "🟢"} {zatca.statusText}
+                  {zatca.isSimulated ? "🟡" : "🟢"} {zatca.statusText}
                 </p>
                 <p className="text-xs text-slate-400">
-                  الرقم الضريبي: {zatca.vatNumber} | تاريخ الربط:{" "}
+                  الرقم الضريبي: {zatca.vatNumber} | البيئة: {zatca.environment || "sandbox"} | تاريخ الربط:{" "}
                   {zatca.onboardingDate ? formatDate(zatca.onboardingDate) : "—"}
                 </p>
               </div>
             ) : (
+              <p className="text-sm font-bold text-rose-300">🔴 غير متصل بالهيئة</p>
+            )}
+
+            {(!zatca?.configured || zatca?.isSimulated) && (
               <div className="space-y-3">
-                <p className="text-sm font-bold text-rose-300">🔴 غير متصل بالهيئة — الربط التجريبي (Sandbox)</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   <input
                     value={zatcaForm.vatNumber}
                     onChange={(e) => setZatcaForm((p) => ({ ...p, vatNumber: e.target.value }))}
@@ -396,9 +400,18 @@ export default function AdminInvoicesPage() {
                   <input
                     value={zatcaForm.otp}
                     onChange={(e) => setZatcaForm((p) => ({ ...p, otp: e.target.value }))}
-                    placeholder="رمز OTP من بوابة المطورين"
+                    placeholder="رمز OTP من فاتورة"
                     className="px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-amber-500"
                   />
+                  <select
+                    value={zatcaForm.environment}
+                    onChange={(e) => setZatcaForm((p) => ({ ...p, environment: e.target.value }))}
+                    className="px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="sandbox">Sandbox — بوابة المطورين</option>
+                    <option value="simulation">محاكاة فاتورة</option>
+                    <option value="production">إنتاج فاتورة (core)</option>
+                  </select>
                 </div>
                 <button
                   type="button"
@@ -406,7 +419,7 @@ export default function AdminInvoicesPage() {
                   disabled={zatcaOnboardBusy}
                   className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all disabled:opacity-50"
                 >
-                  {zatcaOnboardBusy ? "⏳ جاري الاتصال بالهيئة..." : "🇸🇦 بدء الربط التجريبي (Sandbox)"}
+                  {zatcaOnboardBusy ? "⏳ جاري الاتصال بالهيئة..." : "🇸🇦 ربط ZATCA"}
                 </button>
               </div>
             )}
@@ -489,7 +502,11 @@ export default function AdminInvoicesPage() {
                     </span>
                     {invoice.zatcaStatus && (
                       <span
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full border text-[11px] font-bold bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-[11px] font-bold ${
+                          invoice.zatcaStatus === "REPORTED"
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                            : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                        }`}
                         title={invoice.zatcaUuid || undefined}
                       >
                         <ShieldCheck className="w-3 h-3" />
@@ -552,7 +569,7 @@ export default function AdminInvoicesPage() {
                     </select>
                     {zatca?.configured &&
                       invoice.type === "invoice" &&
-                      !invoice.zatcaStatus && (
+                      invoice.zatcaStatus !== "REPORTED" && (
                         <button
                           type="button"
                           disabled={busyId === invoice.id}
@@ -560,7 +577,7 @@ export default function AdminInvoicesPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs rounded-xl transition-all disabled:opacity-50"
                         >
                           <Send className="w-3 h-3" />
-                          إبلاغ ZATCA
+                          {invoice.zatcaStatus === "FAILED" ? "إعادة إبلاغ ZATCA" : "إبلاغ ZATCA"}
                         </button>
                       )}
                   </div>
@@ -580,6 +597,15 @@ export default function AdminInvoicesPage() {
                     <p className="text-base font-black text-white pt-1">
                       {money(invoice.totalAmount)}
                     </p>
+                    {invoice.zatcaQrCode ? (
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(invoice.zatcaQrCode)}`}
+                        alt="رمز QR للفاتورة الإلكترونية"
+                        width={140}
+                        height={140}
+                        className="mt-3 ml-auto rounded-xl bg-white p-2"
+                      />
+                    ) : null}
                   </div>
                 </div>
               </div>

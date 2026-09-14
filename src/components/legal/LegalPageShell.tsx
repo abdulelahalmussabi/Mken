@@ -21,6 +21,9 @@ export default function LegalPageShell({ html }: { html: string }) {
           <Link href={"/privacy" as Route} className="hover:text-amber-600">
             سياسة الخصوصية
           </Link>
+          <Link href={"/privacy/delete" as Route} className="hover:text-amber-600">
+            طلب الحذف
+          </Link>
           <Link href={"/terms" as Route} className="hover:text-amber-600">
             شروط الخدمة
           </Link>
