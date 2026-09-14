@@ -28,5 +28,5 @@ Thumbs.db
 # Experimental/scaffold API files moved out of api/ (would exceed function limit)
 _experimental-api/
 
-# Misc local-only folders
-مجلد جديد/
+# Leftover Next cache if a locked mkn-theme folder remains locally
+mkn-theme/

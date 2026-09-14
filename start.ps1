@@ -1,6 +1,5 @@
-# تشغيل منصة مكِّن محلياً
-$port = 8080
-Write-Host "منصة مكِّن — http://localhost:$port" -ForegroundColor Cyan
-Write-Host "الإدارة: http://localhost:$port/admin.html" -ForegroundColor Yellow
+# تشغيل منصة مكّن محلياً (Next.js)
 Set-Location $PSScriptRoot
-python -m http.server $port
+Write-Host "منصة مكّن — http://localhost:3000" -ForegroundColor Cyan
+Write-Host "الإدارة: http://localhost:3000/admin" -ForegroundColor Yellow
+npm run dev

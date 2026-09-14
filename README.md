@@ -32,49 +32,43 @@
 
 ```powershell
 cd mken
-python -m http.server 8080
+npm install
+npm run dev
 ```
 
-ثم افتح: http://localhost:8080
+ثم افتح: http://localhost:3000
 
 ## لوحة الإدارة
 
-- الرابط: `/admin.html`
-- رمز الدخول: يُحدَّد عبر متغير البيئة `ADMIN_PIN` في Vercel (انظر [DEPLOYMENT.md](DEPLOYMENT.md))
-- **ملاحظة أمنية:** لا يُحفظ الرمز في الكود المصدري. يُحقَّق منه سحابياً في كل مرة.
+- الرابط: `/admin`
+- الدخول عبر `/admin/login` (جلسة خادم، ليست `ADMIN_PIN` في الواجهة)
 
 ## الهيكل
 
 ```
 mken/
-├── js/
-│   ├── activities-catalog.js      ← الأنشطة الرئيسية
-│   ├── services-catalog.js        ← الخدمات (مرتبطة بـ activityId)
-│   ├── content-templates/         ← محتوى كل نشاط
-│   ├── ui-profiles/               ← قوالب الواجهة
-│   ├── services-store.js          ← enabledActivities + enabled
-│   ├── site.js                    ← عرض ديناميكي
-│   └── admin.js                   ← إدارة هرمية
-├── book.html                      ← حجز مواعيد متعدد الأنشطة
-├── DEV_PLAN.md                    ← خطة التطوير الموحدة
-└── data/config.json
+├── src/                 ← Next.js App Router (الواجهة + APIs)
+├── public/
+├── supabase/functions/  ← Trust / OTP (Edge Functions)
+├── db/                  ← مخططات SQL المستخدمة وقت التشغيل
+├── package.json
+└── vercel.json          ← framework: nextjs
 ```
-
 
 ## الإعداد الافتراضي
 
 - **21 نشاطاً** — **12 نشاط حجز** (`appointment-based`) + 5 ميداني + 3 مشاريع + 1 تجارة
 - النشاط البارز: **صالونات الحلاقة**
-- صفحة الحجز: `/book.html?activity=barber-salon`
+- صفحة الحجز: `/book?activity=barber-salon`
 - أوقات العمل: 9 ص — 10 م، 7 أيام، 3 حجوزات لكل slot
 
 ## حجز المواعيد
 
 ```
-/book.html                    ← النشاط البارز
-/book.html?activity=car-care  ← مغاسل السيارات
-/book.html?activity=restaurant  ← مطاعم (عدد أشخاص)
-/book.html?activity=spa-wellness ← سبا
+/book                           ← النشاط البارز
+/book?activity=car-care         ← مغاسل السيارات
+/book?activity=restaurant       ← مطاعم (عدد أشخاص)
+/book?activity=spa-wellness     ← سبا
 ```
 
 الواجهة `appointment-based` — العميل يحضر للموقع (أو يحدد عنوان للخدمات المتنقلة).
@@ -82,7 +76,7 @@ mken/
 
 ## كل المحتوى قابل للتعديل
 
-من لوحة الإدارة (`/admin.html`) يمكن تعديل:
+من لوحة الإدارة (`/admin`) يمكن تعديل:
 
 | القسم | ما يمكن تعديله |
 |--------|----------------|

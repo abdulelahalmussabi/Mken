@@ -1,0 +1,20 @@
+---
+description: Single production platform is Next.js App Router at repo root
+alwaysApply: true
+---
+
+# منصة واحدة — Next.js في جذر المستودع
+
+The production app is `src/` (Next.js App Router, hoisted from mkn-theme). Legacy HTML/CJS has been removed.
+
+## Do
+
+- New features, APIs, admin UI, booking, WhatsApp, ZATCA, auth, licenses → `src/`
+- Shared crypto/OTP stays in `supabase/functions/`
+- Schemas stay in `db/` only if a Next route will use them
+
+## Do not
+
+- Do not recreate `admin.html`, `js/admin*.js`, or Vercel CJS `api/*.js`
+- Do not create `*-redirect.html` bridges
+- Do not migrate 3PL / BNPL / ISO 20022 / franchise SQL into the app

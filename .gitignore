@@ -27,3 +27,5 @@ Thumbs.db
 *.tsbuildinfo
 .zcode/
 مجلد جديد/
+mkn-theme/.next/
+mkn-theme/node_modules/

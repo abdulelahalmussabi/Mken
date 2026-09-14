@@ -12,12 +12,12 @@ Applies when the user pastes a long persona/system prompt, uses `[GENERATE-CODE]
 - Treat a persona prompt as **role + quality bar**, not a license to rebuild the whole platform.
 - **One deliverable per turn** unless the user lists multiple explicitly.
   - Example: `[GENERATE-CODE] Edge Function` → only the named function (+ minimal shared helpers it needs). Do **not** also dump SQL, SDK, BFF, README, and fallbacks.
-- Prefer **extending existing** `api/`, `db/`, `supabase/functions/` patterns over greenfield trees of `_shared/*` files.
+- Prefer **extending** `src/` (Next.js App Router) plus `db/` and `supabase/functions/`. Do **not** add Vercel CJS `api/*.js` or `*.html` shells.
 - Cap new files: if a turn needs **>5 new files**, stop after the critical path and ask what to generate next.
 
 ## Tooling budget
 
-- Diagnostics (`login`, `admin@…`, env, deploy): **≤6 tool calls** before a hypothesis; open the obvious auth/admin path first (`js/admin.js`, `api/v1/auth.js`, related schema). Do not re-scan the whole repo.
+- Diagnostics (`login`, `admin@…`, env, deploy): **≤6 tool calls** before a hypothesis; open `src/app/admin`, `src/app/api`, related schema. Do not re-scan the whole repo.
 - Do **not** re-read every skill on every follow-up; reuse context already loaded in the chat.
 - Skip `SearchConversations` / broad `Glob`/`Grep` unless the path is unknown after one focused search.
 

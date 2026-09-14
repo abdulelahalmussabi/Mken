@@ -1,79 +1,28 @@
 {
+  "framework": "nextjs",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "crons": [
     {
-      "path": "/api/cron-whatsapp",
+      "path": "/api/cron/custom-domains",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/review-funnel",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/ad-insights",
+      "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/whatsapp",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-posts",
+      "schedule": "0 10 * * *"
     }
-  ],
-  "build": {
-    "env": {
-      "CACHE_BREAKER": "phase2-2026-08-07"
-    }
-  },
-  "rewrites": [
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/privacy/", "destination": "/privacy.html" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/terms/", "destination": "/terms.html" },
-    { "source": "/api/v1/push-subscribe", "destination": "/api/v1/push?action=subscribe" },
-    { "source": "/api/v1/push-notify", "destination": "/api/v1/push?action=notify" },
-    { "source": "/api/v1/push-test", "destination": "/api/v1/push?action=test" },
-    { "source": "/api/google-business/auth-url", "destination": "/api/google-business?action=auth-url" },
-    { "source": "/api/google-business/callback", "destination": "/api/google-business?action=callback" },
-    { "source": "/api/google-business/locations", "destination": "/api/google-business?action=locations" },
-    { "source": "/api/google-business/update-website", "destination": "/api/google-business?action=update-website" },
-    { "source": "/api/google-business/sync-services", "destination": "/api/google-business?action=sync-services" },
-    { "source": "/api/google-business/generate-post", "destination": "/api/google-business?action=generate-post" },
-    { "source": "/api/google-business/generate-reply", "destination": "/api/google-business?action=generate-reply" },
-    { "source": "/api/google-business/competitors", "destination": "/api/google-business?action=competitors" },
-    { "source": "/api/google-business/nap-audit", "destination": "/api/google-business?action=nap-audit" },
-    { "source": "/api/google-business/sync-nap", "destination": "/api/google-business?action=sync-nap" },
-    { "source": "/api/instagram/auth-url", "destination": "/api/instagram?action=auth-url" },
-    { "source": "/api/instagram/callback", "destination": "/api/instagram?action=callback" },
-    { "source": "/api/instagram/sync", "destination": "/api/instagram?action=sync" },
-    { "source": "/api/instagram/status", "destination": "/api/instagram?action=status" },
-    { "source": "/api/instagram/disconnect", "destination": "/api/instagram?action=disconnect" },
-    { "source": "/api/v1/auth/login-challenge", "destination": "/api/v1/auth?type=login&step=challenge" },
-    { "source": "/api/v1/auth/login-verify", "destination": "/api/v1/auth?type=login&step=verify" },
-    { "source": "/api/v1/auth/register-challenge", "destination": "/api/v1/auth?type=register&step=challenge" },
-    { "source": "/api/v1/auth/register-verify", "destination": "/api/v1/auth?type=register&step=verify" },
-    { "source": "/api/v1/auth/register-trial", "destination": "/api/v1/auth?type=register-trial" },
-    { "source": "/api/v1/auth/admin-login", "destination": "/api/v1/auth?type=admin-login" },
-    { "source": "/api/v1/auth/supabase-config", "destination": "/api/v1/auth?type=supabase-config" },
-    { "source": "/api/v1/trust/challenge", "destination": "/api/v1/trust?action=challenge" },
-    { "source": "/api/v1/trust/verify", "destination": "/api/v1/trust?action=verify" },
-    { "source": "/api/v1/trust/fallback", "destination": "/api/v1/trust?action=fallback" },
-    { "source": "/api/license/activate", "destination": "/api/license?action=activate" },
-    { "source": "/api/license/verify", "destination": "/api/license?action=verify" },
-    { "source": "/api/license/deactivate", "destination": "/api/license?action=deactivate" },
-    { "source": "/api/license/issue", "destination": "/api/license?action=issue" },
-    { "source": "/api/license/list", "destination": "/api/license?action=list" },
-    { "source": "/api/license/revoke", "destination": "/api/license?action=revoke" },
-    { "source": "/api/license/suspend", "destination": "/api/license?action=suspend" },
-    { "source": "/api/license/resume", "destination": "/api/license?action=resume" },
-    { "source": "/api/license-checkout/config", "destination": "/api/license?action=checkout-config" },
-    { "source": "/api/license-checkout/status", "destination": "/api/license?action=checkout-status" },
-    { "source": "/", "has": [{ "type": "host", "value": "mken.live" }], "destination": "/landing.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "www.mken.live" }], "destination": "/landing.html" },
-    { "source": "/admin", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/license-admin.html" },
-    { "source": "/admin", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/license-admin.html" },
-    { "source": "/admin", "destination": "/admin-redirect.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "license.mken.live" }], "destination": "/pricing.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "licenses.mken.live" }], "destination": "/pricing.html" },
-    { "source": "/signup.html", "destination": "/signup-redirect.html" },
-    { "source": "/admin.html", "destination": "/admin-redirect.html" },
-    { "source": "/book.html", "destination": "/book-redirect.html" },
-    { "source": "/index.html", "destination": "/index-redirect.html" },
-    { "source": "/track.html", "destination": "/track-redirect.html" },
-    { "source": "/order.html", "destination": "/order-redirect.html" },
-    { "source": "/staff.html", "destination": "/staff-redirect.html" },
-    { "source": "/coaching.html", "destination": "/coaching-redirect.html" },
-    { "source": "/football-coaching.html", "destination": "/football-coaching-redirect.html" },
-    { "source": "/contract.html", "destination": "/contract-redirect.html" },
-    { "source": "/marketing-profile.html", "destination": "/marketing-profile-redirect.html" },
-    { "source": "/security-profile.html", "destination": "/security-profile-redirect.html" },
-    { "source": "/prereqs.html", "destination": "/prereqs-redirect.html" },
-    { "source": "/legal-portal.html", "destination": "/legal-portal-redirect.html" }
   ],
   "headers": [
     {
@@ -82,32 +31,127 @@
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "Service-Worker-Allowed", "value": "/" }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/google_business/callback",
+      "destination": "/api/google-business/callback"
+    },
+    {
+      "source": "/api/google_business",
+      "destination": "/api/google-business"
+    },
+    {
+      "source": "/api/cron-whatsapp",
+      "destination": "/api/cron/whatsapp"
+    },
+    {
+      "source": "/api/v1/zatca",
+      "destination": "/api/zatca"
+    },
+    {
+      "source": "/api/v1/auth/admin-login",
+      "destination": "/api/admin/login"
+    },
+    {
+      "source": "/api/v1/push-subscribe",
+      "destination": "/api/v1/push?action=subscribe"
+    },
+    {
+      "source": "/api/v1/push-notify",
+      "destination": "/api/v1/push?action=notify"
+    },
+    {
+      "source": "/api/v1/push-test",
+      "destination": "/api/v1/push?action=test"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/dashboarc/:path*",
+      "destination": "/dashboard/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/pricing.html",
+      "destination": "/license",
+      "permanent": false
+    },
+    {
+      "source": "/license-success.html",
+      "destination": "/license/success",
+      "permanent": false
+    },
+    {
+      "source": "/themes",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/dashboard/theme",
+      "destination": "/dashboard/themes",
+      "permanent": true
+    },
+    {
+      "source": "/staff.html",
+      "destination": "/staff/login",
+      "permanent": true
+    },
+    {
+      "source": "/almahrusa",
+      "destination": "/subscriber/almahrusa",
+      "permanent": true
+    },
+    {
+      "source": "/rewaq",
+      "destination": "/subscriber/rewaq",
+      "permanent": true
+    },
+    {
+      "source": "/signup.html",
+      "destination": "/register",
+      "permanent": false
+    },
+    {
+      "source": "/track.html",
+      "destination": "/track",
+      "permanent": false
+    },
+    {
+      "source": "/order.html",
+      "destination": "/order",
+      "permanent": false
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/admin",
+      "permanent": false
+    },
+    {
+      "source": "/legal-portal.html",
+      "destination": "/book?activity=legal",
+      "permanent": false
+    },
+    {
+      "source": "/football-coaching.html",
+      "destination": "/book?activity=football",
+      "permanent": false
+    },
+    {
+      "source": "/coaching.html",
+      "destination": "/book?activity=hockey",
+      "permanent": false
     },
     {
       "source": "/index.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
-      ]
+      "destination": "/",
+      "permanent": false
     },
     {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" },
-        { "key": "Access-Control-Max-Age", "value": "86400" }
-      ]
-    },
-    {
-      "source": "/api/webhook-proxy/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
-    },
-    {
-      "source": "/api/whatsapp-webhook",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
+      "source": "/landing.html",
+      "destination": "/",
+      "permanent": false
     }
   ]
 }
