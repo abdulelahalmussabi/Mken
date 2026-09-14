@@ -8,9 +8,9 @@
 
 المنصة تطبيق **Next.js App Router** في جذر المستودع (`src/` + `vercel.json` بـ `"framework": "nextjs"`).
 
-1. اربط مستودع Git بمشروع Vercel واحد يخدم `mken.live` / `www.mken.live`.
-2. **Root Directory = `.`** (جذر المستودع). لا تُبقِ Root Directory على `mkn-theme` بعد الرفع للجذر.
-3. Framework Preset: **Next.js**.
+1. المشروع الحي الذي يملك `www.mken.live` هو **`mkn`** (ليس مشروع `mken` القديم المرتبط بـ HTML).
+2. **Root Directory = `.`** (جذر المستودع). إلى أن تُغيَّر في اللوحة، مجلد `mkn-theme/` يبني التطبيق من الجذر حتى لا يُتخطى النشر.
+3. Framework Preset: **Next.js**. Production Branch: **`master`**.
 4. **النطاقات الفرعية:** Settings → Domains → `*.mken.live`. `src/proxy.ts` يربط المستأجر من الـ hostname.
 5. مسارات الويب هوك تبقى كما هي بعد القطع: `/api/whatsapp-webhook` و `/api/moyasar-webhook`.
 6. متغيرات بيئة إضافية لازمة بعد النقل: `ADMIN_SESSION_SECRET`، `ZATCA_ENCRYPTION_KEY`، `MKEN_TRUST_FUNCTIONS_BASE` (انظر `.env.example`).

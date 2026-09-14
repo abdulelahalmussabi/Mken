@@ -1,0 +1,7 @@
+{
+  "name": "mkn-theme",
+  "private": true,
+  "scripts": {
+    "build": "node ./build-from-root.mjs"
+  }
+}
