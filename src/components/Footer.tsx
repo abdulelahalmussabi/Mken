@@ -36,7 +36,7 @@ export default function Footer() {
               <span className="font-extrabold text-2xl text-foreground">مكّن</span>
             </Link>
             <p className="text-muted text-sm leading-relaxed">
-              المنصة السعودية الأولى والمتخصصة في تمكين المحلات والمتاجر المحلية من التصدر في نتائج البحث الموقعي وخرائط Google.
+              منصة تشغيل للمنشآت السعودية: فواتير زاتكا، واتساب CRM، حجز مواعيد، وظهور على خرائط جوجل.
             </p>
             <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full w-fit border ${occasionDetails.badgeBg}`}>
               <Sparkles className="w-3.5 h-3.5" />
@@ -55,7 +55,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/#services" className="hover:text-amber-400 transition-colors">
-                  خدمات تحسين المحلات
+                  خدمات المنصة
                 </Link>
               </li>
               <li>
@@ -82,19 +82,19 @@ export default function Footer() {
 
           {/* Services Scope */}
           <div className="space-y-4">
-            <h4 className="text-foreground font-bold text-base">خدماتنا في المناسبات</h4>
+            <h4 className="text-foreground font-bold text-base">ماذا تقدّم مكّن</h4>
             <ul className="space-y-2.5 text-xs leading-relaxed text-muted">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                تحسين وتأكيد نشاطك على خرائط Google
+                فواتير إلكترونية متوافقة مع الزكاة (زاتكا)
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                حملات العروض الموسمية ({occasionDetails.shortName})
+                واتساب CRM وحجز مواعيد
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                إدارة التقييمات وزيادة زيارات الخريطة
+                خرائط جوجل ومعاينة فورية لموقع المنشأة
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>

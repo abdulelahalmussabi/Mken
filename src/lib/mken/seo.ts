@@ -11,10 +11,10 @@ import type { StorefrontClient } from "@/types/database";
 export const SITE_NAME = "مكّن";
 
 export const SITE_DEFAULT_TITLE =
-  "منصة مكّن | حزمة واجهات المناسبات السعودية وخدمات Local SEO";
+  "منصة مكّن | فوترة زاتكا وواتساب CRM وخرائط جوجل";
 
 export const SITE_DEFAULT_DESCRIPTION =
-  "المنصة الأولى المخصصة لأصحاب المحلات والأنشطة التجارية في المملكة العربية السعودية لتحسين الظهور في خرائط Google بحزمة واجهات تفاعلية للمناسبات الوطنية والدينية.";
+  "منصة سعودية متعددة المستأجرين: فواتير إلكترونية متوافقة مع الزكاة، واتساب CRM وحجز مواعيد، وظهور على خرائط جوجل — مع معاينة فورية لموقع منشأتك.";
 
 export const noIndexRobots: Metadata["robots"] = { index: false, follow: false };
 

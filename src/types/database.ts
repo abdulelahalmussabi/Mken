@@ -43,7 +43,7 @@ export interface ServiceItem {
   shortDesc: string;
   fullDesc: string;
   features: string[];
-  iconName: 'MapPin' | 'Search' | 'Star' | 'BarChart3' | 'TrendingUp';
+  iconName: 'MapPin' | 'Search' | 'Star' | 'BarChart3' | 'TrendingUp' | 'Receipt' | 'MessageSquare';
   badge?: string;
 }
 

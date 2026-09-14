@@ -43,11 +43,11 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: brandMetadataIcons(slug),
     keywords: [
       "مكّن",
-      "Local SEO",
+      "زاتكا",
+      "فاتورة إلكترونية",
+      "واتساب CRM",
       "خرائط Google",
       "محلات السعودية",
-      "ظهور محلي",
-      "مناسبات سعودية",
     ],
     authors: [{ name: SITE_NAME, url: "https://mken.live" }],
     openGraph: {

@@ -15,7 +15,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   MapPin,
-  Search,
+  Receipt,
+  MessageSquare,
   Star,
   TrendingUp,
   ArrowLeft,
@@ -23,64 +24,60 @@ import {
   ShieldCheck,
   Zap,
   Users,
-  MessageSquare,
   Send,
   AlertCircle,
   Loader2,
   Sparkles,
-  BarChart3,
-  PhoneCall,
   Gift,
   Copy,
   Check,
 } from "lucide-react";
 
-// Services Data
 const SERVICES_DATA: ServiceItem[] = [
   {
-    id: "srv-1",
-    title: "تحسين وتأكيد خرائط Google",
-    shortDesc: "تصدر حزمة الخرائط الثلاثية (Local Pack) واجعل محلك أول ما يراه الزبون القريب.",
+    id: "srv-zatca",
+    title: "فوترة إلكترونية متوافقة مع الزكاة",
+    shortDesc: "إصدار فواتير بمرحلة الزكاة، رمز QR، وإبلاغ ZATCA من لوحة الإدارة.",
     fullDesc:
-      "نقوم بتحسين وترتيب نشاطك التجاري على خرائط قوقل بدقة عالية. يشمل ذلك اختيار الفئات الدقيقة، إضافة الكلمات المفتاحية الوصفية، رفع صور عالية الجودة وتأكيد الموقع الجغرافي لضمان الظهور في الترتيب الأول في محيطك.",
+      "مكّن تربط منشأتك بمنظومة الفاتورة الإلكترونية: إعداد الشهادة، توليد XML، رمز QR، وإرسال التقرير من /admin/invoices دون أدوات خارجية.",
     features: [
-      "تهيئة بيانات النشاط (NAP Consistency)",
-      "تحسين الصور الجغرافية (Geo-tagged Photos)",
-      "ربط الموقع الإلكتروني وقنوات التواصل",
-      "معالجة المشاكل والبلاغات الوهمية",
+      "إعداد sandbox ثم بيئة فاتورة",
+      "رمز QR على كل فاتورة",
+      "إبلاغ الحالة REPORTED",
+      "حماية بيانات الربط بمفتاح تشفير على الخادم",
+    ],
+    iconName: "Receipt",
+    badge: "امتثال",
+  },
+  {
+    id: "srv-whatsapp",
+    title: "واتساب CRM وحجز مواعيد",
+    shortDesc: "ردود ويب هوك، تذكير مواعيد، وتتبع المحادثة لكل مستأجر.",
+    fullDesc:
+      "مسار واتساب واحد على /api/whatsapp-webhook يخدم كل المنشآت: تأكيد الحجز، تذكير، وتصعيد للموظف — مع بوابة الموظفين والحجز العلني /book.",
+    features: [
+      "ويب هوك ميتا على نفس النطاق",
+      "حجز متعدد الأنشطة",
+      "تذكير تلقائي عبر الكرون",
+      "تجربة 14 يوماً من /register",
+    ],
+    iconName: "MessageSquare",
+    badge: "تشغيل يومي",
+  },
+  {
+    id: "srv-maps",
+    title: "خرائط جوجل ومعاينة الموقع",
+    shortDesc: "ربط Google Business ومعاينة فورية لموقع منشأتك بموافقة المالك.",
+    fullDesc:
+      "معاينة غير مفهرسة من رابط الخرائط، مع أدوات NAP ومنشورات الخريطة من لوحة الإدارة. المعاينة تبقى جزءاً من المنصة وليست منتج SEO منفصلاً.",
+    features: [
+      "صانع معاينة بموافقة PDPL",
+      "ربط ملف النشاط على الخرائط",
+      "منشورات وعروض موسمية",
+      "نطاق فرعي لكل مستأجر",
     ],
     iconName: "MapPin",
-    badge: "الأكثر طلباً",
-  },
-  {
-    id: "srv-2",
-    title: "تهيئة الكلمات المفتاحية المحلية",
-    shortDesc: "استهداف العبارات والجمل الأكثر بحثاً من قبل سكان منطقتك ومدينتك.",
-    fullDesc:
-      "ندرس سلوك البحث المحلي للزبائن في مدينتك (مثل: 'أفضل كافيه بالرياض'، 'أقرب سباك بجدة') ونقوم بتهيئة محرك البحث لمحلك التجاري ليتصدر هذه الجمل المفتاحية بدقة.",
-    features: [
-      "تحليل كلمات البحث المحلية الأكثر ربحية",
-      "تحسين النص الوصفي للمحل والخدمات",
-      "ربط المحل بالمناطق والأحياء المجاورة",
-      "تقارير تحليلية شهرية لعمليات البحث",
-    ],
-    iconName: "Search",
-    badge: "تغطية كاملة",
-  },
-  {
-    id: "srv-3",
-    title: "إدارة السمعة والتقييمات الإيجابية",
-    shortDesc: "بناء ثقة العملاء وزيادة التقييمات الـ 5 نجوم بطرق نظامية وفعالة.",
-    fullDesc:
-      "نساعدك في إعداد آلية سهلة للحصول على تقييمات إيجابية حقيقية من عملائك، وصياغة ردود احترافية تعكس جودة خدمتك وترفع من تصنيف الخوارزمية لمتجرك.",
-    features: [
-      "تصميم QR Code مخصص لجمع التقييمات",
-      "صياغة ردود ذكية ومحسنة للـ SEO",
-      "التفاعل السريع مع ملاحظات الزوار",
-      "رفع معدل التحويل من الخريطة للفرع",
-    ],
-    iconName: "Star",
-    badge: "ثقة ونمو",
+    badge: "الظهور المحلي",
   },
 ];
 
@@ -159,7 +156,7 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight tracking-tight">
-                اجعل محلك{" "}
+                شغّل منشأتك على{" "}
                 <span
                   className="bg-clip-text text-transparent underline underline-offset-8 decoration-wavy transition-colors duration-500"
                   style={{
@@ -167,13 +164,12 @@ export default function HomePage() {
                     textDecorationColor: occasionDetails.accentColor,
                   }}
                 >
-                  الخيار الأول
-                </span>{" "}
-                في منطقتك
+                  منصة واحدة
+                </span>
               </h1>
 
               <p className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl">
-                نساعد أصحاب المحلات والمتاجر في المملكة العربية السعودية على تصدر خرائط Google ونتائج البحث المحلية، لجلب المزيد من اتصالات العملاء والزيارات المباشرة لفرعك يومياً.
+                فواتير زاتكا، واتساب CRM وحجز مواعيد، وظهور على خرائط جوجل — لمحلات ومنشآت المملكة، مع معاينة فورية لموقعك بموافقة المالك.
               </p>
 
               {/* Occasion Coupon Highlight Box */}
@@ -229,11 +225,11 @@ export default function HomePage() {
               {/* CTAs */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link
-                  href={"/preview" as Route}
+                  href={"/register" as Route}
                   className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-slate-950 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 text-center"
                   style={{ backgroundColor: occasionDetails.accentColor }}
                 >
-                  <span>جهّز معاينة موقعك الآن</span>
+                  <span>ابدأ تجربة 14 يوماً</span>
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
 
@@ -296,10 +292,10 @@ export default function HomePage() {
               <span>خدماتنا المتخصصة</span>
             </h2>
             <h3 className="text-3xl sm:text-4xl font-extrabold text-foreground">
-              كل ما يحتاجه محلك لتصدر نتائج البحث والخرائط
+              ثلاث ركائز لتشغيل المنشأة
             </h3>
             <p className="text-muted text-sm leading-relaxed">
-              نقدم حلولاً متكاملة ومصممة خصيصاً للتوافق مع خوارزميات Google المحلية والجمهور السعودي.
+              منصة واحدة للفوترة والواتساب والحجز والخرائط — وليست خدمة SEO منفصلة.
             </p>
           </div>
 
@@ -316,7 +312,8 @@ export default function HomePage() {
                       style={{ backgroundColor: occasionDetails.accentColor }}
                     >
                       {service.iconName === "MapPin" && <MapPin className="w-6 h-6" />}
-                      {service.iconName === "Search" && <Search className="w-6 h-6" />}
+                      {service.iconName === "Receipt" && <Receipt className="w-6 h-6" />}
+                      {service.iconName === "MessageSquare" && <MessageSquare className="w-6 h-6" />}
                       {service.iconName === "Star" && <Star className="w-6 h-6" />}
                     </div>
                     <span className="px-3 py-1 bg-surface-2 text-muted rounded-full text-xs font-semibold border border-line">
@@ -349,10 +346,10 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-right">
               <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
-                لماذا تختار منصة &quot;مكّن&quot; لإدارة محلك على الخريطة؟
+                لماذا تختار منصة &quot;مكّن&quot; لتشغيل منشأتك؟
               </h2>
               <p className="text-muted text-sm leading-relaxed">
-                نجمع بين الخبرة التقنية العميقة في SEO المحلي وفهم سلوك العميل في المملكة لتقديم نتائج سريعة وملموسة.
+                لوحة واحدة للمستأجر: فواتير، واتساب، حجز، خرائط، وترخيص — بدون منصة HTML ثانية.
               </p>
 
               <div className="space-y-4 pt-2">
@@ -361,8 +358,8 @@ export default function HomePage() {
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-foreground">متوافق 100% مع السياسات المحلية والسعودية</h3>
-                    <p className="text-xs text-muted mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
+                    <h3 className="font-bold text-sm text-foreground">فواتير زاتكا من اللوحة</h3>
+                    <p className="text-xs text-muted mt-1">إعداد الشهادة وإبلاغ الفاتورة من /admin/invoices دون أدوات خارجية.</p>
                   </div>
                 </div>
 
@@ -381,8 +378,8 @@ export default function HomePage() {
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-foreground">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
-                    <p className="text-xs text-muted mt-1">نظام تواصل متكامل يربط صاحب المحل بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
+                    <h3 className="font-bold text-sm text-foreground">واتساب وحجز على نفس النطاق</h3>
+                    <p className="text-xs text-muted mt-1">ويب هوك ميتا ودفع Moyasar ومسار /book دون ملفات html.</p>
                   </div>
                 </div>
               </div>
@@ -451,7 +448,7 @@ export default function HomePage() {
               <textarea
                 {...register("message")}
                 rows={4}
-                placeholder="أذكر اسم محلك ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
+                placeholder="اسم المنشأة والمدينة: فوترة، واتساب، حجز، أو خرائط..."
                 className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
               />
               {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
