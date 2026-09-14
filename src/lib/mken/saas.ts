@@ -72,6 +72,22 @@ export interface SaasConfigSlice {
   };
 }
 
+type CustomFeatureFlags = NonNullable<
+  NonNullable<SaasConfigSlice["subscription"]>["customFeatures"]
+>;
+
+/** Named tiers keep their floor; `customFeatures` may only enable extras (trial invoices on growth). */
+function withCustomAddons(base: SaasFeatures, custom?: CustomFeatureFlags): SaasFeatures {
+  const extra = custom || {};
+  return {
+    ...base,
+    hasWhatsApp: base.hasWhatsApp || !!extra.hasWhatsApp,
+    hasCommerce: base.hasCommerce || !!extra.hasCommerce,
+    hasInvoices: base.hasInvoices || !!extra.hasInvoices,
+    hasCustomDomain: !!extra.hasCustomDomain,
+  };
+}
+
 export function saasFeaturesFromConfig(
   config: SaasConfigSlice | null | undefined,
   opts: { slug?: string; superAdmin?: boolean } = {}
@@ -83,23 +99,22 @@ export function saasFeaturesFromConfig(
   if (!sub) return SAAS_FEATURES_UNLIMITED;
 
   const tier = (sub.tier || "basic").toLowerCase();
-  const addonDomain = !!sub?.customFeatures?.hasCustomDomain;
+  const custom = sub.customFeatures;
 
   if (tier === "custom") {
-    const custom = sub.customFeatures || {};
     return {
       tier: "custom",
       name: "باقة مخصصة",
-      hasWhatsApp: !!custom.hasWhatsApp,
-      hasCommerce: !!custom.hasCommerce,
-      hasInvoices: !!custom.hasInvoices,
-      hasCustomDomain: addonDomain,
+      hasWhatsApp: !!custom?.hasWhatsApp,
+      hasCommerce: !!custom?.hasCommerce,
+      hasInvoices: !!custom?.hasInvoices,
+      hasCustomDomain: !!custom?.hasCustomDomain,
     };
   }
 
-  if (tier === "growth") return { ...SAAS_TIERS.growth, hasCustomDomain: addonDomain };
-  if (tier === "unlimited") return { ...SAAS_TIERS.unlimited, hasCustomDomain: addonDomain };
-  return { ...SAAS_TIERS.basic, hasCustomDomain: addonDomain };
+  if (tier === "growth") return withCustomAddons(SAAS_TIERS.growth, custom);
+  if (tier === "unlimited") return withCustomAddons(SAAS_TIERS.unlimited, custom);
+  return withCustomAddons(SAAS_TIERS.basic, custom);
 }
 
 export function geoGridMonthlyCredits(tier: SaasTierId): number {
