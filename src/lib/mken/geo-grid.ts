@@ -1,5 +1,5 @@
 import { getTenantDb, fetchTenantRow, writeTenantConfig } from "@/lib/mken/tenant";
-import { loadNapSiteSnapshot } from "@/lib/mken/gbp";
+import { listCompetitorAudits, loadNapSiteSnapshot } from "@/lib/mken/gbp";
 import {
   geoGridAllowedSizes,
   geoGridCreditCost,
@@ -20,6 +20,14 @@ export interface GridCell {
   title?: string;
 }
 
+export interface CompetitorGridScore {
+  name: string;
+  placeId?: string;
+  averageRank: number | null;
+  top3Percentage: number | null;
+  visibleCells: number;
+}
+
 export interface RankScan {
   id: string;
   keyword: string;
@@ -30,6 +38,7 @@ export interface RankScan {
   averageRank: number | null;
   top3Percentage: number | null;
   cells: GridCell[];
+  competitors: CompetitorGridScore[];
   scannedAt: string;
   cached: boolean;
   source: GeoScanSource;
@@ -65,13 +74,19 @@ export function placesGeoConfigured(): boolean {
 }
 
 export function geoGridScanReady(): boolean {
-  return dataforseoConfigured() || placesGeoConfigured();
+  return dataforseoConfigured();
 }
 
 export function preferredGeoSource(): GeoScanSource | null {
-  if (dataforseoConfigured()) return "dataforseo";
-  if (placesGeoConfigured()) return "places_estimate";
-  return null;
+  return dataforseoConfigured() ? "dataforseo" : null;
+}
+
+export function isMapsRankScan(scan: RankScan): boolean {
+  return scan.source === "dataforseo";
+}
+
+export function latestMapsRankScan(scans: RankScan[] | undefined): RankScan | null {
+  return (scans || []).find(isMapsRankScan) || null;
 }
 
 export function suggestedGeoKeyword(input: { slug: string; city?: string; activity?: string; name?: string }): string {
@@ -185,18 +200,23 @@ async function fetchCachedScan(
   return toScan(data as Record<string, unknown>, true);
 }
 
-function parseStoredResults(raw: unknown): { cells: GridCell[]; source: GeoScanSource } {
+function parseStoredResults(raw: unknown): {
+  cells: GridCell[];
+  source: GeoScanSource;
+  competitors: CompetitorGridScore[];
+} {
   if (Array.isArray(raw)) {
-    return { cells: raw as GridCell[], source: "dataforseo" };
+    return { cells: raw as GridCell[], source: "dataforseo", competitors: [] };
   }
   if (raw && typeof raw === "object") {
-    const stored = raw as { cells?: GridCell[]; source?: string };
+    const stored = raw as { cells?: GridCell[]; source?: string; competitors?: CompetitorGridScore[] };
     return {
       cells: Array.isArray(stored.cells) ? stored.cells : [],
       source: stored.source === "places_estimate" ? "places_estimate" : "dataforseo",
+      competitors: Array.isArray(stored.competitors) ? stored.competitors.filter((item) => item?.name) : [],
     };
   }
-  return { cells: [], source: "dataforseo" };
+  return { cells: [], source: "dataforseo", competitors: [] };
 }
 
 function toScan(row: Record<string, unknown>, cached: boolean): RankScan {
@@ -211,6 +231,7 @@ function toScan(row: Record<string, unknown>, cached: boolean): RankScan {
     averageRank: row.average_rank != null ? Number(row.average_rank) : null,
     top3Percentage: row.top3_percentage != null ? Number(row.top3_percentage) : null,
     cells: parsed.cells,
+    competitors: parsed.competitors,
     scannedAt: String(row.scanned_at || ""),
     cached,
     source: parsed.source,
@@ -250,44 +271,6 @@ async function dataforseoMaps(tasks: Array<{ keyword: string; lat: number; lng: 
   return (json.tasks || []).map((task) => task.result?.[0]?.items || []);
 }
 
-async function placesTextSearchPin(keyword: string, lat: number, lng: number): Promise<MapsItem[]> {
-  const key = process.env.GOOGLE_MAPS_API_KEY?.trim() || "";
-  const params = new URLSearchParams({
-    query: keyword,
-    language: "ar",
-    region: "sa",
-    location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
-    radius: "1000",
-    key,
-  });
-  const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params.toString()}`);
-  if (!res.ok) throw new Error(`Places API HTTP ${res.status}`);
-  const data = (await res.json()) as {
-    status?: string;
-    error_message?: string;
-    results?: Array<{ name?: string; place_id?: string }>;
-  };
-  if (data.status && !["OK", "ZERO_RESULTS"].includes(data.status)) {
-    throw new Error(data.error_message ? `Places API ${data.status}: ${data.error_message}` : `Places API ${data.status}`);
-  }
-  return (data.results || []).slice(0, 20).map((item, index) => ({
-    title: item.name,
-    place_id: item.place_id,
-    rank_absolute: index + 1,
-    rank_group: index + 1,
-  }));
-}
-
-async function placesMaps(tasks: Array<{ keyword: string; lat: number; lng: number }>): Promise<MapsItem[][]> {
-  const out: MapsItem[][] = [];
-  const chunk = 5;
-  for (let i = 0; i < tasks.length; i += chunk) {
-    const slice = tasks.slice(i, i + chunk);
-    out.push(...(await Promise.all(slice.map((task) => placesTextSearchPin(task.keyword, task.lat, task.lng)))));
-  }
-  return out;
-}
-
 function matchRank(items: MapsItem[], businessName: string, placeId: string): { rank: number | null; title?: string } {
   const wantPlace = placeId.trim();
   const wantName = normalizeName(businessName);
@@ -303,6 +286,29 @@ function matchRank(items: MapsItem[], businessName: string, placeId: string): { 
     }
   }
   return { rank: null };
+}
+
+function summarizeGrid(
+  pins: Array<{ lat: number; lng: number }>,
+  results: MapsItem[][],
+  businessName: string,
+  placeId: string
+): { cells: GridCell[]; averageRank: number | null; top3Percentage: number } {
+  const cells: GridCell[] = pins.map((pin, index) => {
+    const matched = matchRank(results[index] || [], businessName, placeId);
+    return {
+      lat: pin.lat,
+      lng: pin.lng,
+      rank: matched.rank,
+      inPack: matched.rank != null && matched.rank <= 3,
+      title: matched.title,
+    };
+  });
+  const ranked = cells.map((cell) => cell.rank).filter((rank): rank is number => rank != null);
+  const averageRank =
+    ranked.length > 0 ? Math.round((ranked.reduce((sum, rank) => sum + rank, 0) / ranked.length) * 100) / 100 : null;
+  const top3Percentage = Math.round((cells.filter((cell) => cell.inPack).length / Math.max(1, cells.length)) * 10000) / 100;
+  return { cells, averageRank, top3Percentage };
 }
 
 export async function listRecentRankScans(slug: string): Promise<{ scans?: RankScan[]; error?: string }> {
@@ -343,14 +349,14 @@ export async function runGeoGridScan(input: {
   if (!source) {
     return {
       error:
-        "لا يوجد مزود فحص على الخادم. عيّن GOOGLE_MAPS_API_KEY لتقدير أماكن، أو DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD لرانك الخرائط.",
+        "رانك الخرائط يتطلب DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD على خادم مكّن. تقدير Places لم يعد يُعرض كترتيب خرائط.",
       credits,
     };
   }
 
   const cached = await fetchCachedScan(input.slug, keyword, gridSize, radius);
-  const replaceEstimate = Boolean(cached && source === "dataforseo" && cached.source === "places_estimate");
-  if (cached && !replaceEstimate) return { scan: cached, credits };
+  const replaceEstimate = Boolean(cached && cached.source === "places_estimate");
+  if (cached && isMapsRankScan(cached) && !replaceEstimate) return { scan: cached, credits };
 
   const cost = geoGridCreditCost(gridSize);
   if (credits.remaining < cost) {
@@ -383,21 +389,27 @@ export async function runGeoGridScan(input: {
   const tasks = pins.map((pin) => ({ keyword, lat: pin.lat, lng: pin.lng }));
 
   try {
-    const results = source === "dataforseo" ? await dataforseoMaps(tasks) : await placesMaps(tasks);
-    const cells: GridCell[] = pins.map((pin, index) => {
-      const matched = matchRank(results[index] || [], name, placeId);
+    const results = await dataforseoMaps(tasks);
+    const own = summarizeGrid(pins, results, name, placeId);
+    const listed = await listCompetitorAudits(input.slug);
+    const audit = listed.audits?.[0];
+    const ownPlace = placeId || audit?.own?.placeId || "";
+    const rivals = (audit?.competitors || [])
+      .filter((item) => {
+        if (ownPlace && item.placeId && item.placeId === ownPlace) return false;
+        return normalizeName(item.name) !== normalizeName(name);
+      })
+      .slice(0, 3);
+    const competitors: CompetitorGridScore[] = rivals.map((rival) => {
+      const scored = summarizeGrid(pins, results, rival.name, rival.placeId || "");
       return {
-        lat: pin.lat,
-        lng: pin.lng,
-        rank: matched.rank,
-        inPack: matched.rank != null && matched.rank <= 3,
-        title: matched.title,
+        name: rival.name,
+        placeId: rival.placeId,
+        averageRank: scored.averageRank,
+        top3Percentage: scored.top3Percentage,
+        visibleCells: scored.cells.filter((cell) => cell.rank != null).length,
       };
     });
-    const ranked = cells.map((cell) => cell.rank).filter((rank): rank is number => rank != null);
-    const averageRank =
-      ranked.length > 0 ? Math.round((ranked.reduce((sum, rank) => sum + rank, 0) / ranked.length) * 100) / 100 : null;
-    const top3Percentage = Math.round((cells.filter((cell) => cell.inPack).length / cells.length) * 10000) / 100;
 
     const debit = await debitCredits(input.slug, cost);
     if (debit.error) return { error: debit.error, credits: debit.credits };
@@ -412,9 +424,9 @@ export async function runGeoGridScan(input: {
       radius_km: radius,
       center_lat: lat,
       center_lng: lng,
-      average_rank: averageRank,
-      top3_percentage: top3Percentage,
-      raw_results: { source, cells },
+      average_rank: own.averageRank,
+      top3_percentage: own.top3Percentage,
+      raw_results: { source, cells: own.cells, competitors },
       scan_day: riyadhDay(),
       scanned_at: new Date().toISOString(),
     };
@@ -427,13 +439,12 @@ export async function runGeoGridScan(input: {
     if (written.error || !written.data) {
       if (written.error && /duplicate|unique/i.test(written.error.message)) {
         const again = await fetchCachedScan(input.slug, keyword, gridSize, radius);
-        if (again) return { scan: again, credits: debit.credits };
+        if (again && isMapsRankScan(again)) return { scan: again, credits: debit.credits };
       }
       return { error: written.error?.message || "تعذّر حفظ الفحص", credits: debit.credits };
     }
     return { scan: toScan(written.data as Record<string, unknown>, false), credits: debit.credits };
   } catch (err) {
-    const fallback = source === "places_estimate" ? "فشل تقدير Places" : "فشل فحص DataForSEO";
-    return { error: err instanceof Error ? err.message : fallback, credits };
+    return { error: err instanceof Error ? err.message : "فشل فحص DataForSEO", credits };
   }
 }

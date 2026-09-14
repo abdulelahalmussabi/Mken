@@ -131,6 +131,35 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     active: true,
     createdAt: new Date("2026-09-02").toISOString(),
   },
+  {
+    slug: "saj",
+    name: "مطعم صحن وصاج",
+    tagline: "أكل البيت على الصاج — صحن يجمعنا وصاج يرضينا",
+    subtitle:
+      "مطعم صحن وصاج بالمدينة المنورة (حي الرانوناء - شوران) — متخصص في الأكلات الشعبية والفطائر الطازجة والصاج والشاورما والمطبق على الأصول. خدمة سريعة وجودة عالية.",
+    type: "restaurant",
+    phone: "0148420124",
+    whatsapp: "966148420124",
+    email: "saj@mken.live",
+    location: "حي الرانوناء - شوران، المدينة المنورة",
+    rating: "4.6",
+    reviewsCount: "تقييم معتمد على خرائط Google",
+    heroImage:
+      "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZb2HdJkhulaPrmwXEwO4RmkQtii7Q1iZpFZB6cbvuBF_iKJBxoqGB4rtfNMQYy03LSCD8MSeBoa7kJ1Vl-0T21qV6fGVc-oEkayty3SFitCfidWE89zZgM4SELN67DdtVA2b4fUDeLbps=s1600",
+    logo: publicBrandSrc("saj.png"),
+    commercialRegistryName: "مطعم صحن وصاج",
+    commercialRegistryNumber: "7054342691",
+    demoNotice: "الموقع الرسمي لمطعم صحن وصاج على منصة مكّن",
+    socialLinks: {
+      whatsapp: "https://wa.me/966148420124",
+      map: "https://maps.app.goo.gl/AJzBwwrZ5ZQygu959?g_st=ac",
+      phone: "tel:0148420124",
+    },
+    adminEmail: "saj@mken.live",
+    theme: "none",
+    active: true,
+    createdAt: new Date("2026-09-14").toISOString(),
+  },
 ];
 
 type CredentialField = "adminPassword" | "admin_password" | "admin_password_hash";

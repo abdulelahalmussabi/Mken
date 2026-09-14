@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS public.mken_ad_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_slug TEXT NOT NULL REFERENCES public.mken_saas_clients(tenant_slug) ON DELETE CASCADE,
-  platform TEXT NOT NULL CHECK (platform IN ('meta_ctwa', 'google_ads', 'snapchat', 'tiktok')),
+  platform TEXT NOT NULL CHECK (platform IN ('meta_ctwa', 'google_ads', 'google_pmax', 'snapchat', 'tiktok')),
   external_campaign_id TEXT,
   campaign_name TEXT NOT NULL,
   objective TEXT NOT NULL DEFAULT 'MESSAGES',
@@ -128,3 +128,9 @@ ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_access_
 ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_token_expiry TIMESTAMPTZ;
 ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_customer_id TEXT;
 ALTER TABLE public.mken_saas_clients ADD COLUMN IF NOT EXISTS google_ads_login_customer_id TEXT;
+
+-- P4: Performance Max (إعلان قد يظهر على الخرائط) بجانب بحث جوجل المحلي.
+ALTER TABLE public.mken_ad_campaigns DROP CONSTRAINT IF EXISTS mken_ad_campaigns_platform_check;
+ALTER TABLE public.mken_ad_campaigns
+  ADD CONSTRAINT mken_ad_campaigns_platform_check
+  CHECK (platform IN ('meta_ctwa', 'google_ads', 'google_pmax', 'snapchat', 'tiktok'));

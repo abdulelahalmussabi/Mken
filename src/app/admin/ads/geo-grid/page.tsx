@@ -8,6 +8,12 @@ import { useApp } from "@/context/AppContext";
 type GridSize = "3x3" | "5x5" | "7x7";
 type GeoScanSource = "dataforseo" | "places_estimate";
 type GridCell = { lat: number; lng: number; rank: number | null; inPack: boolean };
+type CompetitorGridScore = {
+  name: string;
+  averageRank: number | null;
+  top3Percentage: number | null;
+  visibleCells: number;
+};
 type RankScan = {
   id: string;
   keyword: string;
@@ -15,6 +21,7 @@ type RankScan = {
   averageRank: number | null;
   top3Percentage: number | null;
   cells: GridCell[];
+  competitors?: CompetitorGridScore[];
   cached?: boolean;
   source?: GeoScanSource;
 };
@@ -44,7 +51,6 @@ export default function GeoGridPage() {
   const [gridSize, setGridSize] = useState<GridSize>("3x3");
   const [radiusKm, setRadiusKm] = useState(5);
   const [ready, setReady] = useState(false);
-  const [dataforseoReady, setDataforseoReady] = useState(false);
 
   const load = useCallback(async () => {
     if (authLoading) return;
@@ -63,9 +69,8 @@ export default function GeoGridPage() {
         setError("");
         setCredits(data.credits);
         setScans(data.scans || []);
-        setScan((data.scans || [])[0] || null);
+        setScan(data.mapsScan || (data.scans || []).find((item: RankScan) => item.source === "dataforseo") || null);
         setReady(Boolean(data.scanReady ?? data.dataforseoReady));
-        setDataforseoReady(Boolean(data.dataforseoReady));
         if (typeof data.suggestedKeyword === "string" && data.suggestedKeyword) {
           setKeyword((current) => current.trim() || data.suggestedKeyword);
         }
@@ -101,11 +106,7 @@ export default function GeoGridPage() {
       setCredits(data.credits);
       setScans((prev) => [data.scan, ...prev.filter((item) => item.id !== data.scan.id)]);
       showToast(
-        data.scan.cached
-          ? "نتيجة محفوظة اليوم (بدون خصم رصيد)"
-          : data.scan.source === "places_estimate"
-            ? "اكتمل تقدير الشبكة (أماكن جوجل — ليس رانك خرائط)"
-            : "اكتمل فحص الشبكة",
+        data.scan.cached ? "نتيجة DataForSEO محفوظة اليوم (بدون خصم رصيد)" : "اكتمل فحص خرائط جوجل عبر DataForSEO",
         "success"
       );
     } finally {
@@ -123,7 +124,7 @@ export default function GeoGridPage() {
           <div>
             <h1 className="text-lg font-extrabold text-white">تتبع الرانك الجغرافي (Geo-Grid)</h1>
             <p className="text-xs text-slate-400 mt-1 leading-6">
-              يحاكي البحث من نقاط حول الفرع. رانك الخرائط عبر DataForSEO إن وُجد، وإلا تقدير عبر Places API.
+              يحاكي البحث على خرائط جوجل من نقاط حول الفرع عبر DataForSEO. تقدير Places لم يعد يُحسب رانكاً.
               الأرصدة حسب الباقة: أساسي 2 / متقدم 8 / احترافي 40 فحصاً شهرياً. 3×3 = رصيد واحد، 5×5 = 2، 7×7 = 4. نفس
               الكلمة في نفس اليوم تُجلب من الكاش.
             </p>
@@ -147,24 +148,11 @@ export default function GeoGridPage() {
 
         {!ready ? (
           <div className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 space-y-1 leading-6">
-            <p className="font-bold">الفحص متوقف — هذا إعداد منصة مكّن وليس إعداد المنشأة.</p>
+            <p className="font-bold">فحص الخرائط متوقف — إعداد منصة مكّن وليس إعداد المنشأة.</p>
             <p>
-              أضف GOOGLE_MAPS_API_KEY في Vercel لتقدير أماكن، أو DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD لرانك الخرائط
-              الحقيقي، ثم أعد النشر. العميل لا يحتاج حساب DataForSEO.
+              أضف DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD في Vercel ثم أعد النشر. العميل لا يحتاج حساب DataForSEO.
             </p>
           </div>
-        ) : !dataforseoReady ? (
-          <div className="text-[11px] text-sky-200/90 bg-sky-500/10 border border-sky-500/20 rounded-xl px-3 py-2 space-y-1 leading-6">
-            <p className="font-bold">وضع تقدير أماكن — ليس رانك خرائط جوجل.</p>
-            <p>
-              الفحص يعمل عبر GOOGLE_MAPS_API_KEY (Places Text Search مع تحيّز موقع لكل نقطة). الترتيب تقريبي ويختلف عن
-              الـ Map Pack. لتفعيل الرانك الحقيقي: DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD ثم إعادة نشر.
-            </p>
-          </div>
-        ) : null}
-
-        {scan?.source === "places_estimate" ? (
-          <p className="text-[11px] text-sky-300/90">آخر شبكة معروضة: تقدير أماكن وليست نتائج خرائط.</p>
         ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -208,6 +196,40 @@ export default function GeoGridPage() {
             </div>
           ))}
         </div>
+      ) : null}
+
+      {scan && scan.source !== "places_estimate" ? (
+        <section className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <p className="text-sm font-extrabold text-white">مقارنة المنافسين على نفس الشبكة</p>
+          <p className="text-[11px] text-slate-500">
+            المصدر DataForSEO · كلمة «{scan.keyword}». اجلب لقطة منافسين من التواجد المحلي قبل الفحص لإظهارهم هنا.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-right">
+              <thead>
+                <tr className="text-slate-500">
+                  <th className="p-2">المنشأة</th>
+                  <th className="p-2">متوسط الرانك</th>
+                  <th className="p-2">ظهور أفضل 3</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-slate-800">
+                  <td className="p-2 text-emerald-200">منشأتك</td>
+                  <td className="p-2 text-slate-200">{scan.averageRank ?? "—"}</td>
+                  <td className="p-2 text-slate-300">{scan.top3Percentage != null ? `${scan.top3Percentage}%` : "—"}</td>
+                </tr>
+                {(scan.competitors || []).map((row) => (
+                  <tr key={row.name} className="border-t border-slate-800">
+                    <td className="p-2 text-slate-200">{row.name}</td>
+                    <td className="p-2 text-slate-300">{row.averageRank ?? "خارج النتائج"}</td>
+                    <td className="p-2 text-slate-400">{row.top3Percentage != null ? `${row.top3Percentage}%` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       ) : null}
 
       {scans.length > 1 ? (

@@ -7,6 +7,7 @@ import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import type { GbpLocation } from "@/lib/mken/gbp";
+import type { GbpOperatorProof } from "@/lib/mken/nap";
 
 function isQuotaMessage(message: string): boolean {
   return /حصّة 0|Basic API Access|quota|RESOURCE_EXHAUSTED|مزامنة فروع حساب بيزنس غير متاحة/i.test(
@@ -31,6 +32,7 @@ export default function GbpLocalSeoWorkspace() {
   const [mapsListingName, setMapsListingName] = useState("");
   const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [mapsAuditGen, setMapsAuditGen] = useState(0);
+  const [operatorProof, setOperatorProof] = useState<GbpOperatorProof | null>(null);
 
   const load = useCallback(async () => {
     if (authLoading) return;
@@ -54,6 +56,7 @@ export default function GbpLocalSeoWorkspace() {
       setMapsBound(Boolean(gbp.mapsUrl || gbp.mapsPlaceId));
       setMapsListingName(typeof gbp.mapsListingName === "string" ? gbp.mapsListingName : "");
       setQuotaBlocked(Boolean(gbp.quotaBlocked));
+      setOperatorProof(gbp.operatorProof || null);
       if (!connected) {
         setGbpLocationError("");
       } else if (gbp.locations?.length) {
@@ -469,6 +472,8 @@ export default function GbpLocalSeoWorkspace() {
             busy={gbpBusy}
             setBusy={setGbpBusy}
             onToast={showToast}
+            quotaBlocked={quotaBlocked}
+            operatorProof={operatorProof}
           />
         </div>
       ) : null}

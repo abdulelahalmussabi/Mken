@@ -35,6 +35,7 @@ type RankScan = {
   top3Percentage: number | null;
   scannedAt?: string;
   source?: string;
+  competitors?: { name: string; averageRank: number | null; top3Percentage: number | null }[];
 };
 
 export default function LocalCompetitorsPage() {
@@ -42,6 +43,7 @@ export default function LocalCompetitorsPage() {
   const { showToast } = useApp();
   const [audits, setAudits] = useState<Audit[]>([]);
   const [scans, setScans] = useState<RankScan[]>([]);
+  const [mapsScan, setMapsScan] = useState<RankScan | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +70,17 @@ export default function LocalCompetitorsPage() {
         setError("");
         setAudits(auditData.audits || []);
       }
-      setScans(geoRes.ok && geoData.success ? geoData.scans || [] : []);
+      if (geoRes.ok && geoData.success) {
+        setScans(geoData.scans || []);
+        setMapsScan(
+          geoData.mapsScan ||
+            (geoData.scans || []).find((item: RankScan) => item.source === "dataforseo") ||
+            null
+        );
+      } else {
+        setScans([]);
+        setMapsScan(null);
+      }
     } catch {
       setError("تعذّر الاتصال بالخادم");
     } finally {
@@ -108,10 +120,8 @@ export default function LocalCompetitorsPage() {
           <div>
             <h1 className="text-lg font-extrabold text-white">قائمة المنافسين والرانك</h1>
             <p className="text-xs text-slate-400 mt-1 leading-6">
-              تُحفظ لقطات Places في <span dir="ltr">mken_competitor_audits</span> بمفتاح{" "}
-              <span dir="ltr">tenant_slug</span>. شبكة الرانك من{" "}
-              <span dir="ltr">mken_local_rank_scans</span> — بلا جدول دراسة جديد وبلا{" "}
-              <span dir="ltr">tenants(id)</span>.
+              لقطة المنافسين من خرائط جوجل (Places). رانك الخرائط يُقارن على نفس الكلمة والشبكة عبر DataForSEO فقط — تقدير
+              أماكن لا يُعرض كترتيب.
             </p>
           </div>
         </div>
@@ -181,26 +191,79 @@ export default function LocalCompetitorsPage() {
         ))
       )}
 
-      <section className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
+      <section className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-sm font-extrabold text-white">فحوصات Geo-Grid المحفوظة</p>
+          <p className="text-sm font-extrabold text-white">رانك الخرائط مقابل المنافسين</p>
           <Link href={`/admin/ads/geo-grid${query}` as Route} className="text-[11px] font-bold text-sky-300">
             فتح تتبع الرانك
           </Link>
         </div>
-        {scans.length === 0 ? (
-          <p className="text-xs text-slate-500">لا فحوصات رانك بعد على الجدول القائم.</p>
+        {!mapsScan ? (
+          <p className="text-xs text-slate-500">
+            لا فحص DataForSEO بعد. اجلب لقطة المنافسين ثم شغّل الشبكة من تتبع الرانك.
+          </p>
         ) : (
-          <ul className="text-xs text-slate-300 space-y-1">
-            {scans.map((scan) => (
-              <li key={scan.id}>
-                {scan.keyword} · {scan.gridSize} · متوسط {scan.averageRank ?? "—"} · الحزمة الثلاثية{" "}
-                {scan.top3Percentage != null ? `${scan.top3Percentage}%` : "—"}
-                {scan.source === "places_estimate" ? " · تقدير أماكن" : ""}
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <p className="text-[11px] text-slate-500 mb-2">
+              {mapsScan.keyword} · {mapsScan.gridSize} · المصدر DataForSEO
+            </p>
+            <table className="w-full text-xs text-right">
+              <thead>
+                <tr className="text-slate-500">
+                  <th className="p-2">المنشأة</th>
+                  <th className="p-2">متوسط الرانك</th>
+                  <th className="p-2">أفضل 3</th>
+                  <th className="p-2">التقييم</th>
+                  <th className="p-2">عدد التقييمات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const latest = audits[0];
+                  const own = latest?.own;
+                  const rows = [
+                    {
+                      name: own?.name || "منشأتك",
+                      averageRank: mapsScan.averageRank,
+                      top3Percentage: mapsScan.top3Percentage,
+                      rating: own?.rating,
+                      reviews: own?.userRatingsTotal,
+                      mine: true,
+                    },
+                    ...(mapsScan.competitors || []).map((row) => {
+                      const card = latest?.competitors.find((item) => item.name === row.name);
+                      return {
+                        name: row.name,
+                        averageRank: row.averageRank,
+                        top3Percentage: row.top3Percentage,
+                        rating: card?.rating,
+                        reviews: card?.userRatingsTotal,
+                        mine: false,
+                      };
+                    }),
+                  ];
+                  return rows.map((row) => (
+                    <tr key={row.name} className="border-t border-slate-800">
+                      <td className="p-2 text-slate-200">
+                        {row.name}
+                        {row.mine ? <span className="block text-[10px] text-emerald-300">منشأتك</span> : null}
+                      </td>
+                      <td className="p-2 text-slate-300">{row.averageRank ?? "خارج النتائج"}</td>
+                      <td className="p-2 text-slate-400">
+                        {row.top3Percentage != null ? `${row.top3Percentage}%` : "—"}
+                      </td>
+                      <td className="p-2 text-slate-400">{row.rating ? row.rating.toFixed(1) : "—"}</td>
+                      <td className="p-2 text-slate-400">{row.reviews || "—"}</td>
+                    </tr>
+                  ));
+                })()}
+              </tbody>
+            </table>
+          </div>
         )}
+        {scans.some((item) => item.source === "places_estimate") ? (
+          <p className="text-[11px] text-slate-500">فحوصات Places القديمة محفوظة ولا تُحتسب رانك خرائط.</p>
+        ) : null}
       </section>
     </div>
   );

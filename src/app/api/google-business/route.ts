@@ -15,11 +15,13 @@ import {
   publishGbpPost,
   scheduleGbpPost,
   runNapAudit,
+  saveGbpOperatorProof,
   selectGbpLocation,
   syncGbpServices,
   syncNapFromMken,
   syncNapToMken,
 } from "@/lib/mken/gbp";
+import { listGbpReviews, publishGbpReviewReply } from "@/lib/mken/gbp-reviews";
 import { bindMapsListing } from "@/lib/mken/maps-listing";
 import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
 import { listReviewRequests } from "@/lib/mken/review-funnel";
@@ -92,6 +94,27 @@ export async function GET(request: Request) {
     });
   }
 
+  if (action === "gbp-reviews") {
+    const locationId = new URL(request.url).searchParams.get("locationId") || "";
+    const listed = await listGbpReviews(scope.slug, locationId);
+    if (listed.error && !listed.quotaBlocked && !(listed.reviews || []).length) {
+      return NextResponse.json(
+        { success: false, message: listed.error, quotaBlocked: false, gbpReviewsApi: false },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      tenant: scope.slug,
+      reviews: listed.reviews || [],
+      total: listed.total || 0,
+      averageRating: listed.averageRating,
+      quotaBlocked: Boolean(listed.quotaBlocked),
+      gbpReviewsApi: !listed.quotaBlocked && !listed.error,
+      message: listed.error,
+    });
+  }
+
   const { status, error } = await fetchGbpStatus(scope.slug);
   if (error || !status) {
     return NextResponse.json({ success: false, message: error }, { status: 500 });
@@ -127,6 +150,9 @@ export async function POST(request: Request) {
     text?: string;
     topic?: string;
     publishAt?: string;
+    phase?: "before" | "after";
+    reviewName?: string;
+    comment?: string;
   } = {};
   try {
     body = await request.json();
@@ -146,6 +172,22 @@ export async function POST(request: Request) {
       city: result.city,
       listingTitle: result.listingTitle,
       message: "تم حفظ رابط الخرائط. يمكنك فحص NAP وجلب المنافسين الآن.",
+    });
+  }
+
+  if (body.action === "save-operator-proof") {
+    const result = await saveGbpOperatorProof(scope.slug, body.phase === "after" ? "after" : "before", {
+      mapsUrl: body.mapsUrl,
+      mapsPlaceId: body.mapsPlaceId,
+    });
+    if (result.error) {
+      return NextResponse.json({ success: false, message: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      success: true,
+      proof: result.proof,
+      report: result.report,
+      message: result.message,
     });
   }
 
@@ -199,6 +241,7 @@ export async function POST(request: Request) {
       report: result.report,
       updated: result.updated || [],
       skipped: result.skipped || [],
+      proof: result.proof,
       message: result.message,
     });
   }
@@ -240,6 +283,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
     return NextResponse.json({ success: true, text: result.text });
+  }
+
+  if (body.action === "publish-review-reply") {
+    const result = await publishGbpReviewReply(
+      scope.slug,
+      body.locationId || "",
+      body.reviewName || "",
+      body.comment || body.text || ""
+    );
+    if (result.error) {
+      return NextResponse.json(
+        { success: false, message: result.error, quotaBlocked: result.quotaBlocked },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      reply: result.reply,
+      message: "نُشر الرد على خرائط جوجل. التوليد وحده لا ينشر.",
+    });
   }
 
   if (body.action === "competitors") {

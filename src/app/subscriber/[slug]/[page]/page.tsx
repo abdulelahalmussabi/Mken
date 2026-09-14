@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StorefrontSitePage } from "@/components/storefront/StorefrontSitePage";
 import { fetchPages, isToggleablePageId, resolvePageLabel } from "@/lib/mken/pages";
-import { loadStorefrontSeo, noIndexRobots, tenantPageMetadata } from "@/lib/mken/seo";
+import { loadStorefrontSeo, noIndexRobots, tenantCanonicalUrl, tenantPageMetadata } from "@/lib/mken/seo";
 
 type Props = {
   params: Promise<{ slug: string; page: string }>;
@@ -19,10 +19,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!enabled) return { title: label, robots: noIndexRobots };
   const robots =
     client.claimStatus === "unclaimed" || client.claimStatus === "pending" ? noIndexRobots : undefined;
-  const meta = tenantPageMetadata(client, `/subscriber/${client.slug}/${page}`, page);
+  const meta = tenantPageMetadata(client, await tenantCanonicalUrl(client.slug, page), page);
   return {
     ...meta,
-    title: `${label} — ${client.name}`,
+    title: { absolute: `${label} — ${client.name}` },
     openGraph: meta.openGraph ? { ...meta.openGraph, title: `${label} — ${client.name}` } : undefined,
     twitter: meta.twitter ? { ...meta.twitter, title: `${label} — ${client.name}` } : undefined,
     ...(robots ? { robots } : {}),

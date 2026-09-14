@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { StorefrontFrame } from "@/components/storefront/StorefrontFrame";
 import SubscriberStorefrontPage from "@/app/subscriber/[slug]/page";
-import { loadStorefrontSeo, noIndexRobots, tenantPageMetadata } from "@/lib/mken/seo";
+import { loadStorefrontSeo, noIndexRobots, tenantCanonicalUrl, tenantPageMetadata } from "@/lib/mken/seo";
 
 export async function generateMetadata({
   params,
@@ -13,7 +13,7 @@ export async function generateMetadata({
   if (!client) {
     return { title: "المنشأة غير موجودة", robots: noIndexRobots };
   }
-  return tenantPageMetadata(client, `/store/${client.slug}`);
+  return tenantPageMetadata(client, await tenantCanonicalUrl(client.slug));
 }
 
 export default async function StoreAliasPage({

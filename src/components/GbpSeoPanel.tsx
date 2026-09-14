@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { napSkipReasonLabel, type NapReport, type NapStatus } from "@/lib/mken/nap";
+import { napSkipReasonLabel, NAP_ACCEPTANCE_PERCENT, type GbpOperatorProof, type NapReport, type NapStatus } from "@/lib/mken/nap";
 import type { GbpCompetitor } from "@/lib/mken/gbp";
+import type { GbpReview } from "@/lib/mken/gbp-reviews";
 
 type SyncField = { field: string; label: string; value: string };
 type SkipField = { field: string; label: string; reason: string };
@@ -165,6 +166,13 @@ function withPostUtm(url: string, campaign = "gbp_post"): string {
   }
 }
 
+function formatProofAt(value?: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" });
+}
+
 export default function GbpSeoPanel({
   query,
   locationId,
@@ -175,6 +183,8 @@ export default function GbpSeoPanel({
   busy,
   setBusy,
   onToast,
+  quotaBlocked,
+  operatorProof,
 }: {
   query: string;
   locationId: string;
@@ -185,6 +195,8 @@ export default function GbpSeoPanel({
   busy: boolean;
   setBusy: (value: boolean) => void;
   onToast: (message: string, type: "success" | "error") => void;
+  quotaBlocked?: boolean;
+  operatorProof?: GbpOperatorProof | null;
 }) {
   const [report, setReport] = useState<NapReport | null>(null);
   const [auditError, setAuditError] = useState("");
@@ -197,6 +209,10 @@ export default function GbpSeoPanel({
   const [reviewText, setReviewText] = useState("");
   const [rating, setRating] = useState("5");
   const [replyText, setReplyText] = useState("");
+  const [gbpReviews, setGbpReviews] = useState<GbpReview[]>([]);
+  const [selectedReviewName, setSelectedReviewName] = useState("");
+  const [reviewsQuota, setReviewsQuota] = useState(false);
+  const [reviewsHint, setReviewsHint] = useState("");
   const [competitors, setCompetitors] = useState<GbpCompetitor[]>([]);
   const [ownListing, setOwnListing] = useState<GbpCompetitor | null>(null);
   const [competitorSource, setCompetitorSource] = useState("");
@@ -212,8 +228,13 @@ export default function GbpSeoPanel({
   const [showServices, setShowServices] = useState(false);
   const [showReverse, setShowReverse] = useState(false);
   const [reverseFields, setReverseFields] = useState({ phone: true, city: true, name: false });
+  const [proof, setProof] = useState<GbpOperatorProof | null>(operatorProof || null);
   const canAudit = Boolean(locationId || mapsBound || mapsUrl?.trim());
   const canWrite = Boolean(locationId);
+
+  useEffect(() => {
+    setProof(operatorProof || null);
+  }, [operatorProof]);
 
   useEffect(() => {
     let cancelled = false;
@@ -305,8 +326,8 @@ export default function GbpSeoPanel({
       try {
         const geoRes = await fetch(`/api/ads/geo-grid${query}`);
         const geo = await geoRes.json();
-        if (!cancelled && geoRes.ok && geo.success && Array.isArray(geo.scans) && geo.scans[0]) {
-          setGeoScan(geo.scans[0]);
+        if (!cancelled && geoRes.ok && geo.success) {
+          setGeoScan(geo.mapsScan || (geo.scans || []).find((item: GeoScanLite) => item.source === "dataforseo") || null);
         }
       } catch {
         /* optional */
@@ -320,6 +341,43 @@ export default function GbpSeoPanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when bind/location changes, not on every render
   }, [canAudit, locationId, mapsBound, mapsUrl, auditNonce, query]);
+
+  const loadGbpReviews = async () => {
+    if (!canWrite) {
+      setGbpReviews([]);
+      setReviewsQuota(false);
+      setReviewsHint("النشر على الخرائط يحتاج فرعاً من حساب بيزنس. يمكنك توليد رد ونسخه إلى تطبيق بيزنس.");
+      return;
+    }
+    const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
+    params.set("action", "gbp-reviews");
+    params.set("locationId", locationId);
+    const res = await fetch(`/api/google-business?${params.toString()}`);
+    const data = await res.json();
+    setGbpReviews(Array.isArray(data.reviews) ? data.reviews : []);
+    setReviewsQuota(Boolean(data.quotaBlocked));
+    setReviewsHint(
+      data.message ||
+        (data.gbpReviewsApi
+          ? "اختر تقييماً ثم ولّد الرد. النشر يكتب على خرائط جوجل — التوليد وحده لا ينشر."
+          : "")
+    );
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        await loadGbpReviews();
+      } catch {
+        if (!cancelled) setReviewsHint("تعذّر جلب تقييمات جوجل.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canWrite, locationId, query]);
 
   const fetchCompetitors = async () => {
     const data = await postJson("competitors");
@@ -363,6 +421,7 @@ export default function GbpSeoPanel({
     const data = await postJson("sync-nap", { includeName });
     setReport(data.report);
     setSkipped(Array.isArray(data.skipped) ? data.skipped : []);
+    if (data.proof) setProof(data.proof);
     setStaging(null);
     const nameHeld = (data.skipped || []).some((item: { reason?: string }) => item.reason === "name_protected");
     onToast(
@@ -374,9 +433,9 @@ export default function GbpSeoPanel({
   };
 
   const writeHint = canWrite
-    ? "الكتابة إلى جوجل متاحة لهذا الفرع."
+    ? "الكتابة إلى جوجل متاحة لهذا الفرع: الهاتف والموقع وساعات الأحد–السبت بما فيها الجمعة. العنوان يدوي. لا نعد بترتيب الخرائط."
     : mapsBound
-      ? "القراءة عبر رابط الخرائط مفعّلة. المزامنة والخدمات والنشر تنتظر فرعاً من حساب بيزنس بعد فتح الحصّة."
+      ? "القراءة عبر رابط الخرائط مفعّلة. إن بقيت حصّة بيزنس 0 استخدم قائمة التحقق أدناه ثم لقطتي قبل/بعد."
       : "الصق رابط الخرائط أو اربط فرعاً لبدء الفحص.";
 
   const nameQueued = Boolean(staging?.updated.some((item) => item.field === "name"));
@@ -388,8 +447,70 @@ export default function GbpSeoPanel({
         <p className="text-[11px] font-bold text-slate-200">صلاحيات الربط</p>
         <p className="text-[11px] leading-relaxed text-slate-400">{writeHint}</p>
         <p className="text-[11px] text-slate-500">
-          قراءة: فحص NAP، المنافسون، الاستيراد إلى مكّن. كتابة: مزامنة NAP، الخدمات، نشر المنشور.
+          قراءة: فحص NAP، المنافسون، الاستيراد إلى مكّن. كتابة: مزامنة NAP (هاتف/موقع/جمعة)، الخدمات، نشر المنشور.
         </p>
+      </div>
+
+      <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-950/20 space-y-2">
+        <p className="text-[11px] font-bold text-amber-100">قائمة تحقق المشغّل — حصّة بيزنس 0</p>
+        <p className="text-[11px] leading-relaxed text-slate-400">
+          حتى تُفتح حصّة Business Information لا تُرسل ساعات الجمعة تلقائياً. صحّح الملف في تطبيق جوجل بيزنس ثم احفظ
+          لقطتين. الهدف تطابق NAP ≥ {NAP_ACCEPTANCE_PERCENT}%. هذه الخطوة لا تضمن ظهوراً في الثلاثي المحلي.
+        </p>
+        <ol className="text-[11px] text-slate-300 space-y-1 list-decimal pr-4">
+          <li>احفظ لقطة قبل التعديل.</li>
+          <li>حدّث الهاتف والموقع وساعات كل الأيام بما فيها الجمعة (رمضان يدوياً).</li>
+          <li>انتظر نحو 5 دقائق ثم احفظ لقطة بعد.</li>
+        </ol>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={busy || !canAudit}
+            onClick={() =>
+              run(async () => {
+                const data = await postJson("save-operator-proof", { phase: "before" });
+                if (data.proof) setProof(data.proof);
+                if (data.report) setReport(data.report);
+                onToast(data.message || "حُفظت لقطة قبل", "success");
+              })
+            }
+            className="px-3 py-2 rounded-xl text-xs font-bold border border-amber-500/40 text-amber-100 hover:bg-amber-950/40 disabled:opacity-50"
+          >
+            لقطة قبل
+          </button>
+          <button
+            type="button"
+            disabled={busy || !canAudit}
+            onClick={() =>
+              run(async () => {
+                const data = await postJson("save-operator-proof", { phase: "after" });
+                if (data.proof) setProof(data.proof);
+                if (data.report) setReport(data.report);
+                onToast(data.message || "حُفظت لقطة بعد", "success");
+              })
+            }
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-700 hover:bg-amber-600 text-white disabled:opacity-50"
+          >
+            لقطة بعد
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <p className="text-slate-400">
+            قبل:{" "}
+            <span className="text-slate-200 font-bold">
+              {proof?.before ? `${proof.before.scorePercent}% — ${formatProofAt(proof.before.at)}` : "لا لقطة"}
+            </span>
+          </p>
+          <p className="text-slate-400">
+            بعد:{" "}
+            <span className="text-slate-200 font-bold">
+              {proof?.after ? `${proof.after.scorePercent}% — ${formatProofAt(proof.after.at)}` : "لا لقطة"}
+            </span>
+          </p>
+        </div>
+        {quotaBlocked ? (
+          <p className="text-[11px] text-amber-200">الحصّة ما زالت مغلقة على مستوى المنصة — أبقِ الربط ورابط الخرائط.</p>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -788,7 +909,7 @@ export default function GbpSeoPanel({
           <p className="text-[11px] text-slate-400">
             {geoScan.keyword || "بدون كلمة"} · شبكة {geoScan.gridSize} · متوسط الرانك {geoScan.averageRank ?? "—"} · ظهور
             الحزمة الثلاثية {geoScan.top3Percentage != null ? `${geoScan.top3Percentage}%` : "—"}
-            {geoScan.source === "places_estimate" ? " · تقدير أماكن" : ""}
+            {" · DataForSEO"}
           </p>
           {geoScan.cells?.length ? (
             <div
@@ -921,7 +1042,34 @@ export default function GbpSeoPanel({
           ) : null}
         </div>
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-300">رد على تقييم</label>
+          <label className="block text-xs font-bold text-slate-300">رد على تقييم خرائط جوجل</label>
+          <p className="text-[11px] leading-relaxed text-slate-400">
+            التوليد مسودة فقط. النشر عبر Reviews API يكتب الرد على الملف. لا نعد بتحسّن النجوم أو الترتيب.
+          </p>
+          {reviewsHint ? <p className="text-[11px] text-amber-200/90">{reviewsHint}</p> : null}
+          {gbpReviews.length ? (
+            <select
+              value={selectedReviewName}
+              onChange={(e) => {
+                const name = e.target.value;
+                setSelectedReviewName(name);
+                const row = gbpReviews.find((item) => item.name === name);
+                if (!row) return;
+                setReviewText(row.comment);
+                setRating(String(row.starRating || 5));
+                setReplyText(row.reply || "");
+              }}
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100"
+            >
+              <option value="">اختر تقييماً من جوجل</option>
+              {gbpReviews.map((row) => (
+                <option key={row.name} value={row.name}>
+                  {row.starRating || "—"}★ {row.reviewerName}
+                  {row.reply ? " — تم الرد" : " — بلا رد"}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select
             value={rating}
             onChange={(e) => setRating(e.target.value)}
@@ -937,27 +1085,59 @@ export default function GbpSeoPanel({
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
             rows={3}
-            placeholder="نص تقييم العميل…"
+            placeholder="نص تقييم العميل من جوجل أو للصق مسودة…"
             className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 text-right"
           />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              run(async () => {
-                const data = await postJson("generate-reply", { reviewText, rating });
-                setReplyText(data.text || "");
-                onToast("تم توليد الرد", "success");
-              })
-            }
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
-          >
-            توليد رد
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  const data = await postJson("generate-reply", { reviewText, rating });
+                  setReplyText(data.text || "");
+                  onToast("مسودة جاهزة — لم تُنشر بعد", "success");
+                })
+              }
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
+            >
+              توليد مسودة
+            </button>
+            <button
+              type="button"
+              disabled={busy || !replyText}
+              onClick={() =>
+                run(async () => {
+                  await navigator.clipboard.writeText(replyText);
+                  onToast("نُسخ الرد. الصقه في تطبيق بيزنس إن كانت الحصّة مغلقة.", "success");
+                })
+              }
+              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
+            >
+              نسخ
+            </button>
+            <button
+              type="button"
+              disabled={busy || !canWrite || reviewsQuota || !selectedReviewName || !replyText}
+              onClick={() =>
+                run(async () => {
+                  const data = await postJson("publish-review-reply", {
+                    reviewName: selectedReviewName,
+                    comment: replyText,
+                  });
+                  onToast(data.message || "نُشر الرد على جوجل", "success");
+                  await loadGbpReviews();
+                })
+              }
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50"
+            >
+              نشر على جوجل
+            </button>
+          </div>
           {replyText ? (
             <textarea
-              readOnly
               value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
               rows={5}
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 text-right"
             />

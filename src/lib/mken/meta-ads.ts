@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { loadNapSiteSnapshot } from "@/lib/mken/gbp";
-import { fetchTenantRow } from "@/lib/mken/tenant";
+import { fetchTenantRow, getServiceRoleDb, getTenantDb } from "@/lib/mken/tenant";
 import { normalizeWaPhone } from "@/lib/mken/whatsapp";
 
 const GRAPH = "https://graph.facebook.com/v18.0";
@@ -62,10 +62,12 @@ export function metaCapiConfigured(): boolean {
 
 export async function metaCapiConfiguredForSlug(slug: string): Promise<boolean> {
   if (!(process.env.META_CAPI_ACCESS_TOKEN || process.env.META_ADS_ACCESS_TOKEN)?.trim()) return false;
+  return Boolean(await tenantPixelId(slug));
+}
+
+export async function tenantPixelId(slug: string): Promise<string> {
   const row = await fetchTenantRow(slug);
-  const tenantPixel = normalizeMetaPixelId(row?.config_data?.adsMeta?.pixelId || "");
-  const platformPixel = (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID || "").trim();
-  return Boolean(tenantPixel || platformPixel);
+  return normalizeMetaPixelId(row?.config_data?.adsMeta?.pixelId || "");
 }
 
 function adsToken(): string {
@@ -363,19 +365,16 @@ export async function sendMetaCapiEvent(input: {
   sourceUrl?: string;
 }): Promise<{ error?: string }> {
   const token = (process.env.META_CAPI_ACCESS_TOKEN || process.env.META_ADS_ACCESS_TOKEN || "").trim();
-  if (!token) return {};
+  if (!token || !input.slug) return {};
 
-  let pixel = (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID || "").trim();
-  if (input.slug) {
-    const row = await fetchTenantRow(input.slug);
-    const tenantPixel = normalizeMetaPixelId(row?.config_data?.adsMeta?.pixelId || "");
-    if (tenantPixel) pixel = tenantPixel;
-  }
+  const pixel = await tenantPixelId(input.slug);
   if (!pixel) return {};
+  const ctwaClid =
+    input.ctwaClid?.trim() || (input.phone ? await lookupCtwaClid(input.slug, input.phone) : "");
   const ph = input.phone ? hashPhone(input.phone) : "";
   const userData: Record<string, unknown> = {};
   if (ph) userData.ph = [ph];
-  if (input.ctwaClid?.trim()) userData.ctwa_clid = input.ctwaClid.trim();
+  if (ctwaClid) userData.ctwa_clid = ctwaClid;
   if (input.fbp?.trim()) userData.fbp = input.fbp.trim();
   if (input.fbc?.trim()) userData.fbc = input.fbc.trim();
 
@@ -385,7 +384,7 @@ export async function sendMetaCapiEvent(input: {
         event_name: input.eventName,
         event_time: Math.floor(Date.now() / 1000),
         event_id: input.eventId || undefined,
-        action_source: input.ctwaClid ? "business_messaging" : "website",
+        action_source: ctwaClid ? "business_messaging" : "website",
         event_source_url: input.sourceUrl || undefined,
         user_data: userData,
         custom_data:
@@ -405,6 +404,44 @@ export async function sendMetaCapiEvent(input: {
   return {};
 }
 
+const CTWA_EVENT = "ctwa_clid";
+
+export async function rememberCtwaClid(slug: string, phone: string, ctwaClid: string): Promise<void> {
+  const clid = ctwaClid.trim();
+  const wa = normalizeWaPhone(phone);
+  if (!clid || !wa || clid.length > 256) return;
+  const existing = await lookupCtwaClid(slug, wa);
+  if (existing === clid) return;
+  const db = getServiceRoleDb() || getTenantDb();
+  if (!db) return;
+  await db.from("mken_whatsapp_logs").insert({
+    tenant_slug: slug,
+    phone: wa,
+    body: clid,
+    provider: "whatsapp_business",
+    status: "received",
+    event_type: CTWA_EVENT,
+  });
+}
+
+export async function lookupCtwaClid(slug: string, phone: string): Promise<string> {
+  const wa = normalizeWaPhone(phone);
+  if (!slug || !wa) return "";
+  const db = getServiceRoleDb() || getTenantDb();
+  if (!db) return "";
+  const { data } = await db
+    .from("mken_whatsapp_logs")
+    .select("body")
+    .eq("tenant_slug", slug)
+    .eq("phone", wa)
+    .eq("event_type", CTWA_EVENT)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const body = typeof data?.body === "string" ? data.body.trim() : "";
+  return body.length <= 256 ? body : "";
+}
+
 export function capiIdsFromRequest(request: Request, body?: Record<string, unknown>) {
   const cookies = request.headers.get("cookie") || "";
   const pick = (name: string) => {
@@ -421,5 +458,5 @@ export function capiIdsFromRequest(request: Request, body?: Record<string, unkno
 
 export async function resolveTenantWhatsapp(slug: string): Promise<string> {
   const snap = await loadNapSiteSnapshot(slug);
-  return normalizeWaPhone(snap.site?.phone || process.env.META_WHATSAPP_NUMBER || "");
+  return normalizeWaPhone(snap.site?.phone || "");
 }

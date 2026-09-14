@@ -36,7 +36,7 @@ export default function Footer() {
               <span className="font-extrabold text-2xl text-foreground">مكّن</span>
             </Link>
             <p className="text-muted text-sm leading-relaxed">
-              منصة تشغيل للمنشآت السعودية: فواتير زاتكا، واتساب CRM، حجز مواعيد، وظهور على خرائط جوجل.
+              منصة تشغيل للمنشآت السعودية: فواتير زاتكا، واتساب CRM، حجز مواعيد، وربط موقع المنشأة بخرائط جوجل.
             </p>
             <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full w-fit border ${occasionDetails.badgeBg}`}>
               <Sparkles className="w-3.5 h-3.5" />
@@ -94,7 +94,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                خرائط جوجل ومعاينة فورية لموقع المنشأة
+                خرائط جوجل ومعاينة موقع المنشأة
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
@@ -112,12 +112,16 @@ export default function Footer() {
                 <span>المملكة العربية السعودية - الرياض / جدة / الخبر</span>
               </div>
               <div className="flex items-center gap-2.5 dir-ltr justify-end">
-                <span>+966 55 123 4567</span>
+                <a href="https://wa.me/966543530333" className="hover:text-amber-400 transition-colors" dir="ltr">
+                  +966 54 353 0333
+                </a>
                 <Phone className="w-4 h-4 text-amber-400 shrink-0" />
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>support@mkn-seo.sa</span>
+                <a href="mailto:info@mken.live" className="hover:text-amber-400 transition-colors">
+                  info@mken.live
+                </a>
               </div>
             </div>
           </div>
@@ -146,11 +150,11 @@ export default function Footer() {
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
           <div className="flex items-center gap-4">
-            <a href="https://mken.live/privacy" className="hover:text-amber-400 transition-colors">
+            <a href="https://www.mken.live/privacy" className="hover:text-amber-400 transition-colors">
               سياسة الخصوصية
             </a>
             <span>•</span>
-            <a href="https://mken.live/terms" className="hover:text-amber-400 transition-colors">
+            <a href="https://www.mken.live/terms" className="hover:text-amber-400 transition-colors">
               شروط الخدمة
             </a>
             <span>•</span>

@@ -14,9 +14,13 @@ import { ACTIVITIES, fetchTenantCatalog } from "@/lib/mken/catalog";
 import {
   buildNapAuditReport,
   cityFromGbpAddress,
+  napProofSnapshot,
+  NAP_ACCEPTANCE_PERCENT,
   planNapSync,
   planReverseNapSync,
   type GbpLocationDetail,
+  type GbpOperatorProof,
+  type NapOperatorSnapshot,
   type NapReport,
   type NapSiteSnapshot,
   type ReverseNapField,
@@ -37,6 +41,7 @@ export interface GbpStatus {
   mapsUrl?: string;
   mapsPlaceId?: string;
   mapsListingName?: string;
+  operatorProof?: GbpOperatorProof;
 }
 
 export interface GbpLocation {
@@ -49,7 +54,9 @@ export interface GbpLocation {
 }
 
 export function isGbpQuotaError(message: string): boolean {
-  return /quota exceeded|rate.?limit|resource.?exhausted|الحصّة 0|Basic API Access/i.test(message);
+  return /quota exceeded|rate.?limit|resource.?exhausted|الحصّة 0|Basic API Access|مزامنة فروع حساب بيزنس غير متاحة/i.test(
+    message
+  );
 }
 
 function explainGbpGoogleError(message: string): string {
@@ -236,6 +243,7 @@ export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus
       mapsUrl?: string;
       preview?: { placeId?: string };
       mapsListingName?: string;
+      gbpOperatorProof?: GbpOperatorProof;
     } | null;
   } | null;
 
@@ -260,8 +268,99 @@ export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus
       mapsUrl: mapsUrl || undefined,
       mapsPlaceId: mapsPlaceId || undefined,
       mapsListingName: mapsListingName || undefined,
+      operatorProof: parseOperatorProof((config as { gbpOperatorProof?: unknown }).gbpOperatorProof),
     },
   };
+}
+
+function parseOperatorSnapshot(raw: unknown): NapOperatorSnapshot | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const row = raw as Partial<NapOperatorSnapshot>;
+  if (typeof row.at !== "string" || typeof row.scorePercent !== "number") return undefined;
+  const overall = row.overall;
+  if (overall !== "excellent" && overall !== "good" && overall !== "fair" && overall !== "poor") {
+    return undefined;
+  }
+  return {
+    at: row.at,
+    scorePercent: row.scorePercent,
+    overall,
+    items: Array.isArray(row.items)
+      ? row.items
+          .filter((item): item is NapOperatorSnapshot["items"][number] => Boolean(item && typeof item === "object"))
+          .map((item) => ({
+            id: String(item.id || ""),
+            label: String(item.label || ""),
+            status: item.status,
+            siteValue: String(item.siteValue || ""),
+            gbpValue: String(item.gbpValue || ""),
+          }))
+      : [],
+  };
+}
+
+function parseOperatorProof(raw: unknown): GbpOperatorProof | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const row = raw as GbpOperatorProof;
+  const before = parseOperatorSnapshot(row.before);
+  const after = parseOperatorSnapshot(row.after);
+  if (!before && !after) return undefined;
+  return { ...(before ? { before } : {}), ...(after ? { after } : {}) };
+}
+
+async function persistOperatorProof(
+  slug: string,
+  phase: "before" | "after",
+  report: NapReport
+): Promise<{ proof?: GbpOperatorProof; error?: string }> {
+  const row = await fetchTenantRow(slug);
+  if (!row) return { error: "المنشأة غير موجودة" };
+  const prev = parseOperatorProof(row.config_data?.gbpOperatorProof) || {};
+  const proof: GbpOperatorProof = {
+    ...prev,
+    [phase]: napProofSnapshot(report),
+  };
+  const written = await writeTenantConfig(slug, {
+    ...(row.config_data || {}),
+    gbpOperatorProof: proof,
+  });
+  if (written.error) return { error: written.error };
+  return { proof };
+}
+
+export async function saveGbpOperatorProof(
+  slug: string,
+  phase: "before" | "after",
+  hint?: { mapsUrl?: string; mapsPlaceId?: string }
+): Promise<{
+  proof?: GbpOperatorProof;
+  report?: NapReport;
+  message?: string;
+  error?: string;
+}> {
+  if (phase !== "before" && phase !== "after") return { error: "مرحلة اللقطة غير صالحة" };
+  const status = await fetchGbpStatus(slug);
+  const locationId = status.status?.selectedLocationId || "";
+  const audited = await runNapAudit(slug, locationId, hint);
+  if (audited.error || !audited.report) return { error: audited.error || "تعذّر فحص NAP" };
+  const saved = await persistOperatorProof(slug, phase, audited.report);
+  if (saved.error || !saved.proof) return { error: saved.error || "تعذّر حفظ اللقطة" };
+  const score = audited.report.summary.scorePercent;
+  const label = phase === "before" ? "قبل" : "بعد";
+  const message =
+    score >= NAP_ACCEPTANCE_PERCENT
+      ? `لقطة ${label}: تطابق NAP ${score}%. هذا إثبات بيانات وليس ضمان ترتيب على الخرائط.`
+      : `لقطة ${label}: تطابق NAP ${score}% (الهدف ≥ ${NAP_ACCEPTANCE_PERCENT}%). أكمل الهاتف والموقع وساعات الجمعة يدوياً — لا نعد بترتيب الخرائط.`;
+  return { proof: saved.proof, report: audited.report, message };
+}
+
+function napWriteMessage(report: NapReport, updatedCount: number): string {
+  const score = report.summary.scorePercent;
+  const base = `تمت مزامنة ${updatedCount} حقل/حقول إلى جوجل (هاتف/موقع/ساعات بما فيها الجمعة). تطابق NAP ${score}%.`;
+  if (score >= NAP_ACCEPTANCE_PERCENT) {
+    return `${base} هذا إثبات بيانات وليس ضمان ترتيب على الخرائط.`;
+  }
+  return `${base} الهدف ≥ ${NAP_ACCEPTANCE_PERCENT}% — العنوان يُراجع يدوياً. لا نعد بترتيب الخرائط.`;
 }
 
 export async function disconnectGbp(slug: string): Promise<{ error?: string }> {
@@ -399,7 +498,7 @@ export async function completeGbpOAuth(
   return {};
 }
 
-async function getValidAccessToken(slug: string): Promise<string> {
+export async function getValidAccessToken(slug: string): Promise<string> {
   const db = getTenantDb();
   if (!db) throw new Error("قاعدة البيانات غير مهيأة على الخادم");
 
@@ -470,6 +569,20 @@ async function getValidAccessToken(slug: string): Promise<string> {
     .eq("tenant_slug", slug);
 
   return tokenData.access_token;
+}
+
+export async function gbpAdsLocationAuth(
+  slug: string
+): Promise<{ token?: string; email?: string }> {
+  const row = await fetchTenantRow(slug);
+  const email =
+    (typeof row?.email === "string" ? row.email.trim() : "") ||
+    (typeof row?.config_data?.adminEmail === "string" ? row.config_data.adminEmail.trim() : "");
+  try {
+    return { token: await getValidAccessToken(slug), email };
+  } catch {
+    return { email };
+  }
 }
 
 export async function listGbpLocations(
@@ -784,6 +897,8 @@ export async function loadNapSiteSnapshot(
       city: area.city || "",
       hoursStart: typeof wh.start === "string" ? wh.start : "",
       hoursEnd: typeof wh.end === "string" ? wh.end : "",
+      occasionId:
+        config.occasionPack?.enabled && config.occasionPack.forceId === "ramadan" ? "ramadan" : "",
       ...readServiceAreaCenter(area),
       category: typeof config.featuredActivity === "string" ? config.featuredActivity : "",
       ownPlaceId: typeof preview.placeId === "string" ? preview.placeId.trim() : "",
@@ -945,6 +1060,7 @@ export async function syncNapFromMken(
   report?: NapReport;
   updated?: { field: string; label: string; value: string }[];
   skipped?: { field: string; label: string; reason: string }[];
+  proof?: GbpOperatorProof;
   message?: string;
   error?: string;
 }> {
@@ -980,7 +1096,15 @@ export async function syncNapFromMken(
         body: JSON.stringify(plan.patchBody),
       }
     );
-    if (!updateRes.ok) return { error: "تعذّر مزامنة NAP مع جوجل" };
+    if (!updateRes.ok) {
+      const apiError = await googleApiError(updateRes, "تعذّر مزامنة NAP مع جوجل");
+      if (isGbpQuotaError(apiError)) {
+        return {
+          error: `${apiError} احفظ لقطة NAP ثم عدّل الهاتف والموقع وساعات الجمعة في تطبيق بيزنس، وانتظر نحو 5 دقائق ثم احفظ لقطة بعد.`,
+        };
+      }
+      return { error: apiError };
+    }
 
     await db
       .from(TENANT_TABLE)
@@ -991,11 +1115,14 @@ export async function syncNapFromMken(
       .eq("tenant_slug", slug);
 
     const after = await fetchGbpLocationDetail(slug, locationId);
+    const report = buildNapAuditReport(snap.site, after);
+    const saved = await persistOperatorProof(slug, "after", report);
     return {
-      report: buildNapAuditReport(snap.site, after),
+      report,
       updated: plan.updated,
       skipped: plan.skipped,
-      message: `تمت مزامنة ${plan.updated.length} حقل/حقول إلى جوجل بيزنس.`,
+      proof: saved.proof,
+      message: napWriteMessage(report, plan.updated.length),
     };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر مزامنة NAP" };
@@ -1362,7 +1489,7 @@ export async function listGbpCompetitors(
   }
 }
 
-async function googleApiError(res: Response, fallback: string): Promise<string> {
+export async function googleApiError(res: Response, fallback: string): Promise<string> {
   const text = await res.text();
   try {
     const parsed = JSON.parse(text) as { error?: { message?: string } };
@@ -1377,7 +1504,7 @@ function locationResourceId(locationId: string): string {
   return locationId.replace(/^.*locations\//, "");
 }
 
-async function resolveGbpV4Parent(slug: string, locationId: string): Promise<string> {
+export async function resolveGbpV4Parent(slug: string, locationId: string): Promise<string> {
   if (locationId.startsWith("accounts/") && locationId.includes("/locations/")) {
     return locationId;
   }

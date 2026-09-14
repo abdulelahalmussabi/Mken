@@ -1,0 +1,94 @@
+{
+  "brand": {
+    "name": "مطعم صحن وصاج",
+    "tagline": "أكل البيت على الصاج — صحن يجمعنا وصاج يرضينا",
+    "logo": "/brand/saj.png"
+  },
+  "enabledActivities": [
+    "restaurant"
+  ],
+  "enabled": [
+    "table-booking",
+    "private-dining",
+    "buffet-reservation",
+    "catering-tasting"
+  ],
+  "featuredActivity": "restaurant",
+  "featured": "table-booking",
+  "heroFocus": "table-booking",
+  "phone": "0148420124",
+  "location": "حي الرانوناء - شوران، المدينة المنورة",
+  "commercialRegistryName": "مطعم صحن وصاج",
+  "commercialRegistryNumber": "7054342691",
+  "subtitle": "مطعم صحن وصاج بالمدينة المنورة (حي الرانوناء - شوران) — للأكلات الشعبية والفطائر الطازجة والصاج والشاورما والمطبق على الأصول. خدمة سريعة وجودة عالية.",
+  "rating": "4.6",
+  "reviewsCount": "تقييم معتمد على خرائط Google",
+  "mapsUrl": "https://maps.app.goo.gl/AJzBwwrZ5ZQygu959?g_st=ac",
+  "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZb2HdJkhulaPrmwXEwO4RmkQtii7Q1iZpFZB6cbvuBF_iKJBxoqGB4rtfNMQYy03LSCD8MSeBoa7kJ1Vl-0T21qV6fGVc-oEkayty3SFitCfidWE89zZgM4SELN67DdtVA2b4fUDeLbps=s1600",
+  "adminEmail": "saj@mken.live",
+  "theme": "none",
+  "googleBusiness": {
+    "enabled": true,
+    "mapsUrl": "https://maps.app.goo.gl/AJzBwwrZ5ZQygu959?g_st=ac"
+  },
+  "social": {
+    "whatsapp": {
+      "enabled": true,
+      "value": "966148420124"
+    },
+    "maps": {
+      "enabled": true,
+      "value": "https://maps.app.goo.gl/AJzBwwrZ5ZQygu959?g_st=ac"
+    },
+    "phone": {
+      "enabled": true,
+      "value": "0148420124"
+    }
+  },
+  "emails": {
+    "inquiries": {
+      "enabled": true,
+      "value": "saj@mken.live"
+    }
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "المدينة المنورة",
+    "center": {
+      "lat": 24.408,
+      "lng": 39.605
+    },
+    "radiusKm": 25,
+    "coverageNote": "حي الرانوناء، شوران، المدينة المنورة",
+    "showAsFullCity": true
+  },
+  "booking": {
+    "enabled": true,
+    "mode": "appointment",
+    "workingHours": {
+      "start": "06:00",
+      "end": "02:00"
+    },
+    "slotDuration": 60,
+    "ctaLabel": "احجز طاولة أو اطلب مسبقاً"
+  },
+  "services": {
+    "table-booking": {
+      "title": "حجز طاولة — صحن يجمعنا",
+      "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmRP6D1I7ni0a-82QLdQnwrVeosNdvAj5zP8H9W3oWMJfsC7yPzxpdkrdGl52zbaxX2Sm-RlcrW5r7U95th3aaDjNtXNC_GHsumTuRq-lRWBkpLGTyoH_CaHTjftAGfQ8chHECpghkz2bY=s1600"
+    },
+    "private-dining": {
+      "title": "جلسات عائلية مريحة",
+      "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmRP6D1I7ni0a-82QLdQnwrVeosNdvAj5zP8H9W3oWMJfsC7yPzxpdkrdGl52zbaxX2Sm-RlcrW5r7U95th3aaDjNtXNC_GHsumTuRq-lRWBkpLGTyoH_CaHTjftAGfQ8chHECpghkz2bY=s1600"
+    },
+    "buffet-reservation": {
+      "title": "تجهيز بوفيه ومناسبات",
+      "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm2sTQWRAODUOTZ8lyaRtNdZSjCsM2u5yAfIrdn_CUIK9BFLZa4NntT2PSxrdmhn2OeAS5kpnteJER1MmEioXeQyoz2XRGBnkgg_61SUgataq-Yk6MH6Q0XjpjxIwK3oxWDhu1cUGYLD94=s1600"
+    },
+    "catering-tasting": {
+      "title": "أكل البيت على الصاج مباشرة",
+      "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWm2sTQWRAODUOTZ8lyaRtNdZSjCsM2u5yAfIrdn_CUIK9BFLZa4NntT2PSxrdmhn2OeAS5kpnteJER1MmEioXeQyoz2XRGBnkgg_61SUgataq-Yk6MH6Q0XjpjxIwK3oxWDhu1cUGYLD94=s1600"
+    }
+  }
+}

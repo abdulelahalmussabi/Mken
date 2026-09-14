@@ -1,10 +1,10 @@
 import { fetchTenantRow, getTenantDb, writeTenantConfig } from "@/lib/mken/tenant";
-import { loadNapSiteSnapshot } from "@/lib/mken/gbp";
+import { gbpAdsLocationAuth, loadNapSiteSnapshot } from "@/lib/mken/gbp";
 import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { generateGeminiImage, generateGeminiText } from "@/lib/mken/gemini";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { listRecentRankScans } from "@/lib/mken/geo-grid";
+import { latestMapsRankScan, listRecentRankScans } from "@/lib/mken/geo-grid";
 import { riyadhTodayYmd } from "@/lib/mken/ad-schedule";
 import {
   adGenerateDailyLimit,
@@ -32,17 +32,19 @@ import {
   googleAdsApiConfigured,
   pauseGoogleCampaign,
   publishGoogleLocalSearch,
+  publishGoogleMapsPmax,
   resolveTenantGoogleAds,
   resumeGoogleCampaign,
   selectGoogleAdsCustomer,
   type TenantGoogleAds,
 } from "@/lib/mken/google-ads";
 
-export const AD_PLATFORMS = ["meta_ctwa", "google_ads", "snapchat", "tiktok"] as const;
+export const AD_PLATFORMS = ["meta_ctwa", "google_ads", "google_pmax", "snapchat", "tiktok"] as const;
 export type AdPlatformId = (typeof AD_PLATFORMS)[number];
-export const LIVE_AD_PLATFORMS = ["meta_ctwa", "google_ads"] as const;
+export const LIVE_AD_PLATFORMS = ["meta_ctwa", "google_ads", "google_pmax"] as const;
 export const LIVE_AD_PLATFORM: AdPlatformId = "meta_ctwa";
-export const LIVE_AD_PLATFORM_ERROR = "التوليد والنشر متاحان حالياً لواتساب ميتا وإعلانات جوجل المحلية فقط";
+export const LIVE_AD_PLATFORM_ERROR =
+  "التوليد والنشر متاحان حالياً لواتساب ميتا، وإعلان بحث جوجل المحلي، وإعلان خرائط جوجل (Performance Max)";
 
 export const AD_STATUSES = ["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "FAILED"] as const;
 export type AdStatus = (typeof AD_STATUSES)[number];
@@ -52,7 +54,8 @@ export type AdObjective = (typeof AD_OBJECTIVES)[number];
 
 export const PLATFORM_LABELS: Record<AdPlatformId, string> = {
   meta_ctwa: "واتساب ميتا (انقر للمحادثة)",
-  google_ads: "إعلانات جوجل المحلية",
+  google_ads: "إعلان بحث جوجل المحلي",
+  google_pmax: "إعلان خرائط جوجل (Performance Max)",
   snapchat: "سناب شات",
   tiktok: "تيك توك",
 };
@@ -81,6 +84,7 @@ export interface AdCreative {
   negativeKeywords: string[];
   dialect: "gulf" | "fusha";
   imageDataUrl?: string;
+  landscapeImageDataUrl?: string;
 }
 
 export interface AdCampaign {
@@ -172,6 +176,10 @@ export function isLivePlatform(value: string): value is AdPlatformId {
   return (LIVE_AD_PLATFORMS as readonly string[]).includes(value);
 }
 
+export function isGoogleAdsPlatform(value: string): boolean {
+  return value === "google_ads" || value === "google_pmax";
+}
+
 export function parseLivePlatform(value: unknown): AdPlatformId | null {
   const platform = typeof value === "string" ? value.trim() : "";
   return isLivePlatform(platform) ? platform : null;
@@ -218,6 +226,8 @@ export type AdPublishReadiness = {
   geo: TenantAdGeo | null;
   blockers: string[];
   googleBlockers: string[];
+  mapsPmaxBlockers: string[];
+  mapsPmaxReady: boolean;
 };
 
 export async function getAdPublishReadiness(slug: string): Promise<AdPublishReadiness> {
@@ -230,6 +240,9 @@ export async function getAdPublishReadiness(slug: string): Promise<AdPublishRead
   const blockers: string[] = [];
   if (!tokenReady) blockers.push("أضف META_ADS_ACCESS_TOKEN على الخادم بعد اعتماد تطبيق Meta.");
   if (!placement) blockers.push("أضف حساب إعلانات ميتا ومعرّف الصفحة لهذه المنشأة.");
+  else if (!placement.pixelId) {
+    blockers.push("أضف Pixel ID لحساب إعلانات هذه المنشأة. لا يُستخدم بكسل المنصة.");
+  }
   if (!geo) blockers.push("احفظ خط العرض والطول الحقيقيين للفرع من إعدادات المنشأة.");
   const googleBlockers: string[] = [];
   if (!googleTokenReady) {
@@ -243,6 +256,15 @@ export async function getAdPublishReadiness(slug: string): Promise<AdPublishRead
     googleBlockers.push("اختر حساب إعلانات العميل بعد الربط. لا تستخدم حساب مدير للفوترة.");
   }
   if (!geo) googleBlockers.push("احفظ خط العرض والطول الحقيقيين للفرع من إعدادات المنشأة.");
+  const preview = row?.config_data?.preview;
+  const mapsPlaceId = typeof preview?.placeId === "string" ? preview.placeId.trim() : "";
+  const mapsUrl = typeof row?.config_data?.mapsUrl === "string" ? row.config_data.mapsUrl.trim() : "";
+  const mapsPmaxBlockers = [...googleBlockers];
+  if (!mapsPlaceId && !mapsUrl) {
+    mapsPmaxBlockers.push(
+      "اربط ملف خرائط جوجل (رابط الخرائط أو place ID) قبل نشر إعلان قد يظهر على الخرائط."
+    );
+  }
   return {
     ready: blockers.length === 0,
     googleReady: googleBlockers.length === 0,
@@ -256,6 +278,8 @@ export async function getAdPublishReadiness(slug: string): Promise<AdPublishRead
     geo,
     blockers,
     googleBlockers,
+    mapsPmaxBlockers,
+    mapsPmaxReady: mapsPmaxBlockers.length === 0,
   };
 }
 
@@ -268,6 +292,7 @@ export async function saveTenantAdsMeta(
   const pixelId = normalizeMetaPixelId(input.pixelId || "");
   if (adAccountId.length < 6) return { error: "معرّف حساب الإعلانات غير صالح" };
   if (pageId.length < 5) return { error: "معرّف صفحة ميتا غير صالح" };
+  if (pixelId.length < 5) return { error: "Pixel ID مطلوب لنشر إعلانات ميتا وتتبع الحجز" };
 
   const row = await fetchTenantRow(slug);
   if (!row) return { error: "المنشأة غير موجودة" };
@@ -406,7 +431,7 @@ export async function collectAdIntel(slug: string, knownCampaigns?: AdCampaign[]
     knownCampaigns ? Promise.resolve({ campaigns: knownCampaigns }) : listAdCampaigns(slug),
     listRecentRankScans(slug),
   ]);
-  const scan = scans.scans?.[0];
+  const scan = latestMapsRankScan(scans.scans);
   const grid =
     scan?.top3Percentage != null
       ? clampScore(scan.top3Percentage)
@@ -433,10 +458,10 @@ export async function collectAdIntel(slug: string, knownCampaigns?: AdCampaign[]
     .filter(Boolean);
 
   const gridNote = scan
-    ? `كلمة "${scan.keyword}" — متوسط ترتيب ${scan.averageRank ?? "—"} — تغطية أول 3 نتائج ${scan.top3Percentage ?? 0}%${
-        scan.source === "places_estimate" ? " (تقدير Places وليست نتائج خرائط)" : ""
-      }`
-    : "لا يوجد مسح رانك محفوظ";
+    ? `كلمة "${scan.keyword}" — متوسط ترتيب ${scan.averageRank ?? "—"} — تغطية أول 3 نتائج ${scan.top3Percentage ?? 0}% (DataForSEO)`
+    : scans.scans?.length
+      ? "يوجد تقدير أماكن قديم — لا يُحتسب رانك خرائط حتى فحص DataForSEO"
+      : "لا يوجد مسح رانك خرائط محفوظ";
   const promptBlock = [
     `مؤشر المنافسة المحلي MCS: ${mcs.score}/100 (الشبكة ${Math.round(mcs.breakdown.grid)}، التقييم ${Math.round(mcs.breakdown.rating)}).`,
     `رانك الخرائط: ${gridNote}.`,
@@ -483,6 +508,11 @@ function toCampaign(row: CampaignRow): AdCampaign {
       imageDataUrl:
         typeof creative.imageDataUrl === "string" && creative.imageDataUrl.startsWith("data:image/")
           ? creative.imageDataUrl
+          : undefined,
+      landscapeImageDataUrl:
+        typeof creative.landscapeImageDataUrl === "string" &&
+        creative.landscapeImageDataUrl.startsWith("data:image/")
+          ? creative.landscapeImageDataUrl
           : undefined,
     },
     startDate: row.start_date || null,
@@ -569,12 +599,12 @@ export async function generateAdCreatives(input: {
 ${intel.promptBlock}
 
 أرجع JSON فقط بدون شرح وبدون علامات ترميز بهذا الشكل:
-{"variants":[{"headline":"...","primaryText":"...","cta":"${input.platform === "google_ads" ? "LEARN_MORE" : "WHATSAPP_MESSAGE"}","prefilledMessage":"مرحباً، أود الاستفسار عن ${serviceName} عبر مكّن"}],"negativeKeywords":["وظائف","مجاني","تدريب"]}
+{"variants":[{"headline":"...","primaryText":"...","cta":"${isGoogleAdsPlatform(input.platform) ? "LEARN_MORE" : "WHATSAPP_MESSAGE"}","prefilledMessage":"مرحباً، أود الاستفسار عن ${serviceName} عبر مكّن"}],"negativeKeywords":["وظائف","مجاني","تدريب"]}
 
 شروط:
 ${
-  input.platform === "google_ads"
-    ? `1. headline حتى 30 حرفاً (إعلان بحث متجاوب)، جذاب ومحلي.
+  isGoogleAdsPlatform(input.platform)
+    ? `1. headline حتى 30 حرفاً، جذاب ومحلي.
 2. primaryText حتى 90 حرفاً، يذكر الحي/المدينة إن وُجدت، ودعوة واضحة للحجز عبر الموقع.
 3. cta استخدم LEARN_MORE.
 4. prefilledMessage رسالة واتساب احتياطية باللهجة المطلوبة.
@@ -591,7 +621,7 @@ ${
     const creative = parseCreativeJson(await generateGeminiText(prompt));
     creative.dialect = input.dialect === "fusha" ? "fusha" : "gulf";
     creative.selectedIndex = pickWinningVariantIndex(creative.variants, intel.winnerHeadlines);
-    if (input.platform === "meta_ctwa") {
+    if (input.platform === "meta_ctwa" || input.platform === "google_pmax") {
       const row = await fetchTenantRow(input.slug);
       const logoRaw = typeof row?.config_data?.brand?.logo === "string" ? row.config_data.brand.logo : "";
       const logoMatch = logoRaw.trim().match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
@@ -600,13 +630,23 @@ ${
           ? { mimeType: logoMatch[1], data: logoMatch[2].replace(/\s+/g, "") }
           : null;
       const realPhoto = await localTenantAdPhoto(input.slug);
+      const squarePrompt = `Square local business ad photo for a Saudi ${serviceName} shop named ${businessName} in ${city || "Saudi Arabia"}. Professional, warm lighting, no text, no logos invented, no watermarks, photorealistic.`;
       creative.imageDataUrl =
         realPhoto ||
         (await generateGeminiImage({
-          prompt: `Square local business ad photo for a Saudi ${serviceName} shop named ${businessName} in ${city || "Saudi Arabia"}. Professional, warm lighting, no text, no logos invented, no watermarks, photorealistic.`,
+          prompt: squarePrompt,
           logo,
         })) ||
         undefined;
+      if (input.platform === "google_pmax") {
+        creative.landscapeImageDataUrl =
+          (await generateGeminiImage({
+            prompt: `Wide landscape local business photo for a Saudi ${serviceName} shop named ${businessName} in ${city || "Saudi Arabia"}. Professional, warm lighting, no text, no logos invented, no watermarks, photorealistic.`,
+            logo,
+            aspectRatio: "16:9",
+          })) ||
+          creative.imageDataUrl;
+      }
     }
     return { creative, credits: debit.credits };
   } catch (err) {
@@ -681,7 +721,12 @@ export async function createAdCampaign(input: {
     .select("*")
     .maybeSingle();
 
-  if (error || !data) return { error: error?.message || "تعذّر حفظ الحملة" };
+  if (error || !data) {
+    if (/platform|check constraint|22P02/i.test(error?.message || "")) {
+      return { error: "نفّذ تحديث قيد المنصات في db/local-growth-schema.sql لإضافة google_pmax ثم أعد المحاولة." };
+    }
+    return { error: error?.message || "تعذّر حفظ الحملة" };
+  }
   return { campaign: toCampaign(data as CampaignRow) };
 }
 
@@ -758,6 +803,44 @@ async function publishGoogleCampaign(
   });
 }
 
+async function publishGooglePmaxCampaign(
+  slug: string,
+  campaign: AdCampaign,
+  variant: AdCreativeVariant,
+  geo: TenantAdGeo,
+  readiness: AdPublishReadiness
+): Promise<{ campaignId?: string; error?: string }> {
+  if (!readiness.mapsPmaxReady) {
+    return { error: readiness.mapsPmaxBlockers[0] || "النشر على خرائط جوجل غير جاهز لهذه المنشأة" };
+  }
+  const placement = await resolveTenantGoogleAds(slug);
+  if (placement.error || !placement.ads) return { error: placement.error };
+  const snap = await loadNapSiteSnapshot(slug);
+  const gbp = await gbpAdsLocationAuth(slug);
+  const row = await fetchTenantRow(slug);
+  const logoRaw = typeof row?.config_data?.brand?.logo === "string" ? row.config_data.brand.logo : "";
+  const descriptions = campaign.adCreative.variants.map((item) => item.primaryText).filter(Boolean);
+  if (!descriptions.includes(variant.primaryText)) descriptions.unshift(variant.primaryText);
+  return publishGoogleMapsPmax({
+    slug,
+    name: campaign.campaignName,
+    dailyBudgetHalalas: campaign.dailyBudgetHalalas,
+    website: await tenantWebsiteUrl(slug),
+    serviceName: campaign.serviceName || variant.headline,
+    city: geo.city,
+    businessName: snap.site?.name || slug,
+    headlines: campaign.adCreative.variants.map((item) => item.headline),
+    descriptions,
+    customerId: placement.ads.customerId,
+    placeId: snap.site?.ownPlaceId || "",
+    squareImageDataUrl: campaign.adCreative.imageDataUrl,
+    landscapeImageDataUrl: campaign.adCreative.landscapeImageDataUrl,
+    logoDataUrl: logoRaw.startsWith("data:image/") ? logoRaw : undefined,
+    gbpToken: gbp.token,
+    gbpEmail: gbp.email,
+  });
+}
+
 export async function publishAdCampaign(
   slug: string,
   id: string
@@ -777,9 +860,11 @@ export async function publishAdCampaign(
   if (!variant) return { error: "لا يوجد نص إعلاني في المسودة" };
 
   const published =
-    campaign.platform === "google_ads"
-      ? await publishGoogleCampaign(slug, campaign, variant, geo.geo, readiness)
-      : await publishMetaCampaign(slug, campaign, variant, geo.geo, readiness);
+    campaign.platform === "google_pmax"
+      ? await publishGooglePmaxCampaign(slug, campaign, variant, geo.geo, readiness)
+      : campaign.platform === "google_ads"
+        ? await publishGoogleCampaign(slug, campaign, variant, geo.geo, readiness)
+        : await publishMetaCampaign(slug, campaign, variant, geo.geo, readiness);
 
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
@@ -845,10 +930,9 @@ export async function setAdCampaignStatus(
       return { campaign: loaded.campaign };
     }
     if (loaded.campaign.externalCampaignId && loaded.campaign.status === "PAUSED") {
-      const resumed =
-        loaded.campaign.platform === "google_ads"
-          ? await resumeGoogleForSlug(slug, loaded.campaign.externalCampaignId)
-          : await resumeMetaCampaign(loaded.campaign.externalCampaignId);
+      const resumed = isGoogleAdsPlatform(loaded.campaign.platform)
+        ? await resumeGoogleForSlug(slug, loaded.campaign.externalCampaignId)
+        : await resumeMetaCampaign(loaded.campaign.externalCampaignId);
       if (resumed.error) return { error: resumed.error };
       const { data, error } = await db
         .from("mken_ad_campaigns")
@@ -864,10 +948,9 @@ export async function setAdCampaignStatus(
   }
 
   if (loaded.campaign.externalCampaignId && status === "PAUSED") {
-    const paused =
-      loaded.campaign.platform === "google_ads"
-        ? await pauseGoogleForSlug(slug, loaded.campaign.externalCampaignId)
-        : await pauseMetaCampaign(loaded.campaign.externalCampaignId);
+    const paused = isGoogleAdsPlatform(loaded.campaign.platform)
+      ? await pauseGoogleForSlug(slug, loaded.campaign.externalCampaignId)
+      : await pauseMetaCampaign(loaded.campaign.externalCampaignId);
     if (paused.error) return { error: paused.error };
   }
 
@@ -940,7 +1023,7 @@ export async function syncAdCampaignInsights(): Promise<{
     }
 
     let insights: { impressions: number; clicks: number; conversations: number; spentHalalas: number } | undefined;
-    if (row.platform === "google_ads") {
+    if (isGoogleAdsPlatform(row.platform || "")) {
       if (!googleReady) {
         skipped += 1;
         continue;

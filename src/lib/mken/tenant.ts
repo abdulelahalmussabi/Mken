@@ -137,6 +137,33 @@ export interface MkenConfig {
       city?: string;
     }[];
   };
+  /** Manual GBP write proof when API quota is 0. Not a ranking claim. */
+  gbpOperatorProof?: {
+    before?: {
+      at: string;
+      scorePercent: number;
+      overall: "excellent" | "good" | "fair" | "poor";
+      items?: Array<{
+        id: string;
+        label: string;
+        status: string;
+        siteValue: string;
+        gbpValue: string;
+      }>;
+    };
+    after?: {
+      at: string;
+      scorePercent: number;
+      overall: "excellent" | "good" | "fair" | "poor";
+      items?: Array<{
+        id: string;
+        label: string;
+        status: string;
+        siteValue: string;
+        gbpValue: string;
+      }>;
+    };
+  };
   /** Per-tenant Google Ads customer. OAuth refresh token is a dedicated column, never returned to the browser. */
   adsGoogle?: {
     customerId?: string;

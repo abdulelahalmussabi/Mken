@@ -6,6 +6,8 @@ export type NapStatus =
   | "missing_both"
   | "info";
 
+export const NAP_ACCEPTANCE_PERCENT = 90;
+
 export interface NapSiteSnapshot {
   name: string;
   phone: string;
@@ -13,6 +15,25 @@ export interface NapSiteSnapshot {
   city: string;
   hoursStart: string;
   hoursEnd: string;
+  occasionId?: string;
+}
+
+export interface NapOperatorSnapshot {
+  at: string;
+  scorePercent: number;
+  overall: NapReport["summary"]["overall"];
+  items: Array<{
+    id: string;
+    label: string;
+    status: NapStatus;
+    siteValue: string;
+    gbpValue: string;
+  }>;
+}
+
+export interface GbpOperatorProof {
+  before?: NapOperatorSnapshot;
+  after?: NapOperatorSnapshot;
 }
 
 export interface NapItem {
@@ -58,6 +79,7 @@ export interface GbpLocationDetail {
   regularHours?: {
     periods?: Array<{
       openDay?: number | string;
+      closeDay?: number | string;
       openTime?: { hours?: number; minutes?: number };
       closeTime?: { hours?: number; minutes?: number };
     }>;
@@ -147,12 +169,71 @@ const SAUDI_CITIES = [
   "الجبيل",
 ];
 
+const GBP_WEEKDAYS = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+] as const;
+
 function dayLabel(openDay?: number | string): string {
   if (typeof openDay === "number" && openDay >= 0 && openDay < DAY_NAMES.length) {
     return DAY_NAMES[openDay];
   }
   const key = String(openDay || "").toUpperCase();
   return DAY_LABELS[key] || (openDay != null ? String(openDay) : "");
+}
+
+function isFridayOpenDay(openDay?: number | string): boolean {
+  if (typeof openDay === "number") return openDay === 5;
+  const key = String(openDay || "").toUpperCase();
+  return key === "FRIDAY" || dayLabel(openDay) === "الجمعة";
+}
+
+function minutesToTimeOfDay(minutes: number): { hours: number; minutes: number } {
+  const wrapped = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return { hours: Math.floor(wrapped / 60), minutes: wrapped % 60 };
+}
+
+function nextGbpWeekday(day: (typeof GBP_WEEKDAYS)[number]): (typeof GBP_WEEKDAYS)[number] {
+  return GBP_WEEKDAYS[(GBP_WEEKDAYS.indexOf(day) + 1) % GBP_WEEKDAYS.length];
+}
+
+export function buildGbpRegularHours(
+  site: NapSiteSnapshot
+): NonNullable<GbpLocationDetail["regularHours"]> | null {
+  const start = parseClockMinutes(site.hoursStart);
+  const end = parseClockMinutes(site.hoursEnd);
+  if (start == null || end == null) return null;
+  const openTime = minutesToTimeOfDay(start);
+  const closeTime = minutesToTimeOfDay(end);
+  const overnight = end <= start;
+  return {
+    periods: GBP_WEEKDAYS.map((day) => ({
+      openDay: day,
+      closeDay: overnight ? nextGbpWeekday(day) : day,
+      openTime,
+      closeTime,
+    })),
+  };
+}
+
+export function napProofSnapshot(report: NapReport): NapOperatorSnapshot {
+  return {
+    at: new Date().toISOString(),
+    scorePercent: report.summary.scorePercent,
+    overall: report.summary.overall,
+    items: report.items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      status: item.status,
+      siteValue: item.siteValue,
+      gbpValue: item.gbpValue,
+    })),
+  };
 }
 
 export function cityFromGbpAddress(
@@ -208,6 +289,7 @@ export function checkHoursMatch(
   const end = parseClockMinutes(site.hoursEnd);
   const periods = regularHours?.periods || [];
   if (start == null || end == null || !periods.length) return false;
+  if (!periods.some((period) => isFridayOpenDay(period.openDay))) return false;
 
   return periods.every((period) => {
     const open = periodMinutes(period.openTime);
@@ -241,7 +323,7 @@ function formatSiteHours(site: NapSiteSnapshot): string {
   const start = site.hoursStart || "";
   const end = site.hoursEnd || "";
   if (!start && !end) return "";
-  if (start && end) return `${start} – ${end} (حسب إعدادات الحجز)`;
+  if (start && end) return `${start} – ${end} (كل الأيام بما فيها الجمعة)`;
   return start || end;
 }
 
@@ -334,8 +416,8 @@ export function buildNapAuditReport(site: NapSiteSnapshot, gbpLocation: GbpLocat
       status: hoursStatus,
       hint:
         hoursStatus === "match"
-          ? "ساعات الحجز في مكّن تغطي فترات الدوام على جوجل."
-          : "تطابق إذا غطّت ساعات الحجز في مكّن فترات جوجل (اختلاف شكل الجدول لا يُعد خطأ).",
+          ? "ساعات الحجز في مكّن تغطي فترات جوجل بما فيها الجمعة."
+          : "المزامنة تكتب الأحد–السبت بنفس دوام الحجز، بما فيها الجمعة. ساعات رمضان تُحدَّث يدوياً.",
     },
   ];
 
@@ -387,6 +469,7 @@ export function napSkipReasonLabel(reason: string): string {
   if (reason === "missing_on_gbp") return "ناقص في جوجل";
   if (reason === "not_selected") return "غير محدّد في هذه المزامنة";
   if (reason === "manual_only") return "يتطلب تعديلاً يدوياً على جوجل";
+  if (reason === "ramadan_manual") return "ساعات رمضان تُحدَّث يدوياً على جوجل — لا نكتب دواماً عادياً فوقها";
   return reason;
 }
 
@@ -446,11 +529,20 @@ export function planNapSync(
     updated.push({ field: "name", label: fieldLabels.name, value: String(patchBody.title) });
   });
 
-  for (const id of ["city", "hours"]) {
-    const item = itemById(id);
-    if (item && item.status !== "match" && item.status !== "missing_both") {
-      skipped.push({ field: id, label: fieldLabels[id], reason: "manual_only" });
+  trySync("hours", () => {
+    if (site.occasionId === "ramadan") {
+      skipped.push({ field: "hours", label: fieldLabels.hours, reason: "ramadan_manual" });
+      return;
     }
+    const hours = buildGbpRegularHours(site);
+    if (!hours) return;
+    patchBody.regularHours = hours;
+    updated.push({ field: "hours", label: fieldLabels.hours, value: formatSiteHours(site) });
+  });
+
+  const city = itemById("city");
+  if (city && city.status !== "match" && city.status !== "missing_both") {
+    skipped.push({ field: "city", label: fieldLabels.city, reason: "manual_only" });
   }
 
   return {

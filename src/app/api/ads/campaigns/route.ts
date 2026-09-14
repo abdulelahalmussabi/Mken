@@ -21,6 +21,7 @@ import {
 } from "@/lib/mken/ads";
 import { metaCapiConfiguredForSlug } from "@/lib/mken/meta-ads";
 import { buildGoogleAdsAuthUrl } from "@/lib/mken/google-ads";
+import { loadTenantMeasuredWindow } from "@/lib/mken/measured-stats";
 
 export async function GET(request: Request) {
   const scope = await resolveTenantScope(request);
@@ -44,11 +45,12 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.json({ success: false, message: error }, { status: 500 });
   }
-  const [readiness, generateCredits, features, intel] = await Promise.all([
+  const [readiness, generateCredits, features, intel, measured] = await Promise.all([
     getAdPublishReadiness(scope.slug),
     adGenerateCreditsForSlug(scope.slug),
     tenantSaasFeatures(scope.slug, scope.session),
     collectAdIntel(scope.slug, campaigns),
+    loadTenantMeasuredWindow(scope.slug),
   ]);
   return NextResponse.json({
     success: true,
@@ -72,9 +74,12 @@ export async function GET(request: Request) {
     geo: readiness.geo,
     blockers: readiness.blockers,
     googleBlockers: readiness.googleBlockers,
+    mapsPmaxBlockers: readiness.mapsPmaxBlockers,
+    mapsPmaxReady: readiness.mapsPmaxReady,
     generateCredits,
     adsAllowed: features.hasWhatsApp,
     intel: { mcs: intel.mcs, gridNote: intel.gridNote, winnerHeadlines: intel.winnerHeadlines },
+    measured,
     capiReady: await metaCapiConfiguredForSlug(scope.slug),
   });
 }
@@ -139,6 +144,8 @@ export async function POST(request: Request) {
       objective:
         typeof body.objective === "string"
           ? body.objective
+          : platform === "google_pmax"
+            ? "STORE_VISITS"
           : platform === "google_ads"
             ? "LOCAL_LEADS"
             : "MESSAGES",
@@ -214,6 +221,8 @@ export async function POST(request: Request) {
       },
       googleReady: readiness.googleReady,
       googleBlockers: readiness.googleBlockers,
+      mapsPmaxBlockers: readiness.mapsPmaxBlockers,
+      mapsPmaxReady: readiness.mapsPmaxReady,
     });
   }
 
@@ -227,6 +236,8 @@ export async function POST(request: Request) {
       success: true,
       googleReady: readiness.googleReady,
       googleBlockers: readiness.googleBlockers,
+      mapsPmaxBlockers: readiness.mapsPmaxBlockers,
+      mapsPmaxReady: readiness.mapsPmaxReady,
       adsGoogle: {
         customerId: readiness.adsGoogle.customerId,
         connected: readiness.adsGoogle.connected,

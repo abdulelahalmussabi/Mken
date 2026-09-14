@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { resolveTenantScope } from "@/lib/auth/scope";
 import { getServiceRoleDb } from "@/lib/mken/tenant";
 import {
   isPushConfigured,
   isPushEnabledForTenant,
   sendPushToTenant,
   upsertPushSubscription,
+  vapidPublicKey,
 } from "@/lib/mken/web-push";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +26,36 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },
   });
 }
 
+export async function GET(request: Request) {
+  const scope = await resolveTenantScope(request);
+  if (!scope.slug) {
+    return NextResponse.json({ ok: false, error: scope.message }, { status: scope.status || 401 });
+  }
+  const supabase = getServiceRoleDb();
+  if (!supabase) {
+    return NextResponse.json({ ok: false, error: "Supabase not configured" }, { status: 500 });
+  }
+  const enabled = await isPushEnabledForTenant(supabase, scope.slug);
+  return NextResponse.json({
+    ok: true,
+    configured: isPushConfigured(),
+    enabled,
+    publicKey: isPushConfigured() ? vapidPublicKey() : "",
+  });
+}
+
 export async function POST(request: Request) {
+  const scope = await resolveTenantScope(request);
+  if (!scope.slug) {
+    return NextResponse.json({ error: scope.message }, { status: scope.status || 401 });
+  }
+
   const supabase = getServiceRoleDb();
   if (!supabase) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
@@ -48,7 +73,7 @@ export async function POST(request: Request) {
     body = {};
   }
 
-  const tenantSlug = String(body.tenantSlug || body.tenant_slug || "default").trim() || "default";
+  const tenantSlug = scope.slug;
 
   try {
     if (action === "subscribe") {

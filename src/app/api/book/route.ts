@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createPublicAppointment } from "@/lib/mken/appointments";
 import { fetchTenantRow, isPlatformSlug } from "@/lib/mken/tenant";
 import { boundTenantFromHostname, hostnameFromHeaders } from "@/lib/mken/tenant-host";
-import { capiIdsFromRequest, sendMetaCapiEvent } from "@/lib/mken/meta-ads";
+import { capiIdsFromRequest, rememberCtwaClid, sendMetaCapiEvent } from "@/lib/mken/meta-ads";
 import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 
 const CORS = {
@@ -109,6 +109,9 @@ export async function POST(request: Request) {
   }
 
   const ids = capiIdsFromRequest(request, body);
+  if (ids.ctwaClid) {
+    void rememberCtwaClid(slug, appointment.phone, ids.ctwaClid);
+  }
   void sendMetaCapiEvent({
     eventName: "Schedule",
     slug,

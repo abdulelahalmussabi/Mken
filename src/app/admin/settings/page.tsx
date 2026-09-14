@@ -26,10 +26,20 @@ import {
   Globe,
   FileBadge,
   Trash2,
+  Bell,
 } from "lucide-react";
 
 const inputClass =
   "w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-amber-500 transition-colors";
+
+function vapidKeyBytes(base64Url: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+  return out;
+}
 
 type DomainRow = {
   id: string;
@@ -116,6 +126,7 @@ export default function AdminSettingsPage() {
   const [domainBusy, setDomainBusy] = useState(false);
   const [eraseConfirm, setEraseConfirm] = useState("");
   const [erasing, setErasing] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     if (isSuperAdmin && tenant) writeStoredAdminClient(tenant);
@@ -400,6 +411,88 @@ export default function AdminSettingsPage() {
           </div>
         ) : (
           <>
+            <Section title="تنبيهات المتصفح" icon={Bell}>
+              <p className="text-xs text-slate-400 leading-relaxed text-right">
+                اشترك على هذا الجهاز لاستلام إشعارات بعنوان ونص (مواعيد، طلبات). يتطلب HTTPS وصلاحية الإشعارات.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button
+                  type="button"
+                  disabled={pushBusy || !tenant}
+                  onClick={async () => {
+                    setPushBusy(true);
+                    try {
+                      const statusRes = await fetch(`/api/v1/push${query}`, { credentials: "include" });
+                      const status = await statusRes.json();
+                      if (!statusRes.ok || !status.configured || !status.publicKey) {
+                        showToast(status.error || "مفاتيح VAPID غير مُعدّة على الخادم", "error");
+                        return;
+                      }
+                      const perm = await Notification.requestPermission();
+                      if (perm !== "granted") {
+                        showToast("لم يُسمح بالإشعارات في المتصفح", "error");
+                        return;
+                      }
+                      const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
+                      await navigator.serviceWorker.ready;
+                      const sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: vapidKeyBytes(status.publicKey) as BufferSource,
+                      });
+                      const json = sub.toJSON();
+                      const saveRes = await fetch(`/api/v1/push-subscribe${query}`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          endpoint: json.endpoint,
+                          keys: json.keys,
+                          label: "admin",
+                          userAgent: navigator.userAgent,
+                        }),
+                      });
+                      const saved = await saveRes.json();
+                      if (!saveRes.ok) {
+                        showToast(saved.error || "تعذّر حفظ الاشتراك", "error");
+                        return;
+                      }
+                      showToast("تم اشتراك هذا الجهاز في التنبيهات", "success");
+                    } catch {
+                      showToast("تعذّر تفعيل التنبيهات على هذا المتصفح", "error");
+                    } finally {
+                      setPushBusy(false);
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold disabled:opacity-40"
+                >
+                  {pushBusy ? "جارٍ…" : "اشتراك هذا الجهاز"}
+                </button>
+                <button
+                  type="button"
+                  disabled={pushBusy || !tenant}
+                  onClick={async () => {
+                    setPushBusy(true);
+                    try {
+                      const res = await fetch(`/api/v1/push-test${query}`, {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: "{}",
+                      });
+                      const data = await res.json();
+                      showToast(data.message || data.error || "تعذّر الاختبار", res.ok ? "success" : "error");
+                    } catch {
+                      showToast("تعذّر الاتصال بالخادم", "error");
+                    } finally {
+                      setPushBusy(false);
+                    }
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-sm font-bold disabled:opacity-40"
+                >
+                  إرسال إشعار تجريبي
+                </button>
+              </div>
+            </Section>
             <Section title="هوية المنشأة" icon={Building2}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

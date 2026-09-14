@@ -26,7 +26,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { WhatsappCta } from "@/components/social/NeonSocialIcons";
-import { submitPublicBooking } from "@/lib/mken/book-request";
+import { persistCtwaClid, submitPublicBooking } from "@/lib/mken/book-request";
 
 interface ServiceOption {
   id: string;
@@ -168,6 +168,10 @@ function BookAppointmentContent() {
   }, [aptId, isPaymentCallback]);
 
   useEffect(() => {
+    persistCtwaClid(searchParams.get("ctwa_clid"));
+  }, [searchParams]);
+
+  useEffect(() => {
     applyDocumentIcon(brandIconPath(tenantSlug || undefined));
   }, [tenantSlug]);
 
@@ -301,6 +305,7 @@ function BookAppointmentContent() {
       servicePrice: selectedService.price,
       notes,
       coupon: couponApplied ? occasionDetails.couponCode : undefined,
+      ctwa_clid: persistCtwaClid(searchParams.get("ctwa_clid")),
     });
     setIsSubmitting(false);
     if (result.error) {

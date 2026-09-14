@@ -36,7 +36,7 @@ import {
   buildWhatsappClickUrl,
   openWhatsappClick,
 } from "@/lib/mken/wa-click";
-import { newBookingId, submitPublicBooking } from "@/lib/mken/book-request";
+import { newBookingId, persistCtwaClid, submitPublicBooking } from "@/lib/mken/book-request";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 import {
   CalendarCheck,
@@ -445,6 +445,7 @@ export function StorefrontFrame({
       serviceId: selectedService?.id,
       serviceName: selectedService?.name,
       servicePrice: selectedService?.price,
+      ctwa_clid: persistCtwaClid(),
     });
     setIsSubmitting(false);
     if (result.error) {

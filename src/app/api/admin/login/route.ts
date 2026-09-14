@@ -218,6 +218,13 @@ export async function POST(request: Request) {
           "مرحباً بك في لوحة التحكم المركزية!"
         );
       }
+      if (normalizedEmail === "saj@mken.live") {
+        return issue(
+          request,
+          { email: "saj@mken.live", role: "client", clientSlug: "saj" },
+          "مرحباً بك في لوحة تحكم مطعم صحن وصاج!"
+        );
+      }
       if (
         normalizedEmail === "rewaqresident@gmail.com" ||
         normalizedEmail === "rewaq@mken.live"

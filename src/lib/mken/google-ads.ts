@@ -254,6 +254,47 @@ async function mutate(
   return { resourceName: name };
 }
 
+async function bulkMutate(
+  customerId: string,
+  operations: Record<string, unknown>[],
+  token: string,
+  loginCustomerId?: string
+): Promise<{ results?: Array<Record<string, unknown>>; error?: string }> {
+  const res = await fetch(`${ADS_API}/customers/${customerId}:mutate`, {
+    method: "POST",
+    headers: adsHeaders(token, loginCustomerId),
+    body: JSON.stringify({ mutateOperations: operations }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) return { error: adsError(body, "تعذّر نشر حملة Performance Max") };
+  const results = Array.isArray(body.mutateOperationResponses)
+    ? (body.mutateOperationResponses as Array<Record<string, unknown>>)
+    : Array.isArray(body.results)
+      ? (body.results as Array<Record<string, unknown>>)
+      : [];
+  return { results };
+}
+
+function campaignIdFromBulk(results: Array<Record<string, unknown>>): string | undefined {
+  for (const row of results) {
+    const campaign = (row.campaignResult || row.campaign_result) as { resourceName?: string } | undefined;
+    const id = (campaign?.resourceName || "").split("/").pop() || "";
+    if (/^\d+$/.test(id)) return id;
+  }
+  return undefined;
+}
+
+function decodeImageDataUrl(raw?: string): string | null {
+  const match = (raw || "").trim().match(/^data:image\/[a-zA-Z0-9.+-]+;base64,([A-Za-z0-9+/=\s]+)$/);
+  if (!match) return null;
+  const data = match[1].replace(/\s+/g, "");
+  return data.length >= 800 ? data : null;
+}
+
+function tempName(customerId: string, collection: string, id: number): string {
+  return `customers/${customerId}/${collection}/${id}`;
+}
+
 function uniqShort(values: string[], maxLen: number, minCount: number, filler: string[]): string[] {
   const out: string[] = [];
   for (const value of [...values, ...filler]) {
@@ -479,6 +520,261 @@ export async function publishGoogleLocalSearch(
   return { campaignId };
 }
 
+export type GoogleMapsPmaxInput = {
+  slug: string;
+  name: string;
+  dailyBudgetHalalas: number;
+  website: string;
+  serviceName: string;
+  city: string;
+  businessName: string;
+  headlines: string[];
+  descriptions: string[];
+  customerId: string;
+  placeId?: string;
+  squareImageDataUrl?: string;
+  landscapeImageDataUrl?: string;
+  logoDataUrl?: string;
+  gbpToken?: string;
+  gbpEmail?: string;
+};
+
+async function findLocationSyncAssetSet(
+  customerId: string,
+  token: string,
+  loginCustomerId?: string
+): Promise<string | undefined> {
+  const searched = await googleAdsSearch(
+    customerId,
+    token,
+    loginCustomerId || "",
+    "SELECT asset_set.resource_name, asset_set.status FROM asset_set WHERE asset_set.type = 'LOCATION_SYNC'"
+  );
+  for (const row of searched.results || []) {
+    const assetSet = (row.assetSet || row.asset_set || {}) as { resourceName?: string; status?: string };
+    const name = assetSet.resourceName || "";
+    const status = String(assetSet.status || "").toUpperCase();
+    if (name && status !== "REMOVED") return name;
+  }
+  return undefined;
+}
+
+function locationSetPayload(
+  input: GoogleMapsPmaxInput
+): { locationSet: Record<string, unknown> } | { error: string } {
+  const placeId = (input.placeId || "").trim();
+  if (placeId) {
+    return {
+      locationSet: {
+        locationOwnershipType: "BUSINESS_OWNER",
+        mapsLocationSet: { mapsLocations: [{ placeId }] },
+      },
+    };
+  }
+  if (input.gbpToken && input.gbpEmail) {
+    return {
+      locationSet: {
+        locationOwnershipType: "BUSINESS_OWNER",
+        businessProfileLocationSet: {
+          httpAuthorizationToken: input.gbpToken,
+          emailAddress: input.gbpEmail,
+        },
+      },
+    };
+  }
+  return {
+    error:
+      "اربط ملف خرائط جوجل (place ID) أو حساب Google Business قبل نشر إعلان يظهر على الخرائط.",
+  };
+}
+
+function explainPmaxError(message: string): string {
+  if (/VALUE_MUST_BE_UNSET|mapsLocationSet|maps_location_set/i.test(message)) {
+    return "جوجل رفض ربط الموقع عبر Place ID. اربط Google Business لهذه المنشأة ثم أعد النشر.";
+  }
+  if (/not available|not enabled|not eligible|ineligible|allowlist|not supported/i.test(message)) {
+    return "حساب الإعلانات أو فئة النشاط غير مؤهلين لـ Performance Max على الخرائط. أبقِ إعلان البحث المحلي.";
+  }
+  return message;
+}
+
+export async function publishGoogleMapsPmax(
+  input: GoogleMapsPmaxInput
+): Promise<{ campaignId?: string; error?: string }> {
+  const auth = await accessToken(input.slug);
+  if (auth.error || !auth.token) return { error: auth.error };
+  const loginCustomerId = auth.loginCustomerId;
+  const customerId = normalizeGoogleCustomerId(input.customerId);
+  if (customerId.length < 8) return { error: "معرّف حساب إعلانات جوجل غير صالح" };
+  const website = input.website.trim();
+  if (!/^https?:\/\//i.test(website)) return { error: "رابط موقع المنشأة ناقص — احفظ الدومين أو الرابط قبل النشر" };
+
+  const square = decodeImageDataUrl(input.squareImageDataUrl) || decodeImageDataUrl(input.landscapeImageDataUrl);
+  const landscape = decodeImageDataUrl(input.landscapeImageDataUrl) || square;
+  if (!square || !landscape) {
+    return { error: "أضف صورة مربعة وصورة أفقية (أو شعار المنشأة) قبل نشر إعلان الخرائط." };
+  }
+
+  const existingSet = await findLocationSyncAssetSet(customerId, auth.token, loginCustomerId);
+  const locationPayload = existingSet ? null : locationSetPayload(input);
+  if (locationPayload && "error" in locationPayload) return { error: locationPayload.error };
+
+  const headlines = uniqShort(
+    input.headlines,
+    30,
+    3,
+    [input.serviceName, input.city ? `${input.serviceName} ${input.city}` : "", "احجز الآن"]
+  );
+  const descriptions = uniqShort(
+    input.descriptions,
+    90,
+    2,
+    [`${input.serviceName} قريب منك. احجز بسهولة.`, "تواصل معنا عبر الموقع واحجز موعدك."]
+  );
+  const longHeadline = uniqShort(
+    input.descriptions,
+    90,
+    1,
+    [`${input.businessName} — ${input.serviceName}`.trim(), input.serviceName]
+  )[0];
+  const businessName = (input.businessName || input.serviceName).trim().slice(0, 25) || "مكّن";
+  const logo = decodeImageDataUrl(input.logoDataUrl);
+
+  const budgetRn = tempName(customerId, "campaignBudgets", -1);
+  const campaignRn = tempName(customerId, "campaigns", -2);
+  const groupRn = tempName(customerId, "assetGroups", -4);
+  const setRn = existingSet || tempName(customerId, "assetSets", -3);
+  let assetSeq = -11;
+
+  const operations: Record<string, unknown>[] = [
+    {
+      campaignBudgetOperation: {
+        create: {
+          resourceName: budgetRn,
+          name: `${input.name.slice(0, 80)} pmax budget`,
+          amountMicros: String(Math.max(15_000_000, input.dailyBudgetHalalas * 10_000)),
+          deliveryMethod: "STANDARD",
+          explicitlyShared: false,
+        },
+      },
+    },
+    {
+      campaignOperation: {
+        create: {
+          resourceName: campaignRn,
+          name: input.name.slice(0, 120),
+          advertisingChannelType: "PERFORMANCE_MAX",
+          status: "ENABLED",
+          campaignBudget: budgetRn,
+          maximizeConversions: {},
+          containsEuPoliticalAdvertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+          urlExpansionOptOut: true,
+          brandGuidelinesEnabled: false,
+        },
+      },
+    },
+  ];
+
+  if (!existingSet && locationPayload && "locationSet" in locationPayload) {
+    operations.push({
+      assetSetOperation: {
+        create: {
+          resourceName: setRn,
+          name: `mken-maps-${input.slug}`.slice(0, 120),
+          type: "LOCATION_SYNC",
+          locationSet: locationPayload.locationSet,
+        },
+      },
+    });
+    operations.push({
+      customerAssetSetOperation: {
+        create: {
+          customer: `customers/${customerId}`,
+          assetSet: setRn,
+        },
+      },
+    });
+  }
+
+  operations.push({
+    campaignAssetSetOperation: {
+      create: {
+        campaign: campaignRn,
+        assetSet: setRn,
+      },
+    },
+  });
+
+  const textAssets: Array<{ field: string; text: string }> = [
+    ...headlines.map((text) => ({ field: "HEADLINE", text })),
+    ...descriptions.map((text) => ({ field: "DESCRIPTION", text })),
+    { field: "LONG_HEADLINE", text: longHeadline },
+    { field: "BUSINESS_NAME", text: businessName },
+  ];
+  const assetOps: Record<string, unknown>[] = [];
+  const linkOps: Record<string, unknown>[] = [];
+
+  function pushAsset(fieldType: string, create: Record<string, unknown>) {
+    const resourceName = tempName(customerId, "assets", assetSeq);
+    assetSeq -= 1;
+    assetOps.push({ assetOperation: { create: { resourceName, ...create } } });
+    linkOps.push({
+      assetGroupAssetOperation: {
+        create: { assetGroup: groupRn, asset: resourceName, fieldType },
+      },
+    });
+  }
+
+  for (const item of textAssets) {
+    pushAsset(item.field, { name: `${item.field}-${Math.abs(assetSeq)}`.slice(0, 80), textAsset: { text: item.text } });
+  }
+  pushAsset("MARKETING_IMAGE", { name: "pmax-landscape", imageAsset: { data: landscape } });
+  pushAsset("SQUARE_MARKETING_IMAGE", { name: "pmax-square", imageAsset: { data: square } });
+  if (logo) {
+    pushAsset("LOGO", { name: "pmax-logo", imageAsset: { data: logo } });
+  }
+
+  operations.push(...assetOps, {
+    assetGroupOperation: {
+      create: {
+        resourceName: groupRn,
+        campaign: campaignRn,
+        name: `${input.name.slice(0, 80)} - assets`,
+        finalUrls: [website],
+        status: "ENABLED",
+      },
+    },
+  }, ...linkOps);
+
+  const created = await bulkMutate(customerId, operations, auth.token, loginCustomerId);
+  if (created.error) {
+    if (logo && /LOGO|aspect ratio|image/i.test(created.error)) {
+      const withoutLogo = operations.filter((op) => {
+        const link = op.assetGroupAssetOperation as { create?: { fieldType?: string } } | undefined;
+        const asset = op.assetOperation as { create?: { name?: string } } | undefined;
+        return link?.create?.fieldType !== "LOGO" && asset?.create?.name !== "pmax-logo";
+      });
+      const retried = await bulkMutate(customerId, withoutLogo, auth.token, loginCustomerId);
+      if (retried.error || !retried.results) return { error: explainPmaxError(retried.error || created.error) };
+      const retriedId = campaignIdFromBulk(retried.results);
+      if (!retriedId) return { error: "تعذّر قراءة معرّف حملة Performance Max" };
+      return { campaignId: retriedId };
+    }
+    if (
+      input.placeId &&
+      input.gbpToken &&
+      input.gbpEmail &&
+      /mapsLocationSet|VALUE_MUST_BE_UNSET/i.test(created.error)
+    ) {
+      return publishGoogleMapsPmax({ ...input, placeId: "" });
+    }
+    return { error: explainPmaxError(created.error) };
+  }
+  const campaignId = campaignIdFromBulk(created.results || []);
+  if (!campaignId) return { error: "تعذّر قراءة معرّف حملة Performance Max" };
+  return { campaignId };
+}
+
 async function setGoogleCampaignStatus(
   slug: string,
   customerId: string,
@@ -537,7 +833,7 @@ export async function fetchGoogleCampaignInsights(
     method: "POST",
     headers: adsHeaders(auth.token, auth.loginCustomerId),
     body: JSON.stringify({
-      query: `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions FROM campaign WHERE campaign.id = ${id}`,
+      query: `SELECT metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.all_conversions FROM campaign WHERE campaign.id = ${id}`,
     }),
   });
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -549,7 +845,9 @@ export async function fetchGoogleCampaignInsights(
     insights: {
       impressions: Number(metrics.impressions) || 0,
       clicks: Number(metrics.clicks) || 0,
-      conversations: Math.round(Number(metrics.conversions) || 0),
+      conversations: Math.round(
+        Number(metrics.allConversions ?? metrics.all_conversions ?? metrics.conversions) || 0
+      ),
       spentHalalas: Math.round(costMicros / 10_000),
     },
   };

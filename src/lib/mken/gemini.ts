@@ -47,6 +47,7 @@ function readInlineImage(data: {
 export async function generateGeminiImage(input: {
   prompt: string;
   logo?: GeminiInlineImage | null;
+  aspectRatio?: "1:1" | "16:9";
 }): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) return null;
@@ -62,7 +63,7 @@ export async function generateGeminiImage(input: {
     contents: [{ parts }],
     generationConfig: {
       responseModalities: ["TEXT", "IMAGE"],
-      imageConfig: { aspectRatio: "1:1" },
+      imageConfig: { aspectRatio: input.aspectRatio || "1:1" },
     },
   });
 

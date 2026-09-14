@@ -9,7 +9,7 @@ import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 import SaasUpgradeNotice from "@/components/SaasUpgradeNotice";
 
-type AdPlatformId = "meta_ctwa" | "google_ads" | "snapchat" | "tiktok";
+type AdPlatformId = "meta_ctwa" | "google_ads" | "google_pmax" | "snapchat" | "tiktok";
 type AdCreativeVariant = { headline: string; primaryText: string; cta: string; prefilledMessage: string };
 type AdCreative = {
   selectedIndex: number;
@@ -17,6 +17,7 @@ type AdCreative = {
   negativeKeywords: string[];
   dialect: "gulf" | "fusha";
   imageDataUrl?: string;
+  landscapeImageDataUrl?: string;
 };
 type AdCampaign = {
   id: string;
@@ -32,12 +33,22 @@ type AdCampaign = {
 
 const PLATFORM_LABELS: Record<AdPlatformId, string> = {
   meta_ctwa: "واتساب ميتا (انقر للمحادثة)",
-  google_ads: "إعلانات جوجل المحلية",
+  google_ads: "إعلان بحث جوجل المحلي",
+  google_pmax: "إعلان خرائط جوجل (Performance Max)",
   snapchat: "سناب شات",
   tiktok: "تيك توك",
 };
 
-const LIVE_PLATFORMS: AdPlatformId[] = ["meta_ctwa", "google_ads"];
+const LIVE_PLATFORMS: AdPlatformId[] = ["meta_ctwa", "google_ads", "google_pmax"];
+
+function isGoogleChannel(id: AdPlatformId) {
+  return id === "google_ads" || id === "google_pmax";
+}
+
+function cplText(spentHalalas: number, conversations: number) {
+  if (!conversations) return "تكلفة المحادثة —";
+  return `تكلفة المحادثة ${(spentHalalas / 100 / conversations).toFixed(1)} ر.س`;
+}
 
 type GoogleAccount = {
   customerId: string;
@@ -72,8 +83,11 @@ export default function AdsCampaignsPage() {
   const [genUsed, setGenUsed] = useState(0);
   const [genLimit, setGenLimit] = useState(12);
   const [intelNote, setIntelNote] = useState("");
+  const [measuredNote, setMeasuredNote] = useState("");
   const [blockers, setBlockers] = useState<string[]>([]);
   const [googleBlockers, setGoogleBlockers] = useState<string[]>([]);
+  const [mapsPmaxBlockers, setMapsPmaxBlockers] = useState<string[]>([]);
+  const [mapsPmaxReady, setMapsPmaxReady] = useState(false);
   const [geoLabel, setGeoLabel] = useState("");
   const [adAccountId, setAdAccountId] = useState("");
   const [pageId, setPageId] = useState("");
@@ -131,8 +145,22 @@ export default function AdsCampaignsPage() {
               }`
             : ""
         );
+        const measured = data.measured && typeof data.measured === "object" ? data.measured : null;
+        setMeasuredNote(
+          measured
+            ? measured.qualified
+              ? `قياس 30 يوماً: رانك ${measured.latestRank ?? "—"} · ثلاثي ${
+                  measured.top3Percentage ?? "—"
+                }% · حجوزات ${measured.bookings} · واتساب ${measured.whatsappConversations} · محادثات إعلان ${
+                  measured.adConversations
+                }`
+              : `قياس 30 يوماً غير مكتمل: ${(Array.isArray(measured.reasons) ? measured.reasons : []).join(" ")}`
+            : ""
+        );
         setBlockers(Array.isArray(data.blockers) ? data.blockers : []);
         setGoogleBlockers(Array.isArray(data.googleBlockers) ? data.googleBlockers : []);
+        setMapsPmaxBlockers(Array.isArray(data.mapsPmaxBlockers) ? data.mapsPmaxBlockers : []);
+        setMapsPmaxReady(Boolean(data.mapsPmaxReady));
         setAdAccountId(typeof data.adsMeta?.adAccountId === "string" ? data.adsMeta.adAccountId : "");
         setPageId(typeof data.adsMeta?.pageId === "string" ? data.adsMeta.pageId : "");
         setPixelId(typeof data.adsMeta?.pixelId === "string" ? data.adsMeta.pixelId : "");
@@ -213,7 +241,8 @@ export default function AdsCampaignsPage() {
           action: "create",
           platform,
           campaignName,
-          objective: platform === "google_ads" ? "LOCAL_LEADS" : "MESSAGES",
+          objective:
+            platform === "google_pmax" ? "STORE_VISITS" : platform === "google_ads" ? "LOCAL_LEADS" : "MESSAGES",
           dailyBudgetSar,
           radiusKm,
           serviceName,
@@ -226,7 +255,9 @@ export default function AdsCampaignsPage() {
         return;
       }
       showToast(
-        platform === "google_ads"
+        platform === "google_pmax"
+          ? "حُفظت الحملة كمسودة. انشرها كـ Performance Max عند جاهزية حساب جوجل وملف الخرائط."
+          : platform === "google_ads"
           ? "حُفظت الحملة كمسودة. انشرها على جوجل من القائمة أدناه عند جاهزية الحساب."
           : "حُفظت الحملة كمسودة. انشرها على ميتا من القائمة أدناه عند جاهزية التوكن.",
         "success"
@@ -254,7 +285,11 @@ export default function AdsCampaignsPage() {
       return;
     }
     showToast(
-      target?.platform === "google_ads" ? "نُشرت الحملة على إعلانات جوجل المحلية" : "نُشرت الحملة على ميتا (انقر للواتساب)",
+      target?.platform === "google_pmax"
+        ? "نُشرت حملة Performance Max — قد تظهر على خرائط جوجل حسب أهلية الحساب"
+        : target?.platform === "google_ads"
+          ? "نُشرت الحملة على بحث جوجل المحلي"
+          : "نُشرت الحملة على ميتا (انقر للواتساب)",
       "success"
     );
     await load();
@@ -379,6 +414,9 @@ export default function AdsCampaignsPage() {
     }
   };
 
+  const channelReady =
+    platform === "meta_ctwa" ? metaReady : platform === "google_pmax" ? mapsPmaxReady : googleReady;
+
   return (
     <div className="space-y-6" dir="rtl">
       {!adsAllowed && (
@@ -394,13 +432,14 @@ export default function AdsCampaignsPage() {
             <h1 className="text-lg font-extrabold text-white">إطلاق حملة بضغطة</h1>
             <p className="text-xs text-slate-400 mt-1 leading-6">
               اختر الخدمة والميزانية والنطاق. التوليد يستخدم رانك الخرائط ومؤشر MCS ونصوص الحملات التي جلبت محادثات.
-              ميتا: إطار بصري يُرفع عند النشر. جوجل: إعلان بحث محلي بنطاق القرب من الفرع.
+              ميتا: إطار بصري يُرفع عند النشر. جوجل: بحث محلي بنطاق القرب، أو Performance Max مع مواقع المنشأة ليظهر على الخرائط عند أهلية الحساب.
             </p>
             {intelNote ? <p className="text-[11px] text-slate-500 mt-2 leading-5">{intelNote}</p> : null}
+            {measuredNote ? <p className="text-[11px] text-slate-500 mt-2 leading-5">{measuredNote}</p> : null}
           </div>
         </div>
 
-        {!(platform === "google_ads" ? googleReady : metaReady) && (
+        {!channelReady && (
           <div className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 space-y-2 leading-6">
             <p className="font-bold">مساران منفصلان: حساب مكّن.لايف (مرة واحدة) ثم حساب المنشأة (المحروسة مثالاً).</p>
             {platform === "meta_ctwa" ? (
@@ -427,12 +466,19 @@ export default function AdsCampaignsPage() {
                   ? blockers.map((item) => <p key={item}>{item}</p>)
                   : null}
                 <p>
-                  Pixel/CAPI للمنشأة اختياري للنشر. {capiReady ? "التتبع جاهز." : "أضف Pixel ID أدناه أو META_PIXEL_ID على الخادم لتتبع الحجز والدفع."}
+                  Pixel/CAPI للمنشأة مطلوب للنشر. {capiReady ? "التتبع جاهز." : "أضف Pixel ID أدناه. لا يُستخدم بكسل أو رقم واتساب المنصة."}
                 </p>
               </>
             ) : (
               <>
-                {(googleBlockers.length ? googleBlockers : ["أكمل ربط حساب جوجل Ads لهذه المنشأة."]).map((item) => (
+                {(
+                  (platform === "google_pmax" && mapsPmaxBlockers.length ? mapsPmaxBlockers : googleBlockers)
+                    .length
+                    ? platform === "google_pmax" && mapsPmaxBlockers.length
+                      ? mapsPmaxBlockers
+                      : googleBlockers
+                    : ["أكمل ربط حساب جوجل Ads لهذه المنشأة."]
+                ).map((item) => (
                   <p key={item}>{item}</p>
                 ))}
                 <p>
@@ -445,13 +491,22 @@ export default function AdsCampaignsPage() {
                     </Link>
                   )}
                 </p>
+                {platform === "google_pmax" ? (
+                  <p>
+                    ملف الخرائط:{" "}
+                    <Link href={`/admin/ads/local-seo${query}` as Route} className="underline">
+                      اربط رابط خرائط جوجل أو Google Business
+                    </Link>
+                    . الظهور على الخرائط غير مضمون ويعتمد على أهلية الحساب والفئة.
+                  </p>
+                ) : null}
               </>
             )}
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-slate-950 border border-slate-800 p-4">
-          {platform === "google_ads" ? (
+          {isGoogleChannel(platform) ? (
             <>
               <div className="md:col-span-2 space-y-3">
                 <p className="text-xs text-slate-300 leading-6">
@@ -542,7 +597,7 @@ export default function AdsCampaignsPage() {
             />
           </label>
           <label className="space-y-1.5 md:col-span-2">
-            <span className="block text-xs font-bold text-slate-300">Pixel ID لهذه المنشأة (اختياري — CAPI)</span>
+            <span className="block text-xs font-bold text-slate-300">Pixel ID لهذه المنشأة (مطلوب — CAPI)</span>
             <input
               className={ADMIN_INPUT}
               dir="ltr"
@@ -620,6 +675,9 @@ export default function AdsCampaignsPage() {
                 </option>
               ))}
             </select>
+            <p className="text-[10px] text-slate-500">
+              سناب وتيك توك غير متاحين للنشر. بحث جوجل المحلي نطاق قرب. إعلان الخرائط هو Performance Max مع مواقع المنشأة — الظهور على الخرائط غير مضمون.
+            </p>
           </label>
           <label className="space-y-1.5">
             <span className="block text-xs font-bold text-slate-300">الخدمة أو العرض</span>
@@ -755,6 +813,8 @@ export default function AdsCampaignsPage() {
                         {" · "}أُنفق {((campaign.spentHalalas || 0) / 100).toFixed(0)} ر.س · ظهور{" "}
                         {campaign.metrics?.impressions || 0} · نقر {campaign.metrics?.clicks || 0} · محادثة{" "}
                         {campaign.metrics?.conversations || 0}
+                        {" · "}
+                        {cplText(campaign.spentHalalas || 0, campaign.metrics?.conversations || 0)}
                       </>
                     )}
                   </p>
@@ -769,7 +829,11 @@ export default function AdsCampaignsPage() {
                       className="inline-flex items-center gap-1 text-xs text-amber-300"
                     >
                       <Rocket className="w-4 h-4" />
-                      {campaign.platform === "google_ads" ? "نشر على جوجل" : "نشر على ميتا"}
+                      {campaign.platform === "google_pmax"
+                        ? "نشر على الخرائط"
+                        : campaign.platform === "google_ads"
+                          ? "نشر على جوجل"
+                          : "نشر على ميتا"}
                     </button>
                   )}
                   {campaign.status === "PAUSED" && LIVE_PLATFORMS.includes(campaign.platform) && adsAllowed && (

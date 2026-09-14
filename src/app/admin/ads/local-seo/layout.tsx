@@ -7,7 +7,7 @@ import type { Route } from "next";
 const TABS: AdminTab[] = [
   { href: "/admin/ads/local-seo" as Route, label: "الربط وNAP" },
   { href: "/admin/ads/local-seo/competitors" as Route, label: "قائمة المنافسين" },
-  { href: "/admin/ads/local-seo/reviews" as Route, label: "طلبات التقييم" },
+  { href: "/admin/ads/local-seo/reviews" as Route, label: "التقييمات والردود" },
 ];
 
 function LocalSeoTabs() {

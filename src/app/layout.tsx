@@ -22,7 +22,10 @@ import {
   SITE_NAME,
   brandMetadataIcons,
   siteMetadataBase,
+  siteOrigin,
 } from "@/lib/mken/seo";
+import { TenantMetaPixel } from "@/components/TenantMetaPixel";
+import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -32,39 +35,41 @@ const cairo = Cairo({
 
 export async function generateMetadata(): Promise<Metadata> {
   const slug = boundTenantFromHostname(hostnameFromHeaders(await headers()));
+  const origin = slug ? (await tenantWebsiteUrl(slug)).replace(/\/$/, "") : siteOrigin();
   return {
-    metadataBase: siteMetadataBase(),
-    title: {
-      default: SITE_DEFAULT_TITLE,
-      template: `%s | ${SITE_NAME}`,
-    },
-    description: SITE_DEFAULT_DESCRIPTION,
+    metadataBase: slug ? new URL(`${origin}/`) : siteMetadataBase(),
+    title: slug
+      ? { default: SITE_NAME, template: "%s" }
+      : {
+          default: SITE_DEFAULT_TITLE,
+          template: `%s | ${SITE_NAME}`,
+        },
+    description: slug ? undefined : SITE_DEFAULT_DESCRIPTION,
     applicationName: SITE_NAME,
     icons: brandMetadataIcons(slug),
-    keywords: [
-      "مكّن",
-      "زاتكا",
-      "فاتورة إلكترونية",
-      "واتساب CRM",
-      "خرائط Google",
-      "محلات السعودية",
-    ],
-    authors: [{ name: SITE_NAME, url: "https://mken.live" }],
-    openGraph: {
-      type: "website",
-      locale: "ar_SA",
-      siteName: SITE_NAME,
-      title: SITE_DEFAULT_TITLE,
-      description: SITE_DEFAULT_DESCRIPTION,
-      url: "/",
-      images: [{ url: PLATFORM_ICON }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: SITE_DEFAULT_TITLE,
-      description: SITE_DEFAULT_DESCRIPTION,
-      images: [PLATFORM_ICON],
-    },
+    keywords: slug
+      ? undefined
+      : ["مكّن", "زاتكا", "فاتورة إلكترونية", "واتساب CRM", "خرائط Google", "محلات السعودية"],
+    authors: [{ name: SITE_NAME, url: siteOrigin() }],
+    openGraph: slug
+      ? undefined
+      : {
+          type: "website",
+          locale: "ar_SA",
+          siteName: SITE_NAME,
+          title: SITE_DEFAULT_TITLE,
+          description: SITE_DEFAULT_DESCRIPTION,
+          url: "/",
+          images: [{ url: PLATFORM_ICON }],
+        },
+    twitter: slug
+      ? undefined
+      : {
+          card: "summary_large_image",
+          title: SITE_DEFAULT_TITLE,
+          description: SITE_DEFAULT_DESCRIPTION,
+          images: [PLATFORM_ICON],
+        },
     robots: {
       index: true,
       follow: true,
@@ -81,7 +86,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" data-scheme="light" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans bg-theme-main text-foreground selection:bg-amber-500 selection:text-slate-950 transition-colors duration-500">
         <Script id="mken-kill-legacy-sw" strategy="beforeInteractive">
-          {`(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()});});if(window.caches){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}})();`}
+          {`(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){var u=(x.active&&x.active.scriptURL)||(x.installing&&x.installing.scriptURL)||"";if(u.indexOf("push-sw.js")!==-1)return;x.unregister()});});if(window.caches){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}})();`}
         </Script>
         <Script id="mken-color-scheme" strategy="beforeInteractive">
           {`(function(){try{var s=localStorage.getItem("mken-color-scheme");if(s!=="dark"&&s!=="light")s="light";document.documentElement.setAttribute("data-scheme",s);document.documentElement.style.colorScheme=s;}catch(e){document.documentElement.setAttribute("data-scheme","light");}})();`}
@@ -90,6 +95,7 @@ export default function RootLayout({
           <AppProvider>
             <ColorSchemeProvider>
               <Suspense fallback={null}>
+                <BoundTenantPixel />
                 <OccasionProvider>
                   <OccasionBanner />
                   <OccasionParticleCanvas />
@@ -105,4 +111,9 @@ export default function RootLayout({
       </body>
     </html>
   );
+}
+
+async function BoundTenantPixel() {
+  const slug = boundTenantFromHostname(hostnameFromHeaders(await headers()));
+  return <TenantMetaPixel slug={slug} />;
 }

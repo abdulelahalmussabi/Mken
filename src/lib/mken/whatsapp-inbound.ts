@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createPublicAppointment } from "@/lib/mken/appointments";
+import { rememberCtwaClid, sendMetaCapiEvent } from "@/lib/mken/meta-ads";
 import { handleReviewRatingReply } from "@/lib/mken/review-funnel";
 import { listOpenSlots } from "@/lib/mken/slots";
 import { fetchTenantRow, getServiceRoleDb, TENANT_TABLE } from "@/lib/mken/tenant";
@@ -112,13 +113,17 @@ function extractInteractiveText(message: Json): string {
   );
 }
 
-function parseInbound(body: Json, contentType: string): { phone: string; text: string; provider: string; phoneNumberId: string } {
+function parseInbound(
+  body: Json,
+  contentType: string
+): { phone: string; text: string; provider: string; phoneNumberId: string; ctwaClid: string } {
   if (str(body.From) && str(body.Body)) {
     return {
       phone: str(body.From).replace("whatsapp:", "").replace("+", "").trim(),
       text: str(body.Body).trim(),
       provider: "twilio",
       phoneNumberId: "",
+      ctwaClid: "",
     };
   }
 
@@ -129,6 +134,7 @@ function parseInbound(body: Json, contentType: string): { phone: string; text: s
       text: str(data.body).trim(),
       provider: "ultramsg",
       phoneNumberId: "",
+      ctwaClid: "",
     };
   }
 
@@ -140,19 +146,21 @@ function parseInbound(body: Json, contentType: string): { phone: string; text: s
     const messages = Array.isArray(value.messages) ? asRecord(value.messages[0]) : {};
     const phoneNumberId = str(metadata.phone_number_id);
     const from = str(messages.from).replace("+", "").trim();
+    const referral = asRecord(messages.referral);
+    const ctwaClid = str(referral.ctwa_clid).trim();
     if (!from) {
-      return { phone: "", text: "", provider: "whatsapp_business", phoneNumberId };
+      return { phone: "", text: "", provider: "whatsapp_business", phoneNumberId, ctwaClid };
     }
     const type = str(messages.type);
     let text = "";
     if (type === "text") text = str(asRecord(messages.text).body).trim();
     else if (type === "interactive" || type === "button") text = extractInteractiveText(messages).trim();
     else text = "[غير مقروء - ميديا/مستند/تفاعل]";
-    return { phone: from, text, provider: "whatsapp_business", phoneNumberId };
+    return { phone: from, text, provider: "whatsapp_business", phoneNumberId, ctwaClid };
   }
 
   void contentType;
-  return { phone: "", text: "", provider: "unknown", phoneNumberId: "" };
+  return { phone: "", text: "", provider: "unknown", phoneNumberId: "", ctwaClid: "" };
 }
 
 async function findTenantByPhoneNumberId(phoneNumberId: string) {
@@ -278,8 +286,14 @@ export async function handleWhatsappInbound(request: Request): Promise<NextRespo
   }
 
   const phone = normalizeWaPhone(parsed.phone);
+  if (phone && parsed.ctwaClid) {
+    await rememberCtwaClid(tenantSlug, phone, parsed.ctwaClid);
+  }
   const bodyText = parsed.text.trim();
   if (!phone || !bodyText) {
+    if (phone && parsed.ctwaClid) {
+      return NextResponse.json({ status: "ok", message: "ctwa click stored" });
+    }
     return NextResponse.json({ status: "ignored", message: "No message contents found" });
   }
 
@@ -435,6 +449,13 @@ export async function handleWhatsappInbound(request: Request): Promise<NextRespo
           if (booking.error || !booking.appointment) {
             replyText = `عذراً: ${booking.error || "تعذّر إنشاء الحجز"}`;
           } else {
+            void sendMetaCapiEvent({
+              eventName: "Schedule",
+              slug: tenantSlug,
+              phone,
+              eventId: `book_${booking.appointment.id}`,
+              sourceUrl: `https://${siteDomain}/book`,
+            });
             replyText = `تم تسجيل حجزك مبدئياً بنجاح! 📅\nالخدمة: ${args.serviceName || args.serviceId}\nالتاريخ: ${args.date}\nالوقت: ${args.time}`;
             const payment = asRecord(config.payment);
             const paymentEnabled = payment.enabled === true && str(payment.provider) !== "none";

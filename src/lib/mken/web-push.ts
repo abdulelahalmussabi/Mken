@@ -1,4 +1,11 @@
-import { createPrivateKey, sign } from "node:crypto";
+import {
+  createPrivateKey,
+  sign,
+  createECDH,
+  createCipheriv,
+  hkdfSync,
+  randomBytes,
+} from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type PushKeys = { p256dh?: string; auth?: string };
@@ -9,6 +16,10 @@ function vapidConfig() {
     privateKey: (process.env.VAPID_PRIVATE_KEY || "").trim(),
     subject: (process.env.VAPID_SUBJECT || "mailto:admin@mken.live").trim(),
   };
+}
+
+export function vapidPublicKey(): string {
+  return vapidConfig().publicKey;
 }
 
 export function isPushConfigured(): boolean {
@@ -86,7 +97,7 @@ export async function isPushEnabledForTenant(
     enabled?: boolean;
     vapidPublicKey?: string;
   };
-  return Boolean(push.enabled && push.vapidPublicKey);
+  return Boolean(push.enabled !== false && isPushConfigured());
 }
 
 async function fetchTenantSubscriptions(supabase: SupabaseClient, tenantSlug: string) {
@@ -102,18 +113,47 @@ async function fetchTenantSubscriptions(supabase: SupabaseClient, tenantSlug: st
   return (data || []) as { endpoint: string; keys: PushKeys }[];
 }
 
-async function sendEmptyPush(endpoint: string): Promise<number> {
+function hkdfSha256(ikm: Buffer, salt: Buffer, info: Buffer, length: number): Buffer {
+  return Buffer.from(hkdfSync("sha256", ikm, salt, info, length));
+}
+
+function encryptWebPushPayload(payload: Buffer, p256dh: string, auth: string): Buffer {
+  const userPublic = fromB64url(p256dh);
+  const userAuth = fromB64url(auth);
+  const salt = randomBytes(16);
+  const local = createECDH("prime256v1");
+  local.generateKeys();
+  const localPublic = local.getPublicKey();
+  const shared = local.computeSecret(userPublic);
+  const authInfo = Buffer.concat([Buffer.from("WebPush: info\0"), userPublic, localPublic]);
+  const ikm = hkdfSha256(shared, userAuth, authInfo, 32);
+  const cek = hkdfSha256(ikm, salt, Buffer.from("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = hkdfSha256(ikm, salt, Buffer.from("Content-Encoding: nonce\0"), 12);
+  const padded = Buffer.concat([payload, Buffer.from([2])]);
+  const cipher = createCipheriv("aes-128-gcm", cek, nonce, { authTagLength: 16 });
+  const encrypted = Buffer.concat([cipher.update(padded), cipher.final(), cipher.getAuthTag()]);
+  const rs = Buffer.alloc(4);
+  rs.writeUInt32BE(4096, 0);
+  return Buffer.concat([salt, rs, Buffer.from([localPublic.length]), localPublic, encrypted]);
+}
+
+async function sendPush(endpoint: string, keys: PushKeys, payload: Buffer): Promise<number> {
   const url = new URL(endpoint);
   const jwt = vapidJwt(`${url.protocol}//${url.host}`);
   const cfg = vapidConfig();
   if (!jwt) throw new Error("vapid-jwt-failed");
+  if (!keys.p256dh || !keys.auth) throw new Error("subscription-keys-missing");
+  const body = encryptWebPushPayload(payload, keys.p256dh, keys.auth);
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       TTL: "60",
       Urgency: "high",
       Authorization: `vapid t=${jwt}, k=${cfg.publicKey}`,
+      "Content-Encoding": "aes128gcm",
+      "Content-Type": "application/octet-stream",
     },
+    body: new Uint8Array(body),
   });
   return res.status;
 }
@@ -121,9 +161,9 @@ async function sendEmptyPush(endpoint: string): Promise<number> {
 export async function sendPushToTenant(
   supabase: SupabaseClient,
   tenantSlug: string,
-  _title: string,
-  _body: string,
-  _url: string
+  title: string,
+  body: string,
+  url: string
 ): Promise<{ sent: number; failed: number; skipped?: string }> {
   if (!isPushConfigured()) {
     return { sent: 0, failed: 0, skipped: "vapid-not-configured" };
@@ -134,11 +174,20 @@ export async function sendPushToTenant(
   const subs = await fetchTenantSubscriptions(supabase, tenantSlug);
   if (!subs.length) return { sent: 0, failed: 0, skipped: "no-subscriptions" };
 
+  const payload = Buffer.from(
+    JSON.stringify({
+      title: title.slice(0, 120) || "مكّن",
+      body: body.slice(0, 500),
+      url: url.slice(0, 200) || "/admin",
+    }),
+    "utf8"
+  );
+
   let sent = 0;
   let failed = 0;
   for (const sub of subs) {
     try {
-      const status = await sendEmptyPush(sub.endpoint);
+      const status = await sendPush(sub.endpoint, sub.keys || {}, payload);
       if (status === 201 || status === 200 || status === 204) sent += 1;
       else if (status === 404 || status === 410) {
         failed += 1;

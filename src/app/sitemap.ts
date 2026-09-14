@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
-import { siteOrigin } from "@/lib/mken/seo";
+import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
+import { isIndexableStorefront, siteOrigin } from "@/lib/mken/seo";
 import { fetchTenants } from "@/lib/mken/tenant";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -8,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const tenants = (await fetchTenants()) ?? DEFAULT_CLIENTS;
 
   const pages: MetadataRoute.Sitemap = [
-    { url: origin, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
+    { url: `${origin}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
     {
       url: `${origin}/book`,
       lastModified: new Date(),
@@ -30,16 +31,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   for (const tenant of tenants) {
-    if (tenant.claimStatus === "unclaimed" || tenant.claimStatus === "pending") continue;
+    if (!isIndexableStorefront(tenant)) continue;
+    const home = (await tenantWebsiteUrl(tenant.slug)).replace(/\/$/, "");
     pages.push({
-      url: `${origin}/subscriber/${tenant.slug}`,
+      url: `${home}/`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     });
     for (const path of ["about", "services", "work", "contact"] as const) {
       pages.push({
-        url: `${origin}/subscriber/${tenant.slug}/${path}`,
+        url: `${home}/${path}`,
         lastModified: new Date(),
         changeFrequency: "weekly",
         priority: 0.6,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import Navbar from "@/components/Navbar";
@@ -18,7 +18,6 @@ import {
   Receipt,
   MessageSquare,
   Star,
-  TrendingUp,
   ArrowLeft,
   CheckCircle2,
   ShieldCheck,
@@ -90,10 +89,25 @@ const contactSchema = z.object({
 
 type ContactFormValues = z.infer<typeof contactSchema>;
 
+type MeasuredHome = {
+  ready: boolean;
+  windowDays: number;
+  requiredTenants: number;
+  qualifiedTenants: number;
+  stats: {
+    medianRank: number | null;
+    medianTop3: number | null;
+    avgBookings: number | null;
+    avgWhatsapp: number | null;
+    cplSar: number | null;
+  } | null;
+};
+
 export default function HomePage() {
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [submittingContact, setSubmittingContact] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [measured, setMeasured] = useState<MeasuredHome | null>(null);
   const { addContactMessage } = useApp();
   const { activeOccasion, occasionDetails, openModal, copyCoupon } = useOccasion();
 
@@ -123,6 +137,28 @@ export default function HomePage() {
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 3000);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/measured-stats")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data?.success) return;
+        setMeasured({
+          ready: Boolean(data.ready),
+          windowDays: Number(data.windowDays) || 30,
+          requiredTenants: Number(data.requiredTenants) || 3,
+          qualifiedTenants: Number(data.qualifiedTenants) || 0,
+          stats: data.stats && typeof data.stats === "object" ? data.stats : null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setMeasured(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-foreground font-sans transition-colors duration-500">
@@ -169,7 +205,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl">
-                فواتير زاتكا، واتساب CRM وحجز مواعيد، وظهور على خرائط جوجل — لمحلات ومنشآت المملكة، مع معاينة فورية لموقعك بموافقة المالك.
+                فواتير زاتكا، واتساب CRM وحجز مواعيد، وموقع مربوط بخرائط جوجل — لمحلات ومنشآت المملكة، مع معاينة فورية بموافقة المالك.
               </p>
 
               {/* Occasion Coupon Highlight Box */}
@@ -388,23 +424,68 @@ export default function HomePage() {
             {/* Feature Image / Graphic */}
             <div className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl">
               <div className="flex items-center justify-between pb-4 border-b border-line">
-                <h3 className="font-bold text-base text-foreground">إحصائيات التأثير المحقق</h3>
-                <span className="text-xs text-amber-700 font-bold">تقرير النمو 2026</span>
+                <h3 className="font-bold text-base text-foreground">ما هو جاهز في المنصة اليوم</h3>
+                <span className="text-xs text-amber-700 font-bold">
+                  {measured?.ready ? "من قياس 30 يوماً" : "بدون أرقام غير مقيسة"}
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-amber-700">+350%</div>
-                  <div className="text-xs text-muted">زيادة الاتصالات المباشرة</div>
+              <ul className="space-y-3 text-sm text-foreground">
+                <li className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                  <span>موقع للمنشأة مربوط برابط خرائط جوجل، مع معاينة غير مفهرسة حتى المطالبة.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <MessageSquare className="w-4 h-4 text-sky-500 mt-0.5 shrink-0" />
+                  <span>واتساب CRM وحجز مواعيد، مع إعلان انقر للمحادثة على ميتا.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <span>فوترة إلكترونية متوافقة مع الزكاة من اللوحة (حسب الباقة).</span>
+                </li>
+              </ul>
+              {measured?.ready && measured.stats ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {measured.stats.medianRank != null ? (
+                    <div className="rounded-2xl border border-line bg-background/70 px-3 py-2">
+                      <p className="text-[10px] text-muted">متوسط ترتيب الكلمة</p>
+                      <p className="text-lg font-extrabold text-foreground">{measured.stats.medianRank}</p>
+                    </div>
+                  ) : null}
+                  {measured.stats.medianTop3 != null ? (
+                    <div className="rounded-2xl border border-line bg-background/70 px-3 py-2">
+                      <p className="text-[10px] text-muted">نسبة الثلاثي</p>
+                      <p className="text-lg font-extrabold text-foreground">{measured.stats.medianTop3}%</p>
+                    </div>
+                  ) : null}
+                  {measured.stats.avgBookings != null ? (
+                    <div className="rounded-2xl border border-line bg-background/70 px-3 py-2">
+                      <p className="text-[10px] text-muted">متوسط الحجوزات / 30 يوماً</p>
+                      <p className="text-lg font-extrabold text-foreground">{measured.stats.avgBookings}</p>
+                    </div>
+                  ) : null}
+                  {measured.stats.avgWhatsapp != null ? (
+                    <div className="rounded-2xl border border-line bg-background/70 px-3 py-2">
+                      <p className="text-[10px] text-muted">متوسط محادثات واتساب</p>
+                      <p className="text-lg font-extrabold text-foreground">{measured.stats.avgWhatsapp}</p>
+                    </div>
+                  ) : null}
+                  {measured.stats.cplSar != null ? (
+                    <div className="rounded-2xl border border-line bg-background/70 px-3 py-2 col-span-2">
+                      <p className="text-[10px] text-muted">تكلفة المحادثة (إعلانات)</p>
+                      <p className="text-lg font-extrabold text-foreground">{measured.stats.cplSar} ر.س</p>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-emerald-600">4.9 / 5</div>
-                  <div className="text-xs text-muted">متوسط رضا أصحاب المحلات</div>
-                </div>
-              </div>
-              <div className="p-4 bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
-                <span className="text-muted">سرعة بدء تنفيذ الطلب:</span>
-                <span className="text-emerald-600 font-bold">خلال 24 ساعة من التقديم</span>
-              </div>
+              ) : (
+                <p className="text-xs text-muted leading-relaxed">
+                  عيّنة الإثبات غير كافية بعد. ننشر المتوسط بعد {measured?.requiredTenants || 3} منشآت ×{" "}
+                  {measured?.windowDays || 30} يوماً من رانك DataForSEO والحجز وواتساب (المؤهل الآن:{" "}
+                  {measured ? measured.qualifiedTenants : "—"}).
+                </p>
+              )}
+              <p className="text-xs text-muted leading-relaxed">
+                إعلان جوجل من اللوحة: بحث محلي جغرافي، أو Performance Max مع مواقع المنشأة ليظهر على الخرائط عند أهلية الحساب. الظهور غير مضمون، والقياس للمستأجر بعد الربط وليس كرقم مختلق هنا.
+              </p>
             </div>
           </div>
         </div>
