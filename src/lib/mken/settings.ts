@@ -47,7 +47,7 @@ export interface EmailType {
 }
 
 export const EMAIL_TYPES: EmailType[] = [
-  { id: "inquiries", name: "الاستفسارات", icon: "✉️", placeholder: "info@mken.live", hint: "استفسارات عامة وطلبات معلومات" },
+  { id: "inquiries", name: "الاستفسارات", icon: "✉️", placeholder: "admin@mken.live", hint: "استفسارات عامة وطلبات معلومات" },
   { id: "sales", name: "المبيعات", icon: "🛒", placeholder: "sales@mken.live", hint: "عروض الأسعار والخدمات التجارية" },
   { id: "support", name: "خدمة العملاء", icon: "🎧", placeholder: "CS@mken.live", hint: "متابعة الطلبات والدعم الفني" },
 ];

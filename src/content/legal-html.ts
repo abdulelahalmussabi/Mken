@@ -4,7 +4,7 @@ export const privacyHtml = `
   <h1>سياسة الخصوصية لمنصة مكّن</h1>
   <p>تحترم منصة <strong>مكّن</strong> (الموقع: <a href="https://mken.live">https://mken.live</a> والنطاقات الفرعية مثل <span dir="ltr">*.mken.live</span>) خصوصيتك. توضّح هذه الصفحة البيانات التي نجمعها — بما في ذلك بيانات Google عند تسجيل الدخول أو ربط الخدمات — وكيف نستخدمها، ونحفظها، ونحذفها. نلتزم بنظام حماية البيانات الشخصية السعودي (PDPL) الصادر عن سدايا، وبسياسة بيانات مستخدمي خدمات Google APIs بما في ذلك متطلبات الاستخدام المحدود (Limited Use).</p>
   <h2>1. من نحن</h2>
-  <p>مكّن منصة سعودية متعددة المستأجرين تقدّم مواقع للأعمال، فوترة، واتساب CRM، وربط ملف خرائط Google. المسؤول عن معالجة البيانات هو مشغّل المنصة على النطاق mken.live. للتواصل: <a href="mailto:info@mken.live">info@mken.live</a> أو واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</p>
+  <p>مكّن منصة سعودية متعددة المستأجرين تقدّم مواقع للأعمال، فوترة، واتساب CRM، وربط ملف خرائط Google. المسؤول عن معالجة البيانات هو مشغّل المنصة على النطاق mken.live. للتواصل: <a href="mailto:admin@mken.live">admin@mken.live</a> أو واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</p>
   <h2>2. بيانات Google التي نصل إليها</h2>
   <p>عند استخدام حساب Google معنا، نطلب فقط الصلاحيات اللازمة للخدمة التي اخترتها:</p>
   <h3>أ) تسجيل الدخول بحساب Google (المصادقة)</h3>
@@ -64,7 +64,7 @@ export const privacyHtml = `
   <ol>
     <li>ألغِ ربط Google من إعدادات لوحة الإدارة إن وُجد، و/أو أزل صلاحية «مكّن» من <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
     <li>قدّم طلب الحذف من داخل المنصة عبر <a href="/privacy/delete">/privacy/delete</a> أو من إعدادات لوحة الإدارة (حساب المنشأة فقط). يُسجَّل الطلب ويُنفَّذ على جداول تلك المنشأة.</li>
-    <li>أو راسلنا على <a href="mailto:info@mken.live">info@mken.live</a> بعنوان «طلب حذف بيانات» واذكر البريد المستخدم في الحساب، أو واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</li>
+    <li>أو راسلنا على <a href="mailto:admin@mken.live">admin@mken.live</a> بعنوان «طلب حذف بيانات» واذكر البريد المستخدم في الحساب، أو واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</li>
   </ol>
   <p>نعالج طلب الحذف خلال 30 يوماً ما لم يُلزمنا النظام بالاحتفاظ بسجل معيّن (مثل أرقام الفواتير والزكاة). حذف الحساب يزيل بيانات الملف الشخصي وبيانات Google والمحادثات والمواعيد من أنظمتنا التشغيلية، ويُجهَّل اسم العميل على الفواتير المحتفظ بها.</p>
   <h2>9. ملفات الارتباط والتقنية المشابهة</h2>
@@ -74,7 +74,7 @@ export const privacyHtml = `
   <h2>11. التعديلات</h2>
   <p>قد نحدّث هذه السياسة عند تغيّر الخدمة أو النظام. تاريخ «آخر تحديث» أعلى الصفحة هو المرجع. الاستمرار في استخدام المنصة بعد التحديث يعني الاطلاع على النسخة الجديدة.</p>
   <h2>12. التواصل</h2>
-  <p>مسؤول الخصوصية / الدعم: <a href="mailto:info@mken.live">info@mken.live</a> · واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a> · المملكة العربية السعودية.</p>
+  <p>مسؤول الخصوصية / الدعم: <a href="mailto:admin@mken.live">admin@mken.live</a> · واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a> · المملكة العربية السعودية.</p>
   <p>انظر أيضاً: <a href="/terms">شروط الخدمة</a>.</p>
 </article>
 <hr>
@@ -83,7 +83,7 @@ export const privacyHtml = `
   <h1>Mken Privacy Policy</h1>
   <p><strong>Mken</strong> (website: <a href="https://mken.live">https://mken.live</a> and subdomains such as *.mken.live) explains here what data we collect — including Google user data when you sign in or connect Google services — how we use it, how we store it, and how you can request deletion. We comply with the Saudi Personal Data Protection Law (PDPL / SDAIA) and the Google API Services User Data Policy, including the Limited Use requirements.</p>
   <h2>1. Who we are</h2>
-  <p>Mken is a Saudi multi-tenant platform for business websites, invoicing, WhatsApp CRM, and Google Maps / Business Profile tools. The data controller is the operator of mken.live. Contact: <a href="mailto:info@mken.live">info@mken.live</a> or WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</p>
+  <p>Mken is a Saudi multi-tenant platform for business websites, invoicing, WhatsApp CRM, and Google Maps / Business Profile tools. The data controller is the operator of mken.live. Contact: <a href="mailto:admin@mken.live">admin@mken.live</a> or WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</p>
   <h2>2. Google user data we access</h2>
   <p>We request only the Google scopes needed for the feature you choose:</p>
   <h3>A) Google Sign-In (authentication)</h3>
@@ -143,7 +143,7 @@ export const privacyHtml = `
   <ol>
     <li>Disconnect Google from admin settings if available, and/or remove Mken under <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">myaccount.google.com/permissions</a>.</li>
     <li>Submit an in-app deletion request at <a href="/privacy/delete">/privacy/delete</a> or from tenant admin settings (the tenant account only). The request is recorded and executed against that tenant’s tables.</li>
-    <li>Or email <a href="mailto:info@mken.live">info@mken.live</a> with the subject “Data deletion request” and the email on the account, or WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</li>
+    <li>Or email <a href="mailto:admin@mken.live">admin@mken.live</a> with the subject “Data deletion request” and the email on the account, or WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</li>
   </ol>
   <p>We process deletion requests within 30 days unless a legal retention duty applies (for example e-invoice identifiers). Account deletion removes profile data, Google tokens, conversations, and appointments from operational systems, and anonymizes customer names on retained invoices.</p>
   <h2>9. Cookies</h2>
@@ -153,7 +153,7 @@ export const privacyHtml = `
   <h2>11. Changes</h2>
   <p>We may update this policy when the product or the law changes. The “Last updated” date at the top is the source of truth. Continued use after an update constitutes notice of the new version.</p>
   <h2>12. Contact</h2>
-  <p>Privacy / support: <a href="mailto:info@mken.live">info@mken.live</a> · WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a> · Kingdom of Saudi Arabia.</p>
+  <p>Privacy / support: <a href="mailto:admin@mken.live">admin@mken.live</a> · WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a> · Kingdom of Saudi Arabia.</p>
   <p>See also: <a href="/terms">Terms of Service</a>.</p>
 </article>
 `;
@@ -189,7 +189,7 @@ export const termsHtml = `
   <h2>10. القانون والاختصاص</h2>
   <p>تخضع هذه الشروط لأنظمة المملكة العربية السعودية. يُسعى لحل النزاع ودياً أولاً، ثم تكون الجهة القضائية المختصة في المملكة هي صاحبة الاختصاص.</p>
   <h2>11. التواصل</h2>
-  <p><a href="mailto:info@mken.live">info@mken.live</a> · واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</p>
+  <p><a href="mailto:admin@mken.live">admin@mken.live</a> · واتساب <a href="https://wa.me/966543530333" dir="ltr">+966 54 353 0333</a>.</p>
 </article>
 <hr>
 <article id="en" lang="en" dir="ltr">
@@ -222,6 +222,6 @@ export const termsHtml = `
   <h2>10. Governing law</h2>
   <p>These Terms are governed by the laws of the Kingdom of Saudi Arabia. Parties will first attempt an amicable resolution; competent Saudi courts then have jurisdiction.</p>
   <h2>11. Contact</h2>
-  <p><a href="mailto:info@mken.live">info@mken.live</a> · WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</p>
+  <p><a href="mailto:admin@mken.live">admin@mken.live</a> · WhatsApp <a href="https://wa.me/966543530333">+966 54 353 0333</a>.</p>
 </article>
 `;

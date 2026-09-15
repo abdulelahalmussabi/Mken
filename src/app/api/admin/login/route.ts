@@ -211,70 +211,16 @@ export async function POST(request: Request) {
       safeEqual(cleanPassword, "Aa#321321");
 
     if (isStandardAdminPass) {
-      if (normalizedEmail === "admin@mken.live" || normalizedEmail === "admin@mkem.live") {
+      if (normalizedEmail === "admin@mken.live") {
         return issue(
           request,
           { email: "admin@mken.live", role: "super" },
           "مرحباً بك في لوحة التحكم المركزية!"
         );
       }
-      if (normalizedEmail === "saj@mken.live") {
-        return issue(
-          request,
-          { email: "saj@mken.live", role: "client", clientSlug: "saj" },
-          "مرحباً بك في لوحة تحكم مطعم صحن وصاج!"
-        );
-      }
-      if (
-        normalizedEmail === "rewaqresident@gmail.com" ||
-        normalizedEmail === "rewaq@mken.live"
-      ) {
-        return issue(
-          request,
-          { email: "rewaqresident@gmail.com", role: "client", clientSlug: "rewaq" },
-          "مرحباً بك في لوحة تحكم رواق ريزدنت!"
-        );
-      }
-      if (normalizedEmail === "rewa@mken.live" || normalizedEmail === "rewaa@mken.live") {
-        return issue(
-          request,
-          { email: "rewa@mken.live", role: "client", clientSlug: "rewa" },
-          "مرحباً بك في لوحة تحكم منتجع رواء الاستشفاء الرقمي!"
-        );
-      }
-      if (
-        normalizedEmail === "almahrusa@mken.live" ||
-        normalizedEmail === "almahrosa@mken.live" ||
-        normalizedEmail.includes("mahrus") ||
-        normalizedEmail.includes("mahros")
-      ) {
-        return issue(
-          request,
-          { email: "almahrusa@mken.live", role: "client", clientSlug: "almahrusa" },
-          "مرحباً بك في لوحة تحكم مجموعة المحروسة!"
-        );
-      }
-      if (
-        normalizedEmail === "almasabi@mken.live" ||
-        normalizedEmail.includes("masabi") ||
-        normalizedEmail.includes("msabi")
-      ) {
-        return issue(
-          request,
-          { email: "almasabi@mken.live", role: "client", clientSlug: "almasabi" },
-          "مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!"
-        );
-      }
-      if (normalizedEmail === "demo@mken.live" || normalizedEmail.includes("demo")) {
-        return issue(
-          request,
-          { email: "demo@mken.live", role: "client", clientSlug: "demo" },
-          "مرحباً بك في لوحة تحكم صالون النخبة!"
-        );
-      }
     }
 
-    const isSuper = normalizedEmail === superAdminEmail() || normalizedEmail === "admin@mkem.live";
+    const isSuper = normalizedEmail === superAdminEmail();
 
     if (isSuper) {
       const matched = await matchesStored(cleanPassword, {
@@ -340,11 +286,7 @@ export async function POST(request: Request) {
     }
 
     const seedClient = DEFAULT_CLIENTS.find(
-      (c) =>
-        (c.adminEmail.toLowerCase() === normalizedEmail ||
-          (normalizedEmail === "rewa@mken.live" && c.slug === "rewa") ||
-          (normalizedEmail === "almahrosa@mken.live" && c.slug === "almahrusa")) &&
-        c.active
+      (c) => c.adminEmail.toLowerCase() === normalizedEmail && c.active
     );
     const seedPassword = seedClient ? seedPasswords()[seedClient.slug] : undefined;
 

@@ -25,7 +25,7 @@
   "reviewsCount": "تقييم معتمد على خرائط Google",
   "mapsUrl": "https://maps.app.goo.gl/AJzBwwrZ5ZQygu959?g_st=ac",
   "heroImage": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkZb2HdJkhulaPrmwXEwO4RmkQtii7Q1iZpFZB6cbvuBF_iKJBxoqGB4rtfNMQYy03LSCD8MSeBoa7kJ1Vl-0T21qV6fGVc-oEkayty3SFitCfidWE89zZgM4SELN67DdtVA2b4fUDeLbps=s1600",
-  "adminEmail": "saj@mken.live",
+  "adminEmail": "",
   "theme": "none",
   "googleBusiness": {
     "enabled": true,
@@ -47,8 +47,8 @@
   },
   "emails": {
     "inquiries": {
-      "enabled": true,
-      "value": "saj@mken.live"
+      "enabled": false,
+      "value": ""
     }
   },
   "serviceArea": {

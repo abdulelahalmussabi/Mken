@@ -52,7 +52,7 @@ async function handleSeed() {
       let userId: string;
       const existingUser = usersList.find((u) => {
         const e = (u.email || "").toLowerCase();
-        return e === acc.email.toLowerCase() || (acc.slug === "admin" && e === "admin@mkem.live");
+        return e === acc.email.toLowerCase();
       });
 
       if (existingUser) {
