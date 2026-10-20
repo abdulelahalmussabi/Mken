@@ -114,6 +114,7 @@ export interface StorefrontPagesPublic {
     ctaLabel: string;
     ctaHref: string;
     featuredServiceIds: string[];
+    heroBadgesEnabled: boolean;
     stats: ContentStat[];
     partners: ContentPartner[];
   };
@@ -181,6 +182,7 @@ const EMPTY_PAGES: StorefrontPagesPublic = {
     ctaLabel: "",
     ctaHref: "",
     featuredServiceIds: [],
+    heroBadgesEnabled: true,
     stats: [],
     partners: [],
   },
@@ -211,7 +213,7 @@ const EMPTY_PAGES: StorefrontPagesPublic = {
 const LIMITS = {
   stats: 6,
   partners: 12,
-  featured: 4,
+  featured: 20,
   values: 12,
   team: 12,
   credentials: 8,
@@ -317,6 +319,7 @@ export function pagesFromConfig(config: MkenConfig): StorefrontPagesPublic {
       ctaLabel: clip(home.ctaLabel, LIMITS.short),
       ctaHref: clip(home.ctaHref, 500),
       featuredServiceIds: asArray(home.featuredServiceIds, (id) => clip(id, 80) || null, LIMITS.featured),
+      heroBadgesEnabled: bool(home.heroBadgesEnabled, true),
       stats: asArray(
         home.stats,
         (item) => {

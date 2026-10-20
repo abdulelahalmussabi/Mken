@@ -125,8 +125,13 @@ export default function AdsSecondaryPage() {
                   <span className="text-[11px] text-slate-500">{scheduleStatus(ad)}</span>
                   <button
                     type="button"
-                    onClick={() => setAds((prev) => prev.filter((_, i) => i !== index))}
-                    className="text-rose-400"
+                    onClick={() => {
+                      if (confirm(`هل أنت متأكد من حذف إعلان «${ad.title || "هذا الإعلان"}»؟`)) {
+                        setAds((prev) => prev.filter((_, i) => i !== index));
+                      }
+                    }}
+                    className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-300 border border-rose-800/50 rounded-lg transition"
+                    title="حذف هذا الإعلان"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

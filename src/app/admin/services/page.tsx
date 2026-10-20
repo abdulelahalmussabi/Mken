@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import type { ResolvedActivity, ResolvedService } from "@/lib/mken/catalog";
-import { LayoutGrid, RefreshCw, Save, Star, Tag, Check, X } from "lucide-react";
+import { LayoutGrid, RefreshCw, Save, Star, Tag, Check, X, Trash2, Plus, AlertCircle } from "lucide-react";
 
 export default function AdminServicesPage() {
   const { session, isSuperAdmin, clients } = useAdmin();
@@ -20,6 +20,12 @@ export default function AdminServicesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newShortTitle, setNewShortTitle] = useState("");
+  const [newPrice, setNewPrice] = useState("السعر عند الطلب");
+  const [newDescription, setNewDescription] = useState("");
 
   const tenant = isSuperAdmin ? selectedTenant : session?.clientSlug || "";
   const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
@@ -130,6 +136,72 @@ export default function AdminServicesPage() {
 
   const savePrice = (id: string) => {
     save({ serviceOverrides: { [id]: { price: prices[id]?.trim() ?? "" } } }, "تم حفظ السعر");
+  };
+
+  const deleteService = async (id: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/services${query}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteServiceId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر حذف الخدمة", "error");
+        return;
+      }
+      applyCatalog(data);
+      showToast("تم حذف الخدمة بنجاح", "success");
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setSaving(false);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const createCustomService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !openActivity) {
+      showToast("يرجى إدخال اسم الخدمة", "error");
+      return;
+    }
+    const slugId = `srv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+    const newService = {
+      id: slugId,
+      activityId: openActivity,
+      icon: "✨",
+      title: newTitle.trim(),
+      shortTitle: newShortTitle.trim() || newTitle.trim(),
+      description: newDescription.trim(),
+      price: newPrice.trim() || "السعر عند الطلب",
+      features: ["خدمة مخصصة"],
+      category: "خدمات",
+    };
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/services${query}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newCustomService: newService }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر إضافة الخدمة", "error");
+        return;
+      }
+      applyCatalog(data);
+      showToast("تمت إضافة الخدمة بنجاح!", "success");
+      setShowAddForm(false);
+      setNewTitle("");
+      setNewShortTitle("");
+      setNewDescription("");
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const activeActivity = activities.find((a) => a.id === openActivity);
@@ -285,10 +357,70 @@ export default function AdminServicesPage() {
             {/* Services of selected activity */}
             {activeActivity && (
               <section className="space-y-3">
-                <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2 justify-end">
-                  خدمات: {activeActivity.overrides.title || activeActivity.title}
-                  <Tag className="w-4 h-4 text-amber-400" />
-                </h2>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(!showAddForm)}
+                    disabled={saving || !activeActivity.enabled}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs rounded-xl transition disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    إضافة خدمة جديدة
+                  </button>
+                  <h2 className="text-sm font-bold text-slate-300 flex items-center gap-2 justify-end">
+                    خدمات: {activeActivity.overrides.title || activeActivity.title}
+                    <Tag className="w-4 h-4 text-amber-400" />
+                  </h2>
+                </div>
+
+                {showAddForm && (
+                  <form onSubmit={createCustomService} className="p-4 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-3 text-right">
+                    <p className="text-xs font-bold text-amber-300">إضافة خدمة جديدة لهذا القسم</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        required
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="اسم الخدمة (مثال: جلسة استرخاء)"
+                        className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-right focus:outline-none focus:border-amber-500"
+                      />
+                      <input
+                        value={newShortTitle}
+                        onChange={(e) => setNewShortTitle(e.target.value)}
+                        placeholder="الشارة المختصرة (اختياري)"
+                        className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-right focus:outline-none focus:border-amber-500"
+                      />
+                      <input
+                        value={newPrice}
+                        onChange={(e) => setNewPrice(e.target.value)}
+                        placeholder="السعر (مثال: 150 ر.س أو السعر عند الطلب)"
+                        className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-right focus:outline-none focus:border-amber-500"
+                      />
+                      <input
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        placeholder="وصف مختصر للخدمة"
+                        className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white text-right focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 justify-end pt-1">
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50"
+                      >
+                        {saving ? "جاري الإضافة..." : "حفظ الخدمة الجديدة"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddForm(false)}
+                        className="px-4 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 {!activeActivity.enabled && (
                   <p className="p-4 rounded-2xl bg-amber-950/20 border border-amber-800/40 text-amber-300 text-xs font-bold">
@@ -365,7 +497,43 @@ export default function AdminServicesPage() {
                             <Star className="w-3.5 h-3.5" />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmId(service.id)}
+                          disabled={saving}
+                          className="p-2 bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 rounded-xl transition-all disabled:opacity-50"
+                          title="حذف الخدمة"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
+
+                      {deleteConfirmId === service.id && (
+                        <div className="w-full mt-2 p-3 rounded-2xl bg-rose-950/80 border border-rose-800/80 text-xs flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 text-rose-200 font-bold">
+                            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                            <span>هل أنت متأكد من حذف خدمة «{service.overrides.title || service.title}»؟</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => deleteService(service.id)}
+                              disabled={saving}
+                              className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white font-extrabold rounded-lg transition"
+                            >
+                              {saving ? "جاري الحذف..." : "نعم، حذف"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              disabled={saving}
+                              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg transition"
+                            >
+                              إلغاء
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

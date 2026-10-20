@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { LayoutGrid, Save } from "lucide-react";
+import { LayoutGrid, Save, Trash2 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import type { ResolvedActivity, ResolvedService } from "@/lib/mken/catalog";
@@ -154,15 +154,44 @@ export default function InterfaceServicesPage() {
                     <textarea className={ADMIN_INPUT} rows={3} value={draft.features} onChange={(e) => patch(service.id, "features", e.target.value)} />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  disabled={saving === service.id}
-                  onClick={() => saveCard(service.id)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  {saving === service.id ? "جاري الحفظ..." : "حفظ البطاقة"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={saving === service.id}
+                    onClick={() => saveCard(service.id)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {saving === service.id ? "جاري الحفظ..." : "حفظ البطاقة"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving === service.id}
+                    onClick={async () => {
+                      if (!window.confirm(`هل أنت متأكد من حذف وإخفاء خدمة «${draft.title || service.title}»؟`)) return;
+                      try {
+                        const res = await fetch(`/api/services${query}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ deleteServiceId: service.id }),
+                        });
+                        if (res.ok) {
+                          showToast("تم حذف الخدمة من العرض بنجاح", "success");
+                          load();
+                        } else {
+                          showToast("تعذّر الحذف", "error");
+                        }
+                      } catch {
+                        showToast("تعذّر الاتصال بالخادم", "error");
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 font-bold text-xs rounded-xl transition"
+                    title="حذف الخدمة وإخفائها نهائياً"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    حذف الخدمة
+                  </button>
+                </div>
               </section>
             );
           })}

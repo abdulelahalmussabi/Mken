@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { EyeOff, FileText, Pencil, Save } from "lucide-react";
+import { EyeOff, FileText, Pencil, Save, Check, Sparkles } from "lucide-react";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 import {
@@ -67,6 +67,8 @@ export default function InterfacePagesPage() {
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
   const [heroVideoUrl, setHeroVideoUrl] = useState("");
+  const [heroBadgesEnabled, setHeroBadgesEnabled] = useState(true);
+  const [availableServices, setAvailableServices] = useState<Array<{ id: string; title: string; shortTitle?: string; icon?: string }>>([]);
   const [ctaLabel, setCtaLabel] = useState("");
   const [ctaHref, setCtaHref] = useState("");
   const [featuredIds, setFeaturedIds] = useState("");
@@ -91,6 +93,7 @@ export default function InterfacePagesPage() {
   const hydrate = (data: StorefrontPagesPublic) => {
     setPages(data);
     setHeroVideoUrl(data.home.heroVideoUrl);
+    setHeroBadgesEnabled(data.home.heroBadgesEnabled !== false);
     setCtaLabel(data.home.ctaLabel);
     setCtaHref(data.home.ctaHref);
     setFeaturedIds(data.home.featuredServiceIds.join("\n"));
@@ -129,6 +132,24 @@ export default function InterfacePagesPage() {
         return;
       }
       hydrate(data.pages);
+
+      fetch(`/api/services${query}`)
+        .then((r) => r.json())
+        .then((sData) => {
+          if (sData.success && Array.isArray(sData.services)) {
+            setAvailableServices(
+              sData.services
+                .filter((s: { enabled?: boolean }) => s.enabled)
+                .map((s: { id: string; overrides?: { title?: string; shortTitle?: string; icon?: string }; title?: string; shortTitle?: string; icon?: string }) => ({
+                  id: s.id,
+                  title: s.overrides?.title || s.title || s.id,
+                  shortTitle: s.overrides?.shortTitle || s.shortTitle,
+                  icon: s.overrides?.icon || s.icon || "🏷️",
+                }))
+            );
+          }
+        })
+        .catch(() => {});
     } catch {
       setError("تعذّر الاتصال بالخادم");
     } finally {
@@ -266,6 +287,7 @@ export default function InterfacePagesPage() {
                     ctaLabel,
                     ctaHref,
                     featuredServiceIds: featuredIds.split("\n").map((id) => id.trim()).filter(Boolean),
+                    heroBadgesEnabled,
                     stats: parseLines(statsText, ["value", "label"]).map((row) => ({
                       value: row.value,
                       label: row.label,
@@ -283,6 +305,76 @@ export default function InterfacePagesPage() {
             className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4"
           >
             <h2 className="text-sm font-extrabold text-white">محتوى الرئيسية</h2>
+
+            {/* Hero Badges Controls */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    شارات الخدمات في قسم الهيرو (أعلى الصفحة)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    إظهار أزرار تصفية سريعة أسفل نص الهيرو للخدمات الأكثر طلباً.
+                  </p>
+                </div>
+                <Toggle
+                  on={heroBadgesEnabled}
+                  onChange={() => setHeroBadgesEnabled(!heroBadgesEnabled)}
+                />
+              </div>
+
+              {heroBadgesEnabled && (
+                <div className="space-y-3 pt-2 border-t border-slate-800/80">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-300">
+                      اختر الخدمات المعروضة في الهيرو بالضغط عليها:
+                    </span>
+                    <span className="text-amber-400 font-bold">
+                      محدد: {featuredIds.split("\n").map(s => s.trim()).filter(Boolean).length} خدمة
+                    </span>
+                  </div>
+
+                  {availableServices.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {availableServices.map((srv) => {
+                        const currentList = featuredIds.split("\n").map(s => s.trim()).filter(Boolean);
+                        const isSelected = currentList.includes(srv.id);
+                        return (
+                          <button
+                            key={srv.id}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected
+                                ? currentList.filter(id => id !== srv.id)
+                                : [...currentList, srv.id];
+                              setFeaturedIds(next.join("\n"));
+                            }}
+                            className={`p-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-between gap-2 text-right ${
+                              isSelected
+                                ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                                : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                            }`}
+                          >
+                            <span className="truncate flex items-center gap-1.5">
+                              <span>{srv.icon}</span>
+                              <span className="truncate">{srv.shortTitle || srv.title}</span>
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">جاري تحميل الخدمات المفعّلة...</p>
+                  )}
+                  <p className="text-[11px] text-slate-500">
+                    إذا تركت التحديد فارغاً، سيعرض النظام تلقائياً أول 6-8 خدمات فقط لمنع تكدس الهيرو.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <label className="block text-xs font-bold text-slate-300">رابط فيديو الواجهة (اختياري)</label>
             <input className={ADMIN_INPUT} value={heroVideoUrl} onChange={(e) => setHeroVideoUrl(e.target.value)} placeholder="https://..." />
             <label className="block text-xs font-bold text-slate-300">نص زر الدعوة</label>

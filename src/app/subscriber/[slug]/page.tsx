@@ -48,6 +48,12 @@ export default function SubscriberStorefrontPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const servicesPageOn = pages.enabled.services;
   const featuredIds = pages.home.featuredServiceIds;
+  const heroBadgesEnabled = pages.home.heroBadgesEnabled !== false;
+  const heroFeaturedIds = pages.home.featuredServiceIds || [];
+  const heroBadges =
+    heroFeaturedIds.length > 0
+      ? currentServices.filter((srv) => heroFeaturedIds.includes(srv.id))
+      : currentServices.slice(0, 8);
   const featured =
     featuredIds.length > 0
       ? currentServices.filter((srv) => featuredIds.includes(srv.id))
@@ -161,28 +167,36 @@ export default function SubscriberStorefrontPage() {
                 </p>
               </div>
               <p className="text-base sm:text-lg text-muted leading-relaxed">{storeInfo.subtitle}</p>
-              {!servicesPageOn ? (
+              {!servicesPageOn && heroBadgesEnabled && heroBadges.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedCategory("all")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold border ${
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      const el = document.getElementById("services");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                       selectedCategory === "all"
-                        ? "bg-amber-500 text-slate-950 border-amber-400"
-                        : "bg-surface text-muted border-line"
+                        ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+                        : "bg-surface text-muted border-line hover:text-foreground"
                     }`}
                   >
                     الخدمات المتوفرة
                   </button>
-                  {currentServices.map((srv) => (
+                  {heroBadges.map((srv) => (
                     <button
                       key={srv.id}
                       type="button"
-                      onClick={() => setSelectedCategory(srv.id)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold border ${
+                      onClick={() => {
+                        setSelectedCategory(srv.id);
+                        const el = document.getElementById("services");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                         selectedCategory === srv.id
-                          ? "bg-amber-500 text-slate-950 border-amber-400"
-                          : "bg-surface text-muted border-line"
+                          ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+                          : "bg-surface text-muted border-line hover:text-foreground"
                       }`}
                     >
                       {srv.badge}

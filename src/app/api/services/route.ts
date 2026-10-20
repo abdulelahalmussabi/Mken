@@ -125,6 +125,13 @@ export async function PUT(request: Request) {
       update.serviceOverrides = body.serviceOverrides as Record<string, ServiceOverrides>;
     }
 
+    if (typeof body.deleteServiceId === "string" && body.deleteServiceId.trim()) {
+      update.deleteServiceId = body.deleteServiceId.trim();
+    }
+    if (body.newCustomService && typeof body.newCustomService === "object") {
+      update.newCustomService = body.newCustomService;
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json(
         { success: false, message: "لا توجد حقول للتحديث" },

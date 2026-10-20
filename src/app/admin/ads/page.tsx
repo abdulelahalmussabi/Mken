@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Megaphone, Save } from "lucide-react";
+import Link from "next/link";
+import type { Route } from "next";
+import { Megaphone, Save, Layers, ArrowLeft, Plus } from "lucide-react";
 import { ADMIN_INPUT, useAppearanceEditor } from "@/components/AdminPageTabs";
 import { SAUDI_OCCASIONS, type OccasionId } from "@/context/OccasionContext";
 import type { PrimaryAd } from "@/lib/mken/appearance";
@@ -160,6 +162,28 @@ export default function AdsPrimaryPage() {
             <Save className="w-4 h-4" />
             {saving ? "جاري الحفظ..." : "حفظ الإعلان الرئيسي"}
           </button>
+
+          {/* Quick link to secondary promo ads */}
+          <div className="mt-8 pt-6 border-t border-slate-800 flex items-center justify-between gap-4 flex-wrap bg-slate-950/60 p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">العروض الترويجية والبطاقات الثانوية</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  لديك ({appearance?.ads?.secondary?.length || 0}) إعلانات/عروض مسجلة — يمكنك إضافة عروض جديدة، تحريرها أو حذفها.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={"/admin/ads/secondary" as Route}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl transition"
+            >
+              <span>إدارة العروض الثانوية وإضافة جديد</span>
+              <ArrowLeft className="w-4 h-4 text-amber-400" />
+            </Link>
+          </div>
         </>
       )}
     </form>

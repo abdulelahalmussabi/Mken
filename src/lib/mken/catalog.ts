@@ -268,6 +268,8 @@ export interface CatalogUpdate {
   featured?: string;
   activityOverrides?: Record<string, ActivityOverrides>;
   serviceOverrides?: Record<string, ServiceOverrides>;
+  deleteServiceId?: string;
+  newCustomService?: CatalogService;
 }
 
 /**
@@ -317,7 +319,7 @@ export async function updateTenantCatalog(
       ? update.enabled.filter((id) => serviceIds.has(id))
       : asStringArray(config.enabled);
 
-  const nextEnabled = pruneServices(nextActivities, requestedServices, [...extraById.values()]);
+  let nextEnabled = pruneServices(nextActivities, requestedServices, [...extraById.values()]);
   config.enabledActivities = nextActivities;
   config.enabled = nextEnabled;
 
@@ -372,6 +374,52 @@ export async function updateTenantCatalog(
       else delete map[id];
     }
     config.services = map;
+  }
+
+  if (update.deleteServiceId) {
+    const idToDelete = update.deleteServiceId;
+    nextEnabled = nextEnabled.filter((id) => id !== idToDelete);
+    config.enabled = nextEnabled;
+    const map = asOverrideMap(config.services);
+    delete map[idToDelete];
+    config.services = map;
+    if (Array.isArray(config.customServices)) {
+      config.customServices = config.customServices.filter(
+        (s: unknown) => s && typeof s === "object" && (s as { id?: string }).id !== idToDelete
+      );
+    }
+    if (config.featured === idToDelete) {
+      config.featured = nextEnabled[0] || "";
+    }
+    if (config.pages && typeof config.pages === "object") {
+      const p = config.pages as Record<string, unknown>;
+      if (p.home && typeof p.home === "object") {
+        const home = p.home as Record<string, unknown>;
+        if (Array.isArray(home.featuredServiceIds)) {
+          home.featuredServiceIds = home.featuredServiceIds.filter((id) => id !== idToDelete);
+        }
+      }
+    }
+  }
+
+  if (update.newCustomService && typeof update.newCustomService === "object") {
+    const custom = update.newCustomService;
+    if (custom.id && custom.title && custom.activityId) {
+      const currentCustom = Array.isArray(config.customServices) ? [...config.customServices] : [];
+      const idx = currentCustom.findIndex(
+        (s: unknown) => s && typeof s === "object" && (s as { id?: string }).id === custom.id
+      );
+      if (idx >= 0) {
+        currentCustom[idx] = custom;
+      } else {
+        currentCustom.push(custom);
+      }
+      config.customServices = currentCustom;
+      if (!nextEnabled.includes(custom.id)) {
+        nextEnabled = [...nextEnabled, custom.id];
+        config.enabled = nextEnabled;
+      }
+    }
   }
 
   config.updatedAt = new Date().toISOString();
