@@ -621,7 +621,8 @@ function pagesStory(config: MkenConfig): string {
 }
 
 function featuredLooksLegacy(ids: unknown): boolean {
-  if (!Array.isArray(ids) || ids.length === 0) return true;
+  if (!Array.isArray(ids)) return true;
+  if (ids.length === 0) return false;
   const legacy = new Set<string>(REWA_LEGACY_SERVICE_IDS);
   return ids.every((id) => typeof id === "string" && legacy.has(id));
 }
@@ -632,7 +633,19 @@ function featuredLooksLegacy(ids: unknown): boolean {
  * empty page copy. Manual admin edits (non-legacy enabled lists / existing story) win.
  */
 export function applyRewaDefaults(config: MkenConfig): MkenConfig {
-  const next: MkenConfig = { ...config, customServices: REWA_CUSTOM_SERVICES };
+  const deletedServices = new Set(
+    Array.isArray(config.deletedServices) ? (config.deletedServices as string[]) : []
+  );
+  const deletedAds = new Set(
+    Array.isArray(config.deletedAds) ? (config.deletedAds as string[]) : []
+  );
+
+  const baseCustom = Array.isArray(config.customServices)
+    ? (config.customServices as unknown as RewaCustomService[])
+    : REWA_CUSTOM_SERVICES;
+  const activeCustom = baseCustom.filter((service) => service && !deletedServices.has(service.id));
+
+  const next: MkenConfig = { ...config, customServices: activeCustom };
 
   const activities = asRecord(next.activities);
   for (const [id, override] of Object.entries(REWA_ACTIVITY_OVERRIDES)) {
@@ -651,6 +664,10 @@ export function applyRewaDefaults(config: MkenConfig): MkenConfig {
 
   const serviceMap = asRecord(next.services);
   for (const service of REWA_CUSTOM_SERVICES) {
+    if (deletedServices.has(service.id)) {
+      delete serviceMap[service.id];
+      continue;
+    }
     const current = asRecord(serviceMap[service.id]);
     serviceMap[service.id] = {
       ...current,
@@ -664,20 +681,27 @@ export function applyRewaDefaults(config: MkenConfig): MkenConfig {
 
   if (isLegacyRewaCatalog(next)) {
     next.enabledActivities = [...REWA_ACTIVITY_IDS];
-    next.enabled = REWA_CUSTOM_SERVICES.map((service) => service.id);
+    next.enabled = activeCustom.map((service) => service.id);
     next.featuredActivity = "healthcare";
-    next.featured = REWA_FEATURED_SERVICE_IDS[0];
+    next.featured = REWA_FEATURED_SERVICE_IDS.find((id) => !deletedServices.has(id)) || activeCustom[0]?.id || "";
+  } else if (Array.isArray(next.enabled)) {
+    next.enabled = (next.enabled as string[]).filter((id) => !deletedServices.has(id));
   }
 
   const currentPages = asRecord(next.pages);
   const currentHome = asRecord(currentPages.home);
   const emptyPages = !pagesStory(next);
-  const homeFeatured = featuredLooksLegacy(currentHome.featuredServiceIds);
+  const homeCustomized = Boolean(currentHome.heroBadgesCustomized);
+  const homeFeatured = !homeCustomized && featuredLooksLegacy(currentHome.featuredServiceIds);
 
-  if (emptyPages || homeFeatured || isLegacyRewaCatalog(config)) {
+  if (!homeCustomized && (emptyPages || homeFeatured || isLegacyRewaCatalog(config))) {
     const nextHome = {
       ...currentHome,
-      ...(emptyPages || homeFeatured ? { featuredServiceIds: REWA_PAGES.home.featuredServiceIds } : {}),
+      ...(emptyPages || homeFeatured
+        ? {
+            featuredServiceIds: REWA_PAGES.home.featuredServiceIds.filter((id) => !deletedServices.has(id)),
+          }
+        : {}),
       ...(emptyPages && !(typeof currentHome.ctaLabel === "string" && currentHome.ctaLabel.trim())
         ? { ctaLabel: REWA_PAGES.home.ctaLabel }
         : {}),
@@ -733,10 +757,14 @@ export function applyRewaDefaults(config: MkenConfig): MkenConfig {
   const currentAds = next.ads || {};
   const secondary = Array.isArray(currentAds.secondary) ? [...currentAds.secondary] : [];
   const existingIds = new Set(secondary.map((item) => (item && item.id) || "").filter(Boolean));
-  for (const seed of REWA_PROMO_ADS) {
-    if (!existingIds.has(seed.id)) secondary.push({ ...seed });
+  if (!config.adsCustomized) {
+    for (const seed of REWA_PROMO_ADS) {
+      if (!existingIds.has(seed.id) && !deletedAds.has(seed.id)) {
+        secondary.push({ ...seed });
+      }
+    }
   }
-  next.ads = { ...currentAds, secondary };
+  next.ads = { ...currentAds, secondary: secondary.filter((item) => item && !deletedAds.has(item.id)) };
 
   return next;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { EyeOff, FileText, Pencil, Save, Check, Sparkles } from "lucide-react";
+import { EyeOff, FileText, Pencil, Save, Check, Sparkles, Trash2 } from "lucide-react";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 import {
@@ -307,15 +307,15 @@ export default function InterfacePagesPage() {
             <h2 className="text-sm font-extrabold text-white">محتوى الرئيسية</h2>
 
             {/* Hero Badges Controls */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4 shadow-lg">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-400" />
                     شارات الخدمات في قسم الهيرو (أعلى الصفحة)
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    إظهار أزرار تصفية سريعة أسفل نص الهيرو للخدمات الأكثر طلباً.
+                    أزرار تصفية سريعة أسفل نص الهيرو. يمكنك اختيار خدمات محددة، أو إلغاء تحديد الكل لإخفاء الشارات تماماً.
                   </p>
                 </div>
                 <Toggle
@@ -325,12 +325,12 @@ export default function InterfacePagesPage() {
               </div>
 
               {heroBadgesEnabled && (
-                <div className="space-y-3 pt-2 border-t border-slate-800/80">
+                <div className="space-y-3 pt-3 border-t border-slate-800/80">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-300">
+                    <span className="font-bold text-slate-200">
                       اختر الخدمات المعروضة في الهيرو بالضغط عليها:
                     </span>
-                    <span className="text-amber-400 font-bold">
+                    <span className="text-amber-400 font-extrabold">
                       محدد: {featuredIds.split("\n").map(s => s.trim()).filter(Boolean).length} خدمة
                     </span>
                   </div>
@@ -352,7 +352,7 @@ export default function InterfacePagesPage() {
                             }}
                             className={`p-2.5 rounded-xl text-xs font-bold border transition flex items-center justify-between gap-2 text-right ${
                               isSelected
-                                ? "bg-amber-500/20 border-amber-500 text-amber-300"
+                                ? "bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm"
                                 : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700"
                             }`}
                           >
@@ -368,8 +368,50 @@ export default function InterfacePagesPage() {
                   ) : (
                     <p className="text-xs text-slate-500">جاري تحميل الخدمات المفعّلة...</p>
                   )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={saving === "hero-badges"}
+                        onClick={async () => {
+                          const selected = featuredIds.split("\n").map(s => s.trim()).filter(Boolean);
+                          await put(
+                            {
+                              home: {
+                                heroBadgesEnabled,
+                                heroBadgesCustomized: true,
+                                featuredServiceIds: selected,
+                              },
+                            },
+                            selected.length > 0 ? `تم حفظ ${selected.length} شارة للهيرو بنجاح` : "تم إخفاء جميع الشارات من الهيرو بنجاح",
+                            "hero-badges"
+                          );
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition shadow-md disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        {saving === "hero-badges" ? "جاري الحفظ..." : "حفظ شارات الهيرو الآن"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFeaturedIds("")}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-800/50 text-xs font-bold rounded-xl transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        حذف / إلغاء تحديد كل الشارات
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFeaturedIds(availableServices.map(s => s.id).join("\n"))}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold border border-slate-800 rounded-xl transition"
+                    >
+                      تحديد جميع الخدمات
+                    </button>
+                  </div>
                   <p className="text-[11px] text-slate-500">
-                    إذا تركت التحديد فارغاً، سيعرض النظام تلقائياً أول 6-8 خدمات فقط لمنع تكدس الهيرو.
+                    ملاحظة: يمكنك الضغط على «حذف / إلغاء تحديد كل الشارات» ثم «حفظ شارات الهيرو الآن» لعدم إظهار أي شارة في قسم الهيرو.
                   </p>
                 </div>
               )}

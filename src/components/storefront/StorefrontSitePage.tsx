@@ -57,9 +57,11 @@ function ServiceCard({
           ) : (
             <div className="w-full h-full bg-surface-2" />
           )}
-          <div className="absolute top-3 right-3 bg-background/80 px-3 py-1 rounded-full text-xs font-bold text-amber-300 border border-amber-500/30">
-            {srv.badge}
-          </div>
+          {srv.badge ? (
+            <div className="absolute top-3 right-3 bg-background/80 px-3 py-1 rounded-full text-xs font-bold text-amber-300 border border-amber-500/30">
+              {srv.badge}
+            </div>
+          ) : null}
         </div>
         <div className="p-6 space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">

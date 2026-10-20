@@ -115,6 +115,7 @@ export interface StorefrontPagesPublic {
     ctaHref: string;
     featuredServiceIds: string[];
     heroBadgesEnabled: boolean;
+    heroBadgesCustomized?: boolean;
     stats: ContentStat[];
     partners: ContentPartner[];
   };
@@ -183,6 +184,7 @@ const EMPTY_PAGES: StorefrontPagesPublic = {
     ctaHref: "",
     featuredServiceIds: [],
     heroBadgesEnabled: true,
+    heroBadgesCustomized: false,
     stats: [],
     partners: [],
   },
@@ -320,6 +322,7 @@ export function pagesFromConfig(config: MkenConfig): StorefrontPagesPublic {
       ctaHref: clip(home.ctaHref, 500),
       featuredServiceIds: asArray(home.featuredServiceIds, (id) => clip(id, 80) || null, LIMITS.featured),
       heroBadgesEnabled: bool(home.heroBadgesEnabled, true),
+      heroBadgesCustomized: Boolean(home.heroBadgesCustomized),
       stats: asArray(
         home.stats,
         (item) => {
@@ -508,7 +511,11 @@ export function mergePages(config: MkenConfig, update: PagesUpdate): MkenConfig 
   const next: StorefrontPagesPublic = {
     enabled: mergeEnabled(current.enabled, update.enabled),
     labels: mergeLabels(current.labels, update.labels),
-    home: { ...current.home, ...(update.home || {}) },
+    home: {
+      ...current.home,
+      ...(update.home || {}),
+      heroBadgesCustomized: update.home !== undefined ? true : current.home.heroBadgesCustomized,
+    },
     about: { ...current.about, ...(update.about || {}) },
     services: { ...current.services, ...(update.services || {}) },
     work: { ...current.work, ...(update.work || {}) },

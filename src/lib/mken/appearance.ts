@@ -1,3 +1,7 @@
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
 import {
   ensureTenantRow,
   isOccasionTheme,
@@ -432,6 +436,20 @@ export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): M
       primary: readPrimaryAd({ ...config, occasionPack: pack, heroImage: next.heroImage }),
       secondary: readSecondaryAds(config),
     };
+    const newSecondary = update.ads.secondary
+      ? update.ads.secondary
+          .map(normalizeSecondaryAd)
+          .filter((item): item is SecondaryAd => Boolean(item))
+      : currentAds.secondary;
+
+    const existingNewIds = new Set(newSecondary.map((a) => a.id));
+    const deletedAdsSet = new Set(asStringArray(config.deletedAds));
+    for (const oldAd of currentAds.secondary) {
+      if (!existingNewIds.has(oldAd.id)) deletedAdsSet.add(oldAd.id);
+    }
+    next.deletedAds = Array.from(deletedAdsSet);
+    next.adsCustomized = true;
+
     next.ads = {
       primary: update.ads.primary
         ? {
@@ -441,11 +459,7 @@ export function mergeAppearance(config: MkenConfig, update: AppearanceUpdate): M
             endDate: optionalYmd(update.ads.primary.endDate ?? currentAds.primary.endDate),
           }
         : currentAds.primary,
-      secondary: update.ads.secondary
-        ? update.ads.secondary
-            .map(normalizeSecondaryAd)
-            .filter((item): item is SecondaryAd => Boolean(item))
-        : currentAds.secondary,
+      secondary: newSecondary,
     };
   }
 

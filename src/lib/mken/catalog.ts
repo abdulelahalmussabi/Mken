@@ -193,7 +193,9 @@ function customServicesFromConfig(config: MkenConfig): CatalogService[] {
 }
 
 function catalogServiceList(config: MkenConfig): CatalogService[] {
-  return [...SERVICES, ...customServicesFromConfig(config)];
+  const deleted = new Set(asStringArray(config.deletedServices));
+  const custom = customServicesFromConfig(config).filter((s) => !deleted.has(s.id));
+  return [...SERVICES.filter((s) => !deleted.has(s.id)), ...custom];
 }
 
 function pickOverrides<T extends readonly string[]>(
@@ -203,23 +205,26 @@ function pickOverrides<T extends readonly string[]>(
   const out: Record<string, string> = {};
   for (const field of fields) {
     const value = raw[field];
-    if (typeof value === "string" && value !== "") out[field] = value;
+    if (typeof value === "string" && (value !== "" || field === "shortTitle")) out[field] = value;
   }
   return out;
 }
 
 export function resolveCatalog(config: MkenConfig): TenantCatalog {
+  const deleted = new Set(asStringArray(config.deletedServices));
   const enabledActivities = new Set(asStringArray(config.enabledActivities));
-  const enabledServices = new Set(asStringArray(config.enabled));
+  const enabledServices = new Set(asStringArray(config.enabled).filter((id) => !deleted.has(id)));
   const activityOverrides = asOverrideMap(config.activities);
   const serviceOverrides = asOverrideMap(config.services);
   const featuredActivity = typeof config.featuredActivity === "string" ? config.featuredActivity : "";
-  const featuredService = typeof config.featured === "string" ? config.featured : "";
+  const featuredService =
+    typeof config.featured === "string" && !deleted.has(config.featured) ? config.featured : "";
 
-  const catalogList = catalogServiceList(config);
+  const catalogList = catalogServiceList(config).filter((s) => !deleted.has(s.id));
   const services: ResolvedService[] = catalogList.map((service) => {
     const raw = serviceOverrides[service.id] || {};
     const overrides: ServiceOverrides = pickOverrides(raw, SERVICE_OVERRIDE_FIELDS);
+    if (typeof raw.shortTitle === "string") overrides.shortTitle = raw.shortTitle.trim();
     if (typeof raw.roomCount === "number" && raw.roomCount >= 1) overrides.roomCount = raw.roomCount;
     if (Array.isArray(raw.features)) overrides.features = asStringArray(raw.features);
     const definedHero = (service as CatalogService & { heroImage?: string }).heroImage;
@@ -360,7 +365,12 @@ export async function updateTenantCatalog(
         ...pickOverrides(overrides, SERVICE_OVERRIDE_FIELDS),
       };
       for (const field of SERVICE_OVERRIDE_FIELDS) {
-        if (overrides[field] === "") delete merged[field];
+        const val = overrides[field];
+        if (field === "shortTitle" && typeof val === "string") {
+          merged.shortTitle = val.trim();
+        } else if (overrides[field] === "") {
+          delete merged[field];
+        }
       }
       if (typeof overrides.roomCount === "number" && overrides.roomCount >= 1) {
         merged.roomCount = overrides.roomCount;
@@ -377,7 +387,9 @@ export async function updateTenantCatalog(
   }
 
   if (update.deleteServiceId) {
-    const idToDelete = update.deleteServiceId;
+    const idToDelete = update.deleteServiceId.trim();
+    const deletedSet = new Set([...asStringArray(config.deletedServices), idToDelete]);
+    config.deletedServices = Array.from(deletedSet);
     nextEnabled = nextEnabled.filter((id) => id !== idToDelete);
     config.enabled = nextEnabled;
     const map = asOverrideMap(config.services);

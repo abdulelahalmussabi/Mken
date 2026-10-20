@@ -53,7 +53,9 @@ export default function SubscriberStorefrontPage() {
   const heroBadges =
     heroFeaturedIds.length > 0
       ? currentServices.filter((srv) => heroFeaturedIds.includes(srv.id))
-      : currentServices.slice(0, 8);
+      : pages.home.heroBadgesCustomized
+        ? []
+        : currentServices.slice(0, 8);
   const featured =
     featuredIds.length > 0
       ? currentServices.filter((srv) => featuredIds.includes(srv.id))
