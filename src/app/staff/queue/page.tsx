@@ -25,14 +25,60 @@ import {
   Check,
   SlidersHorizontal,
   Flame,
-  Hourglass
+  Hourglass,
+  ShieldAlert,
+  Plus,
+  Smartphone,
+  Copy,
+  CheckSquare
 } from "lucide-react";
 import type { QueueState, Ticket, PriorityCategory, IntakeEvaluation } from "@/lib/mken/queue";
+import { generateQRCodeSVG } from "@/lib/mken/qr-svg";
 
 export default function StaffQueueConsolePage() {
   const [queueState, setQueueState] = useState<QueueState | null>(null);
   const [loading, setLoading] = useState(true);
   const [callingInProgress, setCallingInProgress] = useState(false);
+
+  // Super-Admin & Master Authorization State
+  const [isAdminSession, setIsAdminSession] = useState(false);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+
+  // Dynamic Queues & Staff Onboarding
+  const [servicesList, setServicesList] = useState<Array<{ id: string; name: string; prefix: string; avgServiceTimeMinutes: number }>>([
+    { id: "reception", name: "الاستقبال العام", prefix: "A", avgServiceTimeMinutes: 10 },
+    { id: "contracts", name: "قسم العقود", prefix: "A", avgServiceTimeMinutes: 15 },
+    { id: "finance", name: "قسم المالية", prefix: "B", avgServiceTimeMinutes: 12 },
+    { id: "services", name: "خدمات المستفيدين", prefix: "C", avgServiceTimeMinutes: 15 },
+  ]);
+  const [pendingStaff, setPendingStaff] = useState<any[]>([]);
+  const [counterLocks, setCounterLocks] = useState<any[]>([]);
+
+  // Modal: New Queue Creator
+  const [isNewQueueModalOpen, setIsNewQueueModalOpen] = useState(false);
+  const [newQueueName, setNewQueueName] = useState("");
+  const [newQueuePrefix, setNewQueuePrefix] = useState("Q");
+  const [newQueueAvgTime, setNewQueueAvgTime] = useState(15);
+  const [newQueueCapacity, setNewQueueCapacity] = useState(100);
+  const [newQueueBuffer, setNewQueueBuffer] = useState(20);
+  const [queueCreating, setQueueCreating] = useState(false);
+  const [queueModalFeedback, setQueueModalFeedback] = useState<string | null>(null);
+
+  // Modal: Staff Assignment & Mutex Takeover
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+  const [assignPairingCode, setAssignPairingCode] = useState("");
+  const [assignDeskName, setAssignDeskName] = useState("كاونتر 1");
+  const [assignServiceId, setAssignServiceId] = useState("contracts");
+  const [assignRole, setAssignRole] = useState<"counter_agent" | "receptionist" | "supervisor">("counter_agent");
+  const [mutexConflict, setMutexConflict] = useState<string | null>(null);
+  const [assignBusy, setAssignBusy] = useState(false);
+  const [assignFeedback, setAssignFeedback] = useState<string | null>(null);
+
+  // Modal: Staff Onboarding QR
+  const [isStaffQrModalOpen, setIsStaffQrModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const [lastDispatchInfo, setLastDispatchInfo] = useState<string | null>(null);
 
   // Counter selection for the staff member
@@ -58,6 +104,42 @@ export default function StaffQueueConsolePage() {
   const [directDepartment, setDirectDepartment] = useState("reception");
   const [directPriority, setDirectPriority] = useState<PriorityCategory>("elderly");
   const [issueBusy, setIssueBusy] = useState(false);
+
+
+  // Check Admin Master Session
+  useEffect(() => {
+    fetch("/api/admin/session")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.session?.role === "super" || data?.session?.role === "client") {
+          setIsAdminSession(true);
+          setAdminEmail(data.session.email || "admin@mken.live");
+          setStaffRole("receptionist"); // default receptionist/supervisor
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchAssignData = async () => {
+    try {
+      const res = await fetch("/api/staff/assign?tenant=default");
+      const data = await res.json();
+      if (data.success) {
+        setPendingStaff(data.pending || []);
+        setCounterLocks(data.locks || []);
+      }
+    } catch {}
+  };
+
+  const fetchServicesData = async () => {
+    try {
+      const res = await fetch("/api/queue/services?tenant=default");
+      const data = await res.json();
+      if (data.success && data.services) {
+        setServicesList(data.services);
+      }
+    } catch {}
+  };
 
   const fetchQueue = async () => {
     try {
@@ -95,10 +177,14 @@ export default function StaffQueueConsolePage() {
   useEffect(() => {
     fetchQueue();
     fetchIntake(intakeDept);
+    fetchAssignData();
+    fetchServicesData();
     const interval = setInterval(() => {
       fetchQueue();
       fetchIntake(intakeDept);
-    }, 4000);
+      fetchAssignData();
+      fetchServicesData();
+    }, 3500);
     return () => clearInterval(interval);
   }, [intakeDept]);
 
@@ -142,6 +228,98 @@ export default function StaffQueueConsolePage() {
       fetchIntake(intakeDept);
     } catch {
       // Ignored
+    }
+  };
+
+
+  // Create New Queue Handler
+  const handleCreateQueue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQueueName.trim()) return;
+    setQueueCreating(true);
+    setQueueModalFeedback(null);
+    try {
+      const res = await fetch("/api/queue/services?tenant=default", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newQueueName.trim(),
+          prefix: newQueuePrefix.trim() || "Q",
+          avgServiceTimeMinutes: Number(newQueueAvgTime) || 15,
+          maxDailyCapacity: Number(newQueueCapacity) || 100,
+          maxActiveWaitingLimit: Number(newQueueBuffer) || 20,
+          adminOverride: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.queue) {
+        setQueueModalFeedback("تم إنشاء الطابور الجديد بنجاح وبثه لشاشات الصالة!");
+        fetchServicesData();
+        setTimeout(() => {
+          setIsNewQueueModalOpen(false);
+          setNewQueueName("");
+          setQueueModalFeedback(null);
+        }, 1200);
+      } else {
+        setQueueModalFeedback(data.message || "تعذر إنشاء الطابور");
+      }
+    } catch {
+      setQueueModalFeedback("خطأ في الاتصال بالخادم");
+    } finally {
+      setQueueCreating(false);
+    }
+  };
+
+  // Open Assign Staff Modal
+  const openAssignModal = (staff: any) => {
+    setSelectedStaff(staff);
+    setAssignPairingCode(staff.pairingCode || "");
+    setMutexConflict(null);
+    setAssignFeedback(null);
+    setIsAssignModalOpen(true);
+  };
+
+  // Submit Staff Assignment (with Mutex conflict handling)
+  const handleAssignStaff = async (forceTakeover = false) => {
+    if (!selectedStaff) return;
+    setAssignBusy(true);
+    setAssignFeedback(null);
+    try {
+      const res = await fetch("/api/staff/assign?tenant=default", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId: selectedStaff.id,
+          pairingCode: assignPairingCode,
+          deskName: assignDeskName,
+          serviceId: assignServiceId,
+          role: assignRole,
+          forceTakeover,
+          adminOverride: true,
+        }),
+      });
+      const data = await res.json();
+      if (res.status === 409 && data.conflict) {
+        setMutexConflict(data.message || "الكاونتر مشغول حالياً بموظف آخر");
+        setAssignBusy(false);
+        return;
+      }
+      if (data.success) {
+        setAssignFeedback("✅ تم اعتماد الموظف وتفعيل كونسول الكاونتر بهاتفه فوراً!");
+        fetchAssignData();
+        setTimeout(() => {
+          setIsAssignModalOpen(false);
+          setSelectedStaff(null);
+          setMutexConflict(null);
+          setAssignFeedback(null);
+        }, 1200);
+      } else {
+        setAssignFeedback(data.message || "فشل الاعتماد");
+      }
+    } catch {
+      setAssignFeedback("خطأ في الاتصال بالخادم");
+    } finally {
+      setAssignBusy(false);
     }
   };
 
@@ -293,6 +471,32 @@ export default function StaffQueueConsolePage() {
             </select>
           </div>
 
+
+          {isAdminSession && (
+            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              مدير النظام (Super-Admin)
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsNewQueueModalOpen(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold transition cursor-pointer"
+          >
+            <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
+            ➕ إنشاء طابور جديد
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsStaffQrModalOpen(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 font-bold transition cursor-pointer"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+            📱 باركود انضمام الموظفين
+          </button>
+
           <Link
             href={"/queue/kiosk" as any}
             target="_blank"
@@ -315,6 +519,50 @@ export default function StaffQueueConsolePage() {
 
       {/* Main Dashboard Grid */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-6 space-y-6">
+
+        {/* ========================================================================= */}
+        {/* 0. PENDING STAFF DISPATCHER BANNER: انضمام الموظفين عبر الباركود         */}
+        {/* ========================================================================= */}
+        {pendingStaff.length > 0 && (
+          <section className="bg-gradient-to-r from-amber-950/50 via-slate-900 to-orange-950/40 border-2 border-amber-500/50 rounded-3xl p-5 shadow-2xl space-y-3 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-400" />
+                  كادر العمل بانتظار الاعتماد وتعيين المكاتب ({pendingStaff.length})
+                </h3>
+              </div>
+              <span className="text-[11px] text-amber-300/80 font-mono bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                بروتوكول التحقق بالإقران (Pairing Handshake 2-Digit)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+              {pendingStaff.map((stf: any) => (
+                <div key={stf.id} className="p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/30 flex items-center justify-between gap-2 shadow-lg">
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <span>{stf.name}</span>
+                      <span className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 font-mono text-xs font-black border border-orange-500/40">
+                        كود: {stf.pairingCode}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">{stf.phone}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openAssignModal(stf)}
+                    className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs transition cursor-pointer shadow-md shadow-orange-500/20"
+                  >
+                    تعيين واعتماد
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ========================================================================= */}
         {/* 1. RECEPTION DISPATCHER WIDGET: محرك الإغلاق النصف آلي                     */}
         {/* ========================================================================= */}
@@ -1072,6 +1320,337 @@ export default function StaffQueueConsolePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: CREATE NEW QUEUE (SUPER-ADMIN INSTANT CREATOR)                   */}
+      {/* ========================================================================= */}
+      {isNewQueueModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <PlusCircle className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-black text-white">إنشاء طابور / قسم جديد فوراً</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewQueueModalOpen(false)}
+                className="text-slate-400 hover:text-white text-base font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {queueModalFeedback && (
+              <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-xs font-bold text-center">
+                {queueModalFeedback}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateQueue} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">اسم القسم / الطابور</label>
+                <input
+                  type="text"
+                  required
+                  value={newQueueName}
+                  onChange={(e) => setNewQueueName(e.target.value)}
+                  placeholder="مثال: استشارات VIP، الصيانة السريعة..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">رمز التذكرة (Letter)</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={3}
+                    value={newQueuePrefix}
+                    onChange={(e) => setNewQueuePrefix(e.target.value.toUpperCase())}
+                    placeholder="Q"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm font-mono text-center outline-none focus:border-emerald-500 uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">وقت الخدمة (دقيقة)</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={120}
+                    value={newQueueAvgTime}
+                    onChange={(e) => setNewQueueAvgTime(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm font-mono text-center outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">السعة اليومية</label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={500}
+                    value={newQueueCapacity}
+                    onChange={(e) => setNewQueueCapacity(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm font-mono text-center outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">سقف الصالة اللحظي</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={100}
+                    value={newQueueBuffer}
+                    onChange={(e) => setNewQueueBuffer(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm font-mono text-center outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
+                ⚡ سيتم بث الطابور الجديد فوراً لشاشات الصالة (TV) وواجهة حجز المراجعين بالجوال.
+              </p>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={queueCreating}
+                  className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm disabled:opacity-50 transition cursor-pointer"
+                >
+                  {queueCreating ? "جاري الإنشاء والبث..." : "إنشاء وبث الطابور"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNewQueueModalOpen(false)}
+                  className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: ASSIGN STAFF & COUNTER MUTEX TAKEOVER                            */}
+      {/* ========================================================================= */}
+      {isAssignModalOpen && selectedStaff && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">تعيين واعتماد موظف</h3>
+                  <p className="text-[11px] text-slate-400">{selectedStaff.name} ({selectedStaff.phone})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAssignModalOpen(false)}
+                className="text-slate-400 hover:text-white text-base font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Mutex Conflict Warning */}
+            {mutexConflict ? (
+              <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-600/60 text-amber-200 text-xs space-y-3">
+                <div className="flex items-center gap-2 font-bold text-amber-300">
+                  <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+                  <span>تضارب كاونتر (Counter Mutex Conflict)</span>
+                </div>
+                <p className="leading-relaxed">{mutexConflict}</p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleAssignStaff(true)}
+                    className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
+                  >
+                    🔄 تأكيد التسليم وإنهاء جلسة السابق
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMutexConflict(null)}
+                    className="px-3 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+                  >
+                    تغيير الكاونتر
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {assignFeedback && (
+                  <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-xs font-bold text-center">
+                    {assignFeedback}
+                  </div>
+                )}
+
+                {/* 1. Pairing Code Verification */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-orange-500/30 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-bold">كود الإقران من شاشة هاتف الموظف</span>
+                    <span className="text-xl font-black text-white font-mono">{selectedStaff.pairingCode}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    تم التحقق
+                  </div>
+                </div>
+
+                {/* 2. Choose Desk / Counter */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">اسم المكتب / الكاونتر</label>
+                  <select
+                    value={assignDeskName}
+                    onChange={(e) => setAssignDeskName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm outline-none focus:border-orange-500"
+                  >
+                    <option value="كاونتر 1">كاونتر 1</option>
+                    <option value="كاونتر 2">كاونتر 2</option>
+                    <option value="كاونتر 3">كاونتر 3</option>
+                    <option value="كاونتر 4">كاونتر 4</option>
+                    <option value="كاونتر 5">كاونتر 5</option>
+                    <option value="مكتب الاستقبال الرئيسي">مكتب الاستقبال الرئيسي</option>
+                  </select>
+                </div>
+
+                {/* 3. Choose Assigned Queue */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">الخدمة / الطابور المسند</label>
+                  <select
+                    value={assignServiceId}
+                    onChange={(e) => setAssignServiceId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm outline-none focus:border-orange-500"
+                  >
+                    {servicesList.map((svc) => (
+                      <option key={svc.id} value={svc.id}>
+                        {svc.name} ({svc.prefix}-)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 4. Role */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">الدور والصلاحيات</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAssignRole("counter_agent")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition ${
+                        assignRole === "counter_agent"
+                          ? "border-orange-500 bg-orange-950/40 text-orange-300"
+                          : "border-slate-800 bg-slate-950 text-slate-400"
+                      }`}
+                    >
+                      موظف كاونتر (استدعاء)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssignRole("receptionist")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition ${
+                        assignRole === "receptionist"
+                          ? "border-cyan-500 bg-cyan-950/40 text-cyan-300"
+                          : "border-slate-800 bg-slate-950 text-slate-400"
+                      }`}
+                    >
+                      موظف استقبال (أولوية)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={assignBusy}
+                    onClick={() => handleAssignStaff(false)}
+                    className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-sm disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {assignBusy ? "جاري الاعتماد وتفعيل الجلسة..." : "✅ اعتماد وتفعيل الوردية فوراً"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAssignModalOpen(false)}
+                    className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: STAFF ONBOARDING QR CODE MODAL                                  */}
+      {/* ========================================================================= */}
+      {isStaffQrModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 text-center animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-black text-white flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-sky-400" />
+                باركود انضمام كادر العمل
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsStaffQrModalOpen(false)}
+                className="text-slate-400 hover:text-white text-base font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              يقوم الموظف بمسح هذا الباركود من جواله لتسجيل حضوره والدخول في قائمة الاعتماد اللحظي:
+            </p>
+
+            {/* Generated QR Code Container */}
+            <div className="p-4 bg-white rounded-2xl inline-block shadow-2xl border-4 border-sky-500/30">
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: generateQRCodeSVG(
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/staff/join?tenant=default`
+                      : "https://mken.live/staff/join?tenant=default",
+                    { sizePx: 220, margin: 2 }
+                  ),
+                }}
+              />
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const url = typeof window !== "undefined"
+                    ? `${window.location.origin}/staff/join?tenant=default`
+                    : "https://mken.live/staff/join?tenant=default";
+                  navigator.clipboard.writeText(url);
+                  setCopiedLink(true);
+                  setTimeout(() => setCopiedLink(false), 2500);
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5 text-sky-400" />
+                {copiedLink ? "تم نسخ الرابط!" : "نسخ رابط الانضمام المباشر"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

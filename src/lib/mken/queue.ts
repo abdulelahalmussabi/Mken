@@ -186,6 +186,54 @@ export const CONTEXT_AWARE_MESSAGES: Record<CloseReasonType, string> = {
 };
 
 // Global fallback in-memory store for instant zero-config resilience & multi-tenant isolation
+
+export interface OnboardingStaff {
+  id: string;
+  tenantSlug: string;
+  name: string;
+  phone: string;
+  pairingCode: string; // 2-digit verification code e.g. "84"
+  pairingCodeExpiresAt: string; // ISO timestamp (5 min expiry)
+  onboardingStatus: "pending_approval" | "active" | "rejected" | "off_duty";
+  assignedDeskName?: string | null;
+  assignedServiceId?: string | null;
+  assignedRole?: "counter_agent" | "receptionist" | "supervisor" | null;
+  sessionToken?: string | null;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  createdAt: string;
+}
+
+export interface CounterLock {
+  tenantSlug: string;
+  deskName: string;
+  serviceId: string;
+  assignedStaffId: string;
+  assignedStaffName: string;
+  lockedAt: string;
+  lastHeartbeatAt: string;
+}
+
+export interface CustomQueueDefinition {
+  id: string;
+  tenantSlug: string;
+  name: string;
+  prefix: string;
+  avgServiceTimeMinutes: number;
+  maxDailyCapacity: number;
+  maxActiveWaitingLimit: number;
+  isActive: boolean;
+  createdByAdmin?: string;
+  createdAt: string;
+}
+
+export interface QueueBroadcastEvent {
+  type: "SERVICE_CREATED" | "STAFF_JOIN_REQUESTED" | "STAFF_ASSIGNED" | "TICKET_CALLED" | "INTAKE_STATUS_CHANGED";
+  tenantSlug: string;
+  data: any;
+  timestamp: string;
+}
+
 interface MemoryStore {
   tickets: Map<string, Ticket>;
   screens: Map<string, DisplayScreen>;
@@ -195,6 +243,11 @@ interface MemoryStore {
   consecutivePriorityCalls: Map<string, number>;
   ticketCounter: Map<string, number>;
   priorityCounter: Map<string, number>;
+  pendingStaff: Map<string, OnboardingStaff>; // key: staffId
+  counterLocks: Map<string, CounterLock>; // key: `${tenantSlug}:${deskName}`
+  customQueues: Map<string, CustomQueueDefinition[]>; // key: tenantSlug
+  queueListeners: Set<(event: QueueBroadcastEvent) => void>;
+
 }
 
 declare global {
@@ -213,6 +266,11 @@ function getMemoryStore(): MemoryStore {
       consecutivePriorityCalls: new Map(),
       ticketCounter: new Map(),
       priorityCounter: new Map(),
+      pendingStaff: new Map(),
+      counterLocks: new Map(),
+      customQueues: new Map(),
+      queueListeners: new Set(),
+
     };
 
     const now = new Date();
@@ -451,6 +509,13 @@ function getMemoryStore(): MemoryStore {
     });
 
     globalThis.__mken_queue_store__ = store;
+  }
+
+  if (!globalThis.__mken_queue_store__.pendingStaff) {
+    globalThis.__mken_queue_store__.pendingStaff = new Map();
+    globalThis.__mken_queue_store__.counterLocks = new Map();
+    globalThis.__mken_queue_store__.customQueues = new Map();
+    globalThis.__mken_queue_store__.queueListeners = new Set();
   }
   return globalThis.__mken_queue_store__;
 }
@@ -1380,4 +1445,348 @@ export async function pingDisplayScreen(options: {
   }
 
   return screen;
+}
+
+
+// ============================================================================
+// 5 Architectural Safeguards: Onboarding, Counter Mutex, Dynamic Queues & Broadcast
+// ============================================================================
+
+/** Broadcast event to connected screens & SSE listeners */
+export function broadcastQueueEvent(event: Omit<QueueBroadcastEvent, "timestamp">): void {
+  const store = getMemoryStore();
+  const fullEvent: QueueBroadcastEvent = {
+    ...event,
+    timestamp: new Date().toISOString(),
+  };
+  store.queueListeners.forEach((listener) => {
+    try {
+      listener(fullEvent);
+    } catch {
+      // listener error ignore
+    }
+  });
+}
+
+/** Subscribe to live queue events */
+export function subscribeToQueueEvents(listener: (event: QueueBroadcastEvent) => void): () => void {
+  const store = getMemoryStore();
+  store.queueListeners.add(listener);
+  return () => {
+    store.queueListeners.delete(listener);
+  };
+}
+
+/**
+ * 1. Pairing Handshake Protocol:
+ * Staff scans QR, submits name & phone. Server returns a 2-digit pairing code (valid for 5 mins).
+ */
+export async function requestStaffJoin(
+  tenantSlug: string,
+  name: string,
+  phone: string
+): Promise<{ success: boolean; staff?: OnboardingStaff; error?: string }> {
+  const cleanTenant = (tenantSlug || "default").trim().toLowerCase();
+  const cleanName = (name || "").trim();
+  const cleanPhone = (phone || "").trim().replace(/\D/g, "");
+
+  if (!cleanName) return { success: false, error: "اسم الموظف مطلوب" };
+  if (cleanPhone.length < 9) return { success: false, error: "رقم الجوال غير صحيح" };
+
+  const store = getMemoryStore();
+
+  // Check if there is already an active pending request for this phone
+  const existingPending = Array.from(store.pendingStaff.values()).find(
+    (s) => s.tenantSlug === cleanTenant && s.phone === cleanPhone && s.onboardingStatus === "pending_approval"
+  );
+
+  const now = Date.now();
+  if (existingPending && new Date(existingPending.pairingCodeExpiresAt).getTime() > now) {
+    // Return existing active pairing code
+    return { success: true, staff: existingPending };
+  }
+
+  // Generate 2-digit pairing code (10 - 99)
+  const pairingCode = String(Math.floor(10 + Math.random() * 90));
+  const pairingCodeExpiresAt = new Date(now + 5 * 60 * 1000).toISOString();
+  const staffId = `staff_req_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
+  const staff: OnboardingStaff = {
+    id: staffId,
+    tenantSlug: cleanTenant,
+    name: cleanName,
+    phone: cleanPhone,
+    pairingCode,
+    pairingCodeExpiresAt,
+    onboardingStatus: "pending_approval",
+    createdAt: new Date().toISOString(),
+  };
+
+  store.pendingStaff.set(staffId, staff);
+
+  broadcastQueueEvent({
+    type: "STAFF_JOIN_REQUESTED",
+    tenantSlug: cleanTenant,
+    data: {
+      staffId: staff.id,
+      name: staff.name,
+      phone: staff.phone,
+      pairingCode: staff.pairingCode,
+    },
+  });
+
+  return { success: true, staff };
+}
+
+/** Get all currently pending staff requests for a tenant */
+export function getPendingStaff(tenantSlug: string): OnboardingStaff[] {
+  const cleanTenant = (tenantSlug || "default").trim().toLowerCase();
+  const store = getMemoryStore();
+  const now = Date.now();
+
+  return Array.from(store.pendingStaff.values()).filter(
+    (s) =>
+      s.tenantSlug === cleanTenant &&
+      s.onboardingStatus === "pending_approval" &&
+      new Date(s.pairingCodeExpiresAt).getTime() > now
+  );
+}
+
+/** Check status of a staff member during mobile onboarding */
+export function checkStaffOnboardingStatus(tenantSlug: string, staffId: string): OnboardingStaff | null {
+  const store = getMemoryStore();
+  const staff = store.pendingStaff.get(staffId);
+  if (!staff || staff.tenantSlug !== (tenantSlug || "default").trim().toLowerCase()) return null;
+  return staff;
+}
+
+/**
+ * 2. Counter Mutex & Takeover + Admin Approval
+ */
+export async function approveAndAssignStaff(params: {
+  tenantSlug: string;
+  staffId: string;
+  pairingCode: string;
+  deskName: string;
+  serviceId: string;
+  role: "counter_agent" | "receptionist" | "supervisor";
+  forceTakeover?: boolean;
+  approvedBy: string;
+}): Promise<{
+  success: boolean;
+  staff?: OnboardingStaff;
+  sessionToken?: string;
+  conflict?: boolean;
+  currentStaff?: string;
+  message?: string;
+}> {
+  const cleanTenant = (params.tenantSlug || "default").trim().toLowerCase();
+  const store = getMemoryStore();
+  const staff = store.pendingStaff.get(params.staffId);
+
+  if (!staff || staff.tenantSlug !== cleanTenant) {
+    return { success: false, message: "طلب انضمام الموظف غير موجود أو منتهي الصلاحية" };
+  }
+
+  // Verify Pairing Code
+  if (params.pairingCode && params.pairingCode.trim() !== staff.pairingCode.trim()) {
+    return { success: false, message: "كود التحقق والإقران غير متطابق مع هاتف الموظف" };
+  }
+
+  // Counter Mutex Check
+  const lockKey = `${cleanTenant}:${params.deskName.trim()}`;
+  const existingLock = store.counterLocks.get(lockKey);
+
+  if (existingLock && existingLock.assignedStaffId !== params.staffId) {
+    if (!params.forceTakeover) {
+      return {
+        success: false,
+        conflict: true,
+        currentStaff: existingLock.assignedStaffName,
+        message: `الكاونتر "${params.deskName}" مسند حالياً للموظف "${existingLock.assignedStaffName}". هل ترغب في إنهاء جلسته وتسليم الكاونتر للموظف الجديد؟`,
+      };
+    } else {
+      // Force Takeover: Disconnect previous staff
+      const prevStaff = store.pendingStaff.get(existingLock.assignedStaffId);
+      if (prevStaff) {
+        prevStaff.onboardingStatus = "off_duty";
+      }
+      store.counterLocks.delete(lockKey);
+    }
+  }
+
+  // Generate Session Token
+  const sessionToken = `mkn_stf_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  const now = new Date().toISOString();
+
+  staff.onboardingStatus = "active";
+  staff.assignedDeskName = params.deskName.trim();
+  staff.assignedServiceId = params.serviceId.trim();
+  staff.assignedRole = params.role;
+  staff.sessionToken = sessionToken;
+  staff.approvedAt = now;
+  staff.approvedBy = params.approvedBy;
+
+  // Set Counter Lock
+  store.counterLocks.set(lockKey, {
+    tenantSlug: cleanTenant,
+    deskName: staff.assignedDeskName,
+    serviceId: staff.assignedServiceId,
+    assignedStaffId: staff.id,
+    assignedStaffName: staff.name,
+    lockedAt: now,
+    lastHeartbeatAt: now,
+  });
+
+  broadcastQueueEvent({
+    type: "STAFF_ASSIGNED",
+    tenantSlug: cleanTenant,
+    data: {
+      staffId: staff.id,
+      name: staff.name,
+      deskName: staff.assignedDeskName,
+      serviceId: staff.assignedServiceId,
+      role: staff.assignedRole,
+    },
+  });
+
+  return { success: true, staff, sessionToken };
+}
+
+/** Release counter lock when staff finishes shift */
+export function releaseCounterLock(tenantSlug: string, deskName: string, staffId?: string): boolean {
+  const cleanTenant = (tenantSlug || "default").trim().toLowerCase();
+  const store = getMemoryStore();
+  const lockKey = `${cleanTenant}:${deskName.trim()}`;
+  const lock = store.counterLocks.get(lockKey);
+
+  if (!lock) return false;
+  if (staffId && lock.assignedStaffId !== staffId) return false;
+
+  store.counterLocks.delete(lockKey);
+  const staff = store.pendingStaff.get(lock.assignedStaffId);
+  if (staff) {
+    staff.onboardingStatus = "off_duty";
+  }
+  return true;
+}
+
+/** Get list of active counter locks */
+export function getCounterLocks(tenantSlug: string): CounterLock[] {
+  const cleanTenant = (tenantSlug || "default").trim().toLowerCase();
+  const store = getMemoryStore();
+  return Array.from(store.counterLocks.values()).filter((l) => l.tenantSlug === cleanTenant);
+}
+
+/**
+ * 4. Dynamic Queue Broadcast & Cold-Start Buffer (±20% initial)
+ */
+export async function createCustomQueue(params: {
+  tenantSlug: string;
+  name: string;
+  prefix?: string;
+  avgServiceTimeMinutes?: number;
+  maxDailyCapacity?: number;
+  maxActiveWaitingLimit?: number;
+  createdByAdmin?: string;
+}): Promise<{ success: boolean; queue?: CustomQueueDefinition; message?: string }> {
+  const cleanTenant = (params.tenantSlug || "default").trim().toLowerCase();
+  const cleanName = (params.name || "").trim();
+  if (!cleanName) return { success: false, message: "اسم الطابور / القسم مطلوب" };
+
+  const store = getMemoryStore();
+  const queueId = `queue_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const prefix = (params.prefix || "Q").toUpperCase().slice(0, 3);
+  
+  // Cold-Start Buffer: 15 mins default with ±20% flexible initial buffer
+  const avgTime = Math.max(5, Number(params.avgServiceTimeMinutes) || 15);
+  const maxCap = Math.max(10, Number(params.maxDailyCapacity) || 100);
+  const bufferLimit = Math.max(5, Number(params.maxActiveWaitingLimit) || 20);
+
+  const customQueue: CustomQueueDefinition = {
+    id: queueId,
+    tenantSlug: cleanTenant,
+    name: cleanName,
+    prefix,
+    avgServiceTimeMinutes: avgTime,
+    maxDailyCapacity: maxCap,
+    maxActiveWaitingLimit: bufferLimit,
+    isActive: true,
+    createdByAdmin: params.createdByAdmin || "admin@mken.live",
+    createdAt: new Date().toISOString(),
+  };
+
+  // Register in memory store
+  const existingList = store.customQueues.get(cleanTenant) || [];
+  existingList.push(customQueue);
+  store.customQueues.set(cleanTenant, existingList);
+
+  // Register in intakeConfigs
+  const configKey = `${cleanTenant}:${queueId}`;
+  store.intakeConfigs.set(configKey, {
+    serviceId: queueId,
+    tenantSlug: cleanTenant,
+    name: cleanName,
+    departmentId: queueId,
+    maxDailyCapacity: maxCap,
+    maxActiveWaitingLimit: bufferLimit,
+    avgServiceTimeMinutes: avgTime,
+    autoIntakeEnabled: true,
+    manualOverrideActive: false,
+    isIntakeOpen: true,
+  });
+
+  // Create default schedules (Sun-Thu 08:00 - 16:00)
+  const schedList: ServiceSchedule[] = [];
+  for (let day = 0; day <= 6; day++) {
+    schedList.push({
+      serviceId: queueId,
+      dayOfWeek: day,
+      openingTime: "08:00",
+      closingTime: "16:00",
+      isWorkingDay: day >= 0 && day <= 4,
+      avgServiceTimeMinutes: avgTime,
+    });
+  }
+  store.schedules.set(configKey, schedList);
+
+  // Broadcast to all listening screens and mobile clients
+  broadcastQueueEvent({
+    type: "SERVICE_CREATED",
+    tenantSlug: cleanTenant,
+    data: customQueue,
+  });
+
+  return { success: true, queue: customQueue };
+}
+
+/** Get all services (default + dynamically created) for a tenant */
+export function getTenantServices(tenantSlug: string): Array<{
+  id: string;
+  name: string;
+  prefix: string;
+  avgServiceTimeMinutes: number;
+  maxDailyCapacity: number;
+  maxActiveWaitingLimit: number;
+}> {
+  const cleanTenant = (tenantSlug || "default").trim().toLowerCase();
+  const store = getMemoryStore();
+
+  const standard = [
+    { id: "reception", name: "الاستقبال العام", prefix: "A", avgServiceTimeMinutes: 10, maxDailyCapacity: 120, maxActiveWaitingLimit: 25 },
+    { id: "contracts", name: "قسم العقود", prefix: "A", avgServiceTimeMinutes: 15, maxDailyCapacity: 100, maxActiveWaitingLimit: 20 },
+    { id: "finance", name: "قسم المالية", prefix: "B", avgServiceTimeMinutes: 12, maxDailyCapacity: 80, maxActiveWaitingLimit: 15 },
+    { id: "services", name: "خدمات المستفيدين", prefix: "C", avgServiceTimeMinutes: 15, maxDailyCapacity: 100, maxActiveWaitingLimit: 25 },
+  ];
+
+  const custom = (store.customQueues.get(cleanTenant) || []).map((q) => ({
+    id: q.id,
+    name: q.name,
+    prefix: q.prefix,
+    avgServiceTimeMinutes: q.avgServiceTimeMinutes,
+    maxDailyCapacity: q.maxDailyCapacity,
+    maxActiveWaitingLimit: q.maxActiveWaitingLimit,
+  }));
+
+  return [...standard, ...custom];
 }
