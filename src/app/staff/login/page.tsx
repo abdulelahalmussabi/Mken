@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Fingerprint, LogIn, ArrowRight } from "lucide-react";
+import { KeyRound, Fingerprint, LogIn, ArrowRight, Sparkles, Smartphone } from "lucide-react";
 
 function bufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -157,6 +157,25 @@ export default function StaffLoginPage() {
           <p className="text-slate-400 text-sm">دخول بالرمز أو بالبصمة للمهام المسندة إليك</p>
         </div>
 
+        
+        {/* New Staff QR & Pairing Code Fast Track */}
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-950/40 via-slate-900 to-amber-950/30 border border-orange-500/40 text-center space-y-2.5 shadow-xl">
+          <div className="text-xs font-bold text-orange-300 flex items-center justify-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            انضمام الكادر بالباركود وكود الإقران (جديد)
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            لا تملك رمز PIN مسجلاً مسبقاً؟ انضم فوراً عبر كود الإقران ليقوم المشرف باعتماد كاونترك وخدمتك في ثوانٍ.
+          </p>
+          <Link
+            href={`/staff/join?tenant=${encodeURIComponent(tenantSlug || "almahrusa")}` as any}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs transition shadow-lg shadow-orange-500/20 w-full"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-slate-950" />
+            الانضمام السريع بكود الإقران (بدون PIN) ←
+          </Link>
+        </div>
+
         <div className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-5">
           <form onSubmit={handlePin} className="space-y-4">
             <label className="block space-y-1.5">
@@ -200,11 +219,29 @@ export default function StaffLoginPage() {
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono focus:outline-none focus:border-sky-500"
               />
             </label>
+
             {error && (
-              <p className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-xl px-3 py-2">
-                {error}
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-xl px-3 py-2">
+                  {error}
+                </p>
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <Link
+                    href={`/staff/join?tenant=${encodeURIComponent(tenantSlug || "almahrusa")}` as any}
+                    className="text-[11px] text-orange-400 hover:text-orange-300 bg-orange-950/30 border border-orange-800/40 rounded-lg p-2 text-center font-bold transition flex items-center justify-center gap-1"
+                  >
+                    📱 موظف جديد؟ انضم عبر كود الإقران بدون PIN
+                  </Link>
+                  <Link
+                    href="/admin/login"
+                    className="text-[11px] text-sky-400 hover:text-sky-300 bg-sky-950/30 border border-sky-800/40 rounded-lg p-2 text-center font-bold transition flex items-center justify-center gap-1"
+                  >
+                    🔐 هل أنت مدير المنشأة؟ ادخل عبر بوابة الإدارة
+                  </Link>
+                </div>
+              </div>
             )}
+
             <button
               type="submit"
               disabled={loading}
