@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="hotelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="#06251b"/>
+  <path d="M38 90 L38 42 L82 42 L82 90 Z" stroke="url(#hotelGrad)" stroke-width="3.5" fill="#064e3b" fill-opacity="0.5"/>
+  <rect x="48" y="50" width="8" height="8" rx="1.5" fill="#34d399"/>
+  <rect x="64" y="50" width="8" height="8" rx="1.5" fill="#34d399"/>
+  <rect x="48" y="64" width="8" height="8" rx="1.5" fill="#34d399"/>
+  <rect x="64" y="64" width="8" height="8" rx="1.5" fill="#34d399"/>
+  <path d="M54 90 L54 78 L66 78 L66 90 Z" fill="#6ee7b7"/>
+  <path d="M60 22 L62 28 L68 28 L63 32 L65 38 L60 34 L55 38 L57 32 L52 28 L58 28 Z" fill="#fbbf24"/>
+</svg>

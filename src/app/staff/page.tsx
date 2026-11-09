@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { Appointment } from "@/lib/mken/appointments";
 import { ACTIVITIES } from "@/lib/mken/catalog";
 import { ROLE_LABELS, type StaffRole } from "@/lib/mken/staff";
-import { LogOut, CalendarDays, Phone, MapPin, Shield, Fingerprint } from "lucide-react";
+import { LogOut, CalendarDays, Phone, MapPin, Shield, Fingerprint, Users, Tv, Sparkles } from "lucide-react";
 
 interface StaffView {
   id: string;
@@ -273,6 +273,54 @@ export default function StaffHomePage() {
             )}
           </section>
         )}
+
+        {/* Smart Queue & Human Priority Hall System */}
+        <section className="p-5 rounded-3xl bg-gradient-to-r from-orange-950/30 via-slate-900 to-amber-950/20 border border-orange-500/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              الأولوية الإنسانية (2:1)
+            </span>
+            <h2 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+              إدارة صالة الانتظار والطابور
+              <Users className="w-4 h-4 text-orange-400" />
+            </h2>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            استدعاء المراجعين، ترقية كبار السن 👴 وذوي الاحتياجات الخاصة ♿ بضغطة زر، وإدارة شاشة الصالة المركزية (TV Signage).
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Link
+              href={"/staff/queue" as any}
+              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 text-xs font-black transition flex items-center gap-1.5"
+            >
+              <Users className="w-3.5 h-3.5" />
+              لوحة تحكم الطابور والاستدعاء
+            </Link>
+            <Link
+              href={"/queue/display" as any}
+              target="_blank"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <Tv className="w-3.5 h-3.5 text-amber-400" />
+              شاشة الصالة المركزية (TV)
+            </Link>
+            <Link
+              href={"/queue/scan" as any}
+              target="_blank"
+              className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 text-slate-400 border border-slate-800 text-xs font-bold transition"
+            >
+              سحب تذكرة (QR)
+            </Link>
+            <Link
+              href={"/queue/kiosk" as any}
+              target="_blank"
+              className="px-3.5 py-2 rounded-xl bg-orange-950/40 hover:bg-orange-900/40 text-orange-300 border border-orange-800/60 text-xs font-bold transition"
+            >
+              لوحة الباركود والكشك (A4)
+            </Link>
+          </div>
+        </section>
 
         <section className="space-y-3">
           <h2 className="text-sm font-extrabold text-white flex items-center gap-2 justify-end">

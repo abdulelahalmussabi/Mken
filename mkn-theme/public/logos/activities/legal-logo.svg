@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="legalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#a16207"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="#1c1917"/>
+  <path d="M60 28 L60 90 M40 90 L80 90" stroke="url(#legalGrad)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M32 42 L88 42" stroke="url(#legalGrad)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M32 42 L24 62 L40 62 Z" stroke="#fde047" stroke-width="2.5" fill="#78350f" fill-opacity="0.5"/>
+  <path d="M88 42 L80 62 L96 62 Z" stroke="#fde047" stroke-width="2.5" fill="#78350f" fill-opacity="0.5"/>
+  <circle cx="60" cy="28" r="4" fill="#fde047"/>
+</svg>

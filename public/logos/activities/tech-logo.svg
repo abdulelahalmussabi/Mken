@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="techGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0e7490"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="#082f49"/>
+  <rect x="30" y="32" width="60" height="44" rx="6" stroke="url(#techGrad)" stroke-width="3.5" fill="#0c4a6e" fill-opacity="0.6"/>
+  <path d="M48 84 L72 84 M60 76 L60 84" stroke="url(#techGrad)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M46 50 L40 54 L46 58 M74 50 L80 54 L74 58 M56 62 L64 46" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

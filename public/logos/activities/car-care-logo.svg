@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="carGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="#18181b"/>
+  <path d="M28 68 L36 50 C38 46 44 44 50 44 L70 44 C76 44 82 46 84 50 L92 68 C96 68 98 72 98 76 L98 84 L90 84 M28 68 C24 68 22 72 22 76 L22 84 L30 84" stroke="url(#carGrad)" stroke-width="3.5" fill="#450a0a" fill-opacity="0.4"/>
+  <circle cx="38" cy="84" r="7" stroke="#f87171" stroke-width="3" fill="#18181b"/>
+  <circle cx="82" cy="84" r="7" stroke="#f87171" stroke-width="3" fill="#18181b"/>
+  <path d="M72 32 L76 32 M74 30 L74 34" stroke="#fca5a5" stroke-width="2" stroke-linecap="round"/>
+</svg>

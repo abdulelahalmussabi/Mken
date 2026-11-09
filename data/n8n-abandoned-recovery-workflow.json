@@ -1,0 +1,145 @@
+{
+  "name": "Mken Automated Abandoned Cart & Booking AI Recovery Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-recovery",
+      "name": "Schedule Trigger (Every 4 Hours)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.id, a.tenant_id, a.customer_name, a.phone, a.service_name, a.created_at, t.business_name, t.config_data FROM public.mken_appointments a JOIN public.mken_saas_clients t ON a.tenant_id = t.id WHERE a.status = 'abandoned' AND a.recovery_sent IS NOT TRUE AND a.created_at >= NOW() - INTERVAL '48 hours' LIMIT 50;"
+      },
+      "id": "query-abandoned-appointments",
+      "name": "Fetch Inactive/Abandoned Carts & Bookings (Supabase RLS)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mken.live/api/v1/ai-marketing",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "activityId", "value": "={{ $json.config_data.activityId || 'barber-salon' }}" },
+            { "name": "campaignType", "value": "abandoned_recovery" },
+            { "name": "dialect", "value": "najdi" },
+            { "name": "offerDetails", "value": "خصم فوري 15% على حجزك بانتظارك لاستكمال الموعد" }
+          ]
+        }
+      },
+      "id": "gemini-marketing-generator",
+      "name": "Generate Recovery Copy (Mken Gemini AI)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $json.phone_number_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.WHATSAPP_CLOUD_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "messaging_product", "value": "whatsapp" },
+            { "name": "recipient_type", "value": "individual" },
+            { "name": "to", "value": "={{ $json.phone }}" },
+            { "name": "type", "value": "text" },
+            {
+              "name": "text",
+              "value": "={{ { body: $node['gemini-marketing-generator'].json.whatsappCopy.replace('{customerName}', $json.customer_name).replace('{brandName}', $json.business_name).replace('{offerLink}', 'https://' + $json.tenant_slug + '.mken.sa/book.html?resume=' + $json.id) } }}"
+            }
+          ]
+        }
+      },
+      "id": "whatsapp-dispatch-meta-api",
+      "name": "Dispatch Recovery Message (Meta WhatsApp API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.mken_appointments SET recovery_sent = TRUE, recovery_sent_at = NOW() WHERE id = '{{ $json.id }}';"
+      },
+      "id": "mark-recovery-sent",
+      "name": "Update Recovery Status Flag (Supabase)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [1160, 300]
+    }
+  ],
+  "connections": {
+    "cron-trigger-recovery": {
+      "main": [
+        [
+          {
+            "node": "query-abandoned-appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "query-abandoned-appointments": {
+      "main": [
+        [
+          {
+            "node": "gemini-marketing-generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini-marketing-generator": {
+      "main": [
+        [
+          {
+            "node": "whatsapp-dispatch-meta-api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whatsapp-dispatch-meta-api": {
+      "main": [
+        [
+          {
+            "node": "mark-recovery-sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

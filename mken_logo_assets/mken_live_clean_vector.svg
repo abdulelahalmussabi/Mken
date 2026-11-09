@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 680" width="600" height="680">
+  <defs>
+    <!-- Drop Shadow Filter -->
+    <filter id="subtleShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-opacity="0.18" flood-color="#0F172A" />
+    </filter>
+  </defs>
+
+  <!-- Group: Main Emblem (Map Pin + Upward Growth Arrow + Keyhole) -->
+  <g id="Emblem" transform="translate(300, 220)" filter="url(#subtleShadow)">
+    
+    <!-- 1. Top Upward Arrow (Blue #1A73E8) -->
+    <path d="M 35 -110 L 95 -170 L 105 -115 L 82 -115 L 50 -75 Z" fill="#1A73E8" />
+    <polygon points="95,-170 30,-145 55,-120" fill="#1A73E8" />
+    
+    <!-- 2. Blue Top Arc Segment -->
+    <path d="M -60 -95 A 110 110 0 0 1 45 -100 L 25 -65 A 72 72 0 0 0 -40 -62 Z" fill="#1A73E8" />
+    
+    <!-- 3. Red Top-Left Arc Segment (#EA4335) -->
+    <path d="M -60 -95 A 110 110 0 0 0 -110 0 A 110 110 0 0 0 -95 50 L -62 32 A 72 72 0 0 1 -72 0 A 72 72 0 0 1 -40 -62 Z" fill="#EA4335" />
+    
+    <!-- 4. Yellow Left/Bottom Swirl Segment (#FBBC04) -->
+    <path d="M -95 50 C -75 110 -20 135 15 130 C -25 125 -60 90 -62 32 Z" fill="#FBBC04" />
+    <path d="M -105 45 C -120 75 -105 115 -65 135 C -30 148 10 140 25 125 C -15 125 -55 105 -62 32 Z" fill="#F29900" />
+    
+    <!-- 5. Green Location Pin Body & Bottom Point (#34A853) -->
+    <path d="M 45 -100 A 110 110 0 0 1 110 0 C 110 50 60 110 0 180 C 40 125 72 65 72 0 A 72 72 0 0 0 25 -65 Z" fill="#34A853" />
+    
+    <!-- 6. Center Keyhole Silhouette on White Disk -->
+    <circle cx="0" cy="0" r="56" fill="#FFFFFF" />
+    <!-- Keyhole -->
+    <circle cx="0" cy="-10" r="14" fill="#1E293B" />
+    <polygon points="-8,-5 8,-5 12,22 -12,22" fill="#1E293B" />
+    <circle cx="0" cy="22" r="12" fill="#1E293B" />
+  </g>
+
+  <!-- Group: Typography "مكّـن" -->
+  <g id="BrandName" transform="translate(300, 520)">
+    <!-- Main Calligraphy Text "مكّن" -->
+    <text x="0" y="0" 
+          font-family="'Cairo', 'Tajawal', 'Segoe UI', sans-serif" 
+          font-weight="900" 
+          font-size="110" 
+          fill="#1E293B" 
+          text-anchor="middle" 
+          letter-spacing="-1">
+      مكّـن
+    </text>
+  </g>
+
+  <!-- Group: Slogan "لإعداد الأنشطة التجارية على خرائط جوجل" -->
+  <g id="Slogan" transform="translate(300, 585)">
+    <text x="0" y="0" 
+          font-family="'Cairo', 'Tajawal', 'Segoe UI', sans-serif" 
+          font-weight="600" 
+          font-size="21" 
+          fill="#475569" 
+          text-anchor="middle">
+      لإعداد الأنشطة التجارية على خرائط جوجل
+    </text>
+  </g>
+</svg>
