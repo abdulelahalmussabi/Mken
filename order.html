@@ -98,7 +98,11 @@
               </div>
               <div class="booking-field">
                 <label for="orderPhone">رقم الجوال *</label>
-                <input type="tel" id="orderPhone" required dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05XXXXXXXX" pattern="^(05|9665|\+9665)[0-9]{8}$">
+                <div class="smart-phone-wrapper">
+                  <span class="country-prefix">🇸🇦 +966</span>
+                  <input type="tel" id="orderPhone" required dir="ltr" inputmode="numeric" autocomplete="tel" placeholder="5XXXXXXXX" class="smart-phone-input">
+                </div>
+                <span id="orderPhoneHint" class="input-hint text-muted">أدخل رقم الجوال يبدأ بـ 5 (مثال: 501234567)</span>
               </div>
               <div class="booking-field">
                 <label for="orderDistrict">الحي (اختياري)</label>
@@ -154,6 +158,7 @@
   <script src="js/offline-store.js"></script>
   <script src="js/unified-session.js"></script>
   <script src="js/pwa.js"></script>
+  <script src="js/zatca-qr.js"></script>
   <!-- Moyasar Form SDK & Polyfills -->
   <script src="https://cdn.moyasar.com/mpf/1.13.0/moyasar.js"></script>
   <script src="js/order.js"></script>

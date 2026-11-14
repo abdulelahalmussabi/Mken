@@ -29,3 +29,7 @@ Thumbs.db
 مجلد جديد/
 
 .cursor/plans/
+
+# Raw large unoptimized assets
+mkn-theme/public/almahrusa/*.jpg
+!mkn-theme/public/almahrusa/*.web.jpg

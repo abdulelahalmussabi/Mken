@@ -345,6 +345,63 @@ test('Adaptive Menus: تفعيل التبويبات بالكامل للمشتر�
   assert.equal(elements['tab_whatsapp-logs'].style.display, '', 'تبويب رسائل الواتساب ظاهر');
 });
 
+// =========================================================================
+// Suite 4: تجربة إدخال رقم الجوال الذكية والمتسامحة (Forgiving Saudi Phone)
+// =========================================================================
+test('Smart Phone Input: التسامح مع مختلف صيغ الإدخال وتوحيدها للصيغة السعودية القياسية', () => {
+  const ZatcaQr = require('../js/zatca-qr.js');
+
+  assert.equal(ZatcaQr.normalizeSaudiPhone('0501234567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('+966501234567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('00966501234567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('966501234567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('501234567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('05 0123 4567'), '0501234567');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('05-0123-4567'), '0501234567');
+
+  // رفض الأرقام غير الصحيحة
+  assert.equal(ZatcaQr.normalizeSaudiPhone('0112345678'), null, 'رفض الهاتف الثابت');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('05012345'), null, 'رفض الأرقام الناقصة');
+  assert.equal(ZatcaQr.normalizeSaudiPhone('invalid'), null, 'رفض النصوص العشوائية');
+});
+
+// =========================================================================
+// Suite 5: الامتثال لاشتراطات هيئة الزكاة والضريبة والجمارك (ZATCA TLV Base64)
+// =========================================================================
+test('ZATCA Compliance: توليد وفك تشفير ختم الفوترة الإلكترونية المرحلة الثانية TLV Base64', () => {
+  const ZatcaQr = require('../js/zatca-qr.js');
+
+  const seller = 'منصة مكّن لتقنية المعلومات';
+  const vatNo = '310123456700003';
+  const time = '2026-11-14T15:30:00Z';
+  const total = '149.00';
+  const vat = '19.43';
+
+  const tlvBase64 = ZatcaQr.generateZatcaTLV(seller, vatNo, time, total, vat);
+  assert.ok(typeof tlvBase64 === 'string' && tlvBase64.length > 30);
+
+  const parsed = ZatcaQr.parseZatcaTLV(tlvBase64);
+  assert.equal(parsed[1], seller, 'Tag 1: اسم المورد مطابق');
+  assert.equal(parsed[2], vatNo, 'Tag 2: الرقم الضريبي مطابق');
+  assert.equal(parsed[3], time, 'Tag 3: الطابع الزمني مطابق');
+  assert.equal(parsed[4], total, 'Tag 4: إجمالي المبلغ مطابق');
+  assert.equal(parsed[5], vat, 'Tag 5: ضريبة القيمة المضافة مطابقة');
+});
+
+// =========================================================================
+// Suite 6: منع تكرار النقر وتعدد الخصم (Idempotency Key Generator)
+// =========================================================================
+test('Idempotency Guard: توليد مفاتيح فريدة غير متكررة لمنع الـ Race Condition', () => {
+  const ZatcaQr = require('../js/zatca-qr.js');
+
+  const key1 = ZatcaQr.generateIdempotencyKey('ord');
+  const key2 = ZatcaQr.generateIdempotencyKey('ord');
+
+  assert.ok(key1.startsWith('ord_'));
+  assert.ok(key2.startsWith('ord_'));
+  assert.notEqual(key1, key2, 'كل مفتاح يجب أن يكون فريداً عشوائياً');
+});
+
 // إغلاق نظيف للعملية بعد إتمام جميع الاختبارات
 test.after(() => {
   setTimeout(() => {

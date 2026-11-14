@@ -4,8 +4,28 @@
  * الامتثال: نظام حماية البيانات الشخصية (PDPL) المادة 31 وضوابط NCA ECC-1:2018 (AC-1/AC-2)
  */
 
+const adaptiveIam = require('./adaptive-iam');
+
 function extractTenantContext(req) {
-  // 1. استخراج التوكن من ترويسة الطلب
+  // 1. فحص وجود رمز صلاحية التتبع المشفر كضيف (Guest Capability Token)
+  const capToken = (req.headers && (req.headers['x-capability-token'] || req.headers['x-guest-token'])) ||
+                   (req.query && req.query.token) ||
+                   (req.body && req.body.trackingToken);
+
+  if (capToken && typeof capToken === 'string' && capToken.includes('.')) {
+    const verifiedCap = adaptiveIam.verifyTrackingCapabilityToken(capToken);
+    if (verifiedCap.valid) {
+      return {
+        authenticated: false,
+        isGuestCapability: true,
+        tenantSlug: verifiedCap.tenantSlug,
+        capabilityOrderId: verifiedCap.orderId,
+        role: 'guest_tracked'
+      };
+    }
+  }
+
+  // 2. استخراج التوكن من ترويسة الطلب
   const authHeader = req.headers.authorization || req.headers['authorization'] || '';
   if (!authHeader.startsWith('Bearer ')) {
     return { authenticated: false, tenantSlug: null, role: 'anonymous' };
@@ -13,7 +33,7 @@ function extractTenantContext(req) {
 
   const token = authHeader.slice(7).trim();
   try {
-    // 2. فحص هيكل الـ JWT
+    // 3. فحص هيكل الـ JWT
     const parts = token.split('.');
     if (parts.length !== 3) {
       throw new Error('Invalid JWT format');
@@ -21,7 +41,7 @@ function extractTenantContext(req) {
 
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
 
-    // 3. التحقق من صلاحية التوكن الزمنية
+    // 4. التحقق من صلاحية التوكن الزمنية
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       throw new Error('Token expired');
     }
@@ -55,7 +75,20 @@ function enforceTenantIsolation(req, res, targetTenantSlug) {
     return true;
   }
 
-  // 2. التحقق من وجود تسجيل دخول صالح
+  // 2. دعم الجلسات الموقعة كضيف لطلب محدد (Guest Capability Access)
+  if (context.isGuestCapability && context.tenantSlug) {
+    if (targetTenantSlug && context.tenantSlug !== targetTenantSlug) {
+      console.warn(`[SECURITY ALERT] Cross-tenant guest capability violation! Token tenant: [${context.tenantSlug}], Target: [${targetTenantSlug}]`);
+      res.status(403).json({
+        error: 'Forbidden: Capability token does not match target tenant',
+        code: 'CROSS_TENANT_VIOLATION'
+      });
+      return false;
+    }
+    return true;
+  }
+
+  // 3. التحقق من وجود تسجيل دخول صالح
   if (!context.authenticated || !context.tenantSlug) {
     res.status(401).json({
       error: 'Unauthorized: Missing or invalid authentication token',
@@ -64,7 +97,7 @@ function enforceTenantIsolation(req, res, targetTenantSlug) {
     return false;
   }
 
-  // 3. التحقق الصارم من تطابق هوية المستأجر لمنع تسرب البيانات والتعديل العابر (Cross-Tenant Guard)
+  // 4. التحقق الصارم من تطابق هوية المستأجر لمنع تسرب البيانات والتعديل العابر (Cross-Tenant Guard)
   if (targetTenantSlug && context.tenantSlug !== targetTenantSlug) {
     console.warn(`[SECURITY ALERT] Cross-tenant violation attempted! Token tenant: [${context.tenantSlug}], Target tenant: [${targetTenantSlug}]`);
     res.status(403).json({

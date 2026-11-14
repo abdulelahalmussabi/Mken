@@ -146,6 +146,7 @@
 
       <div class="booking-actions no-print" style="margin-top: 25px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
         <button type="button" class="btn btn--outline" onclick="window.print()">طباعة الفاتورة 📄</button>
+        <button type="button" class="btn btn--outline" id="btnShareWhatsApp">إرسال الفاتورة واتساب 💬</button>
         <a href="order.html" class="btn btn--primary" id="btnShopAgain">تسوق مجدداً</a>
       </div>
     </div>
@@ -167,6 +168,7 @@
   <script src="js/offline-store.js"></script>
   <script src="js/unified-session.js"></script>
   <script src="js/pwa.js"></script>
+  <script src="js/zatca-qr.js"></script>
   <script>
     (function () {
       'use strict';
@@ -176,6 +178,7 @@
       var params = new URLSearchParams(window.location.search);
       var sessionId = params.get('session_id') || '';
       var orderId = params.get('order_id') || '';
+      var token = params.get('token') || '';
       var rawStatus = params.get('status') || '';
       var rawMsg = params.get('message') || '';
 
@@ -197,7 +200,7 @@
         return;
       }
 
-      if (!sessionId && !orderId) {
+      if (!sessionId && !orderId && !token) {
         boxLoading.style.display = 'none';
         boxFailed.style.display = 'block';
         document.getElementById('lblFailedMsg').textContent = 'بيانات الجلسة غير موجودة، يرجى إعادة الطلب من المتجر.';
@@ -210,8 +213,12 @@
       async function verifyOrder() {
         pollCount++;
         try {
-          var query = sessionId ? ('session_id=' + encodeURIComponent(sessionId)) : ('order_id=' + encodeURIComponent(orderId));
-          var res = await fetch('/api/v1/checkout/verify?' + query);
+          var queryParts = [];
+          if (token) queryParts.push('token=' + encodeURIComponent(token));
+          if (sessionId) queryParts.push('session_id=' + encodeURIComponent(sessionId));
+          if (orderId) queryParts.push('order_id=' + encodeURIComponent(orderId));
+          var query = queryParts.join('&');
+          var res = await fetch('/api/v1/checkout?action=verify&' + query);
           var data = await res.json();
 
           if (res.ok && data && (data.status === 'paid' || data.status === 'confirmed')) {
@@ -252,14 +259,39 @@
         }
 
         // توليد رمز الاستجابة السريع ZATCA
-        if (order.zatcaQr && window.QRCode) {
+        var zatcaQrText = order.zatcaQr;
+        if (!zatcaQrText && window.MkenZatcaQr) {
+          zatcaQrText = window.MkenZatcaQr.generateZatcaTLV(
+            order.merchantName || 'منصة مكّن',
+            order.vatNumber || '310123456700003',
+            order.createdAt || new Date().toISOString(),
+            order.totalAmount || 0,
+            order.taxAmount || 0
+          );
+        }
+
+        if (zatcaQrText && window.QRCode) {
           qrContainer.innerHTML = '';
           new QRCode(qrContainer, {
-            text: order.zatcaQr,
+            text: zatcaQrText,
             width: 140,
             height: 140,
             correctLevel: QRCode.CorrectLevel.M
           });
+        }
+
+        // تفعيل زر مشاركة الفاتورة عبر واتساب
+        var btnWa = document.getElementById('btnShareWhatsApp');
+        if (btnWa) {
+          btnWa.onclick = function () {
+            var brandName = (store && store.getBrand ? store.getBrand().name : '') || 'منصة مكّن';
+            var msg = '🧾 *فاتورة ضريبية مبسطة معتمدة*\n' +
+              'المتجر: ' + brandName + '\n' +
+              'رقم الطلب: ' + (order.orderId || order.sessionId) + '\n' +
+              'المجموع شامل الضريبة (15%): ' + Number(order.totalAmount || 0).toFixed(2) + ' ر.س\n' +
+              'عرض الفاتورة ورمز التحقق ZATCA:\n' + window.location.href;
+            window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+          };
         }
 
         // تنظيف السلة المعتمد بعد إتمام السداد بنجاح موثق

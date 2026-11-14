@@ -99,8 +99,10 @@
     if (!orderCartBar) return;
     var count = orderStore.cartCount(activeActivityId);
     orderCartBar.hidden = count === 0;
+    var total = calculateCartTotal();
+    var priceText = total > 0 ? ' — ' + (total * 1.15).toFixed(2) + ' ر.س (شامل الضريبة)' : '';
     orderCartBar.innerHTML =
-      '<span class="order-cart-bar__count">🛒 ' + count + ' في السلة</span>' +
+      '<span class="order-cart-bar__count">🛒 ' + count + ' في السلة' + priceText + '</span>' +
       '<button type="button" class="btn btn--primary btn--sm" id="btnOpenCart">عرض السلة</button>';
     var btn = document.getElementById('btnOpenCart');
     if (btn) {
@@ -701,9 +703,10 @@
     if (cleanPhone.startsWith('+966')) cleanPhone = '0' + cleanPhone.slice(4);
     else if (cleanPhone.startsWith('00966')) cleanPhone = '0' + cleanPhone.slice(5);
     else if (cleanPhone.startsWith('966')) cleanPhone = '0' + cleanPhone.slice(3);
+    else if (cleanPhone.startsWith('5') && cleanPhone.length === 9) cleanPhone = '0' + cleanPhone;
 
     if (!/^05\d{8}$/.test(cleanPhone)) {
-      alert('يرجى إدخال رقم جوال سعودي صحيح يبدأ بـ 05 ويتكون من 10 أرقام (مثال: 0501234567)');
+      alert('يرجى إدخال رقم جوال سعودي صحيح (مثال: 501234567 أو 0501234567)');
       return;
     }
 
@@ -780,17 +783,27 @@
     var payConfig = config.payment || {};
     var tenantSlug = store.getCurrentTenantSlug() || 'default';
     
-    if (payConfig.enabled && window.Moyasar) {
-      var submitBtn = orderForm.querySelector('button[type="submit"]');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'جاري تأمين جلسة السداد...';
-      }
+    var submitBtn = orderForm.querySelector('button[type="submit"]');
+    var originalBtnText = submitBtn ? submitBtn.textContent : '';
 
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="btn-text">جاري تأمين الطلب والمعالجة...</span><span class="btn-loader" aria-hidden="true"></span>';
+    }
+
+    var idempotencyKey = (window.MkenZatcaQr && window.MkenZatcaQr.generateIdempotencyKey)
+      ? window.MkenZatcaQr.generateIdempotencyKey('ord_idemp')
+      : ('ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8));
+
+    if (payConfig.enabled && window.Moyasar) {
       fetch('/api/v1/checkout/create-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey
+        },
         body: JSON.stringify({
+          idempotencyKey: idempotencyKey,
           tenantSlug: tenantSlug,
           customerName: name,
           customerPhone: cleanPhone,
@@ -845,6 +858,7 @@
             session_id: sessionData.sessionId,
             order_id: sessionData.orderId,
             tenant_slug: tenantSlug,
+            idempotency_key: idempotencyKey,
             type: 'order'
           },
           on_completed: function (payment) {
@@ -854,7 +868,7 @@
             alert('تعذر استكمال السداد: ' + (err.message || 'يرجى مراجعة بيانات البطاقة.'));
             if (submitBtn) {
               submitBtn.disabled = false;
-              submitBtn.textContent = 'إرسال الطلب عبر واتساب';
+              submitBtn.textContent = originalBtnText || 'المتابعة للدفع الإلكتروني الآمن (مدى / Apple Pay)';
             }
           }
         });
@@ -863,9 +877,11 @@
         alert(err.message || 'حدث خطأ أثناء معالجة الطلب');
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.textContent = 'إرسال الطلب عبر واتساب';
+          submitBtn.textContent = originalBtnText || 'المتابعة للدفع الإلكتروني الآمن (مدى / Apple Pay)';
         }
       });
+      return;
+    }
       return;
     }
 
@@ -938,6 +954,33 @@
     }
     if (orderForm) orderForm.addEventListener('submit', handleSubmit);
     document.getElementById('btnNewOrder').addEventListener('click', resetOrder);
+
+    // تفعيل التنسيق والتحقق الذكي المتسامح لرقم الجوال السعودي
+    var phoneInput = document.getElementById('orderPhone');
+    var phoneHint = document.getElementById('orderPhoneHint');
+    if (phoneInput) {
+      phoneInput.addEventListener('input', function (e) {
+        var raw = e.target.value;
+        var clean = raw.replace(/\D/g, '');
+        if (clean.startsWith('966')) clean = clean.substring(3);
+        if (clean.startsWith('0')) clean = clean.substring(1);
+        if (clean.length > 9) clean = clean.substring(0, 9);
+        e.target.value = clean;
+
+        if (phoneHint) {
+          if (clean.length === 9 && clean.startsWith('5')) {
+            phoneHint.textContent = '✓ رقم جوال سعودي صحيح (05' + clean.substring(1) + ')';
+            phoneHint.className = 'input-hint text-success';
+          } else if (clean.length === 0) {
+            phoneHint.textContent = 'أدخل رقم الجوال يبدأ بـ 5 (مثال: 501234567)';
+            phoneHint.className = 'input-hint text-muted';
+          } else {
+            phoneHint.textContent = 'المتبقي ' + (9 - clean.length) + ' أرقام (يجب أن يبدأ بـ 5)';
+            phoneHint.className = 'input-hint text-muted';
+          }
+        }
+      });
+    }
   }
 
   function initPage() {

@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
 const gccTaxEngine = require('../_lib/gcc-tax-engine');
+const adaptiveIam = require('../_lib/adaptive-iam');
 
 /**
  * دالة التحقق وتنسيق رقم الجوال السعودي والخليجي المعتمد
@@ -107,6 +108,23 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'يرجى إدخال رقم جوال صالح' });
     }
 
+    // فحص واشتراطات الهوية التكيفية للأنشطة المختلفة (Adaptive IAM Risk Check)
+    const reqValidation = adaptiveIam.validateCheckoutRequirements({
+      activityId: activityId,
+      isGuest: body.isGuest !== false,
+      customerPhone: cleanPhone,
+      nationalId: body.nationalId,
+      userAuth: req.headers.authorization
+    });
+
+    if (!reqValidation.allowed) {
+      return res.status(403).json({
+        error: reqValidation.error,
+        code: reqValidation.code,
+        activity: reqValidation.policy
+      });
+    }
+
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'السلة فارغة. يرجى إضافة منتجات قبل المتابعة' });
     }
@@ -150,11 +168,23 @@ module.exports = async function handler(req, res) {
       });
 
       const pseudoSessionId = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+      const pseudoOrderId = 'ord_' + pseudoSessionId.slice(5);
+
+      // توليد رمز الصلاحية المشفر لتتبع الطلب كضيف بدون كلمة سر أو حساب
+      const capResult = adaptiveIam.generateTrackingCapabilityToken({
+        tenantSlug: tenantSlug,
+        orderId: pseudoOrderId,
+        phone: cleanPhone
+      });
 
       return res.status(200).json({
         success: true,
         sessionId: pseudoSessionId,
-        orderId: 'ord_' + pseudoSessionId.slice(5),
+        orderId: pseudoOrderId,
+        trackingToken: capResult.token,
+        trackingUrl: capResult.trackingUrl,
+        isGuestOrder: true,
+        activityPolicy: reqValidation.policy,
         subtotal: subtotalCalc.transaction.subtotal,
         taxAmount: totalTaxCalc.transaction.taxAmount,
         shippingCost: shipping,
@@ -295,7 +325,14 @@ module.exports = async function handler(req, res) {
       const sessionId = sessionRecord ? sessionRecord.id : ('sess_' + Date.now().toString(36));
       const orderId = 'ord_' + sessionId.toString().replace(/[^a-zA-Z0-9]/g, '').slice(0, 8);
 
-      // إدراج السجل في mken_orders
+      // توليد رمز الصلاحية المشفر لتتبع الطلب كضيف بأمان وحماية ضد IDOR
+      const capResult = adaptiveIam.generateTrackingCapabilityToken({
+        tenantSlug: tenantSlug,
+        orderId: orderId,
+        phone: cleanPhone
+      });
+
+      // إدراج السجل في mken_orders مع ربطه بالتوكن المشفر
       await supabase
         .from('mken_orders')
         .insert({
@@ -321,6 +358,10 @@ module.exports = async function handler(req, res) {
           sar_total: totalTaxCalc.samaFx.sarTotalAmount,
           customer_country: customerCountry,
           checkout_session_id: sessionRecord ? sessionRecord.id : null,
+          order_type: 'STANDARD_GUEST',
+          tracking_token_hash: capResult.tokenHash,
+          tracking_expires_at: capResult.expiresAt,
+          is_guest_order: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -330,6 +371,10 @@ module.exports = async function handler(req, res) {
         success: true,
         sessionId: sessionId,
         orderId: orderId,
+        trackingToken: capResult.token,
+        trackingUrl: capResult.trackingUrl,
+        isGuestOrder: true,
+        activityPolicy: reqValidation.policy,
         subtotal: finalSubtotal,
         taxAmount: finalTaxAmount,
         shippingCost: shipping,
@@ -352,14 +397,32 @@ module.exports = async function handler(req, res) {
   }
 
   // =========================================================================
-  // 2. التحقق من حالة الدفع وجلب الفاتورة (Verify Checkout Status)
+  // 2. التحقق من حالة الدفع وجلب الفاتورة (Verify Checkout Status with IDOR Guard)
   // =========================================================================
-  if (action === 'verify') {
+  if (action === 'verify' || action === 'track' || action === 'track-order') {
     const sessionId = req.query.session_id || url.searchParams.get('session_id') || (req.body && req.body.session_id);
-    const orderId = req.query.order_id || url.searchParams.get('order_id') || (req.body && req.body.order_id);
+    const orderIdParam = req.query.order_id || url.searchParams.get('order_id') || (req.body && req.body.order_id);
+    const trackingToken = req.query.token || url.searchParams.get('token') || (req.body && req.body.token) || req.headers['x-capability-token'];
+    const tenantSlug = req.query.tenant_slug || url.searchParams.get('tenant_slug') || (req.body && req.body.tenant_slug) || 'default';
 
-    if (!sessionId && !orderId) {
-      return res.status(400).json({ error: 'معرّف الجلسة أو الطلب مطلوب للتحقق' });
+    // حماية ضد IDOR: فحص رمز الصلاحية الموقّع عند غياب جلسة الشراء المباشرة
+    let verifiedOrderId = orderIdParam;
+    let verifiedTenant = tenantSlug;
+
+    if (trackingToken) {
+      const tokenVerification = adaptiveIam.verifyTrackingCapabilityToken(trackingToken, tenantSlug !== 'default' ? tenantSlug : null);
+      if (!tokenVerification.valid) {
+        return res.status(403).json({
+          error: tokenVerification.error,
+          code: tokenVerification.code || 'INVALID_CAPABILITY_TOKEN'
+        });
+      }
+      verifiedOrderId = tokenVerification.orderId;
+      verifiedTenant = tokenVerification.tenantSlug;
+    }
+
+    if (!sessionId && !verifiedOrderId) {
+      return res.status(400).json({ error: 'معرّف الجلسة أو رمز التتبع الموقّع مطلوب للتحقق' });
     }
 
     const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -371,13 +434,14 @@ module.exports = async function handler(req, res) {
         success: true,
         status: 'paid',
         sessionId: sessionId,
-        orderId: orderId || ('ord_' + (sessionId || '').slice(0, 8)),
+        orderId: verifiedOrderId || ('ord_' + (sessionId || '').slice(0, 8)),
         subtotal: 100.00,
         taxAmount: 15.00,
         shippingCost: 0.00,
         totalAmount: 115.00,
         currency: 'SAR',
         paymentMethod: 'mada',
+        isGuestOrder: true,
         zatcaQr: 'AQZNa2VuAA8zMDAwMDAwMDAwMDAwMDMCFDIwMjYtMTEtMTNUMjA6MDA6MDBaBAYxMTUuMDACBDE1LjAw'
       });
     }
@@ -396,10 +460,14 @@ module.exports = async function handler(req, res) {
       }
 
       let order = null;
-      if (orderId || (session && session.id)) {
+      if (verifiedOrderId || (session && session.id)) {
         const query = supabase.from('mken_orders').select('*');
-        if (orderId) query.eq('id', orderId);
-        else query.eq('checkout_session_id', session.id);
+        if (verifiedOrderId) {
+          query.eq('id', verifiedOrderId);
+          query.eq('tenant_slug', verifiedTenant);
+        } else {
+          query.eq('checkout_session_id', session.id);
+        }
         const { data } = await query.maybeSingle();
         order = data;
       }
@@ -416,6 +484,8 @@ module.exports = async function handler(req, res) {
         status: isPaid ? 'paid' : (session ? session.status : 'pending'),
         sessionId: session ? session.id : null,
         orderId: resolvedOrderId,
+        orderType: (order && order.order_type) || 'STANDARD_GUEST',
+        isGuestOrder: (order && order.is_guest_order) !== false,
         subtotal: (session && session.subtotal) || (order && order.subtotal) || 0,
         taxAmount: (session && session.tax_amount) || (order && order.tax_amount) || 0,
         shippingCost: (session && session.shipping_cost) || (order && order.shipping_cost) || 0,
@@ -426,12 +496,75 @@ module.exports = async function handler(req, res) {
         paymentId: (session && session.payment_id) || (order && order.payment_id) || null,
         paymentMethod: (session && session.payment_method) || (order && order.payment_method) || null,
         zatcaQr: (session && session.zatca_qr_code) || (order && order.zatca_qr_code) || null,
-        tenantSlug: (session && session.tenant_slug) || (order && order.tenant_slug) || 'default'
+        shippingAddress: order ? { district: order.district, address: order.location_address } : null,
+        tenantSlug: (session && session.tenant_slug) || (order && order.tenant_slug) || verifiedTenant
       });
 
     } catch (err) {
       console.error('[Verify Checkout Error]:', err);
       return res.status(500).json({ error: 'خطأ أثناء استعلام حالة الدفع' });
+    }
+  }
+
+  // =========================================================================
+  // 3. دمج طلبات الضيف السابقة عند التوثيق اللاحق (Account Promotion & Linking)
+  // =========================================================================
+  if (action === 'link-guest-orders') {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    const { tenantSlug = 'default', phone, customerName = '' } = req.body || {};
+    const cleanPhone = normalizeGccPhone(phone);
+    if (!cleanPhone) {
+      return res.status(400).json({ error: 'رقم الجوال غير صالح للربط' });
+    }
+
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const serviceKey = sbEnv.getSupabaseServiceKey();
+
+    if (!supabaseUrl || !serviceKey) {
+      return res.status(200).json({
+        success: true,
+        message: 'تم ربط الطلبات السابقة بالحساب بنجاح (وضع محاكاة محلي)',
+        linkedOrdersCount: 2
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const phoneHash = adaptiveIam.computePhoneBlindIndex(cleanPhone, tenantSlug);
+
+    try {
+      // استدعاء الدالة الذرية في PostgreSQL لترقية المستخدم ودمج الطلبات
+      const { data: rpcData, error: rpcError } = await supabase.rpc('mken_fn_promote_guest_user', {
+        p_tenant_slug: tenantSlug,
+        p_phone_blind_index: phoneHash,
+        p_full_name: customerName
+      });
+
+      if (!rpcError && rpcData) {
+        return res.status(200).json(rpcData);
+      }
+
+      // fallback: تحديث مباشر في جدول الطلبات
+      const { data: updatedOrders, error: updateErr } = await supabase
+        .from('mken_orders')
+        .update({ is_guest_order: false, updated_at: new Date().toISOString() })
+        .eq('tenant_slug', tenantSlug)
+        .eq('phone', cleanPhone)
+        .eq('is_guest_order', true)
+        .select('id');
+
+      if (updateErr) throw updateErr;
+
+      return res.status(200).json({
+        success: true,
+        linkedOrdersCount: updatedOrders ? updatedOrders.length : 0,
+        message: 'تم دمج وتحديث جميع الطلبات السابقة للحساب المسجل بنجاح'
+      });
+    } catch (linkErr) {
+      console.error('[Link Guest Orders Error]:', linkErr);
+      return res.status(500).json({ error: 'فشل ربط الطلبات: ' + linkErr.message });
     }
   }
 

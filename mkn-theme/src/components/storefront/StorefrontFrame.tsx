@@ -24,6 +24,7 @@ import type {
   StorefrontClient,
   StorefrontKind,
 } from "@/types/database";
+import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { BrandCutout } from "@/components/PlatformMark";
 import { useColorScheme } from "@/context/ColorSchemeContext";
@@ -218,6 +219,48 @@ export function StorefrontFrame({
     if (appearance) setDarkEnabled(appearance.darkModeEnabled !== false);
   }, [appearance, setDarkEnabled]);
 
+  // Live Preview Event Listener (Micro-Reconciler connection)
+  useEffect(() => {
+    const handlePreviewPatch = (e: Event) => {
+      const patches = (e as CustomEvent).detail;
+      if (!Array.isArray(patches)) return;
+      setStoreClient((prev) => {
+        const base = prev || ({
+          slug: slug || "demo",
+          name: "متجر مكّن التجريبي",
+          tagline: "أشهى المأكولات والمنتجات بجودة عالية",
+          subtitle: "مرحباً بك في المتجر التجريبي",
+          type: "restaurant",
+          phone: "+966501234567",
+          whatsapp: "966501234567",
+          location: "الرياض - المملكة العربية السعودية",
+          rating: "4.9",
+          reviewsCount: "128",
+          heroImage: "",
+          logo: "",
+          commercialRegistryName: "مؤسسة المتجر التجريبي",
+          commercialRegistryNumber: "1010998877",
+          demoNotice: "معاينة تجريبية مؤمنة - غير صالحة للأغراض التجارية أو الضريبية",
+          theme: "emerald",
+          couponCode: "",
+          discountText: "",
+          promoTitle: "",
+        } as StorefrontClient);
+        const copy = { ...base };
+        for (const p of patches) {
+          if (p.path === "/client/name") copy.name = p.value;
+          if (p.path === "/client/tagline") copy.tagline = p.value;
+          if (p.path === "/client/subtitle") copy.subtitle = p.value;
+        }
+        return copy;
+      });
+      setLoadState("ready");
+    };
+
+    window.addEventListener("mken-preview-patch", handlePreviewPatch);
+    return () => window.removeEventListener("mken-preview-patch", handlePreviewPatch);
+  }, [slug]);
+
   useEffect(() => {
     return () => setDarkEnabled(true);
   }, [setDarkEnabled]);
@@ -229,6 +272,238 @@ export function StorefrontFrame({
     }
     let cancelled = false;
     setLoadState("loading");
+
+    const initSyntheticStore = () => {
+      const foundClient = DEFAULT_CLIENTS.find((c) => c.slug === slug);
+      if (foundClient) {
+        setStoreClient({
+          slug: foundClient.slug,
+          name: foundClient.name,
+          tagline: foundClient.tagline || "",
+          subtitle: foundClient.subtitle || "",
+          type: foundClient.type,
+          phone: foundClient.phone || "+966501234567",
+          whatsapp: foundClient.whatsapp || "966501234567",
+          location: foundClient.location || "المملكة العربية السعودية",
+          rating: foundClient.rating || "4.9",
+          reviewsCount: foundClient.reviewsCount || "120 تقييم",
+          heroImage: foundClient.heroImage || "",
+          logo: foundClient.logo || "",
+          commercialRegistryName: foundClient.commercialRegistryName || "",
+          commercialRegistryNumber: foundClient.commercialRegistryNumber || "",
+          demoNotice: foundClient.demoNotice || "معاينة تجريبية مؤمنة - منصة مكّن",
+          theme: foundClient.theme || "emerald",
+          couponCode: foundClient.couponCode || "",
+          discountText: foundClient.discountText || "",
+          promoTitle: foundClient.promoTitle || "",
+        });
+
+        if (slug === "qasr-najd") {
+          setCatalog({
+            kind: "generic",
+            services: [
+              {
+                id: "qn-01",
+                name: "كبسة حاشي بلدي طازج",
+                badge: "الأكثر طلباً",
+                price: "75 ر.س",
+                features: ["لحم حاشي بلدي طازج", "أرز بشاور فاخر", "سلطة حارة ومخلل"],
+                image: "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=600&q=80",
+                description: "مطهو على الطريقة النجدية الأصيلة مع بهارات قصر نجد الخاصة وتوابل الزعفران.",
+                popular: true,
+                category: "الأطباق الرئيسية",
+              },
+              {
+                id: "qn-02",
+                name: "جريش نجدي بالمسمنة والسمن البري",
+                badge: "طبق تراثي",
+                price: "35 ر.س",
+                features: ["قمح حب مجروش", "مسمنة بصل مكرمل", "سمن بري غنم"],
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+                description: "مطهو على نار هادئة لساعات طويلة حتى يكتسب القوام الكريمي والمذاق الغني.",
+                popular: true,
+                category: "شعبيات نجد",
+              },
+              {
+                id: "qn-03",
+                name: "قرصان نجد باللحم البلدي والخضار",
+                badge: "مميز",
+                price: "30 ر.س",
+                features: ["رقاق قمح مسبك", "خضار مشكلة طازجة", "مرق لحم غني"],
+                image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80",
+                description: "طبقات من رقاق القرصان المسقي بمرق اللحم والخضار النجدية الشهية.",
+                popular: false,
+                category: "شعبيات نجد",
+              },
+              {
+                id: "qn-04",
+                name: "دلة قهوة سعودية مع خلاص القصيم الفاخر",
+                badge: "ضيافة ملكية",
+                price: "45 ر.س",
+                features: ["بن هرري محمص بدرجة شقراء", "هيل وزعفران سوبر نقيل", "تمر خلاص مكنوز"],
+                image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=600&q=80",
+                description: "رمز الكرم والضيافة السعودية تُقدم ساخنة في دلة رسلان مع الفنجان والتمر الفاخر.",
+                popular: true,
+                category: "المشروبات والضيافة",
+              },
+            ],
+          });
+        } else if (slug === "arkan-spa") {
+          setCatalog({
+            kind: "salon",
+            services: [
+              {
+                id: "ark-01",
+                name: "باقة العريس الملكية المتكاملة VIP",
+                badge: "باقة النخبة",
+                price: "650 ر.س",
+                features: ["حلاقة ملكية وتحديد لحية", "تنظيف بشرة هيدرافاشيل", "مساج استرخائي 45 دقيقة", "بديكير ومناكير سبا"],
+                image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80",
+                description: "عناية متكاملة قبل المناسبات الكبرى في جناح خاص بأعلى معايير التعقيم والخصوصية.",
+                popular: true,
+                category: "باقات المناسبات",
+              },
+              {
+                id: "ark-02",
+                name: "حلاقة ملكية وتحديد اللحية بالموس الإيطالي",
+                badge: "الأكثر طلباً",
+                price: "85 ر.س",
+                features: ["فوطة بخار ساخنة مهدئة", "تحديد دقيق للشوارب واللحية", "سيروم مغذي بالزيوت الطبيعية"],
+                image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80",
+                description: "تجربة حلاقة دقيقة تمنحك إطلالة مهندمة وتغذي مسامات الجلد وبصيلات اللحية.",
+                popular: true,
+                category: "الحلاقة والتشذيب",
+              },
+              {
+                id: "ark-03",
+                name: "جلسة تنظيف بشرة هيدرافاشيل عميق",
+                badge: "عناية طبية",
+                price: "220 ر.س",
+                features: ["إزالة الرؤوس السوداء والشوائب", "تقشير مائي غير جراحي", "حقن سيروم حمض الهيالورونيك"],
+                image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
+                description: "تجديد شباب البشرة والتخلص من علامات الإرهاق وأشعة الشمس في 45 دقيقة.",
+                popular: false,
+                category: "العناية بالبشرة",
+              },
+              {
+                id: "ark-04",
+                name: "مساج الأحجار البركانية الساخنة (Hot Stone)",
+                badge: "استرخاء عميق",
+                price: "280 ر.س",
+                features: ["أحجار بازلتية دافئة", "زيوت لافندر وإكليل الجبل", "إرخاء العضلات المتشنجة"],
+                image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80",
+                description: "جلسة علاجية تزيل الضغوط وتنشط الدورة الدموية بإشراف أخصائي مساج محترف.",
+                popular: true,
+                category: "السبا والمساج",
+              },
+            ],
+          });
+        } else if (slug === "dar-maysan") {
+          setCatalog({
+            kind: "commerce",
+            services: [
+              {
+                id: "dm-01",
+                name: "دهن عود براشين ملكي قديم (ربع تولة)",
+                badge: "نادر ومميز",
+                price: "420 ر.س",
+                features: ["تقطير حطبي تقليدي", "نكهة سويتية بخورية فواحة", "ثبات على الشماغ لأكثر من 48 ساعة"],
+                image: "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=600&q=80",
+                description: "دهن عود معتق مستخرج من غابات براشين التايلندية العريقة، مصفى ومحفوظ في قنينة كريستال فاخرة.",
+                popular: true,
+                category: "أدهان العود الفاخرة",
+              },
+              {
+                id: "dm-02",
+                name: "بخور مروكي دبل سوبر محسن فاخر (أوقية)",
+                badge: "الأكثر مبيعاً",
+                price: "290 ر.س",
+                features: ["كسر مباخر كبيرة", "زبد كثيف مستمر", "خالي من رائحة المستكة أو الاحتراق"],
+                image: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=600&q=80",
+                description: "رائحة باردة فخمة تملأ أرجاء المجالس وصالات المناسبات والضيافة برائحة العود الأصيل.",
+                popular: true,
+                category: "أخشاب العود والبخور",
+              },
+              {
+                id: "dm-03",
+                name: "عطر ميسان رويال نيش (Extrait de Parfum 100ml)",
+                badge: "إصدار حصري",
+                price: "380 ر.س",
+                features: ["تركيز عطري 35%", "مزيج العود والعنبر والزعفران", "توقيع عطري لا يُنسى"],
+                image: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=600&q=80",
+                description: "عطر فاخر يجمع بين دفء الشرق وأناقة العطور العالمية في زجاجة ثقيلة بتصميم مهيب.",
+                popular: false,
+                category: "عطور النيش",
+              },
+              {
+                id: "dm-04",
+                name: "صندوق الإهداء التذكاري دار ميسان VIP",
+                badge: "هدايا فاخرة",
+                price: "850 ر.س",
+                features: ["صندوق خشبي مبطن بالمخمل", "دهن عود + أوقية مروكي + عطر ميسان", "كتابة الاسم بالذهب"],
+                image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80",
+                description: "الهدية المثالية للتعبير عن التقدير في الأعياد والأعراس والمناسبات الرسمية.",
+                popular: true,
+                category: "بوكسات الإهداء",
+              },
+            ],
+          });
+        }
+        setLoadState("ready");
+        return;
+      }
+
+      setStoreClient({
+        slug: slug || "demo",
+        name: "متجر مكّن التجريبي",
+        tagline: "أشهى المأكولات والمنتجات بجودة عالية",
+        subtitle: "مرحباً بك في المتجر التجريبي، استكشف المنتجات واحجز خدماتك بكل سهولة",
+        type: "restaurant",
+        phone: "+966501234567",
+        whatsapp: "966501234567",
+        location: "الرياض - المملكة العربية السعودية",
+        rating: "4.9",
+        reviewsCount: "128",
+        heroImage: "",
+        logo: "",
+        commercialRegistryName: "مؤسسة المتجر التجريبي",
+        commercialRegistryNumber: "1010998877",
+        demoNotice: "معاينة تجريبية مؤمنة - غير صالحة للأغراض التجارية أو الضريبية",
+        theme: "emerald",
+        couponCode: "",
+        discountText: "",
+        promoTitle: "",
+      });
+      setCatalog({
+        kind: "generic",
+        services: [
+          {
+            id: "srv-01",
+            name: "الخدمة التجريبية الأولى",
+            badge: "الأكثر طلباً",
+            price: "150 ر.س",
+            features: ["جودة استثنائية", "تنفيذ فوري", "دعم متواصل"],
+            image: "",
+            description: "وصف الخدمة التجريبية لعرض شكل البطاقات في المتجر",
+            popular: true,
+            category: "خدمات مميزة",
+          },
+          {
+            id: "srv-02",
+            name: "الخدمة التجريبية الثانية",
+            badge: "عرض خاص",
+            price: "95 ر.س",
+            features: ["خدمة سريعة", "ضمان معتمد"],
+            image: "",
+            description: "وصف توضيحي للخدمة الثانية لاختبار تجربة المستخدم والتنسيق",
+            popular: false,
+            category: "خدمات عامة",
+          },
+        ],
+      });
+      setLoadState("ready");
+    };
+
     const path = `/api/clients/${encodeURIComponent(slug)}`;
     const platformUrl = `https://www.mken.live${path}`;
     const readJson = (res: Response) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status))));
@@ -307,11 +582,21 @@ export function StorefrontFrame({
           );
           setLoadState("ready");
         } else {
-          setLoadState("missing");
+          if (slug === "demo" || (typeof window !== "undefined" && window.location.search.includes("preview=true"))) {
+            initSyntheticStore();
+          } else {
+            setLoadState("missing");
+          }
         }
       })
       .catch(() => {
-        if (!cancelled) setLoadState("missing");
+        if (!cancelled) {
+          if (slug === "demo" || (typeof window !== "undefined" && window.location.search.includes("preview=true"))) {
+            initSyntheticStore();
+          } else {
+            setLoadState("missing");
+          }
+        }
       });
     return () => {
       cancelled = true;

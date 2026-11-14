@@ -108,3 +108,125 @@
     flex-wrap: wrap;
   }
 }
+
+
+/* ==========================================================================
+   تعزيزات سهولة الاستخدام وتجربة العميل (Mobile Thumb Zone & UX Excellence)
+   مبنية وفق معايير سهولة الاستخدام الإدراكية وتوجيهات المجلس التنفيذي
+   ========================================================================== */
+
+.smart-phone-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: var(--radius, 8px);
+  background: var(--warm-white, #ffffff);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.smart-phone-wrapper:focus-within {
+  border-color: var(--color-primary, #0f172a);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.country-prefix {
+  padding: 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border-left: 1px solid var(--color-border, #cbd5e1);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-top-right-radius: var(--radius, 8px);
+  border-bottom-right-radius: var(--radius, 8px);
+  user-select: none;
+}
+
+.smart-phone-input {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  padding: 10px 14px !important;
+  font-size: 1.05rem !important;
+  font-family: monospace, var(--font) !important;
+  direction: ltr !important;
+  text-align: left !important;
+  height: 48px;
+  background: transparent !important;
+}
+
+.input-hint {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 5px;
+  min-height: 18px;
+  transition: color 0.2s ease;
+}
+
+.input-hint.text-success {
+  color: #16a34a !important;
+  font-weight: 600;
+}
+
+.input-hint.text-muted {
+  color: #64748b !important;
+}
+
+.input-hint.text-danger {
+  color: #dc2626 !important;
+}
+
+/* شريط الإبهام السفلي المتكيف (Sticky Thumb-Zone Bar) */
+@media (max-width: 768px) {
+  .order-cart-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    padding: 14px 20px;
+    background: #ffffff;
+    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .order-cart-bar .btn {
+    min-height: 48px;
+    padding: 10px 22px;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+}
+
+/* مؤشر التحميل وقفل الزر لمنع تكرار النقر (Idempotency Lock) */
+.btn-loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: btnSpin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-inline-start: 8px;
+}
+
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  filter: grayscale(20%);
+}
