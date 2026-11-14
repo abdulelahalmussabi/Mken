@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Suspense } from "react";
 import { Cairo } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import { AdminProvider } from "@/context/AdminContext";
@@ -12,10 +13,14 @@ import { OccasionParticleCanvas } from "@/components/occasions/OccasionParticleC
 import { OccasionShowcaseModal } from "@/components/occasions/OccasionShowcaseModal";
 import { OccasionFloatingButton } from "@/components/occasions/OccasionFloatingButton";
 import Toast from "@/components/Toast";
+import { hostnameFromHeaders } from "@/lib/mken/bound-host";
+import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import {
+  PLATFORM_ICON,
   SITE_DEFAULT_DESCRIPTION,
   SITE_DEFAULT_TITLE,
   SITE_NAME,
+  brandMetadataIcons,
   siteMetadataBase,
 } from "@/lib/mken/seo";
 
@@ -25,41 +30,47 @@ const cairo = Cairo({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: siteMetadataBase(),
-  title: {
-    default: SITE_DEFAULT_TITLE,
-    template: `%s | ${SITE_NAME}`,
-  },
-  description: SITE_DEFAULT_DESCRIPTION,
-  applicationName: SITE_NAME,
-  keywords: [
-    "مكّن",
-    "Local SEO",
-    "خرائط Google",
-    "محلات السعودية",
-    "ظهور محلي",
-    "مناسبات سعودية",
-  ],
-  authors: [{ name: SITE_NAME, url: "https://mken.live" }],
-  openGraph: {
-    type: "website",
-    locale: "ar_SA",
-    siteName: SITE_NAME,
-    title: SITE_DEFAULT_TITLE,
+export async function generateMetadata(): Promise<Metadata> {
+  const slug = boundTenantFromHostname(hostnameFromHeaders(await headers()));
+  return {
+    metadataBase: siteMetadataBase(),
+    title: {
+      default: SITE_DEFAULT_TITLE,
+      template: `%s | ${SITE_NAME}`,
+    },
     description: SITE_DEFAULT_DESCRIPTION,
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_DEFAULT_TITLE,
-    description: SITE_DEFAULT_DESCRIPTION,
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    applicationName: SITE_NAME,
+    icons: brandMetadataIcons(slug),
+    keywords: [
+      "مكّن",
+      "Local SEO",
+      "خرائط Google",
+      "محلات السعودية",
+      "ظهور محلي",
+      "مناسبات سعودية",
+    ],
+    authors: [{ name: SITE_NAME, url: "https://mken.live" }],
+    openGraph: {
+      type: "website",
+      locale: "ar_SA",
+      siteName: SITE_NAME,
+      title: SITE_DEFAULT_TITLE,
+      description: SITE_DEFAULT_DESCRIPTION,
+      url: "/",
+      images: [{ url: PLATFORM_ICON }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: SITE_DEFAULT_TITLE,
+      description: SITE_DEFAULT_DESCRIPTION,
+      images: [PLATFORM_ICON],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

@@ -20,6 +20,7 @@ import {
   Save,
   Tag,
   ArrowRight,
+  FileBadge,
 } from "lucide-react";
 import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 
@@ -75,6 +76,8 @@ export default function ClientDetailPage() {
   const [discountText, setDiscountText] = useState("");
   const [promoTitle, setPromoTitle] = useState("");
   const [discountEnabled, setDiscountEnabled] = useState(true);
+  const [commercialRegistryName, setCommercialRegistryName] = useState("");
+  const [commercialRegistryNumber, setCommercialRegistryNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -89,6 +92,8 @@ export default function ClientDetailPage() {
       setDiscountText(targetClient.discountText || "");
       setPromoTitle(targetClient.promoTitle || "");
       setDiscountEnabled(targetClient.discountEnabled ?? true);
+      setCommercialRegistryName(targetClient.commercialRegistryName || "");
+      setCommercialRegistryNumber(targetClient.commercialRegistryNumber || "");
     }
   }, [targetClient]);
 
@@ -133,6 +138,8 @@ export default function ClientDetailPage() {
       discountText,
       promoTitle,
       discountEnabled,
+      commercialRegistryName,
+      commercialRegistryNumber,
     });
 
     setIsSaving(false);
@@ -261,6 +268,39 @@ export default function ClientDetailPage() {
                 placeholder="حي العليا - الرياض، المملكة العربية السعودية"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
               />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <FileBadge className="w-5 h-5 text-amber-400" />
+              <h3 className="text-base font-extrabold text-white">السجل التجاري</h3>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              يظهر اسم ورقم السجل في تذييل الموقع العام بجانب عبارة حقوق النشر.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300">اسم السجل التجاري</label>
+                <input
+                  type="text"
+                  value={commercialRegistryName}
+                  onChange={(e) => setCommercialRegistryName(e.target.value)}
+                  placeholder="الاسم كما في السجل التجاري"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300">رقم السجل التجاري</label>
+                <input
+                  type="text"
+                  value={commercialRegistryNumber}
+                  onChange={(e) => setCommercialRegistryNumber(e.target.value)}
+                  placeholder="7043321418"
+                  dir="ltr"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
             </div>
           </div>
 

@@ -3,9 +3,14 @@ import { resolveTenantScope } from "@/lib/auth/scope";
 import {
   dataforseoConfigured,
   geoCreditsForSlug,
+  geoGridScanReady,
   listRecentRankScans,
+  placesGeoConfigured,
+  preferredGeoSource,
   runGeoGridScan,
+  suggestedGeoKeyword,
 } from "@/lib/mken/geo-grid";
+import { loadNapSiteSnapshot } from "@/lib/mken/gbp";
 
 export async function GET(request: Request) {
   const scope = await resolveTenantScope(request);
@@ -16,9 +21,10 @@ export async function GET(request: Request) {
     );
   }
 
-  const [credits, listed] = await Promise.all([
+  const [credits, listed, snap] = await Promise.all([
     geoCreditsForSlug(scope.slug),
     listRecentRankScans(scope.slug),
+    loadNapSiteSnapshot(scope.slug),
   ]);
   if (listed.error) {
     return NextResponse.json({ success: false, message: listed.error }, { status: 500 });
@@ -29,6 +35,15 @@ export async function GET(request: Request) {
     credits,
     scans: listed.scans,
     dataforseoReady: dataforseoConfigured(),
+    placesReady: placesGeoConfigured(),
+    scanReady: geoGridScanReady(),
+    scanSource: preferredGeoSource(),
+    suggestedKeyword: suggestedGeoKeyword({
+      slug: scope.slug,
+      city: snap.site?.city,
+      activity: snap.site?.category,
+      name: snap.site?.name,
+    }),
   });
 }
 

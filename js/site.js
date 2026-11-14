@@ -208,7 +208,11 @@
       var bookCfg = act.booking || {};
       ctaBooking.textContent = orderCfg.ctaLabel || bookCfg.ctaLabel || 'احجز الآن';
       var globalBooking = config.booking && config.booking.enabled !== false;
-      if (profile.id === 'order-based') {
+      var queueCfg = config.queue || {};
+      if (queueCfg.enabled && queueCfg.serviceMode === 'queue') {
+        ctaBooking.textContent = 'احجز دورك في الطابور 🎟️';
+        ctaBooking.href = 'queue.html';
+      } else if (profile.id === 'order-based') {
         ctaBooking.href = 'order.html?activity=' + encodeURIComponent(activeActivityId);
       } else if (profile.showBooking && globalBooking) {
         ctaBooking.href = bookCfg.portalUrl || ('book.html?activity=' + encodeURIComponent(activeActivityId));

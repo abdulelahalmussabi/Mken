@@ -10,6 +10,6 @@ export async function GET() {
 
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
-  clearSessionCookie(response);
+  await clearSessionCookie(response);
   return response;
 }

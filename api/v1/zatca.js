@@ -2,6 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
+const zatcaEngine = require('../_lib/zatca-engine');
 
 function getEncryptionKey() {
   const secret = process.env.ZATCA_ENCRYPTION_KEY;
@@ -157,171 +158,12 @@ function generateCsr(privateKeyPem, publicKeyPem, subjectFields) {
 
 // Generate TLV QR Code (Phase 1 & 2 compliant)
 function generateZatcaTlvQr(seller, vat, time, total, tax, xmlHash, signature, publicKey) {
-  function toTlv(tag, val) {
-    const valBuf = Buffer.isBuffer(val) ? val : Buffer.from(String(val), 'utf8');
-    const tagBuf = Buffer.from([tag]);
-    const lenBuf = Buffer.from([valBuf.length]);
-    return Buffer.concat([tagBuf, lenBuf, valBuf]);
-  }
-
-  const parts = [
-    toTlv(1, seller),
-    toTlv(2, vat),
-    toTlv(3, time),
-    toTlv(4, total),
-    toTlv(5, tax)
-  ];
-
-  if (xmlHash) {
-    const hashBuf = typeof xmlHash === 'string' ? Buffer.from(xmlHash, 'hex') : xmlHash;
-    parts.push(toTlv(6, hashBuf));
-  }
-  if (signature) {
-    const sigBuf = typeof signature === 'string' ? Buffer.from(signature, 'base64') : signature;
-    parts.push(toTlv(7, sigBuf));
-  }
-  if (publicKey) {
-    const pubBuf = typeof publicKey === 'string' ? Buffer.from(publicKey.replace(/-----\w+ PUBLIC KEY-----|\n|\r/g, ''), 'base64') : publicKey;
-    parts.push(toTlv(8, pubBuf));
-  }
-
-  return Buffer.concat(parts).toString('base64');
+  return zatcaEngine.generateZatcaTlvQr(seller, vat, time, total, tax, xmlHash, signature, publicKey);
 }
 
 // Create a valid UBL 2.1 compliant Simplified Invoice XML
 function generateInvoiceXml(invoice, tenantConfig) {
-  const uuid = invoice.uuid || crypto.randomUUID();
-  const id = invoice.id || ('INV-' + Date.now());
-  const date = (invoice.createdAt || new Date().toISOString()).split('T')[0];
-  const time = (invoice.createdAt || new Date().toISOString()).split('T')[1].split('.')[0];
-  const sellerName = tenantConfig.businessName || 'منشأة مكن';
-  const vatNumber = tenantConfig.vatNumber || '311234567800003';
-  const street = tenantConfig.street || 'شارع العليا';
-  const city = tenantConfig.city || 'الرياض';
-  const country = 'SA';
-
-  let itemsXml = '';
-  (invoice.items || []).forEach((item, index) => {
-    const price = Number(item.price || 0);
-    const qty = Number(item.quantity || 0);
-    const itemSubtotal = price * qty;
-    const itemTax = itemSubtotal * 0.15;
-    const itemTotal = itemSubtotal + itemTax;
-
-    itemsXml += `
-    <cac:InvoiceLine>
-        <cbc:ID>${index + 1}</cbc:ID>
-        <cbc:InvoicedQuantity unitCode="PCE">${qty}</cbc:InvoicedQuantity>
-        <cbc:LineExtensionAmount currencyID="⃁">${itemSubtotal.toFixed(2)}</cbc:LineExtensionAmount>
-        <cac:TaxTotal>
-            <cbc:TaxAmount currencyID="⃁">${itemTax.toFixed(2)}</cbc:TaxAmount>
-            <cbc:RoundingAmount currencyID="⃁">${itemTotal.toFixed(2)}</cbc:RoundingAmount>
-        </cac:TaxTotal>
-        <cac:Item>
-            <cbc:Name>${item.name}</cbc:Name>
-            <cac:ClassifiedTaxCategory>
-                <cbc:ID>S</cbc:ID>
-                <cbc:Percent>15.00</cbc:Percent>
-                <cac:TaxScheme>
-                    <cbc:ID>VAT</cbc:ID>
-                </cac:TaxScheme>
-            </cac:ClassifiedTaxCategory>
-        </cac:Item>
-        <cac:Price>
-            <cbc:PriceAmount currencyID="⃁">${price.toFixed(2)}</cbc:PriceAmount>
-        </cac:Price>
-    </cac:InvoiceLine>`;
-  });
-
-  const subtotal = Number(invoice.subtotal || 0);
-  const tax = Number(invoice.taxAmount || 0);
-  const total = Number(invoice.totalAmount || 0);
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-    <cbc:ProfileID>reporting:1.0</cbc:ProfileID>
-    <cbc:ID>${id}</cbc:ID>
-    <cbc:UUID>${uuid}</cbc:UUID>
-    <cbc:IssueDate>${date}</cbc:IssueDate>
-    <cbc:IssueTime>${time}</cbc:IssueTime>
-    <cbc:InvoiceTypeCode name="0100000">388</cbc:InvoiceTypeCode>
-    <cbc:DocumentCurrencyCode>⃁</cbc:DocumentCurrencyCode>
-    <cbc:TaxCurrencyCode>⃁</cbc:TaxCurrencyCode>
-    <cac:AdditionalDocumentReference>
-        <cbc:ID>ICV</cbc:ID>
-        <cbc:UUID>${invoice.icv || 1}</cbc:UUID>
-    </cac:AdditionalDocumentReference>
-    <cac:AdditionalDocumentReference>
-        <cbc:ID>PIH</cbc:ID>
-        <cac:Attachment>
-            <cbc:EmbeddedDocumentBinaryObject mimeCode="text/plain">${invoice.pih || 'NWZlY2I3YjY4ZDRkNDQ1NzhlYzcyMDc1ODNhN2RhNDc='}</cbc:EmbeddedDocumentBinaryObject>
-        </cac:Attachment>
-    </cac:AdditionalDocumentReference>
-    <cac:AccountingSupplierParty>
-        <cac:Party>
-            <cac:PartyIdentification>
-                <cbc:ID schemeID="CRN">${tenantConfig.crNumber || '1010101010'}</cbc:ID>
-            </cac:PartyIdentification>
-            <cac:PostalAddress>
-                <cbc:StreetName>${street}</cbc:StreetName>
-                <cbc:BuildingNumber>${tenantConfig.buildingNo || '1234'}</cbc:BuildingNumber>
-                <cbc:PlotIdentification>${tenantConfig.plotId || '5678'}</cbc:PlotIdentification>
-                <cbc:CitySubdivisionName>${tenantConfig.district || 'الورود'}</cbc:CitySubdivisionName>
-                <cbc:CityName>${city}</cbc:CityName>
-                <cbc:PostalZone>${tenantConfig.postalCode || '12345'}</cbc:PostalZone>
-                <cac:Country>
-                    <cbc:IdentificationCode>${country}</cbc:IdentificationCode>
-                </cac:Country>
-            </cac:PostalAddress>
-            <cac:PartyTaxScheme>
-                <cbc:CompanyID>${vatNumber}</cbc:CompanyID>
-                <cac:TaxScheme>
-                    <cbc:ID>VAT</cbc:ID>
-                </cac:TaxScheme>
-            </cac:PartyTaxScheme>
-            <cac:PartyLegalEntity>
-                <cbc:RegistrationName>${sellerName}</cbc:RegistrationName>
-            </cac:PartyLegalEntity>
-        </cac:Party>
-    </cac:AccountingSupplierParty>
-    <cac:AccountingCustomerParty>
-        <cac:Party>
-            <cac:PartyLegalEntity>
-                <cbc:RegistrationName>${invoice.customerName || 'عميل نقدي'}</cbc:RegistrationName>
-            </cac:PartyLegalEntity>
-        </cac:Party>
-    </cac:AccountingCustomerParty>
-    <cac:Delivery>
-        <cbc:ActualDeliveryDate>${date}</cbc:ActualDeliveryDate>
-    </cac:Delivery>
-    <cac:PaymentMeans>
-        <cbc:PaymentMeansCode>10</cbc:PaymentMeansCode>
-    </cac:PaymentMeans>
-    <cac:TaxTotal>
-        <cbc:TaxAmount currencyID="⃁">${tax.toFixed(2)}</cbc:TaxAmount>
-        <cac:TaxSubtotal>
-            <cbc:TaxableAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:TaxableAmount>
-            <cbc:TaxAmount currencyID="⃁">${tax.toFixed(2)}</cbc:TaxAmount>
-            <cac:TaxCategory>
-                <cbc:ID>S</cbc:ID>
-                <cbc:Percent>15.00</cbc:Percent>
-                <cac:TaxScheme>
-                    <cbc:ID>VAT</cbc:ID>
-                </cac:TaxScheme>
-            </cac:TaxCategory>
-        </cac:TaxSubtotal>
-    </cac:TaxTotal>
-    <cac:LegalMonetaryTotal>
-        <cbc:LineExtensionAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:LineExtensionAmount>
-        <cbc:TaxExclusiveAmount currencyID="⃁">${subtotal.toFixed(2)}</cbc:TaxExclusiveAmount>
-        <cbc:TaxInclusiveAmount currencyID="⃁">${total.toFixed(2)}</cbc:TaxInclusiveAmount>
-        <cbc:AllowanceTotalAmount currencyID="⃁">${Number(invoice.discount || 0).toFixed(2)}</cbc:AllowanceTotalAmount>
-        <cbc:PayableAmount currencyID="⃁">${total.toFixed(2)}</cbc:PayableAmount>
-    </cac:LegalMonetaryTotal>
-    ${itemsXml}
-</Invoice>`;
+  return zatcaEngine.buildUblInvoiceXml(invoice, tenantConfig, invoice ? invoice.icv : 1, invoice ? invoice.pih : null);
 }
 
 module.exports = async function handler(req, res) {
@@ -566,34 +408,104 @@ module.exports = async function handler(req, res) {
       zatca.certificate = decrypt(zatca.certificate);
       zatca.secret = decrypt(zatca.secret);
 
-      const xmlContent = generateInvoiceXml(invoice, zatca);
-      const xmlHash = crypto.createHash('sha256').update(xmlContent).digest('hex');
+      // 1. حجز العداد الفاتوري والتسلسل التشفيري ذرياً
+      let icv = 1;
+      let pih = 'NWZlY2I3YjY4ZDRkNDQ1NzhlYzcyMDc1ODNhN2RhNDc=';
+
+      try {
+        const { data: chainData, error: chainErr } = await supabase.rpc('mken_fn_next_zatca_sequence', {
+          p_tenant_slug: tenantSlug
+        });
+        if (!chainErr && chainData && chainData.icv) {
+          icv = Number(chainData.icv);
+          pih = chainData.pih || pih;
+        } else {
+          const { data: chainRow } = await supabase
+            .from('mken_zatca_chains')
+            .select('last_icv, last_invoice_hash')
+            .eq('tenant_slug', tenantSlug)
+            .maybeSingle();
+
+          if (chainRow) {
+            icv = Number(chainRow.last_icv || 0) + 1;
+            pih = chainRow.last_invoice_hash || pih;
+          }
+        }
+      } catch (seqErr) {
+        console.warn('[ZATCA] Sequence fallback:', seqErr.message);
+      }
+
+      // 2. بناء XML معياري UBL 2.1 وحساب الهاش المطهر
+      const xmlContent = zatcaEngine.buildUblInvoiceXml(invoice, zatca, icv, pih);
+      const { cleanedXml, xmlHashHex, xmlHashBase64 } = zatcaEngine.canonicalizeAndHashXml(xmlContent);
       const invoiceUuid = invoice.uuid || crypto.randomUUID();
 
+      // 3. التوقيع الرقمي الصارم بالمفتاح الخاص (ECDSA secp256k1)
       let digitalSignature = '';
       try {
-        const sign = crypto.createSign('SHA256');
-        sign.update(xmlHash);
-        digitalSignature = sign.sign(zatca.privateKey, 'base64');
+        digitalSignature = zatcaEngine.signInvoiceHash(xmlHashHex, zatca.privateKey);
       } catch (err) {
-        digitalSignature = crypto.randomBytes(64).toString('base64');
+        return res.status(500).json({
+          success: false,
+          error: 'فشل التوقيع الرقمي للفاتورة: لا يمكن إصدار فاتورة بدون توقيع معتمد نظاماً (' + err.message + ')'
+        });
+      }
+
+      // 4. تثبيت الهاش الجديد كرأس للسلسلة الفاتورية
+      try {
+        await supabase.rpc('mken_fn_commit_zatca_invoice', {
+          p_tenant_slug: tenantSlug,
+          p_icv: icv,
+          p_new_hash: xmlHashBase64
+        });
+      } catch (commitErr) {
+        await supabase
+          .from('mken_zatca_chains')
+          .upsert({
+            tenant_slug: tenantSlug,
+            last_icv: icv,
+            last_invoice_hash: xmlHashBase64,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'tenant_slug' });
       }
 
       const timestamp = invoice.createdAt || new Date().toISOString();
 
-      const qrCodeBase64 = generateZatcaTlvQr(
+      // 5. توليد رمز الاستجابة السريع ZATCA QR (التاجات 1 إلى 8 كاملة)
+      const qrCodeBase64 = zatcaEngine.generateZatcaTlvQr(
         zatca.businessName,
         zatca.vatNumber,
         timestamp,
         invoice.totalAmount,
         invoice.taxAmount,
-        xmlHash,
+        xmlHashHex,
         digitalSignature,
         zatca.publicKey
       );
 
+      // 6. حفظ الفاتورة في mken_invoices مع السلسلة التشفيرية
+      const invoiceId = invoice.id || ('INV-' + icv);
+      await supabase.from('mken_invoices').upsert({
+        id: invoiceId,
+        tenant_slug: tenantSlug,
+        customer_name: invoice.customerName || 'عميل نقدي',
+        customer_phone: invoice.customerPhone || invoice.phone || '',
+        items: invoice.items || [],
+        subtotal: invoice.subtotal || 0,
+        tax_amount: invoice.taxAmount || 0,
+        total_amount: invoice.totalAmount || 0,
+        icv: icv,
+        pih: pih,
+        invoice_hash: xmlHashBase64,
+        digital_signature: digitalSignature,
+        zatca_qr_code: qrCodeBase64,
+        zatca_reporting_status: zatca.isSimulated ? 'reported_simulated' : 'pending_reporting',
+        created_at: timestamp,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
       let zatcaStatus = 'REPORTED';
-      let zatcaResponse = { success: true, message: 'Invoice reported successfully' };
+      let zatcaResponse = { success: true, message: 'Invoice reported successfully', icv: icv, pih: pih };
 
       if (!zatca.isSimulated) {
         try {
@@ -608,7 +520,7 @@ module.exports = async function handler(req, res) {
               'Authorization': authHeader
             },
             body: JSON.stringify({
-              invoiceHash: xmlHash,
+              invoiceHash: xmlHashBase64,
               uuid: invoiceUuid,
               invoice: Buffer.from(xmlContent).toString('base64')
             })
@@ -628,8 +540,10 @@ module.exports = async function handler(req, res) {
             success: false,
             zatcaStatus: 'FAILED',
             zatcaUuid: invoiceUuid,
-            zatcaXmlHash: xmlHash,
+            zatcaXmlHash: xmlHashBase64,
             zatcaQrCode: qrCodeBase64,
+            icv: icv,
+            pih: pih,
             response: { success: false, error: err.message }
           });
         }
@@ -639,8 +553,10 @@ module.exports = async function handler(req, res) {
         success: true,
         zatcaStatus: zatcaStatus,
         zatcaUuid: invoiceUuid,
-        zatcaXmlHash: xmlHash,
+        zatcaXmlHash: xmlHashBase64,
         zatcaQrCode: qrCodeBase64,
+        icv: icv,
+        pih: pih,
         response: zatcaResponse
       });
 

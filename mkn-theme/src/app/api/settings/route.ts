@@ -44,6 +44,12 @@ export async function PUT(request: Request) {
     if (isObject(body.brand)) update.brand = body.brand as SettingsUpdate["brand"];
     if (typeof body.phone === "string") update.phone = body.phone;
     if (typeof body.heroImage === "string") update.heroImage = body.heroImage;
+    if (typeof body.commercialRegistryName === "string") {
+      update.commercialRegistryName = body.commercialRegistryName;
+    }
+    if (typeof body.commercialRegistryNumber === "string") {
+      update.commercialRegistryNumber = body.commercialRegistryNumber;
+    }
     if (isObject(body.social)) update.social = body.social as SettingsUpdate["social"];
     if (isObject(body.emails)) update.emails = body.emails as SettingsUpdate["emails"];
     if (isObject(body.serviceArea)) {

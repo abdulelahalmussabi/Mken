@@ -111,6 +111,7 @@ export async function POST(request: Request) {
   const ids = capiIdsFromRequest(request, body);
   void sendMetaCapiEvent({
     eventName: "Schedule",
+    slug,
     phone: appointment.phone,
     eventId: `book_${appointment.id}`,
     ctwaClid: ids.ctwaClid,

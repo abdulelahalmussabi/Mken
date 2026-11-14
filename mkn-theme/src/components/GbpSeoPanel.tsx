@@ -51,6 +51,7 @@ type GeoScanLite = {
   gridSize: string;
   averageRank: number | null;
   top3Percentage: number | null;
+  source?: string;
   cells: Array<{ rank: number | null; inPack?: boolean }>;
 };
 
@@ -168,6 +169,7 @@ export default function GbpSeoPanel({
   query,
   locationId,
   mapsBound,
+  mapsUrl,
   auditNonce,
   websiteUrl,
   busy,
@@ -177,6 +179,7 @@ export default function GbpSeoPanel({
   query: string;
   locationId: string;
   mapsBound?: boolean;
+  mapsUrl?: string;
   auditNonce?: number;
   websiteUrl?: string;
   busy: boolean;
@@ -209,7 +212,7 @@ export default function GbpSeoPanel({
   const [showServices, setShowServices] = useState(false);
   const [showReverse, setShowReverse] = useState(false);
   const [reverseFields, setReverseFields] = useState({ phone: true, city: true, name: false });
-  const canAudit = Boolean(locationId || mapsBound);
+  const canAudit = Boolean(locationId || mapsBound || mapsUrl?.trim());
   const canWrite = Boolean(locationId);
 
   useEffect(() => {
@@ -250,7 +253,12 @@ export default function GbpSeoPanel({
     const res = await fetch(`/api/google-business${query}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, locationId, ...extra }),
+      body: JSON.stringify({
+        action,
+        locationId,
+        mapsUrl: mapsUrl?.trim() || undefined,
+        ...extra,
+      }),
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
@@ -311,7 +319,7 @@ export default function GbpSeoPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when bind/location changes, not on every render
-  }, [canAudit, locationId, mapsBound, auditNonce, query]);
+  }, [canAudit, locationId, mapsBound, mapsUrl, auditNonce, query]);
 
   const fetchCompetitors = async () => {
     const data = await postJson("competitors");
@@ -390,11 +398,17 @@ export default function GbpSeoPanel({
           disabled={busy || !canAudit}
           onClick={() =>
             run(async () => {
-              const data = await postJson("nap-audit");
-              setReport(data.report);
-              setSkipped([]);
-              setAuditError("");
-              onToast("تم فحص NAP", "success");
+              try {
+                const data = await postJson("nap-audit");
+                setReport(data.report);
+                setSkipped([]);
+                setAuditError("");
+                onToast("تم فحص NAP", "success");
+              } catch (err) {
+                setReport(null);
+                setAuditError(err instanceof Error ? err.message : "تعذّر فحص NAP");
+                throw err;
+              }
             })
           }
           className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-200 hover:bg-slate-900 disabled:opacity-50"
@@ -774,6 +788,7 @@ export default function GbpSeoPanel({
           <p className="text-[11px] text-slate-400">
             {geoScan.keyword || "بدون كلمة"} · شبكة {geoScan.gridSize} · متوسط الرانك {geoScan.averageRank ?? "—"} · ظهور
             الحزمة الثلاثية {geoScan.top3Percentage != null ? `${geoScan.top3Percentage}%` : "—"}
+            {geoScan.source === "places_estimate" ? " · تقدير أماكن" : ""}
           </p>
           {geoScan.cells?.length ? (
             <div

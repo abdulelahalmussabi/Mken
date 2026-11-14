@@ -1,3 +1,5 @@
+import { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
+
 const STORAGE_KEY = "mkn_admin_client";
 
 export function readStoredAdminClient(): string {
@@ -11,7 +13,7 @@ export function readStoredAdminClient(): string {
 
 export function writeStoredAdminClient(slug: string): void {
   if (typeof window === "undefined") return;
-  const key = slug.trim().toLowerCase();
+  const key = canonicalTenantSlug(slug);
   if (!key) return;
   try {
     sessionStorage.setItem(STORAGE_KEY, key);
@@ -21,9 +23,9 @@ export function writeStoredAdminClient(slug: string): void {
 }
 
 export function resolveAdminClient(urlClient: string, known: string[]): string {
-  const fromUrl = urlClient.trim().toLowerCase();
+  const fromUrl = canonicalTenantSlug(urlClient);
   if (fromUrl) return fromUrl;
-  const stored = readStoredAdminClient();
+  const stored = canonicalTenantSlug(readStoredAdminClient());
   if (!stored) return "";
   if (!known.length) return stored;
   return known.some((slug) => slug.toLowerCase() === stored) ? stored : "";
@@ -32,7 +34,7 @@ export function resolveAdminClient(urlClient: string, known: string[]): string {
 const PLATFORM_ADMIN_PATHS = new Set(["/admin", "/admin/licenses"]);
 
 export function withAdminClientHref(href: string, client: string): string {
-  const slug = client.trim().toLowerCase();
+  const slug = canonicalTenantSlug(client);
   if (!slug) return href;
   const [pathAndQuery, hash] = href.split("#");
   const [path] = (pathAndQuery || "/").split("?");

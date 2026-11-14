@@ -16,6 +16,7 @@ import {
   metaAdsTokenConfigured,
   normalizeMetaAdAccountId,
   normalizeMetaPageId,
+  normalizeMetaPixelId,
   pauseMetaCampaign,
   publishMetaCtwa,
   readTenantAdsMeta,
@@ -260,21 +261,32 @@ export async function getAdPublishReadiness(slug: string): Promise<AdPublishRead
 
 export async function saveTenantAdsMeta(
   slug: string,
-  input: { adAccountId: string; pageId: string }
+  input: { adAccountId: string; pageId: string; pixelId?: string }
 ): Promise<{ adsMeta?: TenantAdsMeta; error?: string }> {
   const adAccountId = normalizeMetaAdAccountId(input.adAccountId);
   const pageId = normalizeMetaPageId(input.pageId);
+  const pixelId = normalizeMetaPixelId(input.pixelId || "");
   if (adAccountId.length < 6) return { error: "معرّف حساب الإعلانات غير صالح" };
   if (pageId.length < 5) return { error: "معرّف صفحة ميتا غير صالح" };
 
   const row = await fetchTenantRow(slug);
   if (!row) return { error: "المنشأة غير موجودة" };
+  const prev = row.config_data?.adsMeta || {};
+  const samePage = normalizeMetaPageId(prev.pageId || "") === pageId;
+  const adsMeta = {
+    adAccountId,
+    pageId,
+    ...(pixelId ? { pixelId } : {}),
+    ...(samePage && prev.igUserId
+      ? { igUserId: prev.igUserId, ...(prev.igUsername ? { igUsername: prev.igUsername } : {}) }
+      : {}),
+  };
   const written = await writeTenantConfig(slug, {
     ...(row.config_data || {}),
-    adsMeta: { adAccountId, pageId },
+    adsMeta,
   });
   if (written.error) return { error: written.error };
-  return { adsMeta: { adAccountId, pageId } };
+  return { adsMeta: { adAccountId, pageId, ...(pixelId ? { pixelId } : {}) } };
 }
 
 export async function saveTenantGoogleAds(
@@ -421,7 +433,9 @@ export async function collectAdIntel(slug: string, knownCampaigns?: AdCampaign[]
     .filter(Boolean);
 
   const gridNote = scan
-    ? `كلمة "${scan.keyword}" — متوسط ترتيب ${scan.averageRank ?? "—"} — تغطية أول 3 نتائج ${scan.top3Percentage ?? 0}%`
+    ? `كلمة "${scan.keyword}" — متوسط ترتيب ${scan.averageRank ?? "—"} — تغطية أول 3 نتائج ${scan.top3Percentage ?? 0}%${
+        scan.source === "places_estimate" ? " (تقدير Places وليست نتائج خرائط)" : ""
+      }`
     : "لا يوجد مسح رانك محفوظ";
   const promptBlock = [
     `مؤشر المنافسة المحلي MCS: ${mcs.score}/100 (الشبكة ${Math.round(mcs.breakdown.grid)}، التقييم ${Math.round(mcs.breakdown.rating)}).`,

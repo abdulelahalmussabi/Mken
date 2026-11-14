@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
@@ -18,6 +18,7 @@ import {
   Palette,
   Type,
   Megaphone,
+  FileBadge,
 } from "lucide-react";
 import { BrandLogoUploader } from "@/components/BrandLogoUploader";
 
@@ -38,7 +39,22 @@ export default function ClientAdminPage() {
   const [discountText, setDiscountText] = useState(myClient?.discountText || "");
   const [promoTitle, setPromoTitle] = useState(myClient?.promoTitle || "");
   const [discountEnabled, setDiscountEnabled] = useState(myClient?.discountEnabled ?? true);
+  const [commercialRegistryName, setCommercialRegistryName] = useState(myClient?.commercialRegistryName || "");
+  const [commercialRegistryNumber, setCommercialRegistryNumber] = useState(myClient?.commercialRegistryNumber || "");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!myClient) return;
+    setPhone(myClient.phone || "");
+    setWhatsapp(myClient.whatsapp || "");
+    setLocation(myClient.location || "");
+    setCouponCode(myClient.couponCode || "");
+    setDiscountText(myClient.discountText || "");
+    setPromoTitle(myClient.promoTitle || "");
+    setDiscountEnabled(myClient.discountEnabled ?? true);
+    setCommercialRegistryName(myClient.commercialRegistryName || "");
+    setCommercialRegistryNumber(myClient.commercialRegistryNumber || "");
+  }, [myClient]);
 
   if (isSuperAdmin) {
     return (
@@ -79,6 +95,8 @@ export default function ClientAdminPage() {
       discountText,
       promoTitle,
       discountEnabled,
+      commercialRegistryName,
+      commercialRegistryNumber,
     });
 
     setIsSaving(false);
@@ -190,6 +208,39 @@ export default function ClientAdminPage() {
                 placeholder="مثال: حي العليا - الرياض، المملكة العربية السعودية"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
               />
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <FileBadge className="w-5 h-5 text-amber-400" />
+              <h3 className="text-base font-extrabold text-white">السجل التجاري</h3>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              يظهر اسم ورقم السجل في تذييل الموقع العام بجانب عبارة حقوق النشر.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300">اسم السجل التجاري</label>
+                <input
+                  type="text"
+                  value={commercialRegistryName}
+                  onChange={(e) => setCommercialRegistryName(e.target.value)}
+                  placeholder="الاسم كما في السجل التجاري"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300">رقم السجل التجاري</label>
+                <input
+                  type="text"
+                  value={commercialRegistryNumber}
+                  onChange={(e) => setCommercialRegistryNumber(e.target.value)}
+                  placeholder="7043321418"
+                  dir="ltr"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
             </div>
           </div>
 

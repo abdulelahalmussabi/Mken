@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Phone,
   Globe,
+  FileBadge,
 } from "lucide-react";
 
 const inputClass =
@@ -165,6 +166,8 @@ export default function AdminSettingsPage() {
           brand: next.brand,
           phone: next.phone,
           heroImage: next.heroImage,
+          commercialRegistryName: next.commercialRegistryName,
+          commercialRegistryNumber: next.commercialRegistryNumber,
           social: next.social,
           emails: next.emails,
           serviceArea: next.serviceArea,
@@ -438,6 +441,29 @@ export default function AdminSettingsPage() {
                     disabled={saving}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">اسم السجل التجاري</label>
+                  <input
+                    value={settings.commercialRegistryName}
+                    onChange={(e) => patch({ commercialRegistryName: e.target.value })}
+                    placeholder="الاسم كما في السجل التجاري"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-300">رقم السجل التجاري</label>
+                  <input
+                    value={settings.commercialRegistryNumber}
+                    onChange={(e) => patch({ commercialRegistryNumber: e.target.value })}
+                    placeholder="7043321418"
+                    dir="ltr"
+                    className={`${inputClass} text-left`}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 md:col-span-2 flex items-center gap-1.5 justify-end">
+                  يظهر اسم ورقم السجل التجاري في تذييل الموقع العام.
+                  <FileBadge className="w-3.5 h-3.5" />
+                </p>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-300">
                     صورة الواجهة الرئيسية

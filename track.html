@@ -2,526 +2,504 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <script src="js/theme-early.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>تتبع حالة ثوبك | مكن</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/themes.css">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/platform.css">
-  <link rel="icon" type="image/png" href="assets/mken-logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>التتبع المباشر للخدمة الميدانية | مكّن</title>
+  <meta name="description" content="تتبع مباشر ومؤمن لموقع الفني الميداني ووقت الوصول التقريبي">
+  <!-- Leaflet CSS for open-source interactive maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
   <style>
-    .track-container {
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    .track-card {
-      background: var(--color-background-card, #fff);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      padding: 30px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    }
-    .track-header {
-      border-bottom: 2px dashed var(--color-border);
-      padding-bottom: 20px;
-      margin-bottom: 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
-    .track-header h1 {
-      margin: 0;
-      font-size: 1.4rem;
-      color: var(--color-primary);
-    }
-    .order-meta-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 25px;
-      font-size: 0.9rem;
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: var(--radius);
-    }
-    .meta-item strong {
-      color: var(--color-text-muted);
-      display: block;
-      font-size: 0.8rem;
-    }
-    .meta-item span {
-      font-weight: 500;
-      color: var(--color-text);
+    :root {
+      --primary: #059669;
+      --primary-dark: #047857;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --accent: #38bdf8;
     }
 
-    /* timeline */
-    .timeline {
-      position: relative;
-      margin: 30px 0;
-      padding-right: 30px;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
-    .timeline::before {
-      content: '';
-      position: absolute;
-      right: 11px;
-      top: 10px;
-      bottom: 10px;
-      width: 3px;
-      background: #e0e0e0;
-      z-index: 1;
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    .timeline-item {
-      position: relative;
-      margin-bottom: 30px;
-      z-index: 2;
-    }
-    .timeline-item:last-child {
-      margin-bottom: 0;
-    }
-    .timeline-icon {
-      position: absolute;
-      right: -30px;
+
+    header {
+      background-color: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
       top: 0;
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      background: #e0e0e0;
-      border: 4px solid #fff;
+      z-index: 1000;
+    }
+
+    .brand {
       display: flex;
       align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 0 2px #e0e0e0;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--primary);
     }
-    .timeline-content {
-      padding-right: 15px;
-    }
-    .timeline-title {
-      font-weight: 600;
-      margin: 0 0 4px 0;
-      font-size: 1.05rem;
-      color: var(--color-text-muted);
-    }
-    .timeline-desc {
-      margin: 0;
-      font-size: 0.88rem;
-      color: var(--color-text-muted);
-    }
-    .timeline-time {
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
       font-size: 0.75rem;
-      color: var(--color-text-muted);
-      margin-top: 4px;
-      display: block;
-    }
-
-    /* Active state */
-    .timeline-item.active .timeline-icon {
-      background: var(--color-primary);
-      box-shadow: 0 0 0 2px var(--color-primary);
-      transform: scale(1.15);
-      animation: pulse 2s infinite;
-    }
-    .timeline-item.active .timeline-title {
-      color: var(--color-primary);
-      font-size: 1.1rem;
-    }
-    .timeline-item.active .timeline-desc {
-      color: var(--color-text);
-    }
-
-    /* Completed state */
-    .timeline-item.done .timeline-icon {
-      background: #2e7d32;
-      box-shadow: 0 0 0 2px #2e7d32;
-    }
-    .timeline-item.done .timeline-title {
-      color: #2e7d32;
-    }
-    .timeline-item.done .timeline-desc {
-      color: var(--color-text-muted);
-    }
-    .timeline-item.done::after {
-      content: '';
-      position: absolute;
-      right: -21px;
-      top: 15px;
-      height: 100%;
-      width: 3px;
-      background: #2e7d32;
-      z-index: -1;
-    }
-
-    /* Custom Design Details */
-    .thobe-specs {
-      background: #fdfaf7;
-      border: 1px solid #f6ecdf;
-      padding: 20px;
-      border-radius: var(--radius);
-      margin-top: 30px;
-    }
-    .thobe-specs h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      font-size: 1rem;
-      color: var(--color-primary);
-    }
-    .specs-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 20px;
-      font-size: 0.85rem;
-    }
-    .spec-line {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px dashed #e8dfd3;
-      padding-bottom: 4px;
-    }
-    .spec-line span:first-child {
-      color: var(--color-text-muted);
-    }
-    .spec-line span:last-child {
       font-weight: 600;
-      color: var(--color-text);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background-color: #10b981;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(26, 26, 46, 0.4); }
-      70% { box-shadow: 0 0 0 8px rgba(26, 26, 46, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(26, 26, 46, 0); }
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 1rem;
+      gap: 1rem;
+    }
+
+    #map {
+      width: 100%;
+      height: 280px;
+      border-radius: 1rem;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      background: #0b1120;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Stepper */
+    .stepper {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    .stepper::before {
+      content: '';
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      left: 15px;
+      height: 2px;
+      background: var(--border-color);
+      z-index: 1;
+    }
+
+    .step {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .step-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .step.active .step-circle {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .step.completed .step-circle {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .step.active {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* ETA Grid */
+    .eta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .eta-box {
+      background: rgba(15, 23, 42, 0.6);
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .eta-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .eta-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .tech-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+      margin-top: 1rem;
+    }
+
+    .tech-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tech-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #059669, #0284c7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .destination-box {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .error-card {
+      text-align: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .completed-card {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .completed-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
-  <header class="header" id="header">
-    <div class="container header__inner">
-      <a href="index.html" class="logo" aria-label="الرئيسية">
-        <span data-brand-logo data-size="48"></span>
-        <div class="logo__text">
-          <span class="logo__name" data-brand="name">مكن</span>
-          <span class="logo__tagline" data-brand="tagline">تفصيل ثياب رجالية</span>
-        </div>
-      </a>
-      <a href="index.html" class="btn btn--outline">العودة للرئيسية</a>
+
+  <header>
+    <div class="brand">
+      <span>مكّن</span>
+      <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">| تتبع الخدمة</span>
+    </div>
+    <div id="statusBadge" class="live-badge">
+      <div class="live-dot"></div>
+      <span id="badgeText">مباشر</span>
     </div>
   </header>
 
-  <main class="track-container">
-    <div id="loading" class="track-card" style="text-align: center; padding: 50px;">
-      <h2>جاري جلب تفاصيل طلبك...</h2>
-      <p class="admin-hint">يرجى الانتظار لحظات</p>
-    </div>
+  <main id="mainContainer">
+    <!-- Stepper -->
+    <div class="card">
+      <div class="stepper">
+        <div class="step" id="stepAssigned">
+          <div class="step-circle">1</div>
+          <span>تم الإسناد</span>
+        </div>
+        <div class="step" id="stepEnRoute">
+          <div class="step-circle">2</div>
+          <span>في الطريق</span>
+        </div>
+        <div class="step" id="stepArrived">
+          <div class="step-circle">3</div>
+          <span>وصل للموقع</span>
+        </div>
+        <div class="step" id="stepCompleted">
+          <div class="step-circle">4</div>
+          <span>تم الإنجاز</span>
+        </div>
+      </div>
 
-    <div id="errorCard" class="track-card" style="text-align: center;" hidden>
-      <div style="font-size: 3rem; color: #c0392b; margin-bottom: 15px;">⚠️</div>
-      <h2>لم نتمكن من العثور على الطلب</h2>
-      <p>تأكد من صحة رقم الطلب في الرابط، أو تواصل معنا عبر واتساب لمساعدتك.</p>
-      <a href="https://wa.me/966543530333" class="btn btn--primary" style="margin-top: 15px;">تواصل معنا عبر واتساب</a>
-    </div>
-
-    <div id="trackApp" class="track-card" hidden>
-      <div class="track-header">
+      <div class="destination-box">
+        <span>📍</span>
         <div>
-          <h1>تتبع حالة ثوبك 🪡</h1>
-          <span id="brandLabel" class="badge" style="background: var(--color-primary-light); color: var(--color-primary); margin-top: 6px; display: inline-block;">مكن التفصيل</span>
+          <strong style="color: var(--text-main);">موقع تقديم الخدمة:</strong>
+          <p id="customerAddressText">جاري تحميل العنوان...</p>
         </div>
-        <div style="text-align: left;">
-          <span id="orderStatusBadge" class="badge" style="background: #e6f4ea; color: #137333; font-weight: bold; font-size: 0.95rem; padding: 6px 12px;">قيد القص</span>
+      </div>
+    </div>
+
+    <!-- Live Map -->
+    <div id="map"></div>
+
+    <!-- ETA & Technician Info -->
+    <div class="card" id="detailsCard">
+      <div class="eta-grid">
+        <div class="eta-box">
+          <div class="eta-label">الوقت التقريبي للوصول (ETA)</div>
+          <div class="eta-val" id="etaVal">-- دقيقة</div>
+        </div>
+        <div class="eta-box">
+          <div class="eta-label">المسافة الحالية</div>
+          <div class="eta-val" id="distVal">-- كم</div>
         </div>
       </div>
 
-      <div class="order-meta-grid">
-        <div class="meta-item">
-          <strong>رقم الطلب</strong>
-          <span id="orderIdLabel" style="font-family: monospace;">ord_123</span>
+      <div class="tech-row">
+        <div class="tech-info">
+          <div class="tech-avatar" id="techAvatar">ف</div>
+          <div>
+            <div style="font-weight: 600;" id="techName">جاري التعيين...</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">فني معتمد ومفحوص</div>
+          </div>
         </div>
-        <div class="meta-item">
-          <strong>العميل</strong>
-          <span id="customerNameLabel">أحمد الغامدي</span>
+        <div style="font-size: 0.8rem; color: var(--primary); font-weight: 600;" id="taskStatusText">
+          في الطريق إليك
         </div>
-        <div class="meta-item">
-          <strong>تاريخ الطلب</strong>
-          <span id="orderDateLabel">1447/12/12 هـ</span>
-        </div>
-        <div class="meta-item">
-          <strong>نوع التفصيل</strong>
-          <span id="fabricLabel">قطن ياباني فاخر</span>
-        </div>
-      </div>
-
-      <!-- timeline -->
-      <div class="timeline" id="trackingTimeline">
-        <!-- Will be filled dynamically -->
-      </div>
-
-      <!-- Specs Card -->
-      <div class="thobe-specs" id="thobeSpecsCard" hidden>
-        <h3>تفاصيل التصميم والموديل المختارة</h3>
-        <div class="specs-grid" id="specsGrid">
-          <!-- Will be filled dynamically -->
-        </div>
-      </div>
-
-      <div style="margin-top: 30px; text-align: center;">
-        <p style="font-size: 0.88rem; color: var(--color-text-muted); margin-bottom: 12px;">لديك استفسار حول الطلب؟ تواصل معنا مباشرة:</p>
-        <a href="#" id="waInquiryBtn" class="btn btn--outline" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 8px;">
-          💬 استفسر عبر واتساب
-        </a>
       </div>
     </div>
   </main>
 
-  <script src="js/activities-catalog.js"></script>
-  <script src="js/services-catalog.js"></script>
-  <script src="js/ui-profiles/registry.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-db.js"></script>
-  <script src="js/services-store.js"></script>
-  <script src="js/order-store.js"></script>
-  <script src="js/brand-logo.js"></script>
-
   <script>
-    (function () {
-      'use strict';
-      
-      var store = window.MkenServicesStore;
-      var db = window.MkenSupabaseDb;
-      
-      var loading = document.getElementById('loading');
-      var errorCard = document.getElementById('errorCard');
-      var trackApp = document.getElementById('trackApp');
-      
-      var orderId = new URLSearchParams(window.location.search).get('id') || '';
-      
-      var STAGES = [
-        { id: 'pending', title: 'طلب جديد', desc: 'تم استلام الطلب وبانتظار المراجعة والاعتماد' },
-        { id: 'measurements_pending', title: 'تأكيد المقاسات', desc: 'أخذ مقاسات الثوب (إدخال يدوي أو موعد الخياط المنزلي)' },
-        { id: 'cutting', title: 'قص القماش', desc: 'تم اعتماد المقاسات وبدء قص رول القماش المختار ✂️' },
-        { id: 'stitching', title: 'الخياطة والتفصيل', desc: 'ثوبك الآن تحت أيدي خياطينا لتجميعه وتفصيله 🪡' },
-        { id: 'ironing_packaging', title: 'الكي والتجهيز', desc: 'اللمسات النهائية ومراقبة الجودة والكي وتعبئة العلبة 🌟' },
-        { id: 'ready', title: 'جاهز للتسليم', desc: 'ثوبك جاهز بالكامل وبانتظار الاستلام أو تم شحنه 📦' },
-        { id: 'completed', title: 'تم التسليم', desc: 'ملبوس العافية! تم استلام الثوب وإغلاق الطلب بنجاح' }
-      ];
+    (function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
 
-      function esc(str) {
-        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const mainContainer = document.getElementById('mainContainer');
+      const badgeText = document.getElementById('badgeText');
+      const statusBadge = document.getElementById('statusBadge');
+      const customerAddressText = document.getElementById('customerAddressText');
+      const etaVal = document.getElementById('etaVal');
+      const distVal = document.getElementById('distVal');
+      const techName = document.getElementById('techName');
+      const techAvatar = document.getElementById('techAvatar');
+      const taskStatusText = document.getElementById('taskStatusText');
+
+      const stepAssigned = document.getElementById('stepAssigned');
+      const stepEnRoute = document.getElementById('stepEnRoute');
+      const stepArrived = document.getElementById('stepArrived');
+      const stepCompleted = document.getElementById('stepCompleted');
+
+      if (!token) {
+        showError('رابط التتبع غير صالح أو غير مكتمل. يرجى استخدام الرابط المستلم عبر الواتساب.');
+        return;
       }
 
-      function init() {
-        if (!orderId) {
-          loading.hidden = true;
-          errorCard.hidden = false;
-          return;
-        }
+      let map = null;
+      let techMarker = null;
+      let customerMarker = null;
+      let pollInterval = null;
 
-        store.init().then(function () {
-          var config = store.loadConfig();
-          if (config.theme) store.applyTheme(config.theme);
-          
-          // Apply brand
-          var brand = store.getBrand(config);
-          document.querySelectorAll('[data-brand="name"]').forEach(function (el) {
-            el.textContent = brand.name;
-          });
-          
-          var phone = config.phone || '966543530333';
-          var waBtn = document.getElementById('waInquiryBtn');
-          if (waBtn) {
-            waBtn.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent('مرحباً، أود الاستفسار عن تفاصيل طلبي تفصيل الثياب رقم: ' + orderId);
-          }
-
-          loadOrderDetails(config);
-        });
-      }
-
-      function loadOrderDetails(config) {
-        if (db && db.isConfigured()) {
-          var tenantSlug = store.getCurrentTenantSlug();
-          db.fetchOrders(tenantSlug)
-            .then(function (orders) {
-              var found = orders.find(function (o) { return o.id === orderId; });
-              if (found) {
-                renderOrder(found);
-              } else {
-                fallbackToLocal();
-              }
-            })
-            .catch(function () {
-              fallbackToLocal();
-            });
-        } else {
-          fallbackToLocal();
-        }
-      }
-
-      function fallbackToLocal() {
-        var localOrders = [];
+      function initMap(lat, lng) {
+        if (map) return;
         try {
-          localOrders = JSON.parse(localStorage.getItem('mken_platform_orders') || '[]');
-        } catch (e) {}
-        
-        var found = localOrders.find(function (o) { return o.id === orderId; });
-        if (found) {
-          renderOrder(found);
-        } else {
-          loading.hidden = true;
-          errorCard.hidden = false;
+          map = L.map('map', { zoomControl: false }).setView([lat, lng], 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+          }).addTo(map);
+        } catch (e) {
+          console.warn('Map initialization failed:', e);
         }
       }
 
-      function renderOrder(order) {
-        loading.hidden = true;
-        trackApp.hidden = false;
+      function updateStepper(status) {
+        [stepAssigned, stepEnRoute, stepArrived, stepCompleted].forEach(s => {
+          s.classList.remove('active', 'completed');
+        });
 
-        document.getElementById('orderIdLabel').textContent = order.id;
-        document.getElementById('customerNameLabel').textContent = order.customerName;
-        
-        var d = new Date(order.createdAt);
-        document.getElementById('orderDateLabel').textContent = isNaN(d.getTime()) ? order.createdAt : d.toLocaleDateString('ar-SA');
-        
-        var servicesText = (order.items || []).map(function (i) { return i.serviceTitle; }).join('، ');
-        document.getElementById('fabricLabel').textContent = servicesText || 'بدلة مخصصة';
-
-        var currentStages = STAGES;
-        if (order.activityId === 'military-tailoring') {
-          currentStages = [
-            { id: 'pending', title: 'طلب جديد', desc: 'تم استلام طلب البدلة وبانتظار المراجعة والاعتماد' },
-            { id: 'measurements_pending', title: 'مطابقة الهوية والمقاسات', desc: 'مطابقة الهوية العسكرية الأصلية وأخذ مقاسات البدلة 🪪' },
-            { id: 'cutting', title: 'قص البدلة', desc: 'تم اعتماد الهوية والمقاسات وبدء قص أمتار بدلتك ✂️' },
-            { id: 'stitching', title: 'الخياطة والتطريز', desc: 'تجهيز البدلة وتطريز الرتب والشعارات الرسمية 🪡' },
-            { id: 'ironing_packaging', title: 'الكي والتجهيز', desc: 'اللمسات النهائية ومراقبة الجودة والكي وتجهيز البدلة 🌟' },
-            { id: 'ready', title: 'جاهز للتسليم', desc: 'البدلة جاهزة بالكامل وبانتظار مطابقة الهوية والتسليم 📦' },
-            { id: 'completed', title: 'تم التسليم', desc: 'ملبوس العافية! تم استلام البدلة العسكرية بنجاح' }
-          ];
-        }
-
-        // Set status badge
-        var currentStatus = order.status || 'pending';
-        var activeIndex = currentStages.findIndex(function (s) { return s.id === currentStatus; });
-        if (activeIndex === -1) {
-          // If status is "confirmed", we treat it as ready, or cutting
-          if (currentStatus === 'confirmed') activeIndex = 2; // Cutting
-          else if (currentStatus === 'cancelled') activeIndex = -2; // Cancelled
-        }
-
-        var badgeEl = document.getElementById('orderStatusBadge');
-        if (activeIndex === -2) {
-          badgeEl.textContent = 'ملغي';
-          badgeEl.style.background = '#fce8e6';
-          badgeEl.style.color = '#c5221f';
-        } else {
-          var currentStageName = currentStages[activeIndex >= 0 ? activeIndex : 0].title;
-          badgeEl.textContent = currentStageName;
-        }
-
-        // Render Timeline
-        var timelineEl = document.getElementById('trackingTimeline');
-        timelineEl.innerHTML = currentStages.map(function (stage, idx) {
-          var cls = 'timeline-item';
-          var iconHtml = '○';
-          
-          if (activeIndex === -2) {
-            // Cancelled order style
-            cls += ' done';
-            iconHtml = '✕';
-          } else {
-            if (idx < activeIndex) {
-              cls += ' done';
-              iconHtml = '✓';
-            } else if (idx === activeIndex) {
-              cls += ' active';
-              iconHtml = '•';
-            }
-          }
-
-          return (
-            '<div class="' + cls + '">' +
-            '  <div class="timeline-icon">' + iconHtml + '</div>' +
-            '  <div class="timeline-content">' +
-            '    <h4 class="timeline-title">' + stage.title + '</h4>' +
-            '    <p class="timeline-desc">' + stage.desc + '</p>' +
-            '  </div>' +
-            '</div>'
-          );
-        }).join('');
-
-        // Render Specs
-        if (order.tailoringDetails) {
-          var td = order.tailoringDetails;
-          var specsCard = document.getElementById('thobeSpecsCard');
-          var specsGrid = document.getElementById('specsGrid');
-          specsCard.hidden = false;
-
-          var titleEl = specsCard.querySelector('h3');
-          if (titleEl) {
-            titleEl.textContent = order.activityId === 'military-tailoring' ? 'مواصفات البدلة العسكرية ومطابقة الهوية' : 'تفاصيل ومواصفات الثوب';
-          }
-
-          var html = '';
-          if (order.activityId === 'military-tailoring') {
-            var branchMap = { defense: 'وزارة الدفاع', national_guard: 'وزارة الحرس الوطني', interior: 'وزارة الداخلية', state_security: 'رئاسة أمن الدولة' };
-            var typeMap = { camo_field: 'ميدانية / مموه', office: 'مكتبية / يومية', ceremonial: 'مراسم / رسمية' };
-            var rankMap = { soldier: 'جندي إلى وكيل رقيب', sergeant: 'رقيب إلى رئيس رقباء', officer_junior: 'ملازم إلى نقيب', officer_senior: 'رائد إلى عقيد', officer_general: 'عميد وأعلى' };
-            var methodMap = { home_visit: 'زيارة خياط للمنزل 🏠', manual: 'إدخال يدوي 📏', saved_profile: 'المقاسات المحفوظة 📂' };
-
-            var verifText = order.militaryVerified ? '✓ تم مطابقة الهوية العسكرية' : '⚠️ بانتظار مطابقة الهوية العسكرية يدوياً';
-            var verifColor = order.militaryVerified ? '#2e7d32' : '#c0392b';
-
-            html = 
-              '<div class="spec-line"><span>القطاع العسكري:</span><span>' + esc(branchMap[td.militaryBranch] || td.militaryBranch) + '</span></div>' +
-              '<div class="spec-line"><span>نوع البدلة:</span><span>' + esc(typeMap[td.militaryUniformType] || td.militaryUniformType) + '</span></div>' +
-              '<div class="spec-line"><span>الرتبة العسكرية:</span><span>' + esc(rankMap[td.militaryRank] || td.militaryRank) + '</span></div>' +
-              '<div class="spec-line"><span>الرقم العسكري:</span><span><code>******</code> (محمي)</span></div>' +
-              '<div class="spec-line" style="grid-column: span 2;"><span>طريقة القياسات:</span><span>' + esc(methodMap[td.measurementMethod] || td.measurementMethod) + '</span></div>' +
-              '<div class="spec-line" style="grid-column: span 2; font-weight: bold; color: ' + verifColor + ';"><span>حالة مطابقة الهوية:</span><span>' + verifText + '</span></div>';
-
-            if (td.measurements) {
-              html += 
-                '<div class="spec-line" style="grid-column: span 2; margin-top: 10px; border-bottom: 1px solid #e8dfd3; font-weight: bold; color: var(--color-primary);">القياسات المعتمدة (سم)</div>' +
-                '<div class="spec-line"><span>طول السترة:</span><span>' + esc(td.measurements.jacketLength) + ' سم</span></div>' +
-                '<div class="spec-line"><span>عرض الكتف:</span><span>' + esc(td.measurements.shoulder) + ' سم</span></div>' +
-                '<div class="spec-line"><span>محيط الصدر:</span><span>' + esc(td.measurements.chest) + ' سم</span></div>' +
-                '<div class="spec-line"><span>طول الكم:</span><span>' + esc(td.measurements.sleeve) + ' سم</span></div>' +
-                '<div class="spec-line"><span>طول البنطلون:</span><span>' + esc(td.measurements.trouserLength) + ' سم</span></div>' +
-                '<div class="spec-line"><span>محيط الخصر:</span><span>' + esc(td.measurements.waist) + ' سم</span></div>' +
-                '<div class="spec-line" style="grid-column: span 2;"><span>دوران الرقبة:</span><span>' + esc(td.measurements.neck) + ' سم</span></div>';
-            }
-          } else {
-            var collarMap = { round_hard: 'ياقة قلاب قاسي (سعودي)', round_soft: 'ياقة قلاب لين', plain_neck: 'سادة بدون ياقة (كويتي)' };
-            var cuffMap = { cuff_normal: 'سحاب/زرار عادي', cuff_french: 'أكمام كبك فرنسي', cuff_plain: 'أكمام مفتوحة سادة' };
-            var pocketMap = { hidden_side: 'جيب جانبي مخفي', visible_chest: 'جيب صدري', both: 'جيب صدري وجانبي' };
-            var placketMap = { hidden_buttons: 'أزرار مخفية', visible_buttons: 'أزرار ظاهرة كلاسيكية' };
-            var methodMap = { home_visit: 'زيارة خياط للمنزل 🏠', manual: 'إدخال يدوي 📏', saved_profile: 'المقاسات المحفوظة 📂' };
-
-            html = 
-              '<div class="spec-line"><span>الياقة:</span><span>' + esc(collarMap[td.collar] || td.collar) + '</span></div>' +
-              '<div class="spec-line"><span>الأكمام:</span><span>' + esc(cuffMap[td.cuff] || td.cuff) + '</span></div>' +
-              '<div class="spec-line"><span>الجيب:</span><span>' + esc(pocketMap[td.pocket] || td.pocket) + '</span></div>' +
-              '<div class="spec-line"><span>الأزرار:</span><span>' + esc(placketMap[td.placket] || td.placket) + '</span></div>' +
-              '<div class="spec-line" style="grid-column: span 2;"><span>طريقة أخذ القياسات:</span><span>' + esc(methodMap[td.measurementMethod] || td.measurementMethod) + '</span></div>';
-
-            if (td.measurements) {
-              html += 
-                '<div class="spec-line" style="grid-column: span 2; margin-top: 10px; border-bottom: 1px solid #e8dfd3; font-weight: bold; color: var(--color-primary);">القياسات المعتمدة (سم)</div>' +
-                '<div class="spec-line"><span>الطول:</span><span>' + esc(td.measurements.height) + ' سم</span></div>' +
-                '<div class="spec-line"><span>الكتف:</span><span>' + esc(td.measurements.shoulder) + ' سم</span></div>' +
-                '<div class="spec-line"><span>الصدر:</span><span>' + esc(td.measurements.chest) + ' سم</span></div>' +
-                '<div class="spec-line"><span>طول الكم:</span><span>' + esc(td.measurements.sleeve) + ' سم</span></div>' +
-                '<div class="spec-line"><span>دوران الرقبة:</span><span>' + esc(td.measurements.neck) + ' سم</span></div>';
-            }
-          }
-
-          specsGrid.innerHTML = html;
+        if (status === 'assigned') {
+          stepAssigned.classList.add('active');
+        } else if (status === 'en_route') {
+          stepAssigned.classList.add('completed');
+          stepEnRoute.classList.add('active');
+        } else if (status === 'arrived' || status === 'in_progress') {
+          stepAssigned.classList.add('completed');
+          stepEnRoute.classList.add('completed');
+          stepArrived.classList.add('active');
+        } else if (status === 'completed') {
+          stepAssigned.classList.add('completed');
+          stepEnRoute.classList.add('completed');
+          stepArrived.classList.add('completed');
+          stepCompleted.classList.add('active');
         }
       }
 
-      init();
+      async function fetchTrackingStatus() {
+        try {
+          const res = await fetch(`/api/v1/dispatch?action=track-live&token=${encodeURIComponent(token)}`);
+          const data = await res.json();
+
+          if (!res.ok || !data.success) {
+            showError(data.error || 'تعذر تحميل بيانات التتبع المباشر');
+            if (pollInterval) clearInterval(pollInterval);
+            return;
+          }
+
+          if (data.status === 'completed') {
+            showCompleted(data.completedAt);
+            if (pollInterval) clearInterval(pollInterval);
+            return;
+          }
+
+          // Update UI
+          updateStepper(data.status);
+          customerAddressText.textContent = data.customerAddress || 'موقع العميل المحدد';
+          techName.textContent = data.technicianName || 'الفني المختص';
+          techAvatar.textContent = (data.technicianName || 'ف')[0];
+
+          if (data.status === 'arrived' || data.status === 'in_progress') {
+            taskStatusText.textContent = 'وصل الفني إلى موقعك';
+            etaVal.textContent = 'وصل للموقع';
+            distVal.textContent = '0 متر';
+            badgeText.textContent = 'في الموقع';
+          } else if (data.status === 'en_route') {
+            taskStatusText.textContent = 'الفني في الطريق إليك';
+            badgeText.textContent = 'مباشر';
+            if (data.etaMinutes != null) {
+              etaVal.textContent = data.etaMinutes <= 1 ? 'أقل من دقيقة' : `${data.etaMinutes} دقيقة`;
+            }
+            if (data.distanceMeters != null) {
+              distVal.textContent = data.distanceMeters > 1000
+                ? `${(data.distanceMeters / 1000).toFixed(1)} كم`
+                : `${Math.round(data.distanceMeters)} متر`;
+            }
+          } else {
+            taskStatusText.textContent = 'تم إسناد المهمة';
+            etaVal.textContent = 'قريباً';
+            distVal.textContent = '--';
+          }
+
+          // Map Marker updates
+          const custLat = data.customerLat || 24.7136;
+          const custLng = data.customerLng || 46.6753;
+          initMap(custLat, custLng);
+
+          if (map) {
+            if (!customerMarker) {
+              customerMarker = L.marker([custLat, custLng], {
+                title: 'موقعك'
+              }).addTo(map).bindPopup('📍 موقع تقديم الخدمة');
+            }
+
+            if (data.technicianLat && data.technicianLng) {
+              if (!techMarker) {
+                techMarker = L.marker([data.technicianLat, data.technicianLng], {
+                  title: 'الفني'
+                }).addTo(map).bindPopup('🚗 الفني المختص');
+              } else {
+                techMarker.setLatLng([data.technicianLat, data.technicianLng]);
+              }
+
+              // Fit bounds
+              const group = new L.featureGroup([customerMarker, techMarker]);
+              map.fitBounds(group.getBounds().pad(0.2));
+            }
+          }
+
+        } catch (err) {
+          console.warn('Tracking fetch error:', err);
+        }
+      }
+
+      function showError(msg) {
+        statusBadge.style.display = 'none';
+        mainContainer.innerHTML = `
+          <div class="card error-card">
+            <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔒</div>
+            <h2 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: #f43f5e;">تعذر عرض التتبع</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;">${msg}</p>
+          </div>
+        `;
+      }
+
+      function showCompleted(time) {
+        statusBadge.innerHTML = '<span style="color: #10b981;">✓ مكتملة</span>';
+        mainContainer.innerHTML = `
+          <div class="card completed-card">
+            <div class="completed-icon">🎉</div>
+            <h2 style="font-size: 1.35rem; margin-bottom: 0.5rem; color: var(--primary);">تم إنجاز الخدمة بنجاح!</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+              شكراً لاختيارك منصتنا ونتمنى أن تكون الخدمة نالت رضاك التام.
+            </p>
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+              🔒 تم إغلاق رابط التتبع المباشر وإتلاف الإحداثيات لحماية خصوصيتك وفق نظام حماية البيانات الشخصية.
+            </div>
+          </div>
+        `;
+      }
+
+      // Initial fetch + polling every 6 seconds
+      fetchTrackingStatus();
+      pollInterval = setInterval(fetchTrackingStatus, 6000);
     })();
   </script>
 </body>

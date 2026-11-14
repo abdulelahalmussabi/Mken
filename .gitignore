@@ -27,3 +27,5 @@ Thumbs.db
 *.tsbuildinfo
 .zcode/
 مجلد جديد/
+
+.cursor/plans/

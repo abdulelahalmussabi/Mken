@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import { normalizeGoogleOAuthValue } from "@/lib/mken/google-oauth";
 import { fetchTenantRow, getTenantDb, TENANT_TABLE, writeTenantConfig } from "@/lib/mken/tenant";
 
 const ADS_API = "https://googleads.googleapis.com/v18";
@@ -103,11 +104,17 @@ export async function resolveTenantGoogleAds(
 }
 
 function clientId(): string {
-  return (process.env.GOOGLE_ADS_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "").trim();
+  return normalizeGoogleOAuthValue(
+    process.env.GOOGLE_ADS_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_ADS_CLIENT_ID ? "GOOGLE_ADS_CLIENT_ID" : "GOOGLE_CLIENT_ID"
+  );
 }
 
 function clientSecret(): string {
-  return (process.env.GOOGLE_ADS_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || "").trim();
+  return normalizeGoogleOAuthValue(
+    process.env.GOOGLE_ADS_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_ADS_CLIENT_SECRET ? "GOOGLE_ADS_CLIENT_SECRET" : "GOOGLE_CLIENT_SECRET"
+  );
 }
 
 function adsRedirectUri(): string {

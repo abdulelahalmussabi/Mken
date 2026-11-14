@@ -154,7 +154,7 @@ export default function AdminLicensesPage() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 text-slate-300 hover:bg-slate-800"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              لوحة license.mken.live
+              صفحة باقات Lite
             </a>
             <button
               type="button"
@@ -173,8 +173,8 @@ export default function AdminLicensesPage() {
         </div>
         <h1 className="text-2xl font-extrabold text-white">إدارة التراخيص</h1>
         <p className="text-xs text-slate-500">
-          نفس جدول <code>mken_licenses</code> المستخدم في license.mken.live. تفعيل الأجهزة يبقى عبر{" "}
-          <code>/api/license</code>.
+          إصدار وإيقاف تراخيص Mken Lite. تفعيل الأجهزة من التطبيق عبر{" "}
+          <code>POST /api/license/activate</code> و<code>verify</code> و<code>deactivate</code>.
         </p>
       </div>
 

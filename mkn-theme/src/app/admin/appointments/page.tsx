@@ -39,7 +39,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   refunded: "مُسترد",
 };
 
-type Filter = "all" | AppointmentStatus;
+type Filter = "all" | AppointmentStatus | "cancel_requests";
 
 export default function AdminAppointmentsPage() {
   const { session, isSuperAdmin, clients } = useAdmin();
@@ -88,6 +88,29 @@ export default function AdminAppointmentsPage() {
     load();
   }, [load]);
 
+  const decideCancel = async (id: string, cancelAction: "approve" | "reject") => {
+    setBusyId(id);
+    try {
+      const query = isSuperAdmin ? `?client=${encodeURIComponent(tenant)}` : "";
+      const res = await fetch(`/api/appointments/${id}${query}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancelAction }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر تحديث طلب الإلغاء", "error");
+        return;
+      }
+      setAppointments((prev) => prev.map((a) => (a.id === id ? data.appointment : a)));
+      showToast(cancelAction === "approve" ? "تم اعتماد الإلغاء" : "تم رفض طلب الإلغاء", "success");
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const changeStatus = async (id: string, status: AppointmentStatus) => {
     setBusyId(id);
     try {
@@ -123,10 +146,17 @@ export default function AdminAppointmentsPage() {
     );
   }, [appointments]);
 
-  const visible = useMemo(
-    () => (filter === "all" ? appointments : appointments.filter((a) => a.status === filter)),
-    [appointments, filter]
+  const cancelRequestCount = useMemo(
+    () => appointments.filter((a) => a.cancelRequestedAt && a.status !== "cancelled").length,
+    [appointments]
   );
+
+  const visible = useMemo(() => {
+    if (filter === "cancel_requests") {
+      return appointments.filter((a) => a.cancelRequestedAt && a.status !== "cancelled");
+    }
+    return filter === "all" ? appointments : appointments.filter((a) => a.status === filter);
+  }, [appointments, filter]);
 
   return (
     <>
@@ -170,12 +200,13 @@ export default function AdminAppointmentsPage() {
         </div>
 
         {/* Status filters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {([
             { id: "all" as Filter, label: "الكل", value: appointments.length },
             { id: "pending" as Filter, label: "قيد الانتظار", value: counts.pending },
             { id: "confirmed" as Filter, label: "مؤكد", value: counts.confirmed },
             { id: "cancelled" as Filter, label: "ملغي", value: counts.cancelled },
+            { id: "cancel_requests" as Filter, label: "طلبات إلغاء", value: cancelRequestCount },
           ]).map((tab) => (
             <button
               key={tab.id}
@@ -278,7 +309,34 @@ export default function AdminAppointmentsPage() {
                     </p>
                   )}
 
+                  {apt.cancelRequestedAt && apt.status !== "cancelled" && (
+                    <p className="text-xs font-bold text-amber-300 bg-amber-950/40 border border-amber-800/50 rounded-2xl p-3">
+                      طلب إلغاء من العميل — بانتظار اعتمادك
+                    </p>
+                  )}
+
                   <div className="flex items-center gap-2 pt-3 border-t border-slate-800 justify-end">
+                    {apt.cancelRequestedAt && apt.status !== "cancelled" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={busyId === apt.id}
+                          onClick={() => decideCancel(apt.id, "approve")}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-rose-950/40 border border-rose-800/50 hover:bg-rose-900/50 text-rose-400 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          اعتماد الإلغاء
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === apt.id}
+                          onClick={() => decideCancel(apt.id, "reject")}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                        >
+                          رفض الطلب
+                        </button>
+                      </>
+                    )}
                     {apt.status !== "confirmed" && (
                       <button
                         type="button"
@@ -290,7 +348,7 @@ export default function AdminAppointmentsPage() {
                         تأكيد
                       </button>
                     )}
-                    {apt.status !== "cancelled" && (
+                    {apt.status !== "cancelled" && !apt.cancelRequestedAt && (
                       <button
                         type="button"
                         disabled={busyId === apt.id}

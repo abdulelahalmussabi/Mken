@@ -2,24 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=/">
   <title>تحويل</title>
   <script>
-    (function() {
+    (function () {
+      var host = (location.hostname || "").toLowerCase();
+      if (host === "mken.live" || host === "www.mken.live" || /\.mken\.live$/.test(host)) {
+        location.replace("/landing.html");
+        return;
+      }
       var stored = null;
-      try { stored = localStorage.getItem('mken_theme_origin'); } catch(e) {}
-      var base = stored || 'http://localhost:3113';
-      window.location.replace(base + '');
+      try { stored = localStorage.getItem("mken_theme_origin"); } catch (e) {}
+      location.replace((stored || "http://localhost:3113") + "/");
     })();
   </script>
 </head>
-<body>
-  <p>يتم التحويل... <a id="link">اضغط هنا</a></p>
-  <script>
-    var stored = null;
-    try { stored = localStorage.getItem('mken_theme_origin'); } catch(e) {}
-    var base = stored || 'http://localhost:3113';
-    document.getElementById('link').href = base + '';
-  </script>
-</body>
+<body></body>
 </html>

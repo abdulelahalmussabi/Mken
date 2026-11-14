@@ -137,24 +137,40 @@ function cookieSecure(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
-export function applySessionCookie(response: NextResponse, token: string): void {
+async function cookieDomainFromRequest(): Promise<string | undefined> {
+  try {
+    const host = hostnameFromHeaders(await headers());
+    if (host === "mken.live" || host === "www.mken.live" || host.endsWith(".mken.live")) {
+      return ".mken.live";
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+export async function applySessionCookie(response: NextResponse, token: string): Promise<void> {
+  const domain = await cookieDomainFromRequest();
   response.cookies.set(ADMIN_COOKIE, token, {
     httpOnly: true,
     secure: cookieSecure(),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
+    ...(domain ? { domain } : {}),
   });
 }
 
-export function clearSessionCookie(response: NextResponse): void {
-  response.cookies.set(ADMIN_COOKIE, "", {
+export async function clearSessionCookie(response: NextResponse): Promise<void> {
+  const base = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: 0,
-  });
+  };
+  response.cookies.set(ADMIN_COOKIE, "", base);
+  response.cookies.set(ADMIN_COOKIE, "", { ...base, domain: ".mken.live" });
 }
 
 export function canEditClient(session: AdminSession | null, slug: string): boolean {

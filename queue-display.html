@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شاشة العرض المركزية للطوابير | مَكَن</title>
+  <meta name="theme-color" content="#0f172a">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --disp-bg: #0b132b;
+      --disp-surface: #1c2541;
+      --disp-surface-light: #24325a;
+      --disp-accent: #3b82f6;
+      --disp-success: #10b981;
+      --disp-warning: #f59e0b;
+      --disp-danger: #ef4444;
+      --disp-text: #f8fafc;
+      --disp-text-dim: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--disp-bg);
+      color: var(--disp-text);
+      font-family: 'IBM Plex Sans Arabic', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header.disp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      background: var(--disp-surface);
+      border-bottom: 2px solid var(--disp-surface-light);
+    }
+
+    .disp-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .disp-logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      background: #fff;
+      object-fit: cover;
+    }
+
+    .disp-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+
+    .disp-clock {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--disp-accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main Grid */
+    main.disp-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      padding: 30px 40px;
+    }
+
+    /* Active Counters Cards */
+    .counters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .counter-card {
+      background: var(--disp-surface);
+      border: 2px solid var(--disp-surface-light);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .counter-card.calling {
+      border-color: var(--disp-success);
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.35);
+      animation: cardFlash 1.5s infinite;
+    }
+
+    @keyframes cardFlash {
+      0% { border-color: var(--disp-success); }
+      50% { border-color: #6ee7b7; }
+      100% { border-color: var(--disp-success); }
+    }
+
+    .counter-badge {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--disp-accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .counter-ticket {
+      font-size: 4.5rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      margin: 12px 0;
+      letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-ticket.empty {
+      font-size: 2.2rem;
+      color: var(--disp-text-dim);
+      font-weight: 600;
+    }
+
+    .counter-service {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--disp-text-dim);
+    }
+
+    .counter-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+
+    .status-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .status-break { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    /* Side Panel: QR Code and Waiting Queue */
+    .disp-side {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .qr-join-box {
+      background: var(--disp-surface);
+      border: 2px solid var(--disp-surface-light);
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .qr-join-box h3 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+    }
+
+    .qr-join-box p {
+      margin: 0 0 16px;
+      font-size: 0.88rem;
+      color: var(--disp-text-dim);
+    }
+
+    .qr-code-img {
+      width: 170px;
+      height: 170px;
+      background: #fff;
+      padding: 8px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    /* Waiting List Panel */
+    .waiting-list-box {
+      background: var(--disp-surface);
+      border: 2px solid var(--disp-surface-light);
+      border-radius: 20px;
+      padding: 24px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .waiting-list-box h3 {
+      margin: 0 0 14px;
+      font-size: 1.15rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .waiting-tickets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .waiting-ticket-pill {
+      background: var(--disp-surface-light);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    /* Ticker Banner */
+    footer.disp-footer {
+      background: #070d1d;
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.95rem;
+      border-top: 1px solid var(--disp-surface-light);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="disp-header">
+    <div class="disp-brand">
+      <img id="dispLogo" src="assets/mken-logo.png" alt="شعار المنشأة" class="disp-logo">
+      <div>
+        <h1 id="dispTitle" class="disp-title">مَكَن | صالة الخدمة المركزية</h1>
+        <div style="font-size: 0.88rem; color: var(--disp-text-dim);">نظام استدعاء الطابور الموحد الذكي</div>
+      </div>
+    </div>
+    <div id="dispClock" class="disp-clock">12:00:00 م</div>
+  </header>
+
+  <!-- Main Screen -->
+  <main class="disp-grid">
+
+    <!-- Active Counters Column -->
+    <section>
+      <div id="countersContainer" class="counters-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Side Column: QR Code + Waiting Pool -->
+    <aside class="disp-side">
+      <!-- QR Join Box -->
+      <div class="qr-join-box">
+        <h3>امسح الرمز واحجز دورك الآن</h3>
+        <p>بدون تحميل أي تطبيق - تتبع دورك فورياً من جوالك</p>
+        <div id="qrContainer">
+          <img id="qrDisplayImg" class="qr-code-img" src="" alt="رمز QR للدخول الفوري">
+        </div>
+      </div>
+
+      <!-- Waiting Pool -->
+      <div class="waiting-list-box">
+        <h3>
+          <span>قائمة الانتظار الحالية</span>
+          <span id="waitingCountBadge" style="font-size: 0.9rem; background: var(--disp-accent); padding: 2px 10px; border-radius: 12px; color: #fff;">0</span>
+        </h3>
+        <div id="waitingTicketsList" class="waiting-tickets-row">
+          <span style="color: var(--disp-text-dim);">لا يوجد عملاء منتظرين حالياً</span>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Footer Ticker -->
+  <footer class="disp-footer">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span style="width:10px; height:10px; border-radius:50%; background:#10b981;"></span>
+      <span>نظام الجدولة الذكي يعمل بكفاءة عبر الخوارزمية التنبؤية (EWMA)</span>
+    </div>
+    <div style="color: var(--disp-text-dim);">
+      يرجى التوجه إلى الكاونتر فور ظهور رقم التذكرة وسماع نغمة النداء
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/services-store.js"></script>
+  <script src="js/queue-store.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var queueStore = window.MkenQueueStore;
+      if (!queueStore) return;
+
+      var countersContainer = document.getElementById('countersContainer');
+      var waitingTicketsList = document.getElementById('waitingTicketsList');
+      var waitingCountBadge = document.getElementById('waitingCountBadge');
+      var dispClock = document.getElementById('dispClock');
+      var qrDisplayImg = document.getElementById('qrDisplayImg');
+      var dispTitle = document.getElementById('dispTitle');
+      var dispLogo = document.getElementById('dispLogo');
+
+      var lastCalledMap = {};
+
+      // 1. Clock
+      function updateClock() {
+        if (!dispClock) return;
+        var now = new Date();
+        dispClock.textContent = now.toLocaleTimeString('ar-SA');
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // 2. Setup Brand & QR
+      var currentTenant = queueStore.getTenantSlug();
+      var store = window.MkenServicesStore;
+      if (store && typeof store.loadConfig === 'function') {
+        var cfg = store.loadConfig();
+        if (cfg && cfg.brand) {
+          if (cfg.brand.name && dispTitle) dispTitle.textContent = cfg.brand.name + ' | صالة الخدمة';
+          if (cfg.brand.logo && dispLogo) dispLogo.src = cfg.brand.logo;
+        }
+      }
+
+      // QR Code pointing to queue.html?tenant=slug
+      var queueUrl = window.location.origin + '/queue.html?tenant=' + encodeURIComponent(currentTenant);
+      if (qrDisplayImg) {
+        qrDisplayImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(queueUrl);
+      }
+
+      // 3. Audio Chime
+      function playChime() {
+        try {
+          var AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          var ctx = new AudioContext();
+          var now = ctx.currentTime;
+          var osc1 = ctx.createOscillator();
+          var gain = ctx.createGain();
+
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(440, now); // A4
+          osc1.frequency.setValueAtTime(659.25, now + 0.25); // E5
+          osc1.frequency.setValueAtTime(880, now + 0.5); // A5
+
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+
+          osc1.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now);
+          osc1.stop(now + 1.8);
+        } catch (e) {}
+      }
+
+      // 4. Fetch & Render Data
+      function refreshDisplay() {
+        queueStore.getConfig().then(function (res) {
+          if (!res.ok) return;
+          renderCounters(res.counters || [], res.queues || []);
+        });
+
+        queueStore.listQueues().then(function (res) {
+          if (!res.ok || !res.queues) return;
+          // Render waiting count and anonymous ticket pills (Clean Token Display - PDPL Compliant)
+          var totalWaiting = 0;
+          var waitingPills = [];
+          res.queues.forEach(function (q) {
+            totalWaiting += (q.waitingCount || 0);
+            if (Array.isArray(q.waitingTickets)) {
+              q.waitingTickets.forEach(function (t) {
+                if (t.ticket_number) {
+                  waitingPills.push('<span class="waiting-ticket-pill">' + escHtml(t.ticket_number) + '</span>');
+                }
+              });
+            }
+          });
+          if (waitingCountBadge) waitingCountBadge.textContent = totalWaiting;
+          if (waitingTicketsList) {
+            waitingTicketsList.innerHTML = waitingPills.length
+              ? waitingPills.join('')
+              : '<span style="color: var(--disp-text-dim);">لا يوجد عملاء منتظرين حالياً</span>';
+          }
+        });
+      }
+
+      function renderCounters(counters, queues) {
+        if (!countersContainer) return;
+        if (!counters.length) {
+          countersContainer.innerHTML = '<div style="color:var(--disp-text-dim); padding:20px;">لا توجد كاونترات مهيأة حالياً.</div>';
+          return;
+        }
+
+        var html = counters.map(function (c) {
+          var isBreak = c.status === 'on_break';
+          var isCalling = !!c.current_ticket_id;
+
+          // العثور على اسم القسم/الخدمة بدلاً من اسم الموظف للامتثال التام للخصوصية
+          var assignedQueue = (queues || []).find(function(q) {
+            return c.assigned_queue_ids && c.assigned_queue_ids.indexOf(q.id) !== -1;
+          });
+          var serviceName = assignedQueue ? assignedQueue.name : 'خدمة العملاء';
+
+          // فحص نداء جديد لإطلاق الصوت
+          if (c.current_ticket_id && lastCalledMap[c.id] !== c.current_ticket_id) {
+            lastCalledMap[c.id] = c.current_ticket_id;
+            playChime();
+          }
+
+          var cardClass = 'counter-card' + (isCalling ? ' calling' : '');
+          var statusBadge = isBreak 
+            ? '<span class="counter-status status-break">☕ استراحة</span>' 
+            : (isCalling 
+                ? '<span class="counter-status status-active" style="background:rgba(16,185,129,0.3); color:#10b981;">🔔 نداء العميل</span>'
+                : '<span class="counter-status status-active">🟢 متاح للاستقبال</span>');
+
+          // عرض رقم الطابور فقط مثل (A-04) - انعدام تام لأي بيانات شخصية (Zero-PII Token Display)
+          var displayTicketNumber = c.current_ticket_number || (c.current_ticket_id ? 'استدعاء...' : '---');
+
+          return (
+            '<div class="' + cardClass + '">' +
+              '<div class="counter-badge">' +
+                '<span>🖥️</span>' +
+                '<span>' + escHtml(c.name) + '</span>' +
+              '</div>' +
+              '<div class="counter-ticket' + (!c.current_ticket_id ? ' empty' : '') + '">' +
+                escHtml(displayTicketNumber) +
+              '</div>' +
+              '<div class="counter-service">' + escHtml(c.current_ticket_id ? serviceName : 'جاهز للاستقبال') + '</div>' +
+              statusBadge +
+            '</div>'
+          );
+        }).join('');
+
+        countersContainer.innerHTML = html;
+      }
+
+      function escHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+      }
+
+      // Initial Load & SSE
+      refreshDisplay();
+      setInterval(refreshDisplay, 6000);
+
+      queueStore.listenToEvents(function (evt) {
+        if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed'].indexOf(evt) !== -1) {
+          refreshDisplay();
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>

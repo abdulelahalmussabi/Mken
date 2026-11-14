@@ -98,7 +98,7 @@
               </div>
               <div class="booking-field">
                 <label for="orderPhone">رقم الجوال *</label>
-                <input type="tel" id="orderPhone" required dir="ltr" inputmode="tel" autocomplete="tel">
+                <input type="tel" id="orderPhone" required dir="ltr" inputmode="tel" autocomplete="tel" placeholder="05XXXXXXXX" pattern="^(05|9665|\+9665)[0-9]{8}$">
               </div>
               <div class="booking-field">
                 <label for="orderDistrict">الحي (اختياري)</label>
@@ -151,6 +151,8 @@
   <script src="js/order-store.js"></script>
   <script src="js/main.js"></script>
   <script src="js/brand-logo.js"></script>
+  <script src="js/offline-store.js"></script>
+  <script src="js/unified-session.js"></script>
   <script src="js/pwa.js"></script>
   <!-- Moyasar Form SDK & Polyfills -->
   <script src="https://cdn.moyasar.com/mpf/1.13.0/moyasar.js"></script>

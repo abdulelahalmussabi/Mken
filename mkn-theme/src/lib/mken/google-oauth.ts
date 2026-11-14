@@ -22,7 +22,28 @@ export function googleTokenError(tokenData: { error?: string; error_description?
   if (desc.includes("client secret") || tokenData.error === "invalid_client") {
     return "سر عميل جوجل (GOOGLE_CLIENT_SECRET) لا يطابق معرّف العميل. حدّث السر من Google Cloud → Credentials لنفس تطبيق الويب، ثم الصقه في Vercel وأعد النشر.";
   }
+  if (tokenData.error === "invalid_grant" || desc.includes("invalid_grant") || desc.includes("expired or revoked")) {
+    return "صلاحية ربط جوجل انتهت أو نُقضت. ألغِ الربط ثم اربطه من جديد. إن كان تطبيق OAuth ما زال في وضع الاختبار، التوكن يعيش 7 أيام فقط حتى تُنشر التطبيق.";
+  }
   return tokenData.error_description || tokenData.error || "فشل تبادل رمز جوجل";
+}
+
+export function isGoogleReconnectError(message: string): boolean {
+  return /صلاحية ربط جوجل انتهت|invalid_grant|expired or revoked|أعد الربط|ألغِ الربط ثم اربط/i.test(message);
+}
+
+export async function revokeGoogleOAuthToken(token: string | null | undefined): Promise<void> {
+  const value = (token || "").trim();
+  if (!value) return;
+  try {
+    await fetch("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: value }),
+    });
+  } catch {
+    /* already invalid or network — local disconnect still proceeds */
+  }
 }
 
 function oauthStateSecret(): string {

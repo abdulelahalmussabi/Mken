@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>نظام الطوابير الذكي | مَكَن</title>
+  <meta name="description" content="احجز دورك وتتبع تذكرتك في الطابور الموحد لحظياً دون الحاجة لتثبيت أي تطبيق">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="assets/mken-logo.png">
+  <link rel="apple-touch-icon" href="assets/mken-logo.png">
+
+  <!-- Google Fonts: IBM Plex Sans Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Theme & Styles -->
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/pwa.css">
+
+  <style>
+    :root {
+      --q-primary: #1e3a8a;
+      --q-primary-light: #eff6ff;
+      --q-accent: #2563eb;
+      --q-success: #16a34a;
+      --q-warning: #ea580c;
+      --q-danger: #dc2626;
+      --q-surface: #ffffff;
+      --q-bg: #f8fafc;
+      --q-border: #e2e8f0;
+      --q-text-main: #0f172a;
+      --q-text-muted: #64748b;
+      --q-radius-lg: 16px;
+      --q-radius-xl: 24px;
+      --q-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    }
+
+    body.queue-body {
+      background-color: var(--q-bg);
+      font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--q-text-main);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .queue-app-container {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 16px 20px 40px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .queue-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0 20px;
+      border-bottom: 1px solid var(--q-border);
+      margin-bottom: 24px;
+    }
+
+    .queue-header__brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .queue-header__logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .queue-header__title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--q-text-main);
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .queue-header__tagline {
+      font-size: 0.82rem;
+      color: var(--q-text-muted);
+      margin: 2px 0 0;
+    }
+
+    .queue-header__status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .queue-header__status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Cards */
+    .q-card {
+      background: var(--q-surface);
+      border: 1px solid var(--q-border);
+      border-radius: var(--q-radius-xl);
+      padding: 24px;
+      box-shadow: var(--q-shadow);
+      margin-bottom: 20px;
+    }
+
+    .q-section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: var(--q-text-main);
+    }
+
+    .q-section-desc {
+      font-size: 0.88rem;
+      color: var(--q-text-muted);
+      margin: 0 0 20px;
+      line-height: 1.5;
+    }
+
+    /* Service Selection Pills */
+    .q-service-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .q-service-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border: 2px solid var(--q-border);
+      border-radius: var(--q-radius-lg);
+      cursor: pointer;
+      background: #fff;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .q-service-item:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .q-service-item.selected {
+      border-color: var(--q-accent);
+      background: var(--q-primary-light);
+    }
+
+    .q-service-item__info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .q-service-item__name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--q-text-main);
+    }
+
+    .q-service-item__meta {
+      font-size: 0.82rem;
+      color: var(--q-text-muted);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .q-service-item__check {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    .q-service-item.selected .q-service-item__check {
+      background: var(--q-accent);
+      border-color: var(--q-accent);
+    }
+
+    /* Form Fields */
+    .q-field {
+      margin-bottom: 16px;
+    }
+
+    .q-field label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: var(--q-text-main);
+    }
+
+    .q-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border: 1.5px solid var(--q-border);
+      border-radius: var(--q-radius-lg);
+      outline: none;
+      box-sizing: border-box;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+      background: #fff;
+    }
+
+    .q-input:focus {
+      border-color: var(--q-accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    /* Primary Action Button */
+    .q-btn {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: var(--q-radius-lg);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .q-btn--primary {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+
+    .q-btn--primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    }
+
+    .q-btn--primary:active {
+      transform: translateY(1px);
+    }
+
+    .q-btn--outline {
+      background: #fff;
+      border: 1.5px solid var(--q-border);
+      color: var(--q-text-main);
+    }
+
+    .q-btn--outline:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    /* Active Ticket View */
+    .ticket-hero {
+      text-align: center;
+      padding: 24px 16px 20px;
+      background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+      border-radius: var(--q-radius-xl);
+      border: 2px dashed #bfdbfe;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .ticket-number-badge {
+      display: inline-block;
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: #1e3a8a;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin: 10px 0 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ticket-service-badge {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--q-text-muted);
+      margin-bottom: 12px;
+    }
+
+    .ticket-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .status-waiting {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .status-called {
+      background: #dcfce7;
+      color: #15803d;
+      border: 2px solid #86efac;
+      animation: alertPulse 1.2s infinite;
+    }
+
+    .status-in_service {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .status-bumped {
+      background: #fdf2f8;
+      color: #be185d;
+      border: 1px solid #fbcfe8;
+    }
+
+    .status-snoozed {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
+    .status-completed {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    @keyframes alertPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+      70% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+
+    /* Metrics Grid */
+    .ticket-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .metric-card {
+      background: #f8fafc;
+      border: 1px solid var(--q-border);
+      border-radius: var(--q-radius-lg);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--q-text-main);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--q-text-muted);
+    }
+
+    /* Anti-Collision Banner */
+    .anti-collision-box {
+      background: #fdf2f8;
+      border: 1.5px solid #fbcfe8;
+      border-radius: var(--q-radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .anti-collision-box__icon {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .anti-collision-box__title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #9d174d;
+      margin: 0 0 4px;
+    }
+
+    .anti-collision-box__desc {
+      font-size: 0.82rem;
+      color: #831843;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* Notification Switcher */
+    .notification-banner {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: var(--q-radius-lg);
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .notification-banner__text {
+      font-size: 0.85rem;
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .notification-banner__btn {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 8px;
+      background: #16a34a;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Concurrent Multi-Tickets Tabs */
+    .concurrent-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .concurrent-tab {
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid var(--q-border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .concurrent-tab.active {
+      background: var(--q-primary);
+      color: #fff;
+      border-color: var(--q-primary);
+    }
+
+    .queue-footer {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--q-text-muted);
+      margin-top: auto;
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body class="queue-body">
+
+  <div class="queue-app-container">
+
+    <!-- Header -->
+    <header class="queue-header">
+      <div class="queue-header__brand">
+        <img id="tenantLogo" src="assets/mken-logo.png" alt="شعار المنشأة" class="queue-header__logo">
+        <div>
+          <h1 id="tenantTitle" class="queue-header__title">مَكَن | نظام الطوابير الذكي</h1>
+          <p id="tenantTagline" class="queue-header__tagline">طابور موحد مدعوم بالذكاء الاصطناعي و EWMA</p>
+        </div>
+      </div>
+      <div class="queue-header__status-badge">
+        <span class="queue-header__status-dot"></span>
+        <span id="systemLiveStatus">مباشر</span>
+      </div>
+    </header>
+
+    <!-- VIEW 1: BOOKING & ZERO-FRICTION ACCESS FORM -->
+    <main id="queueBookingView" class="q-card">
+      <h2 class="q-section-title">حجز دور فوري بدون تطبيق</h2>
+      <p class="q-section-desc">اختر الخدمة أو المسارات المطلوبة لحجز تذكرتك في الطابور الموحد ومتابعة دورك لحظياً.</p>
+
+      <form id="joinQueueForm">
+        <!-- Service Selection -->
+        <div class="q-field">
+          <label>اختر الخدمة / المسار (يمكنك اختيار أكثر من مسار):</label>
+          <div id="servicesListContainer" class="q-service-grid">
+            <!-- سيتم بناؤها ديناميكياً -->
+            <div style="text-align: center; padding: 20px; color: var(--q-text-muted);">جاري تحميل المسارات المتاحة...</div>
+          </div>
+        </div>
+
+        <!-- Customer Name -->
+        <div class="q-field">
+          <label for="customerNameInput">الاسم الكريم:</label>
+          <input type="text" id="customerNameInput" class="q-input" placeholder="مثال: عبدالله محمد" required>
+        </div>
+
+        <!-- Customer Phone -->
+        <div class="q-field">
+          <label for="customerPhoneInput">رقم الجوال (واتساب للتنبيهات):</label>
+          <input type="tel" id="customerPhoneInput" class="q-input" dir="ltr" placeholder="05XXXXXXXX" required>
+          <small style="color: var(--q-text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
+            ستصلك تذكرتك وتنبيه اقتراب دورك تلقائياً عبر WhatsApp Cloud API
+          </small>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitJoinQueueBtn" class="q-btn q-btn--primary">
+          <span>احجز تذكرتك واستلم دورك الآن</span>
+          <span>🎟️</span>
+        </button>
+      </form>
+    </main>
+
+    <!-- VIEW 2: ACTIVE TICKET & DYNAMIC TIME ENGINE TRACKER -->
+    <main id="queueTrackerView" class="q-card" style="display: none;">
+      
+      <!-- Multi-ticket Tabs for Concurrent Queues -->
+      <div id="concurrentTabsContainer" class="concurrent-tabs" style="display: none;"></div>
+
+      <!-- 24/7 Shift Handover Notification Banner (تنبيه تبديل الوردية) -->
+      <div id="shiftHandoverBanner" style="display: none; background: rgba(248, 250, 252, 0.95); border: 1px solid #cbd5e1; border-radius: var(--q-radius-lg); padding: 12px 16px; margin-bottom: 16px; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <span style="font-size: 1.25rem;">🔄</span>
+        <div style="font-size: 0.85rem; color: #334155; line-height: 1.4;">
+          <strong style="color: #0f172a; display: block; margin-bottom: 2px;">تنويه:</strong>
+          <span id="shiftHandoverText">تجري الآن عملية تبديل وردية العمل، قد يطرأ تعديل طفيف على دقة التوقيت.</span>
+        </div>
+      </div>
+
+      <!-- Live Journey & Transfer Card (تحديث لحظي لرحلة التحويل) -->
+      <div id="transferJourneyCard" style="display: none; background: #f0fdf4; border: 2px solid #86efac; border-radius: var(--q-radius-lg); padding: 16px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="font-size: 1.2rem; color: #16a34a;">✓</span>
+          <span id="transferPrevService" style="font-size: 0.9rem; font-weight: 700; color: #166534;">تم الانتهاء من: قسم الاستقبال</span>
+        </div>
+        <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;">
+          الوجهة الحالية: <span id="transferCurrentService">قسم العقود والتوقيع</span>
+        </div>
+        <div style="font-size: 0.85rem; color: #475569; margin-bottom: 8px;">
+          رقمك المرجعي: <strong id="transferTicketRef" style="color: #1e3a8a;">A-104</strong> (ثبات الهوية - نفس رقمك دون تغيير)
+        </div>
+        <div id="transferNotesBox" style="background: #ffffff; border: 1px dashed #bbf7d0; border-radius: 8px; padding: 10px; font-size: 0.82rem; color: #15803d; margin-bottom: 8px; display: none;">
+          📌 سياق المعاملة: <span id="transferNotesText"></span>
+        </div>
+        <div style="background: #dcfce7; border-radius: 8px; padding: 8px 12px; font-weight: bold; font-size: 0.85rem; color: #166534; text-align: center;">
+          📍 توجّه إلى منطقة الانتظار أمام القسم الجديد
+        </div>
+      </div>
+
+      <!-- Ticket Hero -->
+      <div class="ticket-hero">
+        <div class="ticket-service-badge" id="ticketServiceLabel">خدمة العملاء والاستقبال</div>
+        <div class="ticket-number-badge" id="ticketNumberDisplay">A-01</div>
+        <div id="ticketStatusBadge" class="ticket-status-pill status-waiting">
+          <span>⏳</span>
+          <span id="ticketStatusText">في الانتظار</span>
+        </div>
+      </div>
+
+      <!-- Called Alert Banner -->
+      <div id="calledAlertBanner" style="display: none; background: #dcfce7; border: 2px solid #22c55e; border-radius: var(--q-radius-lg); padding: 16px; text-align: center; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 6px; color: #15803d; font-size: 1.25rem;">🔔 حان دورك الآن!</h3>
+        <p id="calledCounterBannerText" style="margin: 0; font-weight: 700; color: #166534; font-size: 1.05rem;">
+          تفضل فوراً إلى: كاونتر 1
+        </p>
+      </div>
+
+      <!-- Anti-Collision Bump Banner -->
+      <div id="antiCollisionBanner" class="anti-collision-box" style="display: none;">
+        <span class="anti-collision-box__icon">🛡️</span>
+        <div>
+          <h4 class="anti-collision-box__title">تم تأمين موقعك ذكياً (+1 Bump)</h4>
+          <p id="antiCollisionDesc" class="anti-collision-box__desc">
+            نظراً لوجودك حالياً عند كاونتر الخدمة الأولى، تم حفظ موقعك في رأس هذا المسار وسيتم طلبك فور فراغك دون فقدان دورك.
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Dynamic Metrics -->
+      <div class="ticket-metrics">
+        <div class="metric-card">
+          <div class="metric-val" id="metricAheadCount">3</div>
+          <div class="metric-label">عملاء أمامك</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="metricEtwMinutes">~12 د</div>
+          <div class="metric-label">الوقت المتوقع (EWMA)</div>
+        </div>
+      </div>
+
+      <!-- Web Push Activation Banner -->
+      <div id="webPushBanner" class="notification-banner">
+        <span class="notification-banner__text">🔔 فعّل تنبيهات الشاشة لتصلك التحديثات حتى مع قفل الهاتف</span>
+        <button type="button" id="enablePushBtn" class="notification-banner__btn">تفعيل بنقرة واحدة</button>
+      </div>
+
+      <!-- Operational Guidance & Auto Recovery Notice -->
+      <div style="background: #f8fafc; border: 1px solid var(--q-border); border-radius: var(--q-radius-lg); padding: 14px; margin-bottom: 20px;">
+        <div style="font-size: 0.85rem; color: var(--q-text-muted); line-height: 1.5;">
+          <strong>💡 ميزة الاستمرارية الذكية:</strong> تذكرتك محفوظة بأمان على جهازك. حتى لو أغلقت المتصفح أو انقطع الاتصال، أعد فتح الرابط وستستعيد موقعك فوراً.
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 10px;">
+        <button type="button" id="refreshTicketBtn" class="q-btn q-btn--outline" style="flex: 1;">
+          <span>تحديث الحالة</span>
+          <span>🔄</span>
+        </button>
+        <button type="button" id="leaveQueueBtn" class="q-btn q-btn--outline" style="flex: 1; color: var(--q-danger);">
+          <span>مغادرة الطابور</span>
+          <span>✕</span>
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="queue-footer">
+      <span>مدعوم بمنصة <strong style="color: var(--q-text-main);">مَكَن</strong> | محرك الجدولة والطوابير الموحدة</span>
+    </footer>
+
+  </div>
+
+  <!-- Audio Chime Generator using Web Audio API -->
+  <script>
+    function playCallChime() {
+      try {
+        var AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        var ctx = new AudioContext();
+        
+        var now = ctx.currentTime;
+        var osc1 = ctx.createOscillator();
+        var osc2 = ctx.createOscillator();
+        var gain = ctx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now); // D5
+        osc1.frequency.setValueAtTime(880, now + 0.25); // A5
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+        osc1.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(now);
+        osc1.stop(now + 1.2);
+      } catch (e) {
+        console.warn('Audio chime error:', e);
+      }
+    }
+  </script>
+
+  <!-- Scripts -->
+  <script src="js/services-store.js"></script>
+  <script src="js/unified-session.js"></script>
+  <script src="js/queue-store.js"></script>
+  <script src="js/queue-client.js"></script>
+</body>
+</html>

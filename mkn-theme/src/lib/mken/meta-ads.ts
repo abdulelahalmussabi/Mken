@@ -10,6 +10,7 @@ export type MetaCapiEvent = "Schedule" | "Purchase";
 export type TenantAdsMeta = {
   adAccountId: string;
   pageId: string;
+  pixelId?: string;
 };
 
 export function metaAdsTokenConfigured(): boolean {
@@ -29,11 +30,16 @@ export function normalizeMetaPageId(raw: string): string {
   return raw.trim().replace(/\D/g, "");
 }
 
-export function readTenantAdsMeta(slugConfig: { adsMeta?: { adAccountId?: string; pageId?: string } } | null | undefined): TenantAdsMeta | null {
+export function normalizeMetaPixelId(raw: string): string {
+  return raw.trim().replace(/\D/g, "");
+}
+
+export function readTenantAdsMeta(slugConfig: { adsMeta?: { adAccountId?: string; pageId?: string; pixelId?: string } } | null | undefined): TenantAdsMeta | null {
   const adAccountId = normalizeMetaAdAccountId(slugConfig?.adsMeta?.adAccountId || "");
   const pageId = normalizeMetaPageId(slugConfig?.adsMeta?.pageId || "");
+  const pixelId = normalizeMetaPixelId(slugConfig?.adsMeta?.pixelId || "");
   if (adAccountId.length < 6 || pageId.length < 5) return null;
-  return { adAccountId, pageId };
+  return { adAccountId, pageId, ...(pixelId ? { pixelId } : {}) };
 }
 
 export async function resolveTenantAdsMeta(slug: string): Promise<{ meta?: TenantAdsMeta; error?: string }> {
@@ -52,6 +58,14 @@ export function metaCapiConfigured(): boolean {
     (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID)?.trim() &&
       (process.env.META_CAPI_ACCESS_TOKEN || process.env.META_ADS_ACCESS_TOKEN)?.trim()
   );
+}
+
+export async function metaCapiConfiguredForSlug(slug: string): Promise<boolean> {
+  if (!(process.env.META_CAPI_ACCESS_TOKEN || process.env.META_ADS_ACCESS_TOKEN)?.trim()) return false;
+  const row = await fetchTenantRow(slug);
+  const tenantPixel = normalizeMetaPixelId(row?.config_data?.adsMeta?.pixelId || "");
+  const platformPixel = (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID || "").trim();
+  return Boolean(tenantPixel || platformPixel);
 }
 
 function adsToken(): string {
@@ -339,6 +353,7 @@ export async function fetchMetaCampaignInsights(
 
 export async function sendMetaCapiEvent(input: {
   eventName: MetaCapiEvent;
+  slug?: string;
   phone?: string;
   eventId?: string;
   value?: number;
@@ -347,10 +362,16 @@ export async function sendMetaCapiEvent(input: {
   fbc?: string;
   sourceUrl?: string;
 }): Promise<{ error?: string }> {
-  if (!metaCapiConfigured()) return {};
-
-  const pixel = (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID || "").trim();
   const token = (process.env.META_CAPI_ACCESS_TOKEN || process.env.META_ADS_ACCESS_TOKEN || "").trim();
+  if (!token) return {};
+
+  let pixel = (process.env.META_PIXEL_ID || process.env.META_CAPI_PIXEL_ID || "").trim();
+  if (input.slug) {
+    const row = await fetchTenantRow(input.slug);
+    const tenantPixel = normalizeMetaPixelId(row?.config_data?.adsMeta?.pixelId || "");
+    if (tenantPixel) pixel = tenantPixel;
+  }
+  if (!pixel) return {};
   const ph = input.phone ? hashPhone(input.phone) : "";
   const userData: Record<string, unknown> = {};
   if (ph) userData.ph = [ph];

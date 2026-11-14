@@ -10,6 +10,7 @@ import {
 } from "@/lib/mken/saas";
 
 export type GridSize = "3x3" | "5x5" | "7x7";
+export type GeoScanSource = "dataforseo" | "places_estimate";
 
 export interface GridCell {
   lat: number;
@@ -31,6 +32,7 @@ export interface RankScan {
   cells: GridCell[];
   scannedAt: string;
   cached: boolean;
+  source: GeoScanSource;
 }
 
 export interface GeoCredits {
@@ -56,6 +58,34 @@ function missingTable(message: string): boolean {
 
 export function dataforseoConfigured(): boolean {
   return Boolean(process.env.DATAFORSEO_LOGIN?.trim() && process.env.DATAFORSEO_PASSWORD?.trim());
+}
+
+export function placesGeoConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_MAPS_API_KEY?.trim());
+}
+
+export function geoGridScanReady(): boolean {
+  return dataforseoConfigured() || placesGeoConfigured();
+}
+
+export function preferredGeoSource(): GeoScanSource | null {
+  if (dataforseoConfigured()) return "dataforseo";
+  if (placesGeoConfigured()) return "places_estimate";
+  return null;
+}
+
+export function suggestedGeoKeyword(input: { slug: string; city?: string; activity?: string; name?: string }): string {
+  const city = (input.city || "").trim();
+  const loc = city || (input.slug === "almahrusa" ? "المدينة المنورة" : "");
+  if (input.slug === "almahrusa" || input.activity === "hotels") {
+    return loc ? `شقق مفروشة ${loc}` : "شقق مفروشة المدينة المنورة";
+  }
+  if (input.activity === "barber-salon" || input.activity === "salon") {
+    return loc ? `صالون حلاقة ${loc}` : "صالون حلاقة";
+  }
+  const name = (input.name || "").split("|")[0]?.trim() || "";
+  if (name && loc) return `${name} ${loc}`;
+  return name || loc || "";
 }
 
 function gridDimension(size: GridSize): number {
@@ -155,8 +185,22 @@ async function fetchCachedScan(
   return toScan(data as Record<string, unknown>, true);
 }
 
+function parseStoredResults(raw: unknown): { cells: GridCell[]; source: GeoScanSource } {
+  if (Array.isArray(raw)) {
+    return { cells: raw as GridCell[], source: "dataforseo" };
+  }
+  if (raw && typeof raw === "object") {
+    const stored = raw as { cells?: GridCell[]; source?: string };
+    return {
+      cells: Array.isArray(stored.cells) ? stored.cells : [],
+      source: stored.source === "places_estimate" ? "places_estimate" : "dataforseo",
+    };
+  }
+  return { cells: [], source: "dataforseo" };
+}
+
 function toScan(row: Record<string, unknown>, cached: boolean): RankScan {
-  const raw = Array.isArray(row.raw_results) ? (row.raw_results as GridCell[]) : [];
+  const parsed = parseStoredResults(row.raw_results);
   return {
     id: String(row.id || ""),
     keyword: String(row.keyword || ""),
@@ -166,9 +210,10 @@ function toScan(row: Record<string, unknown>, cached: boolean): RankScan {
     centerLng: Number(row.center_lng) || 0,
     averageRank: row.average_rank != null ? Number(row.average_rank) : null,
     top3Percentage: row.top3_percentage != null ? Number(row.top3_percentage) : null,
-    cells: raw,
+    cells: parsed.cells,
     scannedAt: String(row.scanned_at || ""),
     cached,
+    source: parsed.source,
   };
 }
 
@@ -203,6 +248,44 @@ async function dataforseoMaps(tasks: Array<{ keyword: string; lat: number; lng: 
     tasks?: Array<{ result?: Array<{ items?: MapsItem[] }>; status_code?: number; status_message?: string }>;
   };
   return (json.tasks || []).map((task) => task.result?.[0]?.items || []);
+}
+
+async function placesTextSearchPin(keyword: string, lat: number, lng: number): Promise<MapsItem[]> {
+  const key = process.env.GOOGLE_MAPS_API_KEY?.trim() || "";
+  const params = new URLSearchParams({
+    query: keyword,
+    language: "ar",
+    region: "sa",
+    location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    radius: "1000",
+    key,
+  });
+  const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?${params.toString()}`);
+  if (!res.ok) throw new Error(`Places API HTTP ${res.status}`);
+  const data = (await res.json()) as {
+    status?: string;
+    error_message?: string;
+    results?: Array<{ name?: string; place_id?: string }>;
+  };
+  if (data.status && !["OK", "ZERO_RESULTS"].includes(data.status)) {
+    throw new Error(data.error_message ? `Places API ${data.status}: ${data.error_message}` : `Places API ${data.status}`);
+  }
+  return (data.results || []).slice(0, 20).map((item, index) => ({
+    title: item.name,
+    place_id: item.place_id,
+    rank_absolute: index + 1,
+    rank_group: index + 1,
+  }));
+}
+
+async function placesMaps(tasks: Array<{ keyword: string; lat: number; lng: number }>): Promise<MapsItem[][]> {
+  const out: MapsItem[][] = [];
+  const chunk = 5;
+  for (let i = 0; i < tasks.length; i += chunk) {
+    const slice = tasks.slice(i, i + chunk);
+    out.push(...(await Promise.all(slice.map((task) => placesTextSearchPin(task.keyword, task.lat, task.lng)))));
+  }
+  return out;
 }
 
 function matchRank(items: MapsItem[], businessName: string, placeId: string): { rank: number | null; title?: string } {
@@ -256,15 +339,18 @@ export async function runGeoGridScan(input: {
     return { error: "حجم الشبكة غير متاح في باقتك الحالية", credits };
   }
 
-  const cached = await fetchCachedScan(input.slug, keyword, gridSize, radius);
-  if (cached) return { scan: cached, credits };
-
-  if (!dataforseoConfigured()) {
+  const source = preferredGeoSource();
+  if (!source) {
     return {
-      error: "DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD غير معيّنين على الخادم.",
+      error:
+        "لا يوجد مزود فحص على الخادم. عيّن GOOGLE_MAPS_API_KEY لتقدير أماكن، أو DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD لرانك الخرائط.",
       credits,
     };
   }
+
+  const cached = await fetchCachedScan(input.slug, keyword, gridSize, radius);
+  const replaceEstimate = Boolean(cached && source === "dataforseo" && cached.source === "places_estimate");
+  if (cached && !replaceEstimate) return { scan: cached, credits };
 
   const cost = geoGridCreditCost(gridSize);
   if (credits.remaining < cost) {
@@ -294,9 +380,10 @@ export async function runGeoGridScan(input: {
 
   const n = gridDimension(gridSize);
   const pins = pinsAround(lat, lng, radius, n);
+  const tasks = pins.map((pin) => ({ keyword, lat: pin.lat, lng: pin.lng }));
 
   try {
-    const results = await dataforseoMaps(pins.map((pin) => ({ keyword, lat: pin.lat, lng: pin.lng })));
+    const results = source === "dataforseo" ? await dataforseoMaps(tasks) : await placesMaps(tasks);
     const cells: GridCell[] = pins.map((pin, index) => {
       const matched = matchRank(results[index] || [], name, placeId);
       return {
@@ -318,33 +405,35 @@ export async function runGeoGridScan(input: {
     const db = getTenantDb();
     if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم", credits: debit.credits };
 
-    const { data, error } = await db
-      .from("mken_local_rank_scans")
-      .insert({
-        tenant_slug: input.slug,
-        keyword,
-        grid_size: gridSize,
-        radius_km: radius,
-        center_lat: lat,
-        center_lng: lng,
-        average_rank: averageRank,
-        top3_percentage: top3Percentage,
-        raw_results: cells,
-        scan_day: riyadhDay(),
-        scanned_at: new Date().toISOString(),
-      })
-      .select("*")
-      .maybeSingle();
+    const payload = {
+      tenant_slug: input.slug,
+      keyword,
+      grid_size: gridSize,
+      radius_km: radius,
+      center_lat: lat,
+      center_lng: lng,
+      average_rank: averageRank,
+      top3_percentage: top3Percentage,
+      raw_results: { source, cells },
+      scan_day: riyadhDay(),
+      scanned_at: new Date().toISOString(),
+    };
 
-    if (error || !data) {
-      if (error && /duplicate|unique/i.test(error.message)) {
+    const written =
+      replaceEstimate && cached?.id
+        ? await db.from("mken_local_rank_scans").update(payload).eq("id", cached.id).select("*").maybeSingle()
+        : await db.from("mken_local_rank_scans").insert(payload).select("*").maybeSingle();
+
+    if (written.error || !written.data) {
+      if (written.error && /duplicate|unique/i.test(written.error.message)) {
         const again = await fetchCachedScan(input.slug, keyword, gridSize, radius);
         if (again) return { scan: again, credits: debit.credits };
       }
-      return { error: error?.message || "تعذّر حفظ الفحص", credits: debit.credits };
+      return { error: written.error?.message || "تعذّر حفظ الفحص", credits: debit.credits };
     }
-    return { scan: toScan(data as Record<string, unknown>, false), credits: debit.credits };
+    return { scan: toScan(written.data as Record<string, unknown>, false), credits: debit.credits };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "فشل فحص DataForSEO", credits };
+    const fallback = source === "places_estimate" ? "فشل تقدير Places" : "فشل فحص DataForSEO";
+    return { error: err instanceof Error ? err.message : fallback, credits };
   }
 }

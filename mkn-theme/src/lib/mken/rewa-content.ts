@@ -396,6 +396,9 @@ export const REWA_MAP_CITY = "المدينة المنورة";
 export const REWA_LOCATION = "الحماوات، المدينة المنورة، المملكة العربية السعودية";
 export const REWA_PHONE = "0148462524";
 export const REWA_WHATSAPP = "966549462524";
+/** Official Ministry of Commerce registration — distinct from the public brand name. */
+export const REWA_CR_NAME = "منتجع رواء الاستشفائي الرقمي";
+export const REWA_CR_NUMBER = "7043321418";
 /** Previous seed used the landline as WhatsApp; replace it when still stored. */
 const STALE_REWA_WHATSAPP = new Set(["966148462524", "148462524", "0148462524"]);
 
@@ -724,6 +727,8 @@ export function applyRewaDefaults(config: MkenConfig): MkenConfig {
 
   next.social = fillRewaSocial(next.social);
   if (!next.phone) next.phone = REWA_PHONE;
+  if (!String(next.commercialRegistryName || "").trim()) next.commercialRegistryName = REWA_CR_NAME;
+  if (!String(next.commercialRegistryNumber || "").trim()) next.commercialRegistryNumber = REWA_CR_NUMBER;
 
   const currentAds = next.ads || {};
   const secondary = Array.isArray(currentAds.secondary) ? [...currentAds.secondary] : [];

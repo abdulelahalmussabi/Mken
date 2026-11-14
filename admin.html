@@ -116,6 +116,9 @@
             <button type="button" class="admin-tab admin-tab--active" data-tab="reports">
               <span class="admin-tab-icon">📊</span>التقارير والإحصائيات
             </button>
+                        <button type="button" class="admin-tab" data-tab="queue">
+              <span class="admin-tab-icon">🚶‍♂️</span>إدارة الطوابير والكاونترات
+            </button>
             <button type="button" class="admin-tab" data-tab="appointments">
               <span class="admin-tab-icon">📅</span>المواعيد والتقويم
             </button>
@@ -285,6 +288,592 @@
             <div id="emailsList" class="admin-emails-list"></div>
             <div id="emailsPreview" class="admin-emails-preview" aria-label="معاينة البريد الإلكتروني"></div>
           </section>
+        </div>
+      </div>
+
+            <!-- تبويب إدارة الطوابير والكاونترات المتقدم -->
+      <div class="admin-tab-panel" data-panel="queue" hidden>
+
+        <!-- الشريط العلوي للتحكم وتبديل مساحات العمل -->
+        <div class="admin-queue-top-bar" style="display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 12px 18px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #16a34a; font-size: 0.95rem;">
+              <span style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></span>
+              <span>نظام الطوابير الموحد</span>
+            </span>
+            <div style="display: flex; gap: 8px; font-size: 0.85rem; color: var(--color-text-muted);">
+              <span id="queueBarWaitingTotal" style="background: #f1f5f9; padding: 3px 10px; border-radius: 20px; font-weight: 600;">0 منتظر إجمالاً</span>
+              <span id="queueBarActiveCounters" style="background: #eff6ff; padding: 3px 10px; border-radius: 20px; font-weight: 600; color: #1e40af;">3 كاونترات نشطة</span>
+              <span id="queueBarLiveClock" style="background: #fafafa; padding: 3px 10px; border-radius: 20px; font-weight: 600;" dir="ltr">--:--</span>
+            </div>
+          </div>
+
+          <!-- مبدل مساحات العمل (RBAC Workspace Switcher) -->
+          <div class="queue-workspace-tabs" style="display: flex; gap: 6px; background: #f1f5f9; padding: 4px; border-radius: 10px;">
+            <button type="button" class="btn btn--sm queue-view-btn queue-view-btn--active" data-view="dispatcher" id="tabViewDispatcher" style="border-radius: 8px; font-weight: 700;">
+              📋 شاشة موظف الاستقبال (Dispatcher)
+            </button>
+            <button type="button" class="btn btn--sm queue-view-btn" data-view="counter" id="tabViewCounter" style="border-radius: 8px; font-weight: 700;">
+              💼 شاشة موظف الكاونتر (Workspace)
+            </button>
+            <button type="button" class="btn btn--sm queue-view-btn" data-view="settings" id="tabViewSettings" style="border-radius: 8px; font-weight: 700;">
+              ⚙️ الإعدادات ونمط الخدمة
+            </button>
+          </div>
+        </div>
+
+        <!-- مساحة العمل 1: شاشة موظف الاستقبال والمشرف (High-Density Dispatcher Dashboard) -->
+        <div id="queueDispatcherWorkspace" class="queue-workspace-panel">
+          <div style="display: grid; grid-template-columns: 280px 1fr 340px; gap: 18px; align-items: start;">
+            
+            <!-- [1] اللوحة اليسرى: الإجراءات السريعة ومؤشرات الضغط -->
+            <div class="admin-card" style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px;">
+              <h4 style="margin: 0 0 12px; font-size: 0.95rem; color: var(--color-primary); display: flex; align-items: center; gap: 6px;">
+                <span>⚡</span> إجراءات الاستقبال السريعة
+              </h4>
+
+              <button type="button" id="dispatcherNewTicketBtn" class="btn btn--primary" style="width: 100%; margin-bottom: 12px; justify-content: center; font-weight: 700;">
+                ➕ تذكرة يدوية جديدة
+              </button>
+
+              <div class="admin-field" style="margin-bottom: 14px; position: relative;">
+                <label for="dispatcherSearchInput" style="font-size: 0.8rem; font-weight: 600;">🔍 بحث فوري عن عميل / تذكرة:</label>
+                <input type="text" id="dispatcherSearchInput" class="admin-input" placeholder="رقم التذكرة أو الجوال..." style="font-size: 0.88rem;">
+                <div id="dispatcherSearchResults" style="display: none; position: absolute; top: 100%; right: 0; left: 0; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 100; max-height: 220px; overflow-y: auto;"></div>
+              </div>
+
+              <div style="border-top: 1px solid var(--color-border); padding-top: 14px; margin-top: 8px;">
+                <h5 style="margin: 0 0 8px; font-size: 0.85rem; color: var(--color-text-muted);">مؤشرات ضغط الصالة اللحظية</h5>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 8px 10px; border-radius: 6px; font-size: 0.82rem;">
+                    <span>متوسط الانتظار:</span>
+                    <strong id="dispAvgWaitTime" style="color: #2563eb;">7 دقائق</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; background: #fef2f2; border: 1px solid #fee2e2; padding: 8px 10px; border-radius: 6px; font-size: 0.82rem;">
+                    <span>أطول انتظار حالي:</span>
+                    <strong id="dispLongestWait" style="color: #dc2626;">لا يوجد تجاوز</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 8px 10px; border-radius: 6px; font-size: 0.82rem;">
+                    <span>المنجز اليوم بالصالة:</span>
+                    <strong id="dispTotalCompletedToday" style="color: #16a34a;">0 عميل</strong>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" id="dispatcherBroadcastBtn" class="btn btn--outline" style="width: 100%; margin-top: 16px; font-size: 0.82rem; justify-content: center;">
+                📢 إشعار عام / طارئ للصالة
+              </button>
+
+              <button type="button" id="dispatcherHandoverBtn" class="btn btn--outline" style="width: 100%; margin-top: 10px; font-size: 0.85rem; justify-content: center; font-weight: 700; color: #1e3a8a; border-color: #93c5fd; background: #eff6ff;">
+                📋 تسليم شاشة القيادة (Handover)
+              </button>
+            </div>
+
+            <!-- [2] المنطقة الوسطى: شبكة الكاونترات الحية (Counters Grid) -->
+            <div class="admin-card" style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 18px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h4 style="margin: 0; font-size: 1rem; color: var(--color-text);">
+                  🖥️ شبكة الكاونترات ونقاط الخدمة الحية
+                </h4>
+                <small class="admin-hint" style="margin: 0;">النداء الموجه والتحكم المباشر</small>
+              </div>
+
+              <div id="dispatcherCountersGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;">
+                <!-- بناء كروت الكاونترات ديناميكياً -->
+              </div>
+            </div>
+
+            <!-- [3] اللوحة اليمنى: أعمدة الطوابير التفاعلية والسحب والإفلات -->
+            <div class="admin-card" style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; font-size: 0.95rem; color: var(--color-text);">
+                  🔀 الطوابير (سحب وإفلات للتحويل)
+                </h4>
+              </div>
+              <p class="admin-hint" style="font-size: 0.78rem; margin: 0 0 10px;">اسحب تذكرة عميل من قسم وأفلتها في قسم آخر لتحويله فورياً.</p>
+
+              <div id="dispatcherQueuesContainer" style="display: flex; flex-direction: column; gap: 14px; max-height: 600px; overflow-y: auto;">
+                <!-- أعمدة الأقسام والتذاكر مع Drag & Drop -->
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- مساحة العمل 2: شاشة موظف الكاونتر المركزة (Zero-Distraction Workspace) -->
+        <div id="queueCounterWorkspace" class="queue-workspace-panel" style="display: none;">
+          <div style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <label for="counterWorkspaceSelect" style="font-weight: 700; margin: 0;">الكاونتر الحالي:</label>
+              <select id="counterWorkspaceSelect" class="admin-input" style="font-weight: 700; font-size: 1rem; min-width: 240px;"></select>
+              <span id="counterWorkspaceAgentName" style="font-size: 0.9rem; color: var(--color-text-muted); font-weight: 600;">الموظف: --</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button type="button" id="counterHotSwapBtn" class="btn btn--primary" style="background: #2563eb; font-weight: 700;">🔄 تسليم الوردية / تغطية سريعة</button>
+              <button type="button" id="counterWorkspaceBreakBtn" class="btn btn--outline" style="font-weight: 700;">☕ طلب استراحة</button>
+            </div>
+          </div>
+
+          <!-- شريط تنبيه الاستراحة الفعلي للكاونتر -->
+          <div id="counterOnBreakBanner" style="display: none; background: #fffbeb; border: 2px solid #fde047; border-radius: var(--radius); padding: 14px 20px; margin-bottom: 16px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.5rem;">☕</span>
+              <div>
+                <strong style="color: #854d0e; font-size: 0.95rem;">الكاونتر في وضع استراحة حالياً (<span id="counterBreakReasonText">راحة</span>)</strong>
+                <div style="font-size: 0.8rem; color: #a16207;">تم سحب الكاونتر من الطاقة الاستيعابية لحماية دقة التوقيت التقديري للعملاء.</div>
+              </div>
+            </div>
+            <button type="button" id="counterEndBreakBtn" class="btn btn--primary" style="background: #16a34a; border-color: #16a34a; font-weight: 700;">
+              🟢 إنهاء الاستراحة والعودة للعمل
+            </button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 340px; gap: 20px;">
+            <!-- المعاملة الحالية عند الكاونتر -->
+            <div class="admin-card" style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 24px;">
+              
+              <!-- وضع عدم وجود عميل (شاشة شاغرة مع زر نداء ضخم) -->
+              <div id="counterIdleBox" style="text-align: center; padding: 48px 20px;">
+                <div style="font-size: 3.2rem; margin-bottom: 12px;">🛋️</div>
+                <h3 style="margin: 0 0 8px; color: var(--color-text);">الكاونتر متاح وجاهز لاستقبال العميل التالي</h3>
+                <p class="admin-hint" style="margin: 0 0 24px;">اضغط على الزر أدناه أو استخدم اختصار المسافة (Space) لنداء العميل القادم في مسارك.</p>
+                <button type="button" id="counterCallNextBigBtn" class="btn btn--primary btn--lg" style="padding: 16px 36px; font-size: 1.25rem; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 20px rgba(37,99,235,0.35);">
+                  ▶️ استدعاء العميل التالي
+                </button>
+              </div>
+
+              <!-- وضع خدمة عميل فعلي -->
+              <div id="counterServingBox" style="display: none;">
+                <div style="background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); border: 2px solid #bfdbfe; border-radius: var(--radius); padding: 22px; margin-bottom: 20px; position: relative;">
+                  
+                  <!-- شارة سياق التحويل إن وجد -->
+                  <div id="counterContextBadge" style="display: none; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: #be185d; margin-bottom: 4px;">
+                      [ تم التحويل من: <span id="counterContextPrevService">الاستقبال</span> ]
+                    </div>
+                    <div style="font-size: 0.88rem; color: #831843;">
+                      📌 ملاحظة الموظف السابق: <strong id="counterContextNotes">--</strong>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                      <span style="font-size: 0.82rem; font-weight: 700; color: #64748b;">رقم التذكرة الحالي:</span>
+                      <div id="counterActiveTicketNum" style="font-size: 3.4rem; font-weight: 800; color: #1e3a8a; line-height: 1; margin: 4px 0;">A-102</div>
+                      <div style="font-size: 1.05rem; font-weight: 700; color: var(--color-text);">
+                        العميل: <span id="counterActiveCustomerName">--</span>
+                        <span id="counterActiveCustomerPhone" style="font-size: 0.9rem; color: #64748b; margin-right: 8px;" dir="ltr">05XXXXXXXX</span>
+                      </div>
+                    </div>
+                    <div style="text-align: left;">
+                      <span style="font-size: 0.8rem; color: #64748b; display: block;">مدة الجلسة الحية</span>
+                      <span id="counterLiveStopwatch" style="font-size: 2.4rem; font-weight: 800; color: var(--color-primary); font-variant-numeric: tabular-nums;">00:00</span>
+                    </div>
+                  </div>
+
+                  <!-- أزرار التحكم بالخدمة -->
+                  <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <button type="button" id="counterCompleteBtn" class="btn btn--primary" style="background: #16a34a; border-color: #16a34a; font-weight: 700; padding: 12px; font-size: 1rem;">
+                      ✅ إنهاء المعاملة
+                    </button>
+                    <button type="button" id="counterTransferBtn" class="btn btn--outline" style="font-weight: 700; padding: 12px;">
+                      🔀 تحويل لطابور آخر
+                    </button>
+                    <button type="button" id="counterHoldBtn" class="btn btn--outline" style="font-weight: 700; padding: 12px; color: #ea580c;">
+                      ⏸️ تعليق مؤقت
+                    </button>
+                  </div>
+
+                  <button type="button" id="counterRecallBtn" class="btn btn--outline" style="width: 100%; justify-content: center; font-size: 0.88rem; color: #475569;">
+                    📢 إعادة نداء العميل (تكرار الصوت والتنبيه على جواله)
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- اللوحة الجانبية: المسار الخاص به فقط والإحصائيات -->
+            <div class="admin-card" style="background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px;">
+              <h4 style="margin: 0 0 12px; font-size: 0.95rem; color: var(--color-text);">
+                📋 قائمة الانتظار في مسارك
+              </h4>
+
+              <div id="counterNextInQueueList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+                <!-- العملاء القادمون في مسار هذا الكاونتر فقط -->
+              </div>
+
+              <div style="border-top: 1px solid var(--color-border); padding-top: 16px;">
+                <h5 style="margin: 0 0 10px; font-size: 0.85rem; color: var(--color-text-muted);">كفاءة وأداء هذا الكاونتر اليوم</h5>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem;">
+                    <span>عدد المنجز اليوم:</span>
+                    <strong id="counterStatCompletedToday" style="color: #16a34a;">0 عميل</strong>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem;">
+                    <span>متوسط زمن خدمتك:</span>
+                    <strong id="counterStatAvgEwma" style="color: #2563eb;">--</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- مساحة العمل 3: الإعدادات ونمط الخدمة والمقاييس الهندسية -->
+        <div id="queueSettingsWorkspace" class="queue-workspace-panel" style="display: none;">
+          <section class="admin-section" style="border-right: 4px solid var(--color-primary); background: #f8fafc; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h3 style="margin: 0 0 4px; color: var(--color-primary);">⚙️ تحديد نمط الخدمة المعتمد للعميل (Service Mode)</h3>
+                <p class="admin-hint" style="margin: 0;">حدد هل ترغب في تشغيل المنشأة بنظام الحجوزات المجدولة، أم نظام الطوابير الذكي، أم كليهما معاً.</p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="adminQueueServiceMode" class="admin-input" style="font-weight: bold; width: auto;">
+                  <option value="booking">نظام حجز المواعيد والتقويم فقط (Appointments Only)</option>
+                  <option value="queue">نظام الطوابير الذكي فقط (Smart Queue Only)</option>
+                  <option value="hybrid" selected>كلاهما معاً (حجوزات + طوابير فورية Hybrid)</option>
+                </select>
+                <button type="button" id="adminQueueSaveSettingsBtn" class="btn btn--primary">حفظ الإعدادات والنمط</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-section">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+              <div>
+                <h4>معايير محرك التنبؤ الزمني الذكي (EWMA & Buffer)</h4>
+                <div class="admin-field" style="margin-top: 10px;">
+                  <label for="adminQueueTargetMinutes">الزمن المستهدف للمعاملة (بالدقائق):</label>
+                  <input type="number" id="adminQueueTargetMinutes" class="admin-input" min="1" max="120" value="10">
+                </div>
+                <div class="admin-field" style="margin-top: 10px;">
+                  <label for="adminQueueAlertThreshold">حد تنبيه اقتراب الدور (عدد العملاء المتبقين):</label>
+                  <input type="number" id="adminQueueAlertThreshold" class="admin-input" min="1" max="10" value="2">
+                </div>
+                <div class="admin-field" style="margin-top: 10px;">
+                  <label for="adminQueueSafetyMultiplier">هامش الأمان النفسي الوقائي (1.15 = 15%):</label>
+                  <input type="number" id="adminQueueSafetyMultiplier" class="admin-input" min="1.0" max="2.0" step="0.05" value="1.15">
+                </div>
+                <div class="admin-field" style="margin-top: 10px;">
+                  <label for="adminQueueSnoozeMinutes">مهلة تأجيل الغياب (Snooze Minutes):</label>
+                  <input type="number" id="adminQueueSnoozeMinutes" class="admin-input" min="1" max="30" value="5">
+                </div>
+              </div>
+
+              <div style="background: #fafafa; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px; text-align: center;">
+                <h4 style="margin-top: 0;">رمز QR مكاني لدخول العملاء (Zero-Friction)</h4>
+                <div style="margin: 15px 0;">
+                  <img id="adminQueueQrImg" src="" alt="QR Code" style="width: 170px; height: 170px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--color-border); display: inline-block;">
+                </div>
+                <div class="admin-field" style="margin-bottom: 15px;">
+                  <input type="text" id="adminQueueQrLink" class="admin-input" readonly dir="ltr" style="text-align: center; font-size: 0.85rem;">
+                </div>
+                <button type="button" id="adminQueueOpenHallDisplayBtn" class="btn btn--outline" style="margin: 0 auto;">
+                  <span>📺 فتح شاشة العرض المركزية (TV)</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+      </div>
+
+      <!-- النافذة المنبثقة لعملية التحويل الذكي (Smart Transfer Modal) -->
+      <div id="adminTransferModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(520px, 100%); padding: 24px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #1e3a8a;">🔀 تحويل التذكرة: <span id="transferModalTicketNum" style="font-weight: 800;">A-102</span></h3>
+            <button type="button" id="closeTransferModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <form id="transferTicketForm">
+            <div class="admin-field" style="margin-bottom: 16px;">
+              <label for="transferTargetQueueSelect" style="font-weight: 700; margin-bottom: 6px; display: block;">القسم / الطابور المستهدف:</label>
+              <select id="transferTargetQueueSelect" class="admin-input" required></select>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 18px;">
+              <label style="font-weight: 700; margin-bottom: 8px; display: block;">مستوى الأولوية في الطابور الجديد:</label>
+              <div style="display: flex; flex-direction: column; gap: 8px; background: #f8fafc; border: 1px solid var(--color-border); padding: 12px; border-radius: var(--radius);">
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="transferPriorityOption" value="immediate_next" checked style="margin-top: 3px;">
+                  <div>
+                    <strong style="color: #1e40af;">أولوية فورية (Next in Line)</strong>
+                    <div style="font-size: 0.8rem; color: #64748b;">يُخدم بعد العميل الحالي مباشرة في الكاونتر المستهدف.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="transferPriorityOption" value="fair_fifo" style="margin-top: 3px;">
+                  <div>
+                    <strong style="color: #166534;">أسبقية زمنية عادلة (Fair FIFO)</strong>
+                    <div style="font-size: 0.8rem; color: #64748b;">تُحسب أسبقيته بناءً على وقت دخوله الأصلي للمنشأة ليأخذ موقعه العادل في الثلث الأول.</div>
+                  </div>
+                </label>
+                <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="transferPriorityOption" value="standard" style="margin-top: 3px;">
+                  <div>
+                    <strong style="color: #475569;">ذيل الطابور (Standard)</strong>
+                    <div style="font-size: 0.8rem; color: #64748b;">يدخل في نهاية الطابور كحجز جديد تماماً.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 20px;">
+              <label for="transferNotesInput" style="font-weight: 700; margin-bottom: 6px; display: block;">ملاحظات وسياق المعاملة للموظف القادم:</label>
+              <textarea id="transferNotesInput" class="admin-input" rows="3" placeholder="مثال: تم التحقق من الهوية والصك، يتبقى فقط توقيع العقد وسداد الرسوم..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelTransferBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="confirmTransferBtn" class="btn btn--primary">تأكيد التحويل الآن 🔀</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة لإصدار تذكرة يدوية (Manual Ticket Modal) -->
+      <div id="adminManualTicketModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(480px, 100%); padding: 24px; box-shadow: var(--shadow-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: var(--color-primary);">➕ إصدار تذكرة يدوية (موظف الاستقبال)</h3>
+            <button type="button" id="closeManualTicketModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <form id="manualTicketForm">
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="manualTicketQueueSelect" style="font-weight: 700; margin-bottom: 6px; display: block;">اختر القسم / الخدمة:</label>
+              <select id="manualTicketQueueSelect" class="admin-input" required></select>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="manualCustomerNameInput" style="font-weight: 700; margin-bottom: 6px; display: block;">اسم المراجع / العميل:</label>
+              <input type="text" id="manualCustomerNameInput" class="admin-input" placeholder="اسم العميل..." value="مراجع صالة" required>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="manualCustomerPhoneInput" style="font-weight: 700; margin-bottom: 6px; display: block;">رقم الجوال (اختياري للإشعارات والواتساب):</label>
+              <input type="tel" id="manualCustomerPhoneInput" class="admin-input" placeholder="05XXXXXXXX" dir="ltr">
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 20px;">
+              <label for="manualTicketNotesInput" style="font-weight: 700; margin-bottom: 6px; display: block;">ملاحظات خاصة:</label>
+              <input type="text" id="manualTicketNotesInput" class="admin-input" placeholder="مثال: عميل VIP، طلب معاملة سريعة">
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelManualTicketBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="submitManualTicketBtn" class="btn btn--primary">إصدار التذكرة وطباعتها 🖨️</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة للإشعار العام للصالة (Broadcast Notice Modal) -->
+      <div id="adminBroadcastModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(460px, 100%); padding: 24px; box-shadow: var(--shadow-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #dc2626;">📢 إشعار عام / طارئ لصالة الانتظار</h3>
+            <button type="button" id="closeBroadcastModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <form id="broadcastNoticeForm">
+            <div class="admin-field" style="margin-bottom: 16px;">
+              <label for="broadcastNoticeTextInput" style="font-weight: 700; margin-bottom: 6px; display: block;">نص الإشعار (سيظهر على جميع شاشات التلفزيون وجوالات المراجعين):</label>
+              <textarea id="broadcastNoticeTextInput" class="admin-input" rows="4" placeholder="مثال: يرجى العلم بأن نظام الفحص يواجه تدقيقاً إضافياً، نشكر لكم حسن انتظاركم..." required></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelBroadcastBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="submitBroadcastBtn" class="btn btn--primary" style="background: #dc2626; border-color: #dc2626;">إرسال وبث الآن 📢</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة لتسليم الوردية السريع وقفل الشاشة (Hot Swap Modal) -->
+      <div id="adminHotSwapModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(480px, 100%); padding: 24px; box-shadow: var(--shadow-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #1e3a8a;">🔄 تسليم الوردية / تغطية سريعة (Hot Swap)</h3>
+            <button type="button" id="closeHotSwapModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <form id="hotSwapForm">
+            <!-- إذا كان هناك عميل قيد الخدمة -->
+            <div id="hotSwapActiveCustomerNotice" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius); padding: 14px; margin-bottom: 16px;">
+              <strong style="color: #1e40af; display: block; margin-bottom: 6px;">⚠️ يوجد عميل قيد الخدمة حالياً (<span id="hotSwapTicketNum"></span>):</strong>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; font-size: 0.9rem;">
+                  <input type="radio" name="hotSwapHandoverOption" value="handover_active" checked>
+                  <span>تسليم المعاملة الحالية للموظف البديل مع ملاحظة استلام</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; font-size: 0.9rem;">
+                  <input type="radio" name="hotSwapHandoverOption" value="complete_first">
+                  <span>سأقوم بإنهاء المعاملة أولاً قبل التسليم</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="hotSwapNotesInput" style="font-weight: 700; margin-bottom: 6px; display: block;">ملاحظات الاستلام للموظف البديل (اختياري):</label>
+              <textarea id="hotSwapNotesInput" class="admin-input" rows="2" placeholder="أية تفاصيل تخص المعاملة أو الصندوق..."></textarea>
+            </div>
+
+            <!-- شاشة القفل وإدخال رمز PIN للموظف البديل -->
+            <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: var(--radius); padding: 18px; text-align: center; margin-bottom: 20px;">
+              <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🔐</span>
+              <label for="hotSwapIncomingPin" style="font-weight: 800; color: #0f172a; margin-bottom: 6px; display: block; font-size: 1rem;">
+                الرمز السريع (PIN من 4 أرقام) للموظف المستلم:
+              </label>
+              <input type="password" id="hotSwapIncomingPin" class="admin-input" maxlength="6" placeholder="••••" style="font-size: 1.5rem; text-align: center; letter-spacing: 6px; width: 180px; margin: 0 auto;" required>
+              <small style="display: block; color: var(--color-text-muted); margin-top: 6px;">سيتم تسليم الكاونتر واستئناف الطابور فوراً دون انقطاع</small>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelHotSwapBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="submitHotSwapBtn" class="btn btn--primary" style="background: #2563eb; font-weight: 700;">تسليم الوردية واستلام الكاونتر 🚀</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة لطلب استراحة موظف الكاونتر (Break Request Modal) -->
+      <div id="adminBreakModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(440px, 100%); padding: 24px; box-shadow: var(--shadow-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #b45309;">☕ طلب استراحة مؤقتة (Agent Break)</h3>
+            <button type="button" id="closeBreakModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <form id="breakRequestForm">
+            <div class="admin-field" style="margin-bottom: 16px;">
+              <label style="font-weight: 700; margin-bottom: 8px; display: block;">سبب الاستراحة:</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="breakReasonOption" value="prayer" checked>
+                  <span>🕌 استراحة صلاة</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="breakReasonOption" value="lunch">
+                  <span>🍽️ استراحة طعام / غداء</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="breakReasonOption" value="rest">
+                  <span>🛋️ راحة دورية قصيرة</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                  <input type="radio" name="breakReasonOption" value="emergency">
+                  <span>🚨 ظرف طارئ</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius); padding: 12px; margin-bottom: 20px; font-size: 0.82rem; color: #854d0e;">
+              ℹ️ تنويه هندسي: يُسحب الكاونتر لحظياً من معادلة الطاقة الاستيعابية الكلية، ويعيد النظام تلقائياً حساب وتعديل وقت الانتظار الافتراضي لجميع العملاء في هواتفهم.
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelBreakBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="submitBreakBtn" class="btn btn--primary" style="background: #d97706; border-color: #d97706; font-weight: 700;">تأكيد بدء الاستراحة</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة لتسليم وردية الاستقبال (Reception Handover Modal) -->
+      <div id="adminReceptionHandoverModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(540px, 100%); padding: 24px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #1e3a8a;">📋 تسليم شاشة القيادة ووردية الاستقبال (24/7)</h3>
+            <button type="button" id="closeReceptionHandoverModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <!-- ملخص الوردية الحالية -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 14px; margin-bottom: 18px;">
+            <h4 style="margin: 0 0 10px; font-size: 0.92rem; color: #0f172a;">📊 ملخص العمليات الحالية للوردية:</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem;">
+              <div style="background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <span>التذاكر قيد الانتظار:</span>
+                <strong id="recSummaryWaiting" style="color: #2563eb; margin-right: 4px;">--</strong>
+              </div>
+              <div style="background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <span>المعاملات المتأخرة / المتعثرة:</span>
+                <strong id="recSummaryOverdue" style="color: #dc2626; margin-right: 4px;">--</strong>
+              </div>
+              <div style="background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <span>إجمالي ما تم إنجازه اليوم:</span>
+                <strong id="recSummaryServed" style="color: #16a34a; margin-right: 4px;">--</strong>
+              </div>
+              <div style="background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <span>الكاونترات النشطة:</span>
+                <strong id="recSummaryActiveCounters" style="color: #0f172a; margin-right: 4px;">--</strong>
+              </div>
+            </div>
+          </div>
+
+          <form id="receptionHandoverForm">
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="receptionHandoverNotes" style="font-weight: 700; margin-bottom: 6px; display: block;">ملاحظات عامة ومهمة للوردية القادمة:</label>
+              <textarea id="receptionHandoverNotes" class="admin-input" rows="3" placeholder="مثال: يرجى متابعة المراجعين في قسم العقود، كاونتر 2 سيستأنف عمله بعد الصلاة..."></textarea>
+            </div>
+
+            <!-- إدخال الـ PIN لموظف الاستقبال الجديد -->
+            <div style="background: #eff6ff; border: 1.5px dashed #93c5fd; border-radius: var(--radius); padding: 16px; text-align: center; margin-bottom: 20px;">
+              <label for="incomingReceptionPin" style="font-weight: 800; color: #1e40af; margin-bottom: 6px; display: block;">
+                الرمز السريع (PIN من 4 أرقام) لمشرف الوردية الجديدة:
+              </label>
+              <input type="password" id="incomingReceptionPin" class="admin-input" maxlength="6" placeholder="••••" style="font-size: 1.4rem; text-align: center; letter-spacing: 6px; width: 170px; margin: 0 auto;" required>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelReceptionHandoverBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="submitReceptionHandoverBtn" class="btn btn--primary" style="background: #1e40af; font-weight: 700;">اعتماد تسليم شاشة القيادة 📋</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- النافذة المنبثقة للتحكم القسري وإعادة التعيين للكاونترات (Supervisor Override Modal) -->
+      <div id="adminSupervisorOverrideModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(480px, 100%); padding: 24px; box-shadow: var(--shadow-xl);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #dc2626;">⚡ تحكم المشرف: <span id="overrideModalCounterName">كاونتر 1</span></h3>
+            <button type="button" id="closeOverrideModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="font-weight: 700; margin-bottom: 8px; display: block;">إجراءات الجلسة السريعة:</label>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" id="overrideForceSignoutBtn" class="btn btn--outline" style="flex: 1; border-color: #ef4444; color: #dc2626; font-size: 0.85rem; font-weight: 700;">
+                🚪 إنهاء الجلسة قسرياً
+              </button>
+              <button type="button" id="overrideForceBreakBtn" class="btn btn--outline" style="flex: 1; border-color: #f59e0b; color: #b45309; font-size: 0.85rem; font-weight: 700;">
+                ☕ تحويل لاستراحة عن بُعد
+              </button>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--color-border); padding-top: 16px;">
+            <h4 style="margin: 0 0 12px; font-size: 0.95rem; color: var(--color-text);">🔀 إعادة تعيين المسارات (Reassign Queues)</h4>
+            
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 0.85rem;">المسارات المخصصة لهذا الكاونتر:</label>
+              <div id="overrideQueuesCheckboxes" style="display: flex; flex-direction: column; gap: 8px; background: #f8fafc; padding: 10px; border-radius: var(--radius); border: 1px solid var(--color-border); max-height: 140px; overflow-y: auto;">
+                <!-- Checkboxes populated via JS -->
+              </div>
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 20px;">
+              <label for="overrideOperatorSelect" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 0.85rem;">تغيير الموظف المشغل:</label>
+              <select id="overrideOperatorSelect" class="admin-input"></select>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelOverrideBtn" class="btn btn--outline">إغلاق</button>
+              <button type="button" id="submitOverrideReassignBtn" class="btn btn--primary">حفظ التعيين الجديد</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2506,6 +3095,7 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/supabase-db.js"></script>
   <script src="js/whatsapp-automation.js"></script>
+  <script src="js/unified-session.js"></script>
   <script src="js/services-store.js"></script>
   <script src="js/booking-store.js"></script>
   <script src="js/calendar-export.js"></script>
@@ -2514,6 +3104,9 @@ ALTER TABLE mken_saas_clients ADD COLUMN IF NOT EXISTS has_security_attachment B
   <script src="js/pwa.js"></script>
   <script src="js/push-subscribe.js"></script>
   <script src="js/admin-booking.js"></script>
+  <script src="js/queue-store.js"></script>
+  <script src="js/admin-queue.js"></script>
+
   <script src="js/admin-team-workouts.js"></script>
   <script src="js/admin-orders.js"></script>
   <script src="js/admin-staff.js"></script>

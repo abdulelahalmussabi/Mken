@@ -22,6 +22,13 @@ const nextConfig: NextConfig = {
           { key: "Service-Worker-Allowed", value: "/" },
         ],
       },
+      {
+        source: "/googleae07a7b850e5250d.html",
+        headers: [
+          { key: "Content-Type", value: "text/html; charset=utf-8" },
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
     ];
   },
   async redirects() {
@@ -70,6 +77,18 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      {
+        source: "/favicon.ico",
+        destination: "/api/brand-icon",
+      },
+      {
+        source: "/googleae07a7b850e5250d.html",
+        destination: "/api/google-site-verification",
+      },
+      {
+        source: "/googleae07a7b850e5250d",
+        destination: "/api/google-site-verification",
+      },
       {
         source: "/book.html",
         destination: "/book",

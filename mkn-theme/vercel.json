@@ -1,5 +1,5 @@
 {
-  "cleanUrls": true,
+  "cleanUrls": false,
   "trailingSlash": false,
   "crons": [
     {
@@ -13,6 +13,14 @@
     {
       "path": "/api/cron/ad-insights",
       "schedule": "15 6 * * *"
+    },
+    {
+      "path": "/api/cron/whatsapp",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-posts",
+      "schedule": "0 10 * * *"
     }
   ],
   "headers": [
@@ -22,9 +30,25 @@
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "Service-Worker-Allowed", "value": "/" }
       ]
+    },
+    {
+      "source": "/googleae07a7b850e5250d.html",
+      "headers": [
+        { "key": "Content-Type", "value": "text/html; charset=utf-8" },
+        { "key": "X-Robots-Tag", "value": "noindex" },
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/googleae07a7b850e5250d.html",
+      "destination": "/api/google-site-verification"
+    },
+    {
+      "source": "/googleae07a7b850e5250d",
+      "destination": "/api/google-site-verification"
+    },
     {
       "source": "/api/google_business/callback",
       "destination": "/api/google-business/callback"
@@ -32,6 +56,10 @@
     {
       "source": "/api/google_business",
       "destination": "/api/google-business"
+    },
+    {
+      "source": "/api/cron-whatsapp",
+      "destination": "/api/cron/whatsapp"
     }
   ],
   "redirects": [
@@ -39,6 +67,16 @@
       "source": "/dashboarc/:path*",
       "destination": "/dashboard/:path*",
       "permanent": true
+    },
+    {
+      "source": "/pricing.html",
+      "destination": "/license",
+      "permanent": false
+    },
+    {
+      "source": "/license-success.html",
+      "destination": "/license/success",
+      "permanent": false
     },
     {
       "source": "/themes",

@@ -67,6 +67,7 @@ export default function AdsCampaignsPage() {
   const [metaReady, setMetaReady] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const [capiReady, setCapiReady] = useState(false);
+  const [tokenReady, setTokenReady] = useState(false);
   const [adsAllowed, setAdsAllowed] = useState(true);
   const [genUsed, setGenUsed] = useState(0);
   const [genLimit, setGenLimit] = useState(12);
@@ -76,6 +77,7 @@ export default function AdsCampaignsPage() {
   const [geoLabel, setGeoLabel] = useState("");
   const [adAccountId, setAdAccountId] = useState("");
   const [pageId, setPageId] = useState("");
+  const [pixelId, setPixelId] = useState("");
   const [googleCustomerId, setGoogleCustomerId] = useState("");
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleName, setGoogleName] = useState("");
@@ -115,6 +117,7 @@ export default function AdsCampaignsPage() {
         setMetaReady(Boolean(data.metaReady));
         setGoogleReady(Boolean(data.googleReady));
         setCapiReady(Boolean(data.capiReady));
+        setTokenReady(Boolean(data.tokenReady));
         setAdsAllowed(data.adsAllowed !== false);
         setGenUsed(Number(data.generateCredits?.used) || 0);
         setGenLimit(Number(data.generateCredits?.limit) || 12);
@@ -132,6 +135,7 @@ export default function AdsCampaignsPage() {
         setGoogleBlockers(Array.isArray(data.googleBlockers) ? data.googleBlockers : []);
         setAdAccountId(typeof data.adsMeta?.adAccountId === "string" ? data.adsMeta.adAccountId : "");
         setPageId(typeof data.adsMeta?.pageId === "string" ? data.adsMeta.pageId : "");
+        setPixelId(typeof data.adsMeta?.pixelId === "string" ? data.adsMeta.pixelId : "");
         setGoogleCustomerId(typeof data.adsGoogle?.customerId === "string" ? data.adsGoogle.customerId : "");
         setGoogleConnected(Boolean(data.adsGoogle?.connected));
         setGoogleName(typeof data.adsGoogle?.descriptiveName === "string" ? data.adsGoogle.descriptiveName : "");
@@ -292,7 +296,7 @@ export default function AdsCampaignsPage() {
       const res = await fetch(`/api/ads/campaigns${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "saveMeta", adAccountId, pageId }),
+        body: JSON.stringify({ action: "saveMeta", adAccountId, pageId, pixelId }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -397,31 +401,52 @@ export default function AdsCampaignsPage() {
         </div>
 
         {!(platform === "google_ads" ? googleReady : metaReady) && (
-          <div className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 space-y-1">
-            {(platform === "google_ads" ? googleBlockers : blockers).length ? (
-              (platform === "google_ads" ? googleBlockers : blockers).map((item) => <p key={item}>{item}</p>)
-            ) : (
-              <p>أكمل ربط الحساب وموقع الفرع قبل النشر. المسودات تُحفظ الآن.</p>
-            )}
+          <div className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 space-y-2 leading-6">
+            <p className="font-bold">مساران منفصلان: حساب مكّن.لايف (مرة واحدة) ثم حساب المنشأة (المحروسة مثالاً).</p>
             {platform === "meta_ctwa" ? (
-              capiReady ? (
-                <p>تتبع التحويلات (CAPI) جاهز.</p>
-              ) : (
-                <p>أضف META_PIXEL_ID لتفعيل CAPI عند الحجز والدفع.</p>
-              )
+              <>
+                <p>
+                  1) مكّن.لايف: تطبيق Meta + System User ثم META_ADS_ACCESS_TOKEN على Vercel مشروع mkn.
+                  التوكن المنصّي: {tokenReady ? "موجود" : "غير معيّن — النشر متوقف حتى يضيفه حساب المنصة."}
+                </p>
+                <p>
+                  2) المحروسة: صفحة فيسبوك + حساب إعلانات خاص بها، ثم مشاركة الحساب مع Business Manager لمكّن.
+                  بعدها الصق المعرّفات أدناه واحفظ. الإنفاق على بطاقة المحروسة لا على مكّن.
+                </p>
+                <p>
+                  3) موقع الفرع:{" "}
+                  {geoLabel ? (
+                    geoLabel
+                  ) : (
+                    <Link href={`/admin/settings${query}` as Route} className="underline">
+                      افتح الإعدادات واحفظ خط العرض والطول
+                    </Link>
+                  )}
+                </p>
+                {blockers.length
+                  ? blockers.map((item) => <p key={item}>{item}</p>)
+                  : null}
+                <p>
+                  Pixel/CAPI للمنشأة اختياري للنشر. {capiReady ? "التتبع جاهز." : "أضف Pixel ID أدناه أو META_PIXEL_ID على الخادم لتتبع الحجز والدفع."}
+                </p>
+              </>
             ) : (
-              <p>جوجل يسجّل النقرات والتحويلات من الحساب المرتبط. لا يُرسل إلى ميتا.</p>
+              <>
+                {(googleBlockers.length ? googleBlockers : ["أكمل ربط حساب جوجل Ads لهذه المنشأة."]).map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
+                <p>
+                  موقع الفرع:{" "}
+                  {geoLabel ? (
+                    geoLabel
+                  ) : (
+                    <Link href={`/admin/settings${query}` as Route} className="underline">
+                      افتح الإعدادات واحفظ خط العرض والطول
+                    </Link>
+                  )}
+                </p>
+              </>
             )}
-            <p>
-              موقع الفرع:{" "}
-              {geoLabel ? (
-                geoLabel
-              ) : (
-                <Link href={`/admin/settings${query}` as Route} className="underline">
-                  افتح الإعدادات واحفظ خط العرض والطول
-                </Link>
-              )}
-            </p>
           </div>
         )}
 
@@ -516,6 +541,16 @@ export default function AdsCampaignsPage() {
               placeholder="Page ID"
             />
           </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="block text-xs font-bold text-slate-300">Pixel ID لهذه المنشأة (اختياري — CAPI)</span>
+            <input
+              className={ADMIN_INPUT}
+              dir="ltr"
+              value={pixelId}
+              onChange={(e) => setPixelId(e.target.value)}
+              placeholder="Pixel ID من Events Manager لحساب المحروسة"
+            />
+          </label>
           <div className="md:col-span-2">
             <button
               type="button"
@@ -592,7 +627,7 @@ export default function AdsCampaignsPage() {
               className={ADMIN_INPUT}
               value={serviceName}
               onChange={(e) => setServiceName(e.target.value)}
-              placeholder="مثال: حلاقة أطفال — حي الروضة"
+              placeholder="مثال: شقق مفروشة المدينة المنورة"
             />
           </label>
           <label className="space-y-1.5">

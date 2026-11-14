@@ -163,6 +163,8 @@ function buildSystemPrompt(config, tenantContext, customerPhone, appointmentsInf
   // Strict rules
   prompt += '## قواعد أخيرة\n';
   prompt += '- لا تخترع أسعاراً أو خدمات غير موجودة في الكتالوج.\n';
+  prompt += '- لا تخترع أوقاتاً من عندك أبداً. إذا طلب العميل الحجز، أخبره أنك ستتحقق من الفراغ في النظام، أو استخدم أداة list_slots إذا كانت متاحة.\n';
+  prompt += '- لتأكيد الحجز، استخدم أداة create_booking إذا جمعت كل البيانات (الاسم، الخدمة، التاريخ، الوقت).\n';
   prompt += '- إن لم تعرف إجابة، اعتذر بأدب ووجّه العميل للحجز.\n';
   prompt += '- لا تذكر أنك ذكاء اصطناعي — أنت "مستشار خدمة العملاء" في ' + brandName + '.\n';
   prompt += '- ذكّر باسم ' + brandName + ' عند الترحيب، لا تستخدم أسماء أخرى.\n';
@@ -277,6 +279,39 @@ async function callGemini(systemPrompt, contents) {
       parts: [{ text: systemPrompt }]
     },
     contents: contents,
+    tools: [
+      {
+        functionDeclarations: [
+          {
+            name: "list_slots",
+            description: "جلب الأوقات المتاحة للحجز في تاريخ معين.",
+            parameters: {
+              type: "object",
+              properties: {
+                date: { type: "string", description: "التاريخ بصيغة YYYY-MM-DD" }
+              },
+              required: ["date"]
+            }
+          },
+          {
+            name: "create_booking",
+            description: "إنشاء موعد جديد للعميل بعد التحقق من توفر الوقت.",
+            parameters: {
+              type: "object",
+              properties: {
+                name: { type: "string", description: "اسم العميل" },
+                date: { type: "string", description: "التاريخ بصيغة YYYY-MM-DD" },
+                time: { type: "string", description: "الوقت بصيغة HH:MM (بنظام 24 ساعة)" },
+                serviceId: { type: "string", description: "معرف الخدمة (ID) من الكتالوج" },
+                serviceName: { type: "string", description: "اسم الخدمة" },
+                servicePrice: { type: "string", description: "سعر الخدمة كأرقام فقط (بدون عملة) إذا كانت مسعرة" }
+              },
+              required: ["name", "date", "time", "serviceId"]
+            }
+          }
+        ]
+      }
+    ],
     generationConfig: {
       temperature: 0.85,
       topP: 0.95,
@@ -321,9 +356,19 @@ async function callGemini(systemPrompt, contents) {
 
     const data = await response.json();
     try {
-      const text = data.candidates[0].content.parts[0].text;
+      const parts = data.candidates[0].content.parts;
+      const functionCallPart = parts.find(p => p.functionCall);
+      if (functionCallPart) {
+        return {
+          type: 'tool_call',
+          name: functionCallPart.functionCall.name,
+          args: functionCallPart.functionCall.args
+        };
+      }
+      
+      const text = parts[0].text;
       console.log('AI agent: success with model', model);
-      return extractReply(text);
+      return { type: 'text', text: extractReply(text) };
     } catch (e) {
       lastErr = new Error('Could not parse Gemini response from ' + model);
       continue;
@@ -443,7 +488,10 @@ async function generateAIReply(userMessage, config, tenantSlug, customerPhone, a
 
   try {
     const reply = await callGemini(systemPrompt, contents);
-    return sanitizeReply(reply);
+    if (reply && reply.type === 'tool_call') {
+      return reply;
+    }
+    return sanitizeReply(reply ? reply.text : '');
   } catch (err) {
     console.error('AI agent error:', err.message);
     return ''; // webhook will fall back to a safe message

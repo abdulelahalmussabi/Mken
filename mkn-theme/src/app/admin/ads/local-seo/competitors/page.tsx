@@ -13,6 +13,7 @@ type Competitor = {
   userRatingsTotal: number;
   address?: string;
   mapsUrl?: string;
+  placeId?: string;
 };
 
 type Audit = {
@@ -33,6 +34,7 @@ type RankScan = {
   averageRank: number | null;
   top3Percentage: number | null;
   scannedAt?: string;
+  source?: string;
 };
 
 export default function LocalCompetitorsPage() {
@@ -194,6 +196,7 @@ export default function LocalCompetitorsPage() {
               <li key={scan.id}>
                 {scan.keyword} · {scan.gridSize} · متوسط {scan.averageRank ?? "—"} · الحزمة الثلاثية{" "}
                 {scan.top3Percentage != null ? `${scan.top3Percentage}%` : "—"}
+                {scan.source === "places_estimate" ? " · تقدير أماكن" : ""}
               </li>
             ))}
           </ul>

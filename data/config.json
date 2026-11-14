@@ -30,12 +30,30 @@
   "theme": "slate",
   "phone": "966543530333",
   "social": {
-    "whatsapp": { "enabled": true, "value": "966543530333" },
-    "instagram": { "enabled": false, "value": "" },
-    "twitter": { "enabled": false, "value": "" },
-    "facebook": { "enabled": false, "value": "" },
-    "tiktok": { "enabled": false, "value": "" },
-    "linkedin": { "enabled": false, "value": "" }
+    "whatsapp": {
+      "enabled": true,
+      "value": "966543530333"
+    },
+    "instagram": {
+      "enabled": false,
+      "value": ""
+    },
+    "twitter": {
+      "enabled": false,
+      "value": ""
+    },
+    "facebook": {
+      "enabled": false,
+      "value": ""
+    },
+    "tiktok": {
+      "enabled": false,
+      "value": ""
+    },
+    "linkedin": {
+      "enabled": false,
+      "value": ""
+    }
   },
   "brand": {
     "name": "مكن",
@@ -49,12 +67,26 @@
     "enabled": true,
     "slotDuration": 60,
     "advanceDays": 14,
-    "workingDays": [0, 1, 2, 3, 4, 5, 6],
-    "workingHours": { "start": "09:00", "end": "22:00" },
+    "workingDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "workingHours": {
+      "start": "09:00",
+      "end": "22:00"
+    },
     "maxPerSlot": 3,
     "reminders": {
       "enabled": true,
-      "hoursBefore": [24, 2],
+      "hoursBefore": [
+        24,
+        2
+      ],
       "windowMinutes": 60
     }
   },
@@ -62,7 +94,10 @@
     "enabled": false,
     "displayOnHomepage": false,
     "city": "جدة",
-    "center": { "lat": 21.485811, "lng": 39.192505 },
+    "center": {
+      "lat": 21.485811,
+      "lng": 39.192505
+    },
     "radiusKm": 25,
     "coverageNote": "",
     "showAsFullCity": true
@@ -76,9 +111,29 @@
     "useSubdomains": true
   },
   "emails": {
-    "inquiries": { "enabled": true, "value": "info@mken.live" },
-    "sales": { "enabled": true, "value": "sales@mken.live" },
-    "support": { "enabled": true, "value": "CS@mken.live" }
+    "inquiries": {
+      "enabled": true,
+      "value": "info@mken.live"
+    },
+    "sales": {
+      "enabled": true,
+      "value": "sales@mken.live"
+    },
+    "support": {
+      "enabled": true,
+      "value": "CS@mken.live"
+    }
   },
-  "updatedAt": "2026-06-14T15:00:00.000Z"
+  "updatedAt": "2026-06-14T15:00:00.000Z",
+  "queue": {
+    "enabled": true,
+    "serviceMode": "hybrid",
+    "targetServiceMinutes": 10,
+    "alertThreshold": 2,
+    "safetyMultiplier": 1.15,
+    "snoozeMinutes": 5,
+    "enableWebPush": true,
+    "enableWhatsapp": true,
+    "soundNotifications": true
+  }
 }

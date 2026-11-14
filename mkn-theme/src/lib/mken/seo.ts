@@ -4,6 +4,7 @@ import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
 import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
 import { applyRewaDefaults } from "@/lib/mken/rewa-content";
+import { brandIconPath, isUsableLogoSrc, publicBrandSrc } from "@/lib/mken/logo-crop";
 import { fetchTenantRow, isPlatformSlug, toClientRecord } from "@/lib/mken/tenant";
 import type { StorefrontClient } from "@/types/database";
 
@@ -27,6 +28,17 @@ export function siteOrigin(): string {
 
 export function siteMetadataBase(): URL {
   return new URL(`${siteOrigin()}/`);
+}
+
+export const PLATFORM_ICON = publicBrandSrc("mken.png");
+
+export function brandMetadataIcons(slug?: string | null): NonNullable<Metadata["icons"]> {
+  const url = brandIconPath(slug);
+  return {
+    icon: [{ url, type: "image/png" }],
+    shortcut: url,
+    apple: url,
+  };
 }
 
 export async function loadStorefrontSeo(slug: string): Promise<StorefrontClient | null> {
@@ -68,11 +80,17 @@ export function tenantPageMetadata(
     client.subtitle ||
     client.tagline ||
     `${client.name}${client.location ? ` — ${client.location}` : ""}`;
-  const images = client.heroImage ? [{ url: client.heroImage }] : undefined;
+  const icon = brandIconPath(client.slug);
+  const images = client.heroImage
+    ? [{ url: client.heroImage }]
+    : isUsableLogoSrc(client.logo)
+      ? [{ url: icon }]
+      : [{ url: PLATFORM_ICON }];
 
   return {
     title,
     description,
+    icons: brandMetadataIcons(client.slug),
     alternates: { canonical: path },
     openGraph: {
       title,
@@ -87,7 +105,7 @@ export function tenantPageMetadata(
       card: client.heroImage ? "summary_large_image" : "summary",
       title,
       description,
-      images: client.heroImage ? [client.heroImage] : undefined,
+      images: images.map((image) => image.url),
     },
   };
 }

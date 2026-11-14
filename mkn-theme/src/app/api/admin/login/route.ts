@@ -117,7 +117,7 @@ async function respond(session: AdminSession, message: string) {
 
   const features = await featuresForSession(session);
   const response = NextResponse.json({ success: true, ...session, features, message });
-  applySessionCookie(response, token);
+  await applySessionCookie(response, token);
   return response;
 }
 

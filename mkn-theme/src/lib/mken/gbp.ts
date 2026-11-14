@@ -8,7 +8,7 @@ import {
   normalizeGoogleOAuthValue,
   revokeGoogleOAuthToken,
 } from "@/lib/mken/google-oauth";
-import { fetchTenantRow, getTenantDb, TENANT_TABLE, writeTenantConfig } from "@/lib/mken/tenant";
+import { canonicalTenantSlug, fetchTenantRow, getTenantDb, TENANT_TABLE, writeTenantConfig } from "@/lib/mken/tenant";
 import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { ACTIVITIES, fetchTenantCatalog } from "@/lib/mken/catalog";
 import {
@@ -25,7 +25,7 @@ import { generateGeminiText } from "@/lib/mken/gemini";
 import { updateTenantSettings } from "@/lib/mken/settings";
 import {
   fetchLivePlaceDetails,
-  resolvePlaceId,
+  resolvePlaceIdFromListing,
   type LivePlaceDetails,
 } from "@/lib/mken/preview";
 
@@ -214,13 +214,14 @@ async function listOwnedGbpLocations(token: string): Promise<{ locations: GbpLoc
 export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus; error?: string }> {
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  const tenantSlug = canonicalTenantSlug(slug);
 
   const { data, error } = await db
     .from(TENANT_TABLE)
     .select(
       "google_refresh_token, google_access_token, google_token_expiry, google_business_location_id, config_data"
     )
-    .eq("tenant_slug", slug)
+    .eq("tenant_slug", tenantSlug)
     .maybeSingle();
 
   if (error) return { error: "تعذّر قراءة حالة الربط" };
@@ -234,15 +235,20 @@ export async function fetchGbpStatus(slug: string): Promise<{ status?: GbpStatus
       gbp?: { locations?: GbpLocation[] };
       mapsUrl?: string;
       preview?: { placeId?: string };
+      mapsListingName?: string;
     } | null;
   } | null;
 
-  const mapsUrl = typeof row?.config_data?.mapsUrl === "string" ? row.config_data.mapsUrl.trim() : "";
+  const config =
+    tenantSlug === "almahrusa" ? applyAlmahrusaDefaults(row?.config_data || {}) : row?.config_data || {};
+  const mapsUrl = typeof config.mapsUrl === "string" ? config.mapsUrl.trim() : "";
   const mapsPlaceId =
-    typeof row?.config_data?.preview?.placeId === "string" ? row.config_data.preview.placeId.trim() : "";
+    typeof (config as { preview?: { placeId?: string } }).preview?.placeId === "string"
+      ? (config as { preview?: { placeId?: string } }).preview?.placeId?.trim() || ""
+      : "";
   const mapsListingName =
-    typeof (row?.config_data as { mapsListingName?: string } | null | undefined)?.mapsListingName === "string"
-      ? (row?.config_data as { mapsListingName?: string }).mapsListingName?.trim()
+    typeof (config as { mapsListingName?: string }).mapsListingName === "string"
+      ? (config as { mapsListingName?: string }).mapsListingName?.trim()
       : "";
 
   return {
@@ -748,12 +754,13 @@ export async function loadNapSiteSnapshot(
   const row = await fetchTenantRow(slug);
   if (!row) return { error: "المنشأة غير موجودة" };
   const raw = row.config_data || {};
+  const tenantKey = row.tenant_slug || slug;
   const config =
-    slug === "rewa"
+    tenantKey === "rewa"
       ? applyRewaDefaults(raw)
-      : slug === "almahrusa"
+      : tenantKey === "almahrusa"
         ? applyAlmahrusaDefaults(raw)
-        : slug === "rewaq"
+        : tenantKey === "rewaq"
           ? applyRewaqDefaults(raw)
           : raw;
   const booking =
@@ -787,7 +794,8 @@ export async function loadNapSiteSnapshot(
   };
 }
 
-function missingGbpSnapshotError(site: { mapsUrl?: string; ownPlaceId?: string }): string {
+function missingGbpSnapshotError(site: { mapsUrl?: string; ownPlaceId?: string }, reason?: string): string {
+  if (reason) return reason;
   if (site.ownPlaceId || site.mapsUrl) {
     return "تعذّر قراءة بيانات الخرائط لهذا الرابط. أعد حفظ الرابط أو تأكد أن مفتاح خرائط جوجل معيّن على الخادم.";
   }
@@ -827,38 +835,72 @@ function gbpLocationFromPlace(place: LivePlaceDetails): GbpLocationDetail {
   };
 }
 
+type NapMapsHint = { mapsUrl?: string; mapsPlaceId?: string };
+
+function withNapMapsHint<T extends { ownPlaceId?: string; mapsUrl?: string }>(
+  site: T,
+  hint?: NapMapsHint
+): T {
+  const mapsUrl = (hint?.mapsUrl || site.mapsUrl || "").trim();
+  const ownPlaceId = (hint?.mapsPlaceId || site.ownPlaceId || "").trim();
+  return { ...site, mapsUrl, ownPlaceId };
+}
+
 async function resolveGbpSnapshot(
   slug: string,
   locationId: string,
-  site: NapSiteSnapshot & { ownPlaceId?: string; mapsUrl?: string }
-): Promise<GbpLocationDetail | null> {
+  site: NapSiteSnapshot & { ownPlaceId?: string; mapsUrl?: string; lat?: number; lng?: number }
+): Promise<{ detail?: GbpLocationDetail; error?: string }> {
+  const mapsUrl = (site.mapsUrl || "").trim();
+  const ownPlaceId = (site.ownPlaceId || "").trim();
+  if (ownPlaceId) {
+    const cachedPlace = await fetchLivePlaceDetails(ownPlaceId);
+    if (cachedPlace) return { detail: gbpLocationFromPlace(cachedPlace) };
+  }
+  if (ownPlaceId || mapsUrl || site.name) {
+    const looked = await resolvePlaceIdFromListing({
+      mapsUrl,
+      name: site.name,
+      city: site.city,
+      lat: site.lat,
+      lng: site.lng,
+    });
+    if (looked.placeId) {
+      const place = await fetchLivePlaceDetails(looked.placeId);
+      if (place) return { detail: gbpLocationFromPlace(place) };
+      return {
+        error:
+          "وُجد رابط الخرائط لكن تفاصيل NAP لم تُقرأ. فعّل Place Details / Places API على مفتاح الخادم بلا قيد HTTP referrer.",
+      };
+    }
+    if (looked.error && !locationId.trim()) return { error: looked.error };
+  }
   const cached = locationId.trim() ? await readGbpLocationDbCache(slug) : [];
   const gbpReadable = Boolean(locationId.trim() && cached.some((loc) => loc.id === locationId));
   if (gbpReadable) {
     try {
-      return await fetchGbpLocationDetail(slug, locationId);
-    } catch {
-      /* fall through to Maps listing */
+      return { detail: await fetchGbpLocationDetail(slug, locationId) };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "تعذّر جلب بيانات الفرع من جوجل" };
     }
   }
-  const placeId = site.ownPlaceId || (site.mapsUrl ? await resolvePlaceId(site.mapsUrl) : null);
-  if (!placeId) return null;
-  const place = await fetchLivePlaceDetails(placeId);
-  return place ? gbpLocationFromPlace(place) : null;
+  return { error: missingGbpSnapshotError(site) };
 }
 
 export { bindMapsListing } from "@/lib/mken/maps-listing";
 
 export async function runNapAudit(
   slug: string,
-  locationId: string
+  locationId: string,
+  hint?: NapMapsHint
 ): Promise<{ report?: NapReport; error?: string }> {
   const snap = await loadNapSiteSnapshot(slug);
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
+  const site = withNapMapsHint(snap.site, hint);
   try {
-    const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
-    if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
-    return { report: buildNapAuditReport(snap.site, gbp) };
+    const gbp = await resolveGbpSnapshot(slug, locationId, site);
+    if (!gbp.detail) return { error: missingGbpSnapshotError(site, gbp.error) };
+    return { report: buildNapAuditReport(site, gbp.detail) };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "تعذّر فحص NAP" };
   }
@@ -867,7 +909,7 @@ export async function runNapAudit(
 export async function previewNapSync(
   slug: string,
   locationId: string,
-  options?: { includeName?: boolean }
+  options?: { includeName?: boolean; mapsUrl?: string; mapsPlaceId?: string }
 ): Promise<{
   report?: NapReport;
   updated?: { field: string; label: string; value: string }[];
@@ -878,10 +920,11 @@ export async function previewNapSync(
 }> {
   const snap = await loadNapSiteSnapshot(slug);
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
+  const site = withNapMapsHint(snap.site, options);
   try {
-    const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
-    if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
-    const plan = planNapSync(snap.site, gbp, { includeName: Boolean(options?.includeName) });
+    const gbp = await resolveGbpSnapshot(slug, locationId, site);
+    if (!gbp.detail) return { error: missingGbpSnapshotError(site, gbp.error) };
+    const plan = planNapSync(site, gbp.detail, { includeName: Boolean(options?.includeName) });
     return {
       report: plan.report,
       updated: plan.updated,
@@ -975,9 +1018,9 @@ export async function syncNapToMken(
   if (snap.error || !snap.site) return { error: snap.error || "تعذّر قراءة بيانات المنشأة" };
 
   const gbp = await resolveGbpSnapshot(slug, locationId, snap.site);
-  if (!gbp) return { error: missingGbpSnapshotError(snap.site) };
+  if (!gbp.detail) return { error: missingGbpSnapshotError(snap.site, gbp.error) };
 
-  const plan = planReverseNapSync(snap.site, gbp, selectedFields);
+  const plan = planReverseNapSync(snap.site, gbp.detail, selectedFields);
   if (!plan.updates.length) {
     return {
       report: plan.report,
@@ -996,7 +1039,7 @@ export async function syncNapToMken(
 
   const after = await loadNapSiteSnapshot(slug);
   return {
-    report: after.site ? buildNapAuditReport(after.site, gbp) : plan.report,
+    report: after.site ? buildNapAuditReport(after.site, gbp.detail) : plan.report,
     updated: plan.updates,
     skipped: plan.skipped,
     message: `تم استيراد ${plan.updates.length} حقل/حقول من جوجل إلى مكّن.`,

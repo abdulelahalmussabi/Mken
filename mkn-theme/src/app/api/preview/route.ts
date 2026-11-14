@@ -295,7 +295,7 @@ async function handlePreviewPost(request: Request) {
       settingsUrl: "/admin/settings",
       message: "تم التحقق. اربط Google Business لإسقاط noindex وإظهار الموقع في محركات البحث.",
     });
-    if (token) applySessionCookie(response, token);
+    if (token) await applySessionCookie(response, token);
     return response;
   }
 

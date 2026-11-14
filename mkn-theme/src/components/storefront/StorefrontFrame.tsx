@@ -27,7 +27,7 @@ import type {
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { BrandCutout } from "@/components/PlatformMark";
 import { useColorScheme } from "@/context/ColorSchemeContext";
-import { isUsableLogoSrc, publicMediaSrc } from "@/lib/mken/logo-crop";
+import { applyDocumentIcon, brandIconPath, isUsableLogoSrc, publicMediaSrc } from "@/lib/mken/logo-crop";
 import { NeonSocialGlyph, WhatsappCta, WhatsappMark, type SocialPlatform } from "@/components/social/NeonSocialIcons";
 import NeonSocialRow from "@/components/social/NeonSocialRow";
 import {
@@ -146,6 +146,8 @@ export interface StorefrontContextValue {
     logo: string;
     demoNotice: string;
     discountEnabled?: boolean;
+    commercialRegistryName?: string;
+    commercialRegistryNumber?: string;
   };
   href: (page: StorefrontPageId) => string;
   whatsappHref: string;
@@ -230,12 +232,12 @@ export function StorefrontFrame({
     const path = `/api/clients/${encodeURIComponent(slug)}`;
     const platformUrl = `https://www.mken.live${path}`;
     const readJson = (res: Response) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status))));
-    const hasLogo = (data: { success?: boolean; client?: { logo?: string }; catalog?: unknown } | null) =>
-      Boolean(data?.success && data.client && data.catalog && isUsableLogoSrc(data.client.logo));
+    const isStorefrontPayload = (data: { success?: boolean; client?: unknown; catalog?: unknown } | null) =>
+      Boolean(data?.success && data.client && data.catalog);
     const fetchOpts: RequestInit = { cache: "no-store" };
     fetch(path, fetchOpts)
       .then(readJson)
-      .then((data) => (hasLogo(data) ? data : Promise.reject(new Error("no-logo"))))
+      .then((data) => (isStorefrontPayload(data) ? data : Promise.reject(new Error("incomplete"))))
       .catch(() => fetch(platformUrl, fetchOpts).then(readJson))
       .then((data) => {
         if (cancelled) return;
@@ -348,6 +350,8 @@ export function StorefrontFrame({
         logo: storeClient.logo || "",
         demoNotice: storeClient.demoNotice || `صفحة ${storeClient.name} على منصة مكّن`,
         discountEnabled: storeClient.discountEnabled,
+        commercialRegistryName: storeClient.commercialRegistryName || "",
+        commercialRegistryNumber: storeClient.commercialRegistryNumber || "",
       }
     : null;
 
@@ -362,19 +366,8 @@ export function StorefrontFrame({
   );
 
   useEffect(() => {
-    if (!storeInfo?.logo || !isUsableLogoSrc(storeInfo.logo)) return;
-    let link = document.querySelector("link[rel='icon']") as HTMLLinkElement | null;
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
-    }
-    link.href = storeInfo.logo;
-    if (storeInfo.logo.startsWith("data:")) {
-      const match = storeInfo.logo.match(/^data:([^;]+)/);
-      if (match) link.type = match[1];
-    }
-  }, [storeInfo?.logo]);
+    applyDocumentIcon(brandIconPath(slug));
+  }, [slug]);
 
   const openBooking = (srv?: StorefrontServiceOption) => {
     setSelectedService(srv || currentServices[0] || null);
@@ -442,36 +435,31 @@ export function StorefrontFrame({
       time: bookingTime,
       appointmentId,
     };
-    const save = submitPublicBooking({
+    const result = await submitPublicBooking({
       id: appointmentId,
       tenant: slug,
       customerName: clientName,
       customerPhone: clientPhone,
       date: bookingDate || new Date().toISOString().slice(0, 10),
-      time: bookingTime,
+      time: bookingTime.slice(0, 5),
       serviceId: selectedService?.id,
       serviceName: selectedService?.name,
       servicePrice: selectedService?.price,
     });
-
-    const href = buildWhatsappClickUrl(storeInfo.whatsapp, buildBookingWhatsappText(fields));
-    if (href) {
-      setBookingOpen(false);
-      setIsSubmitting(false);
-      showToast(`تم حفظ حجزك في ${storeInfo.name} — أكمل الإرسال من واتساب`, "success");
-      openWhatsappClick(href);
-      void save;
-      return;
-    }
-
-    const result = await save;
     setIsSubmitting(false);
     if (result.error) {
       showToast(result.error, "error");
       return;
     }
+
     setBookingOpen(false);
-    showToast(`تم حفظ حجزك في ${storeInfo.name}. سنتواصل معك قريباً`, "success");
+    const href = buildWhatsappClickUrl(storeInfo.whatsapp, buildBookingWhatsappText(fields));
+    if (href) {
+      showToast(`تم حفظ حجزك في تقويم ${storeInfo.name} — أكمل الإرسال من واتساب`, "success");
+      openWhatsappClick(href);
+      return;
+    }
+    showToast(`تم حفظ حجزك في تقويم ${storeInfo.name}. سنتواصل معك قريباً`, "success");
   };
 
   if (loadState === "loading" || !storeInfo || !value) {
@@ -726,7 +714,20 @@ export function StorefrontFrame({
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
-              <div>جميع الحقوق محفوظة © {new Date().getFullYear()} {storeInfo.name}</div>
+              <div className="space-y-1">
+                <div>
+                  جميع الحقوق محفوظة © {new Date().getFullYear()}{" "}
+                  {storeInfo.commercialRegistryName || storeInfo.name}
+                </div>
+                {storeInfo.commercialRegistryNumber ? (
+                  <div>
+                    السجل التجاري{" "}
+                    <span dir="ltr" className="font-mono">
+                      {storeInfo.commercialRegistryNumber}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
               <Link href={"/" as Route} className="text-muted hover:text-foreground font-bold">
                 مشغّل بواسطة منصة مكّن 🇸🇦
               </Link>

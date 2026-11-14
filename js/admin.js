@@ -66,7 +66,7 @@
           slug = (store.getCurrentTenantSlug() || '').toLowerCase();
         }
       } catch (e2) { /* ignore */ }
-      return slug === 'admin' || slug === 'mken' || !slug || slug === 'default';
+      return slug === 'admin' || slug === 'mken';
     },
     isSuperAdminEmail: isSuperAdminEmail,
   };
@@ -111,6 +111,101 @@
 
   window.MkenAdminToast = showToast;
 
+  // =========================================================================
+  // إدارة القوائم المتكيفة ديناميكياً حسب اشتراك التاجر (Adaptive Dynamic Navigation)
+  // =========================================================================
+  function resolveFeatureEntitlements(config) {
+    var cfg = config || (store && typeof store.loadConfig === 'function' ? store.loadConfig() : null) || {};
+    var tier = (cfg.subscription && cfg.subscription.tier) || 'basic';
+    var custom = (cfg.subscription && cfg.subscription.customFeatures) || cfg.customFeatures || {};
+
+    var plan = (window.MkenServicesStore && typeof window.MkenServicesStore.getSaaSPlan === 'function')
+      ? window.MkenServicesStore.getSaaSPlan(tier)
+      : { hasWhatsApp: false, hasCommerce: false, hasInvoices: false };
+
+    var isSuper = window.MkenAdminAuth && typeof window.MkenAdminAuth.isSuperAdmin === 'function' && window.MkenAdminAuth.isSuperAdmin();
+    if (isSuper) {
+      return {
+        hasBooking: true,
+        hasCommerce: true,
+        hasWhatsApp: true,
+        hasInvoices: true,
+        hasQueue: true,
+        hasInventory: true,
+        has3plFleet: true,
+        hasPurchases: true,
+        isSuperAdmin: true
+      };
+    }
+
+    // Default entitlement calculation based on tier and custom feature flags
+    var hasCommerce = custom.hasCommerce !== undefined ? !!custom.hasCommerce : !!plan.hasCommerce;
+    var hasInvoices = custom.hasInvoices !== undefined ? !!custom.hasInvoices : !!plan.hasInvoices;
+    var hasWhatsApp = custom.hasWhatsApp !== undefined ? !!custom.hasWhatsApp : !!plan.hasWhatsApp;
+    var hasQueue = custom.hasQueue !== undefined ? !!custom.hasQueue : false;
+    var hasBooking = custom.hasBooking !== undefined ? !!custom.hasBooking : true;
+    var hasInventory = custom.hasInventory !== undefined ? !!custom.hasInventory : hasCommerce;
+    var has3plFleet = custom.has3plFleet !== undefined ? !!custom.has3plFleet : hasCommerce;
+    var hasPurchases = custom.hasPurchases !== undefined ? !!custom.hasPurchases : (hasCommerce || hasInvoices);
+
+    return {
+      hasBooking: hasBooking,
+      hasCommerce: hasCommerce,
+      hasWhatsApp: hasWhatsApp,
+      hasInvoices: hasInvoices,
+      hasQueue: hasQueue,
+      hasInventory: hasInventory,
+      has3plFleet: has3plFleet,
+      hasPurchases: hasPurchases,
+      isSuperAdmin: false
+    };
+  }
+
+  function applyDynamicFeatureTabs(config) {
+    var entitlements = resolveFeatureEntitlements(config);
+
+    var tabRules = [
+      { tab: 'invoices', allowed: entitlements.hasInvoices },
+      { tab: 'zatca', allowed: entitlements.hasInvoices },
+      { tab: 'queue', allowed: entitlements.hasQueue },
+      { tab: 'appointments', allowed: entitlements.hasBooking },
+      { tab: 'orders', allowed: entitlements.hasCommerce },
+      { tab: 'inventory', allowed: entitlements.hasInventory },
+      { tab: '3pl-fleet', allowed: entitlements.has3plFleet },
+      { tab: 'purchases', allowed: entitlements.hasPurchases },
+      { tab: 'whatsapp-logs', allowed: entitlements.hasWhatsApp }
+    ];
+
+    var hiddenTabs = [];
+    tabRules.forEach(function (rule) {
+      var tabBtn = document.querySelector('.admin-tab[data-tab="' + rule.tab + '"]');
+      var tabPanel = document.querySelector('.admin-tab-panel[data-panel="' + rule.tab + '"]');
+      if (tabBtn) {
+        if (rule.allowed) {
+          tabBtn.style.display = '';
+          tabBtn.removeAttribute('data-feature-hidden');
+        } else {
+          tabBtn.style.display = 'none';
+          tabBtn.setAttribute('data-feature-hidden', 'true');
+          hiddenTabs.push(rule.tab);
+          if (tabPanel) tabPanel.hidden = true;
+        }
+      }
+    });
+
+    // If current tab is now disabled by subscription, switch to 'reports'
+    if (hiddenTabs.indexOf(activeTab) !== -1) {
+      switchTab('reports');
+    }
+
+    return { entitlements: entitlements, hiddenTabs: hiddenTabs };
+  }
+
+  window.MkenAdminNavigation = {
+    resolveFeatureEntitlements: resolveFeatureEntitlements,
+    applyDynamicFeatureTabs: applyDynamicFeatureTabs
+  };
+
   function showAdmin() {
     loginView.style.display = 'none';
     adminView.style.display = '';
@@ -122,6 +217,9 @@
     if (tabClients) {
       tabClients.style.display = canManageFullActivityCatalog() ? '' : 'none';
     }
+
+    // Apply adaptive dynamic tab visibility based on merchant subscription
+    applyDynamicFeatureTabs();
 
     renderPanel();
     switchTab(activeTab);
@@ -135,6 +233,13 @@
   }
 
   function switchTab(tabId) {
+    // If attempting to switch to a hidden/unsubscribed tab, fallback to 'reports'
+    var targetBtn = document.querySelector('.admin-tab[data-tab="' + tabId + '"]');
+    if (targetBtn && targetBtn.getAttribute('data-feature-hidden') === 'true') {
+      console.warn('[Admin Navigation] Tab not permitted for current subscription tier:', tabId);
+      tabId = 'reports';
+    }
+
     activeTab = tabId;
 
     var adminHeader = document.querySelector('.admin-header');
@@ -642,8 +747,13 @@
 
   function renderThemes(config) {
     if (!themesGrid) return;
+    var catalog = store.getThemesCatalog();
+    if (!catalog.length) {
+      themesGrid.innerHTML = '<p class="admin-hint">ثيم الواجهة العامة هو MKN فقط. ثيمات الألوان القديمة أُزيلت.</p>';
+      return;
+    }
     selectedTheme = config.theme || 'slate';
-    themesGrid.innerHTML = store.getThemesCatalog().map(function (t) {
+    themesGrid.innerHTML = catalog.map(function (t) {
       var active = t.id === selectedTheme ? ' theme-card--active' : '';
       var swatches = t.colors.map(function (c) {
         return '<span style="background:' + c + '"></span>';
@@ -1407,6 +1517,14 @@
           if (data && data.success) {
             store.setAdminLoggedIn(true);
             sessionStorage.setItem('mken_admin_pin', enteredPin);
+            if (window.MkenSession && typeof window.MkenSession.setStaffAuth === 'function') {
+              var activeSlug = (store && typeof store.getCurrentTenantSlug === 'function' && store.getCurrentTenantSlug()) || 'default';
+              window.MkenSession.setStaffAuth(activeSlug, {
+                pin: enteredPin,
+                role: 'admin',
+                isSuperAdmin: false
+              });
+            }
             showAdmin();
           } else {
             if (loginError) {
@@ -1453,6 +1571,14 @@
             } catch (e2) { /* ignore */ }
             return isSuperAdminEmail(userEmail);
           };
+
+          if (window.MkenSession && typeof window.MkenSession.setStaffAuth === 'function') {
+            window.MkenSession.setStaffAuth(tenantSlug || 'default', {
+              email: userEmail,
+              role: isSuperAdminEmail(userEmail) ? 'super_admin' : 'admin',
+              isSuperAdmin: isSuperAdminEmail(userEmail)
+            });
+          }
 
           showToast('تم تسجيل الدخول بنجاح! 🚀');
           var slug = tenantSlug || (isSuperAdminEmail(userEmail) ? 'admin' : 'default');
@@ -1655,6 +1781,10 @@
         if (client) {
           client.auth.signOut();
         }
+      }
+      if (window.MkenSession && typeof window.MkenSession.clearStaffAuth === 'function') {
+        var activeSlug = (store && typeof store.getCurrentTenantSlug === 'function' && store.getCurrentTenantSlug()) || 'default';
+        window.MkenSession.clearStaffAuth(activeSlug);
       }
       store.setAdminLoggedIn(false);
       showLogin();
@@ -2265,42 +2395,51 @@
 
   window.addEventListener('mken_sync_queue_changed', updateSyncIndicator);
 
-  store.init().then(function () {
-    updateSyncIndicator();
-    initPasswordRecovery();
-    
-    // Check if Supabase database is connected for SaaS features
-    var db = window.MkenSupabaseDb;
-    var regError = document.getElementById('registerError');
-    if (regError && (!db || !db.isConfigured())) {
-      regError.innerHTML = '⚠️ قاعدة بيانات Supabase غير متصلة.<br>أضف في Vercel → Environment Variables:<br><code>SUPABASE_URL</code> · <code>SUPABASE_KEY</code> · <code>SUPABASE_SERVICE_ROLE_KEY</code><br>ثم أعد النشر. (يدعم أيضاً مفاتيح <code>sb_publishable_*</code> و <code>sb_secret_*</code>)';
-      regError.style.color = '#e74c3c';
-      regError.style.display = 'block';
-      regError.style.fontSize = '14px';
-      regError.style.lineHeight = '1.5';
-      regError.hidden = false;
+  if (store && typeof store.init === 'function') {
+    store.init().then(function () {
+      updateSyncIndicator();
+      initPasswordRecovery();
       
-      var regBtn = document.getElementById('registerSubmitBtn');
-      if (regBtn) regBtn.disabled = true;
-    }
+      // Check if Supabase database is connected for SaaS features
+      var db = window.MkenSupabaseDb;
+      var regError = document.getElementById('registerError');
+      if (regError && (!db || !db.isConfigured())) {
+        regError.innerHTML = '⚠️ قاعدة بيانات Supabase غير متصلة.<br>أضف في Vercel → Environment Variables:<br><code>SUPABASE_URL</code> · <code>SUPABASE_KEY</code> · <code>SUPABASE_SERVICE_ROLE_KEY</code><br>ثم أعد النشر. (يدعم أيضاً مفاتيح <code>sb_publishable_*</code> و <code>sb_secret_*</code>)';
+        regError.style.color = '#e74c3c';
+        regError.style.display = 'block';
+        regError.style.fontSize = '14px';
+        regError.style.lineHeight = '1.5';
+        regError.hidden = false;
+        
+        var regBtn = document.getElementById('registerSubmitBtn');
+        if (regBtn) regBtn.disabled = true;
+      }
 
-    if (checkRecoveryMode()) {
-      // Keep recovery visible
-    } else if (store.isAdminLoggedIn()) {
-      showAdmin();
-      startWhatsappAutomationPolling();
-      if (new URLSearchParams(window.location.search).get('welcome') === 'trial') {
-        showToast('مرحباً! تجربتك المجانية 14 يوماً — ابدأ بربط الزكاة وتفعيل واتساب CRM', 'success');
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, '', window.location.pathname);
+      if (checkRecoveryMode()) {
+        // Keep recovery visible
+      } else if (store.isAdminLoggedIn()) {
+        showAdmin();
+        startWhatsappAutomationPolling();
+        if (new URLSearchParams(window.location.search).get('welcome') === 'trial') {
+          showToast('مرحباً! تجربتك المجانية 14 يوماً — ابدأ بربط الزكاة وتفعيل واتساب CRM', 'success');
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }
+      } else {
+        showLogin();
+        updateTenantUrlHints('your-slug');
+        if (new URLSearchParams(window.location.search).get('welcome') === 'trial' && loginCardDesc) {
+          loginCardDesc.textContent = 'تم إنشاء حسابك! سجّل الدخول ببريدك وكلمة المرور لبدء التجربة المجانية (14 يوماً).';
         }
       }
-    } else {
-      showLogin();
-      updateTenantUrlHints('your-slug');
-      if (new URLSearchParams(window.location.search).get('welcome') === 'trial' && loginCardDesc) {
-        loginCardDesc.textContent = 'تم إنشاء حسابك! سجّل الدخول ببريدك وكلمة المرور لبدء التجربة المجانية (14 يوماً).';
-      }
-    }
-  });
+    });
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      resolveFeatureEntitlements: resolveFeatureEntitlements,
+      applyDynamicFeatureTabs: applyDynamicFeatureTabs
+    };
+  }
 })();

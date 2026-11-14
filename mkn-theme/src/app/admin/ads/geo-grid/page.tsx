@@ -6,6 +6,7 @@ import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 
 type GridSize = "3x3" | "5x5" | "7x7";
+type GeoScanSource = "dataforseo" | "places_estimate";
 type GridCell = { lat: number; lng: number; rank: number | null; inPack: boolean };
 type RankScan = {
   id: string;
@@ -15,6 +16,7 @@ type RankScan = {
   top3Percentage: number | null;
   cells: GridCell[];
   cached?: boolean;
+  source?: GeoScanSource;
 };
 type GeoCredits = {
   remaining: number;
@@ -42,6 +44,7 @@ export default function GeoGridPage() {
   const [gridSize, setGridSize] = useState<GridSize>("3x3");
   const [radiusKm, setRadiusKm] = useState(5);
   const [ready, setReady] = useState(false);
+  const [dataforseoReady, setDataforseoReady] = useState(false);
 
   const load = useCallback(async () => {
     if (authLoading) return;
@@ -61,7 +64,11 @@ export default function GeoGridPage() {
         setCredits(data.credits);
         setScans(data.scans || []);
         setScan((data.scans || [])[0] || null);
-        setReady(Boolean(data.dataforseoReady));
+        setReady(Boolean(data.scanReady ?? data.dataforseoReady));
+        setDataforseoReady(Boolean(data.dataforseoReady));
+        if (typeof data.suggestedKeyword === "string" && data.suggestedKeyword) {
+          setKeyword((current) => current.trim() || data.suggestedKeyword);
+        }
         const allowed = (data.credits?.allowedSizes || ["3x3"]) as GridSize[];
         if (!allowed.includes(gridSize)) setGridSize(allowed[0] || "3x3");
       }
@@ -93,7 +100,14 @@ export default function GeoGridPage() {
       setScan(data.scan);
       setCredits(data.credits);
       setScans((prev) => [data.scan, ...prev.filter((item) => item.id !== data.scan.id)]);
-      showToast(data.scan.cached ? "نتيجة محفوظة اليوم (بدون خصم رصيد)" : "اكتمل فحص الشبكة", "success");
+      showToast(
+        data.scan.cached
+          ? "نتيجة محفوظة اليوم (بدون خصم رصيد)"
+          : data.scan.source === "places_estimate"
+            ? "اكتمل تقدير الشبكة (أماكن جوجل — ليس رانك خرائط)"
+            : "اكتمل فحص الشبكة",
+        "success"
+      );
     } finally {
       setRunning(false);
     }
@@ -109,8 +123,9 @@ export default function GeoGridPage() {
           <div>
             <h1 className="text-lg font-extrabold text-white">تتبع الرانك الجغرافي (Geo-Grid)</h1>
             <p className="text-xs text-slate-400 mt-1 leading-6">
-              يحاكي البحث من نقاط حول الفرع عبر DataForSEO. الأرصدة حسب الباقة: أساسي 2 / متقدم 8 / احترافي 40 فحصاً شهرياً.
-              3×3 = رصيد واحد، 5×5 = 2، 7×7 = 4. نفس الكلمة في نفس اليوم تُجلب من الكاش.
+              يحاكي البحث من نقاط حول الفرع. رانك الخرائط عبر DataForSEO إن وُجد، وإلا تقدير عبر Places API.
+              الأرصدة حسب الباقة: أساسي 2 / متقدم 8 / احترافي 40 فحصاً شهرياً. 3×3 = رصيد واحد، 5×5 = 2، 7×7 = 4. نفس
+              الكلمة في نفس اليوم تُجلب من الكاش.
             </p>
           </div>
         </div>
@@ -130,14 +145,30 @@ export default function GeoGridPage() {
           </div>
         </div>
 
-        {!ready && (
-          <p className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
-            DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD غير معيّنين — الفحص الحي متوقف حتى إضافتهما على Vercel.
-          </p>
-        )}
+        {!ready ? (
+          <div className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 space-y-1 leading-6">
+            <p className="font-bold">الفحص متوقف — هذا إعداد منصة مكّن وليس إعداد المنشأة.</p>
+            <p>
+              أضف GOOGLE_MAPS_API_KEY في Vercel لتقدير أماكن، أو DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD لرانك الخرائط
+              الحقيقي، ثم أعد النشر. العميل لا يحتاج حساب DataForSEO.
+            </p>
+          </div>
+        ) : !dataforseoReady ? (
+          <div className="text-[11px] text-sky-200/90 bg-sky-500/10 border border-sky-500/20 rounded-xl px-3 py-2 space-y-1 leading-6">
+            <p className="font-bold">وضع تقدير أماكن — ليس رانك خرائط جوجل.</p>
+            <p>
+              الفحص يعمل عبر GOOGLE_MAPS_API_KEY (Places Text Search مع تحيّز موقع لكل نقطة). الترتيب تقريبي ويختلف عن
+              الـ Map Pack. لتفعيل الرانك الحقيقي: DATAFORSEO_LOGIN و DATAFORSEO_PASSWORD ثم إعادة نشر.
+            </p>
+          </div>
+        ) : null}
+
+        {scan?.source === "places_estimate" ? (
+          <p className="text-[11px] text-sky-300/90">آخر شبكة معروضة: تقدير أماكن وليست نتائج خرائط.</p>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input className={ADMIN_INPUT} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="كلمة البحث مثل: صالون حلاقة الروضة" />
+          <input className={ADMIN_INPUT} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="كلمة البحث مثل: شقق مفروشة المدينة المنورة" />
           <select className={ADMIN_INPUT} value={gridSize} onChange={(e) => setGridSize(e.target.value as GridSize)}>
             {(credits?.allowedSizes || ["3x3"]).map((size) => (
               <option key={size} value={size}>
@@ -155,7 +186,7 @@ export default function GeoGridPage() {
         </div>
         <button
           type="button"
-          disabled={running || loading || !keyword.trim()}
+          disabled={running || loading || !keyword.trim() || !ready}
           onClick={run}
           className="inline-flex items-center gap-2 px-5 py-3 bg-amber-500 text-slate-950 font-extrabold text-sm rounded-xl disabled:opacity-50"
         >

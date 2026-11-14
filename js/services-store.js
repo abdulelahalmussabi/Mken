@@ -35,6 +35,18 @@
     logo: 'assets/mken-logo.png',
   };
 
+    var DEFAULT_QUEUE = {
+    enabled: true,
+    serviceMode: 'hybrid',
+    targetServiceMinutes: 10,
+    alertThreshold: 2,
+    safetyMultiplier: 1.15,
+    snoozeMinutes: 5,
+    enableWebPush: true,
+    enableWhatsapp: true,
+    soundNotifications: true
+  };
+
   var DEFAULT_BOOKING = {
     enabled: true,
     slotDuration: 30,
@@ -126,6 +138,7 @@
     activities: {},
     services: {},
     booking: DEFAULT_BOOKING,
+    queue: DEFAULT_QUEUE,
     serviceArea: DEFAULT_SERVICE_AREA,
     push: DEFAULT_PUSH,
     supabase: DEFAULT_SUPABASE,
@@ -381,6 +394,36 @@
       if (!base.checkOutTime) base.checkOutTime = '12:00';
     }
     return base;
+  }
+
+
+  function normalizeQueue(raw) {
+    if (!raw || typeof raw !== 'object') return Object.assign({}, DEFAULT_QUEUE);
+    return {
+      enabled: raw.enabled !== false,
+      serviceMode: raw.serviceMode || 'hybrid',
+      targetServiceMinutes: typeof raw.targetServiceMinutes === 'number' ? raw.targetServiceMinutes : 10,
+      alertThreshold: typeof raw.alertThreshold === 'number' ? raw.alertThreshold : 2,
+      safetyMultiplier: typeof raw.safetyMultiplier === 'number' ? raw.safetyMultiplier : 1.15,
+      snoozeMinutes: typeof raw.snoozeMinutes === 'number' ? raw.snoozeMinutes : 5,
+      enableWebPush: raw.enableWebPush !== false,
+      enableWhatsapp: raw.enableWhatsapp !== false,
+      soundNotifications: raw.soundNotifications !== false
+    };
+  }
+
+  function getQueue(config) {
+    return normalizeQueue((config || loadConfig()).queue);
+  }
+
+  function isQueueEnabled(config) {
+    var q = getQueue(config);
+    return !!q.enabled;
+  }
+
+  function getServiceMode(config) {
+    var q = getQueue(config);
+    return q.serviceMode || 'hybrid';
   }
 
   function getBooking(config) {
@@ -832,10 +875,9 @@
     return merged;
   }
 
-  function applyTheme(themeId) {
-    var id = VALID_THEMES.indexOf(themeId) !== -1 ? themeId : 'slate';
-    document.documentElement.setAttribute('data-theme', id);
-    return id;
+  function applyTheme() {
+    document.documentElement.removeAttribute('data-theme');
+    return null;
   }
 
   function loadFromStorage() {
@@ -1161,6 +1203,7 @@
     base: 99,
     extraActivity: 29,
     booking: 49,
+    queue: 79,
     commerce: 99,
     whatsapp: 149,
     invoices: 199,
@@ -1287,29 +1330,7 @@
   }
 
   function applyThemeEarly() {
-    try {
-      var tenant = _currentTenantSlug;
-      if (!tenant) {
-        var urlParams = new URLSearchParams(window.location.search);
-        tenant = urlParams.get('tenant') || urlParams.get('client');
-        if (!tenant) {
-          tenant = detectTenantFromHostname();
-        }
-        if (tenant) {
-          tenant = tenant.trim().toLowerCase();
-          if (tenant === 'almahrusa') {
-            tenant = 'almahrosa';
-          }
-        }
-      }
-      var key = tenant ? (STORAGE_KEY + '_' + tenant) : STORAGE_KEY;
-      var raw = localStorage.getItem(key);
-      if (!raw) return;
-      var cfg = JSON.parse(raw);
-      if (cfg.theme && VALID_THEMES.indexOf(cfg.theme) !== -1) {
-        document.documentElement.setAttribute('data-theme', cfg.theme);
-      }
-    } catch (e) { /* ignore */ }
+    document.documentElement.removeAttribute('data-theme');
   }
 
   window.MkenServicesStore = {
@@ -1357,6 +1378,11 @@
     getEnabledEmails: getEnabledEmails,
     isValidEmail: isValidEmail,
     normalizeBooking: normalizeBooking,
+    DEFAULT_QUEUE: DEFAULT_QUEUE,
+    normalizeQueue: normalizeQueue,
+    getQueue: getQueue,
+    isQueueEnabled: isQueueEnabled,
+    getServiceMode: getServiceMode,
     getBooking: getBooking,
     getBookingForActivity: getBookingForActivity,
     getActivityBookingPortalUrl: getActivityBookingPortalUrl,

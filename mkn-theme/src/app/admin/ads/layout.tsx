@@ -10,6 +10,7 @@ const TABS = [
   { href: "/admin/ads/campaigns" as Route, label: "لوحة الحملات" },
   { href: "/admin/ads/local-seo" as Route, label: "التواجد المحلي" },
   { href: "/admin/ads/gbp-posts" as Route, label: "منشورات الخرائط" },
+  { href: "/admin/ads/instagram-posts" as Route, label: "منشورات إنستقرام" },
   { href: "/admin/ads/geo-grid" as Route, label: "تتبع الرانك" },
 ];
 

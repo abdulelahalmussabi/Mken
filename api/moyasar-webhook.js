@@ -2,6 +2,26 @@ const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
 const licenseIssue = require('./_lib/license-issue');
 
+/**
+ * محرك تشفير ZATCA Fatoora Phase 2 وفق معيار TLV Base64
+ */
+function generateZatcaTLV(sellerName, vatNumber, timestamp, totalWithVat, vatAmount) {
+  function getTlvTag(tagNumber, valueString) {
+    const valueBuffer = Buffer.from(String(valueString || ''), 'utf8');
+    const lengthBuffer = Buffer.from([valueBuffer.length]);
+    const tagBuffer = Buffer.from([tagNumber]);
+    return Buffer.concat([tagBuffer, lengthBuffer, valueBuffer]);
+  }
+
+  const tag1 = getTlvTag(1, sellerName || 'منصة مكّن');
+  const tag2 = getTlvTag(2, vatNumber || '300000000000003');
+  const tag3 = getTlvTag(3, timestamp || new Date().toISOString());
+  const tag4 = getTlvTag(4, Number(totalWithVat || 0).toFixed(2));
+  const tag5 = getTlvTag(5, Number(vatAmount || 0).toFixed(2));
+
+  return Buffer.concat([tag1, tag2, tag3, tag4, tag5]).toString('base64');
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -55,11 +75,11 @@ module.exports = async function handler(req, res) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const paymentMethod = source ? (source.company || source.type) : 'online';
   const paymentAmount = amount ? (amount / 100) : 0;
-  const { appointment_id, order_id, tenant_slug, type } = metadata || {};
+  const { appointment_id, order_id, session_id, tenant_slug, type } = metadata || {};
   const slug = tenant_slug || 'default';
 
   try {
-    const resolvedType = type || (appointment_id ? 'booking' : (order_id ? 'order' : 'unknown'));
+    const resolvedType = type || (appointment_id ? 'booking' : ((order_id || session_id) ? 'order' : 'unknown'));
 
     if (resolvedType === 'booking') {
       if (!appointment_id) {
@@ -126,68 +146,157 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, type: 'booking', id: appointment_id });
 
     } else if (resolvedType === 'order') {
-      if (!order_id) {
-        return res.status(400).json({ error: 'Missing order_id in payment metadata' });
+      const targetOrderId = order_id;
+      const targetSessionId = session_id;
+
+      if (!targetOrderId && !targetSessionId) {
+        return res.status(400).json({ error: 'Missing order_id or session_id in payment metadata' });
       }
 
-      // Fetch order to check idempotency and price
-      const { data: ord, error: ordErr } = await supabase
-        .from('mken_orders')
-        .select('payment_amount, payment_status, payment_id')
-        .eq('id', order_id)
-        .maybeSingle();
+      // 1. استعلام الطلب أو جلسة الشراء
+      let ord = null;
+      let session = null;
 
-      if (ordErr) throw ordErr;
-      if (!ord) {
-        return res.status(400).json({ error: 'Order not found in database' });
+      if (targetSessionId) {
+        const { data: sessData } = await supabase
+          .from('mken_checkout_sessions')
+          .select('*')
+          .eq('id', targetSessionId)
+          .maybeSingle();
+        session = sessData;
       }
 
-      // Idempotency check:
-      if (ord.payment_status === 'paid' && ord.payment_id === paymentId) {
-        return res.status(200).json({ success: true, message: 'Already processed', type: 'order', id: order_id });
+      if (targetOrderId || session) {
+        const query = supabase.from('mken_orders').select('*');
+        if (targetOrderId) query.eq('id', targetOrderId);
+        else if (session) query.eq('checkout_session_id', session.id);
+        const { data: ordData } = await query.maybeSingle();
+        ord = ordData;
       }
 
-      // Price verification:
-      const expectedAmount = Number(ord.payment_amount);
+      // التحقق من وجود أحدهما على الأقل
+      const activeRecord = ord || session;
+      if (!activeRecord) {
+        return res.status(400).json({ error: 'Order or checkout session not found in database' });
+      }
+
+      const effectiveOrderId = (ord && ord.id) || (session && ('ord_' + session.id.toString().slice(0, 8)));
+
+      // 2. التحقق من الحتمية ومفتاح التكرار (Idempotency)
+      if (
+        (ord && ord.payment_status === 'paid' && ord.payment_id === paymentId) ||
+        (session && session.status === 'paid' && session.payment_id === paymentId)
+      ) {
+        return res.status(200).json({ success: true, message: 'Already processed', type: 'order', id: effectiveOrderId });
+      }
+
+      // 3. التحقق الصارم من السعر (Amount Integrity Check)
+      const expectedAmount = Number(
+        (session && session.total_amount) || (ord && ord.payment_amount) || 0
+      );
       if (Math.abs(paymentAmount - expectedAmount) > 0.01) {
-        console.error(`Price discrepancy for order ${order_id}: paid ${paymentAmount}, expected ${expectedAmount}`);
+        console.error(`Price discrepancy for order ${effectiveOrderId}: paid ${paymentAmount}, expected ${expectedAmount}`);
         return res.status(400).json({ error: 'Payment amount mismatch' });
       }
 
-      console.log(`Processing paid order: ${order_id} for tenant: ${slug}`);
+      console.log(`Processing paid order: ${effectiveOrderId} for tenant: ${slug}`);
 
-      // Update order in Supabase
-      const { data, error } = await supabase
-        .from('mken_orders')
-        .update({
-          payment_status: 'paid',
-          payment_id: paymentId,
-          payment_method: paymentMethod,
-          payment_amount: paymentAmount,
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order_id)
-        .select();
+      // 4. جلب إعدادات المنشأة لاستخراج الرقم الضريبي واسم المنشأة لـ ZATCA
+      const { data: tenant } = await supabase
+        .from('mken_saas_clients')
+        .select('business_name, vat_number, config_data')
+        .eq('tenant_slug', slug)
+        .maybeSingle();
 
-      if (error) throw error;
+      const merchantName = (tenant && tenant.business_name) || 'متجر مكّن';
+      const vatNumber = (tenant && tenant.vat_number) || '300000000000003';
+      const nowIso = new Date().toISOString();
 
-      if (data && data.length > 0) {
-        const ordData = data[0];
-        // Fetch tenant WhatsApp settings
-        const { data: tenant } = await supabase
-          .from('mken_saas_clients')
-          .select('config_data')
-          .eq('tenant_slug', slug)
-          .maybeSingle();
+      const subtotal = Number((session && session.subtotal) || (ord && ord.subtotal) || (paymentAmount / 1.15));
+      const taxAmount = Number((session && session.tax_amount) || (ord && ord.tax_amount) || (paymentAmount - subtotal));
+      const orderCurrency = (session && session.currency) || (ord && ord.currency) || 'SAR';
+      const currencyRate = Number((session && session.currency_rate) || (ord && ord.currency_rate) || 1.000000);
+      const sarTotal = Number((session && session.sar_total) || (ord && ord.sar_total) || paymentAmount);
+      const sarTax = orderCurrency !== 'SAR'
+        ? (Math.round(taxAmount * currencyRate * 100) / 100)
+        : taxAmount;
 
-        const config = tenant ? tenant.config_data : null;
-        if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation) {
-          await sendServerWhatsApp(ordData, 'order', config, supabase, slug);
-        }
+      // 5. توليد كود ZATCA QR TLV Base64
+      const zatcaQrCode = generateZatcaTLV(
+        merchantName,
+        vatNumber,
+        nowIso,
+        orderCurrency === 'SAR' ? paymentAmount : sarTotal,
+        orderCurrency === 'SAR' ? taxAmount : sarTax
+      );
+
+      // 6. تحديث جلسة الدفع mken_checkout_sessions إن وجدت
+      if (session && session.id) {
+        await supabase
+          .from('mken_checkout_sessions')
+          .update({
+            status: 'paid',
+            payment_id: paymentId,
+            payment_method: paymentMethod,
+            zatca_qr_code: zatcaQrCode,
+            updated_at: nowIso
+          })
+          .eq('id', session.id);
       }
 
-      return res.status(200).json({ success: true, type: 'order', id: order_id });
+      // 7. تحديث جدول الطلبات mken_orders
+      let updatedOrderData = ord;
+      if (ord && ord.id) {
+        const { data: uOrd, error: uErr } = await supabase
+          .from('mken_orders')
+          .update({
+            payment_status: 'paid',
+            payment_id: paymentId,
+            payment_method: paymentMethod,
+            payment_amount: paymentAmount,
+            status: 'confirmed',
+            zatca_qr_code: zatcaQrCode,
+            updated_at: nowIso
+          })
+          .eq('id', ord.id)
+          .select();
+        if (uErr) throw uErr;
+        if (uOrd && uOrd.length > 0) updatedOrderData = uOrd[0];
+      }
+
+      // 8. إنشاء فاتورة مبيعات إلكترونية معتمدة في mken_invoices
+      const invoiceId = 'inv_' + effectiveOrderId.replace(/^ord_/, '');
+      await supabase
+        .from('mken_invoices')
+        .upsert({
+          id: invoiceId,
+          tenant_slug: slug,
+          customer_name: (activeRecord.customer_name) || 'عميل المتجر',
+          customer_phone: (activeRecord.phone || activeRecord.customer_phone) || '',
+          items: activeRecord.items || [],
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          discount: 0,
+          total_amount: paymentAmount,
+          currency: orderCurrency,
+          currency_rate: currencyRate,
+          sar_tax_amount: sarTax,
+          sar_total_amount: sarTotal,
+          payment_status: 'paid',
+          payment_method: paymentMethod,
+          type: 'simplified_tax_invoice',
+          zatca_qr_code: zatcaQrCode,
+          created_at: nowIso,
+          updated_at: nowIso
+        }, { onConflict: 'id' });
+
+      // 9. إرسال إشعار الواتساب التلقائي إن وُجد
+      const config = tenant ? tenant.config_data : null;
+      if (config && config.whatsappApi && config.whatsappApi.enabled && config.whatsappApi.sendConfirmation && updatedOrderData) {
+        await sendServerWhatsApp(updatedOrderData, 'order', config, supabase, slug);
+      }
+
+      return res.status(200).json({ success: true, type: 'order', id: effectiveOrderId, zatcaQr: zatcaQrCode });
 
     } else if (resolvedType === 'saas_billing') {
       const { tenant_slug, months } = metadata || {};

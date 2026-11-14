@@ -117,6 +117,7 @@ export async function POST(request: Request) {
     syncWebsite?: boolean;
     includeName?: boolean;
     mapsUrl?: string;
+    mapsPlaceId?: string;
     selectedFields?: string[];
     serviceIds?: string[];
     prompt?: string;
@@ -157,7 +158,10 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "nap-audit") {
-    const result = await runNapAudit(scope.slug, body.locationId || "");
+    const result = await runNapAudit(scope.slug, body.locationId || "", {
+      mapsUrl: body.mapsUrl,
+      mapsPlaceId: body.mapsPlaceId,
+    });
     if (result.error || !result.report) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
@@ -167,6 +171,8 @@ export async function POST(request: Request) {
   if (body.action === "preview-sync-nap") {
     const result = await previewNapSync(scope.slug, body.locationId || "", {
       includeName: body.includeName === true,
+      mapsUrl: body.mapsUrl,
+      mapsPlaceId: body.mapsPlaceId,
     });
     if (result.error || !result.report) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });

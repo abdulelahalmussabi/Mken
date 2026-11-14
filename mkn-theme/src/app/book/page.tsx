@@ -8,7 +8,7 @@ import { useOccasion } from "@/context/OccasionContext";
 import { useApp } from "@/context/AppContext";
 import { OccasionSymbolsStrip } from "@/components/occasions/OccasionSymbolsStrip";
 import { BrandCutout } from "@/components/PlatformMark";
-import { isUsableLogoSrc } from "@/lib/mken/logo-crop";
+import { applyDocumentIcon, brandIconPath, isUsableLogoSrc } from "@/lib/mken/logo-crop";
 import {
   Calendar,
   Clock,
@@ -26,6 +26,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { WhatsappCta } from "@/components/social/NeonSocialIcons";
+import { submitPublicBooking } from "@/lib/mken/book-request";
 
 interface ServiceOption {
   id: string;
@@ -33,6 +34,12 @@ interface ServiceOption {
   duration: string;
   price: string;
   desc: string;
+}
+
+declare global {
+  interface Window {
+    Moyasar?: { init: (opts: Record<string, unknown>) => void };
+  }
 }
 
 function BookAppointmentContent() {
@@ -59,6 +66,13 @@ function BookAppointmentContent() {
   const [tenantName, setTenantName] = useState<string>("منصة مكّن");
   const [tenantLogo, setTenantLogo] = useState<string>("");
   const [tenantTagline, setTenantTagline] = useState<string>("");
+  const [payState, setPayState] = useState<"idle" | "loading" | "form" | "paid" | "error">("idle");
+  const [payMessage, setPayMessage] = useState("");
+  const [payAmount, setPayAmount] = useState<number | null>(null);
+  const [payCurrency, setPayCurrency] = useState("SAR");
+
+  const aptId = (searchParams.get("apt_id") || "").trim();
+  const isPaymentCallback = searchParams.get("payment_callback") === "1";
 
   // Sync coupon when occasion changes
   useEffect(() => {
@@ -66,6 +80,100 @@ function BookAppointmentContent() {
   }, [occasionDetails]);
 
   useEffect(() => {
+    if (!aptId) return;
+    let cancelled = false;
+    setPayState("loading");
+
+    if (!document.getElementById("moyasar-css")) {
+      const css = document.createElement("link");
+      css.id = "moyasar-css";
+      css.rel = "stylesheet";
+      css.href = "https://cdn.moyasar.com/mpf/1.14.0/moyasar.css";
+      document.head.appendChild(css);
+    }
+    if (!document.getElementById("moyasar-js")) {
+      const script = document.createElement("script");
+      script.id = "moyasar-js";
+      script.src = "https://cdn.moyasar.com/mpf/1.14.0/moyasar.js";
+      document.body.appendChild(script);
+    }
+
+    fetch(`/api/public/appointments/${encodeURIComponent(aptId)}`)
+      .then((res) => res.json())
+      .then(async (data) => {
+        if (cancelled) return;
+        if (!data?.success || !data.appointment) {
+          setPayState("error");
+          setPayMessage("الموعد غير موجود.");
+          return;
+        }
+        if (data.appointment.payment_status === "paid" || isPaymentCallback) {
+          setPayState("paid");
+          setPayMessage("تم تأكيد الدفع. موعدك مؤكد.");
+          return;
+        }
+        const amount = Number(data.appointment.payment_amount);
+        if (!amount || amount <= 0) {
+          setPayState("error");
+          setPayMessage("لا توجد مبالغ مستحقة لهذا الموعد.");
+          return;
+        }
+        if (!data.payment?.enabled || !data.payment.publishableKey) {
+          setPayState("error");
+          setPayMessage("نظام الدفع غير مفعّل حالياً.");
+          return;
+        }
+        setPayAmount(amount);
+        setPayCurrency(data.payment.currency || "SAR");
+        setPayState("form");
+
+        const waitForMoyasar = () =>
+          new Promise<void>((resolve) => {
+            const tick = () => {
+              if (window.Moyasar) resolve();
+              else setTimeout(tick, 80);
+            };
+            tick();
+          });
+        await waitForMoyasar();
+        if (cancelled) return;
+        const moyasar = window.Moyasar;
+        if (!moyasar) return;
+
+        const origin = window.location.origin + window.location.pathname;
+        moyasar.init({
+          element: "#booking-moyasar-form",
+          amount: Math.round(amount * 100),
+          currency: data.payment.currency || "SAR",
+          description: "دفع حجز",
+          publishable_api_key: data.payment.publishableKey,
+          callback_url: `${origin}?payment_callback=1&apt_id=${encodeURIComponent(aptId)}`,
+          methods: ["creditcard", "mada", "applepay"],
+          metadata: {
+            appointment_id: data.appointment.id,
+            tenant_slug: data.appointment.tenant_slug,
+            type: "booking",
+          },
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPayState("error");
+        setPayMessage("تعذّر تحميل بيانات الموعد.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aptId, isPaymentCallback]);
+
+  useEffect(() => {
+    applyDocumentIcon(brandIconPath(tenantSlug || undefined));
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    if (aptId) return;
+
     if (!tenantSlug) {
       setTenantName("منصة مكّن");
       setTenantLogo("");
@@ -118,7 +226,7 @@ function BookAppointmentContent() {
     return () => {
       cancelled = true;
     };
-  }, [tenantSlug]);
+  }, [tenantSlug, aptId]);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +241,43 @@ function BookAppointmentContent() {
 
   const inquiryWaHref = tenantWhatsapp ? `https://wa.me/${tenantWhatsapp}` : "";
 
-  const handleSubmitBooking = (e: React.FormEvent) => {
+  if (aptId) {
+    return (
+      <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans" dir="rtl">
+        <header className="sticky top-0 z-40 bg-background/90 border-b border-line">
+          <div className="max-w-lg mx-auto px-4 h-16 flex items-center justify-between">
+            <span className="font-bold">إتمام دفع الحجز</span>
+            <Link href={tenantHome} className="text-sm text-muted">
+              العودة
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8">
+          {payState === "loading" ? (
+            <p className="text-muted flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> جاري تجهيز الدفع...
+            </p>
+          ) : null}
+          {payState === "error" ? <p className="text-rose-500">{payMessage}</p> : null}
+          {payState === "paid" ? (
+            <p className="text-emerald-600 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" /> {payMessage}
+            </p>
+          ) : null}
+          {payState === "form" ? (
+            <div className="space-y-4">
+              <p className="font-semibold">
+                المبلغ المستحق: {payAmount} {payCurrency}
+              </p>
+              <div id="booking-moyasar-form" className="mysr-form" />
+            </div>
+          ) : null}
+        </main>
+      </div>
+    );
+  }
+
+  const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     if (!clientName.trim() || !clientPhone.trim() || !selectedDate || !selectedService) {
@@ -146,6 +290,24 @@ function BookAppointmentContent() {
     }
 
     setIsSubmitting(true);
+    const result = await submitPublicBooking({
+      tenant: tenantSlug,
+      customerName: clientName,
+      customerPhone: clientPhone,
+      date: selectedDate,
+      time: selectedTime.slice(0, 5),
+      serviceId: selectedService.id,
+      serviceName: selectedService.name,
+      servicePrice: selectedService.price,
+      notes,
+      coupon: couponApplied ? occasionDetails.couponCode : undefined,
+    });
+    setIsSubmitting(false);
+    if (result.error) {
+      showToast(result.error, "error");
+      return;
+    }
+
     const text = encodeURIComponent(
       `السلام عليكم، أود تأكيد موعد حجز في *${tenantName}*:\n` +
         `• الخدمة: ${selectedService.name} (${selectedService.price})\n` +
@@ -158,13 +320,10 @@ function BookAppointmentContent() {
           : "")
     );
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      showToast(`تم إرسال حجزك إلى ${tenantName} بنجاح!`, "success");
-      if (tenantWhatsapp) {
-        window.open(`https://wa.me/${tenantWhatsapp}?text=${text}`, "_blank");
-      }
-    }, 400);
+    showToast(`تم حفظ حجزك في تقويم ${tenantName}`, "success");
+    if (tenantWhatsapp) {
+      window.open(`https://wa.me/${tenantWhatsapp}?text=${text}`, "_blank");
+    }
   };
 
   return (

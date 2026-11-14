@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
+import { resolveAdminClient, withAdminClientHref, writeStoredAdminClient } from "@/lib/mken/admin-client";
 import {
   LayoutDashboard,
   Users,
@@ -29,20 +30,35 @@ import {
   Megaphone,
 } from "lucide-react";
 import { PlatformMark } from "@/components/PlatformMark";
+import { applyDocumentIcon, brandIconPath } from "@/lib/mken/logo-crop";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { session, authLoading, isSuperAdmin, logoutAdmin, saas } = useAdmin();
+  const { session, authLoading, isSuperAdmin, logoutAdmin, saas, clients } = useAdmin();
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isLogin = pathname === "/admin/login" || pathname.startsWith("/admin/login/");
+  const activeClient = isSuperAdmin
+    ? resolveAdminClient(searchParams.get("client") || "", clients.map((client) => client.slug))
+    : session?.clientSlug || "";
+
+  React.useEffect(() => {
+    if (isSuperAdmin && activeClient) writeStoredAdminClient(activeClient);
+  }, [isSuperAdmin, activeClient]);
+
+  React.useEffect(() => {
+    applyDocumentIcon(brandIconPath(activeClient || undefined));
+  }, [activeClient]);
 
   React.useEffect(() => {
     if (isLogin) return;
     if (!authLoading && !session) {
-      router.push("/admin/login");
+      const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+      params.set("from", pathname);
+      router.push(`/admin/login?${params.toString()}` as Route);
     }
-  }, [authLoading, session, router, isLogin]);
+  }, [authLoading, session, router, isLogin, pathname]);
 
   if (isLogin) return <>{children}</>;
   if (authLoading || !session) {
@@ -218,7 +234,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       return (
                         <Link
                           key={item.href}
-                          href={item.href}
+                          href={withAdminClientHref(item.href, activeClient) as Route}
                           onClick={() => setSidebarOpen(false)}
                           className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
                             isActive

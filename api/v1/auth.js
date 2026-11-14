@@ -46,6 +46,7 @@ function sanitizeCustomFeatures(raw) {
   if (!raw || typeof raw !== 'object') return null;
   return {
     hasBooking: !!raw.hasBooking,
+    hasQueue: !!raw.hasQueue,
     hasCommerce: !!raw.hasCommerce,
     hasWhatsApp: !!raw.hasWhatsApp,
     hasInvoices: !!raw.hasInvoices,
@@ -695,6 +696,7 @@ async function handleAdminOperations(req, res) {
       activities: {},
       services: {},
       booking: { enabled: !!(customFeatures ? customFeatures.hasBooking : true), mode: 'form', requirePayment: false },
+      queue: { enabled: !!(customFeatures && customFeatures.hasQueue), serviceMode: (customFeatures && customFeatures.hasQueue && !customFeatures.hasBooking) ? 'queue' : 'hybrid', targetServiceMinutes: 10, alertThreshold: 2, safetyMultiplier: 1.15, snoozeMinutes: 5 },
       serviceArea: { enabled: false, city: 'الرياض', radiusKm: 15 },
       push: { enabled: false },
       supabase: { enabled: false },

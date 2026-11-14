@@ -1,4 +1,11 @@
-import { getTenantDb, fetchTenantRow, TENANT_TABLE } from "@/lib/mken/tenant";
+import {
+  getTenantDb,
+  getServiceRoleDb,
+  fetchTenantRow,
+  writeTenantConfig,
+  canonicalTenantSlug,
+  type MkenConfig,
+} from "@/lib/mken/tenant";
 
 /**
  * WhatsApp message log in `mken_whatsapp_logs`, written by the automation layer
@@ -222,7 +229,31 @@ function str(value: unknown): string {
 }
 
 function flag(value: unknown, fallback = false): boolean {
-  return typeof value === "boolean" ? value : fallback;
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return fallback;
+}
+
+function tenantWhatsappRaw(config: unknown): unknown {
+  if (!config || typeof config !== "object") return null;
+  return (config as Record<string, unknown>).whatsappApi;
+}
+
+export function whatsappApiIsReady(raw: unknown): boolean {
+  const stored = readStored(raw);
+  return stored.enabled && stored.provider !== "none";
+}
+
+function whatsappNotReadyMessage(raw: unknown): string {
+  const stored = readStored(raw);
+  if (stored.provider === "none") {
+    return "اختر المزود (WhatsApp Cloud API) ثم اضغط حفظ الإعدادات";
+  }
+  if (!stored.enabled) {
+    return "فعّل «تفعيل الإرسال» ثم اضغط حفظ الإعدادات";
+  }
+  return "واتساب غير مفعّل لهذه المنشأة";
 }
 
 function readStored(raw: unknown): WhatsappApiStored {
@@ -285,25 +316,90 @@ export function normalizeWaPhone(value: string): string {
   return digits;
 }
 
+/** Saudi mobile: 05X… (10 digits). X is 0 or 3–9 (not 051/052 land-line ranges). */
+export function whatsappPhoneIssue(phoneRaw: string): string | null {
+  const phone = normalizeWaPhone(phoneRaw);
+  if (!phone) return "رقم الجوال غير صالح";
+  // 966 + 5 + [03456789] + 7 digits = 12 digits (0543530333 → 966543530333)
+  if (!/^9665[03456789]\d{7}$/.test(phone)) {
+    return `الرقم (${phoneRaw.trim()} → ${phone}) ليس جوالاً سعودياً يبدأ بـ 05. مثال: 0551234567`;
+  }
+  return null;
+}
+
+function explainWhatsappCloudError(status: number, raw: string): string {
+  let code = 0;
+  let subcode = 0;
+  let message = "";
+  try {
+    const data = JSON.parse(raw) as {
+      error?: {
+        code?: number;
+        error_subcode?: number;
+        message?: string;
+        error_user_msg?: string;
+        error_data?: { details?: string };
+      };
+    };
+    const err = data.error;
+    if (err) {
+      code = Number(err.code) || 0;
+      subcode = Number(err.error_subcode) || 0;
+      message = err.error_user_msg || err.error_data?.details || err.message || "";
+    }
+  } catch {
+    message = raw.slice(0, 180);
+  }
+
+  if (code === 190 || subcode === 463 || /expired|invalid.?token|session has expired/i.test(message)) {
+    return "توكن ميتا منتهٍ أو غير صالح. الصق Access Token الجديد في حقل التوكن ثم احفظ — تحديثه في ميتا وحده لا يكفي.";
+  }
+  if (
+    code === 100 ||
+    /unsupported post request|does not exist|cannot be loaded|missing permissions/i.test(message)
+  ) {
+    const objectId = message.match(/Object with ID '(\d+)'/i)?.[1] || "";
+    return (
+      `التوكن لا يملك صلاحية على Phone Number ID${objectId ? ` (${objectId})` : ""}. ` +
+      "هذا ليس خطأ الرقم نفسه: انسخ Access Token من نفس شاشة WhatsApp → API Setup التي تظهر فيها هذا الـ ID، " +
+      "ثم الصقه هنا واحفظ. لا تستخدم توكن تطبيق قديم، ولا تضع WABA ID في حقل Phone Number ID."
+    );
+  }
+  if (code === 10 || /permission|whatsapp_business_messaging/i.test(message)) {
+    return "التوكن بلا صلاحية إرسال واتساب (whatsapp_business_messaging). أنشئ System User token دائم وامنحه WABA.";
+  }
+  if (code === 133010 || /phone number id/i.test(message)) {
+    return "Phone Number ID لا يطابق هذا التوكن. انسخه من نفس التطبيق في Meta for Developers.";
+  }
+  if (code === 131047) {
+    return "خارج نافذة الـ 24 ساعة. اطلب من الرقم مراسلة واتساب المنشأة أولاً، ثم أعد الإرسال التجريبي.";
+  }
+  if (code === 131026 || /not a whatsapp/i.test(message)) {
+    return "هذا الرقم غير مسجّل على واتساب، أو التطبيق ما زال Development Mode ولا يسمح إلا بأرقام المختبرين.";
+  }
+  if (code === 130429 || /experimental|not approved|not live/i.test(message)) {
+    return "تطبيق ميتا في وضع التطوير. حوّله إلى Live أو أضف رقم الاختبار ضمن Testers.";
+  }
+  return message || `WhatsApp Cloud HTTP ${status}`;
+}
+
 export async function fetchWhatsappApi(
   tenantSlug: string
 ): Promise<{ config?: WhatsappApiPublic; error?: string }> {
   const row = await fetchTenantRow(tenantSlug);
   if (!row) return { error: "المنشأة غير موجودة" };
-  return { config: toPublicWhatsappApi(readStored(row.config_data?.whatsappApi), tenantSlug) };
+  return { config: toPublicWhatsappApi(readStored(tenantWhatsappRaw(row.config_data)), tenantSlug) };
 }
 
 export async function saveWhatsappApi(
   tenantSlug: string,
   patch: Partial<WhatsappApiPublic> & { token?: string; gatewayToken?: string }
-): Promise<{ config?: WhatsappApiPublic; error?: string }> {
-  const db = getTenantDb();
-  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
-
-  const row = await fetchTenantRow(tenantSlug);
+): Promise<{ config?: WhatsappApiPublic; error?: string; webhook?: { ok: boolean; message: string } }> {
+  const slug = canonicalTenantSlug(tenantSlug);
+  const row = await fetchTenantRow(slug);
   if (!row) return { error: "المنشأة غير موجودة" };
 
-  const current = readStored(row.config_data?.whatsappApi);
+  const current = readStored(tenantWhatsappRaw(row.config_data));
   const next: WhatsappApiStored = {
     ...current,
     enabled: patch.enabled ?? current.enabled,
@@ -318,7 +414,7 @@ export async function saveWhatsappApi(
     languageCode: patch.languageCode !== undefined ? patch.languageCode.trim() || "ar" : current.languageCode,
     sendConfirmation: patch.sendConfirmation ?? current.sendConfirmation,
     sendReminder: patch.sendReminder ?? current.sendReminder,
-    token: patch.token?.trim() ? patch.token.trim() : current.token,
+    token: patch.token?.trim() ? sanitizeGraphToken(patch.token) : current.token,
     gateway: {
       provider:
         patch.gateway?.provider !== undefined
@@ -361,10 +457,206 @@ export async function saveWhatsappApi(
     }
   }
 
-  const config = { ...(row.config_data || {}), whatsappApi: next, updatedAt: new Date().toISOString() };
-  const { error } = await db.from(TENANT_TABLE).update({ config_data: config }).eq("tenant_slug", tenantSlug);
-  if (error) return { error: "تعذّر حفظ إعدادات واتساب" };
-  return { config: toPublicWhatsappApi(next, tenantSlug) };
+  const config = { ...(row.config_data || {}), whatsappApi: next, updatedAt: new Date().toISOString() } as MkenConfig;
+  const written = await writeTenantConfig(slug, config);
+  if (written.error || !written.row) {
+    return { error: written.error || "تعذّر حفظ إعدادات واتساب" };
+  }
+
+  let webhook: { ok: boolean; message: string } | undefined;
+  if (next.provider === "whatsapp_business" && next.token && next.phoneNumberId) {
+    webhook = await subscribeCloudApiWebhook(next.token, next.phoneNumberId);
+  }
+
+  return { config: toPublicWhatsappApi(next, slug), webhook };
+}
+
+const META_INBOUND_CALLBACK = "https://mken.live/api/whatsapp-webhook";
+const GRAPH_VERSION = "v22.0";
+
+function graphErrorMessage(data: unknown): string {
+  const err = data && typeof data === "object" ? (data as { error?: { message?: string; error_user_msg?: string } }).error : null;
+  return (err?.error_user_msg || err?.message || "").trim();
+}
+
+function sanitizeGraphToken(raw: string): string {
+  return raw
+    .replace(/^\uFEFF/, "")
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^["']|["']$/g, "")
+    .replace(/[\s\u200b\u200c\u200d\ufeff]+/g, "")
+    .trim();
+}
+
+function explainGraphTokenError(message: string): string {
+  if (/cannot parse access token|invalid oauth access token/i.test(message)) {
+    return "التوكن المحفوظ ليس Access Token صالحاً لميتـا. من developers.facebook.com → التطبيق → WhatsApp → API Setup انسخ Temporary access token (يبدأ عادة بـ EAA) والصقه في خانة التوكن ثم احفظ. لا تلصق Verify Token أو App Secret أو Phone Number ID.";
+  }
+  return message;
+}
+
+async function graphRequest(
+  path: string,
+  init?: RequestInit
+): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+  const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}${path}`, {
+    ...init,
+    signal: AbortSignal.timeout(20000),
+  });
+  const raw = await res.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+  } catch {
+    data = { raw: raw.slice(0, 180) };
+  }
+  return { ok: res.ok, data };
+}
+
+async function graphFormPost(path: string, fields: Record<string, string>) {
+  return graphRequest(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(fields),
+  });
+}
+
+function graphIds(data: Record<string, unknown>): string[] {
+  const rows = Array.isArray(data.data) ? data.data : [];
+  return rows
+    .map((row) => (row && typeof row === "object" && "id" in row ? String((row as { id?: string }).id || "") : ""))
+    .filter(Boolean);
+}
+
+function debugTokenWabaIds(data: Record<string, unknown>): string[] {
+  const payload =
+    data.data && typeof data.data === "object" ? (data.data as { granular_scopes?: Array<{ scope?: string; target_ids?: string[] }> }) : {};
+  const ids: string[] = [];
+  for (const scope of payload.granular_scopes || []) {
+    if (!/whatsapp_business_management/i.test(scope.scope || "")) continue;
+    for (const id of scope.target_ids || []) {
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+async function resolveWabaId(token: string, phoneNumberId: string): Promise<{ wabaId?: string; error?: string }> {
+  const asWaba = await graphRequest(
+    `/${encodeURIComponent(phoneNumberId)}/phone_numbers?access_token=${encodeURIComponent(token)}`
+  );
+  if (asWaba.ok && graphIds(asWaba.data).length) {
+    return { wabaId: phoneNumberId };
+  }
+
+  const debug = await graphRequest(
+    `/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(token)}`
+  );
+  const candidates = debugTokenWabaIds(debug.data);
+  for (const candidate of candidates) {
+    const phones = await graphRequest(
+      `/${encodeURIComponent(candidate)}/phone_numbers?access_token=${encodeURIComponent(token)}`
+    );
+    if (!phones.ok) continue;
+    const ids = graphIds(phones.data);
+    if (ids.includes(phoneNumberId) || ids.length === 1) {
+      return { wabaId: candidate };
+    }
+  }
+  if (candidates.length === 1) return { wabaId: candidates[0] };
+
+  return {
+    error:
+      explainGraphTokenError(graphErrorMessage(debug.data) || graphErrorMessage(asWaba.data)) ||
+      "تعذّر معرفة WhatsApp Business Account ID من التوكن. أنشئ توكن مستخدم نظام بصلاحية whatsapp_business_management على حساب Mken.",
+  };
+}
+
+/** Point this WABA at مكّن so Meta POSTs inbound messages. */
+export async function subscribeCloudApiWebhook(
+  tokenRaw: string,
+  phoneNumberIdRaw: string
+): Promise<{ ok: boolean; message: string }> {
+  const token = sanitizeGraphToken(tokenRaw);
+  const phoneNumberId = phoneNumberIdRaw.replace(/\D/g, "");
+  const verifyToken = (process.env.WHATSAPP_VERIFY_TOKEN || "").trim();
+  if (!verifyToken) {
+    return { ok: false, message: "WHATSAPP_VERIFY_TOKEN غير معيّن على Vercel — لا يمكن ربط الوارد." };
+  }
+  if (!token || token.length < 20) {
+    return {
+      ok: false,
+      message:
+        "التوكن ناقص أو قصير جداً. الصق Access Token من مستخدم النظام (يبدأ بـ EAA) ثم احفظ.",
+    };
+  }
+  if (!phoneNumberId) {
+    return { ok: false, message: "Phone Number ID ناقص أو غير رقمي." };
+  }
+
+  const resolved = await resolveWabaId(token, phoneNumberId);
+  const wabaId = resolved.wabaId || "";
+  if (!wabaId) {
+    return { ok: false, message: resolved.error || "تعذّر قراءة حساب واتساب (WABA)." };
+  }
+
+  const override = await graphFormPost(`/${encodeURIComponent(wabaId)}/subscribed_apps`, {
+    access_token: token,
+    override_callback_uri: META_INBOUND_CALLBACK,
+    verify_token: verifyToken,
+  });
+  if (override.ok) {
+    return { ok: true, message: "تم ربط وارد ميتا. أرسل رسالة إلى رقم المنشأة، لا ترد داخل الإرسال التجريبي فقط." };
+  }
+
+  const plain = await graphFormPost(`/${encodeURIComponent(wabaId)}/subscribed_apps`, {
+    access_token: token,
+  });
+  if (plain.ok) {
+    return {
+      ok: true,
+      message:
+        "اشتُرك التطبيق في الحساب. إن لم يصل الوارد، اضبط Callback URL في ميتا على https://mken.live/api/whatsapp-webhook",
+    };
+  }
+
+  const last = graphErrorMessage(override.data) || graphErrorMessage(plain.data);
+  return {
+    ok: false,
+    message:
+      explainGraphTokenError(last) ||
+      "تعذّر ربط وارد ميتا. في developers.facebook.com → WhatsApp → Configuration ضع Callback URL: https://mken.live/api/whatsapp-webhook واشترك في حقل messages.",
+  };
+}
+
+export async function subscribeTenantWhatsappWebhook(
+  tenantSlug: string
+): Promise<{ ok: boolean; message: string }> {
+  const row = await fetchTenantRow(canonicalTenantSlug(tenantSlug));
+  if (!row) return { ok: false, message: "المنشأة غير موجودة" };
+  const stored = readStored(tenantWhatsappRaw(row.config_data));
+  if (stored.provider !== "whatsapp_business") {
+    return { ok: false, message: "اختر WhatsApp Cloud API ثم احفظ" };
+  }
+  if (!stored.token || !stored.phoneNumberId) {
+    return { ok: false, message: "Phone Number ID والتوكن مطلوبان لربط الوارد" };
+  }
+  return subscribeCloudApiWebhook(stored.token, stored.phoneNumberId);
+}
+
+export async function logInboundWhatsapp(
+  tenantSlug: string,
+  phone: string,
+  body: string,
+  provider: string
+): Promise<void> {
+  await insertWhatsappLog(tenantSlug, {
+    phone,
+    body,
+    provider,
+    status: "received",
+    eventType: "inbound",
+  });
 }
 
 async function insertWhatsappLog(
@@ -376,9 +668,11 @@ async function insertWhatsappLog(
     status: string;
     errorMessage?: string;
     eventType: string;
+    appointmentId?: string | null;
+    retryCount?: number;
   }
 ): Promise<void> {
-  const db = getTenantDb();
+  const db = getServiceRoleDb() || getTenantDb();
   if (!db) return;
   await db.from("mken_whatsapp_logs").insert({
     tenant_slug: tenantSlug,
@@ -388,6 +682,8 @@ async function insertWhatsappLog(
     status: entry.status,
     error_message: entry.errorMessage || null,
     event_type: entry.eventType,
+    appointment_id: entry.appointmentId || null,
+    retry_count: entry.retryCount || 0,
   });
 }
 
@@ -431,7 +727,7 @@ async function dispatchWhatsapp(
   if (stored.provider === "whatsapp_business") {
     const phoneNumberId = stored.phoneNumberId || stored.instanceId;
     if (!phoneNumberId || !stored.token) throw new Error("ناقص رقم الواتساب أو التوكن");
-    const res = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${stored.token}`,
@@ -443,8 +739,19 @@ async function dispatchWhatsapp(
         type: "text",
         text: { body },
       }),
+      signal: AbortSignal.timeout(15000),
     });
-    if (!res.ok) throw new Error(`WhatsApp Cloud HTTP ${res.status}`);
+    const raw = await res.text();
+    if (!res.ok) {
+      throw new Error(explainWhatsappCloudError(res.status, raw));
+    }
+    try {
+      const data = JSON.parse(raw) as { error?: unknown };
+      if (data.error) throw new Error(explainWhatsappCloudError(res.status, raw));
+    } catch (err) {
+      if (err instanceof SyntaxError) return;
+      throw err;
+    }
     return;
   }
 
@@ -476,25 +783,47 @@ async function dispatchWhatsapp(
   throw new Error("اختر مزود واتساب أولاً");
 }
 
+export type WhatsappOutboundEvent =
+  | "test"
+  | "crm_reply"
+  | "review_request"
+  | "review_followup"
+  | "reminder"
+  | "subscription_reminder"
+  | "subscription_expired"
+  | "trial_reminder"
+  | "marketing_campaign"
+  | "confirmation"
+  | "order_confirmation"
+  | "chatbot_reply";
+
 export async function sendOutboundWhatsapp(
   tenantSlug: string,
   phoneRaw: string,
   bodyRaw: string,
-  eventType: "test" | "crm_reply" | "review_request" | "review_followup"
+  eventType: WhatsappOutboundEvent,
+  opts?: { appointmentId?: string | null; maxBody?: number; credentialsSlug?: string }
 ): Promise<{ error?: string }> {
-  const row = await fetchTenantRow(tenantSlug);
+  const credentialsSlug = opts?.credentialsSlug || tenantSlug;
+  const row = await fetchTenantRow(credentialsSlug);
   if (!row) return { error: "المنشأة غير موجودة" };
 
-  const stored = readStored(row.config_data?.whatsappApi);
-  if (!stored.enabled || stored.provider === "none") {
-    return { error: "واتساب غير مفعّل لهذه المنشأة" };
+  const waRaw = tenantWhatsappRaw(row.config_data);
+  const stored = readStored(waRaw);
+  if (!whatsappApiIsReady(waRaw)) {
+    return { error: whatsappNotReadyMessage(waRaw) };
   }
 
   const phone = normalizeWaPhone(phoneRaw);
   const body = bodyRaw.trim();
+  const maxBody = opts?.maxBody ?? 1000;
   if (!phone) return { error: "رقم الجوال غير صالح" };
+  if (stored.provider === "whatsapp_business") {
+    const phoneIssue = whatsappPhoneIssue(phoneRaw);
+    if (phoneIssue) return { error: phoneIssue };
+  }
   if (!body) return { error: "نص الرسالة فارغ" };
-  if (body.length > 1000) return { error: "النص أطول من 1000 حرف" };
+  if (body.length > maxBody) return { error: `النص أطول من ${maxBody} حرف` };
 
   try {
     await dispatchWhatsapp(stored, phone, body, tenantSlug, eventType);
@@ -504,6 +833,7 @@ export async function sendOutboundWhatsapp(
       provider: stored.provider,
       status: "success",
       eventType,
+      appointmentId: opts?.appointmentId,
     });
     return {};
   } catch (err) {
@@ -515,7 +845,48 @@ export async function sendOutboundWhatsapp(
       status: "failed",
       errorMessage: message,
       eventType,
+      appointmentId: opts?.appointmentId,
     });
+    return { error: message };
+  }
+}
+
+export async function retryFailedWhatsappLog(log: {
+  id: string;
+  tenant_slug?: string | null;
+  phone?: string | null;
+  body?: string | null;
+  retry_count?: number | null;
+}): Promise<{ error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+
+  const tenantSlug = log.tenant_slug || "default";
+  const row = await fetchTenantRow(tenantSlug);
+  const waRaw = tenantWhatsappRaw(row?.config_data);
+  const stored = readStored(waRaw);
+  if (!whatsappApiIsReady(waRaw)) {
+    return { error: whatsappNotReadyMessage(waRaw) };
+  }
+
+  const phone = normalizeWaPhone(log.phone || "");
+  const body = (log.body || "").trim();
+  if (!phone || !body) return { error: "سجل غير صالح لإعادة المحاولة" };
+
+  const nextRetry = (Number(log.retry_count) || 0) + 1;
+  try {
+    await dispatchWhatsapp(stored, phone, body, tenantSlug, "retry");
+    await db
+      .from("mken_whatsapp_logs")
+      .update({ status: "success", error_message: null, retry_count: nextRetry })
+      .eq("id", log.id);
+    return {};
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "فشل الإرسال";
+    await db
+      .from("mken_whatsapp_logs")
+      .update({ error_message: message, retry_count: nextRetry })
+      .eq("id", log.id);
     return { error: message };
   }
 }
@@ -549,9 +920,10 @@ export async function sendCampaignWhatsapp(
   const row = await fetchTenantRow(tenantSlug);
   if (!row) return { error: "المنشأة غير موجودة" };
 
-  const stored = readStored(row.config_data?.whatsappApi);
-  if (!stored.enabled || stored.provider === "none") {
-    return { error: "واتساب غير مفعّل لهذه المنشأة" };
+  const waRaw = tenantWhatsappRaw(row.config_data);
+  const stored = readStored(waRaw);
+  if (!whatsappApiIsReady(waRaw)) {
+    return { error: whatsappNotReadyMessage(waRaw) };
   }
 
   const db = getTenantDb();

@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
+const cstGuard = require('./_lib/cst-time-guard');
 
 module.exports = async function handler(req, res) {
   // Optional security: verify authorization header
@@ -43,6 +44,16 @@ module.exports = async function handler(req, res) {
     if (tenantsError) throw tenantsError;
 
     const now = new Date();
+    const isAllowedTime = cstGuard.isWithinCstAllowedHours(now);
+    if (!isAllowedTime) {
+      log('⚠️ [CST Anti-Spam Guard]: الوقت الحالي خارج نافذة الإرسال النظامية لهيئة الاتصالات (09:00 - 21:00 بتوقيت مكة). تم تعليق الإرسال الدوري حفاظاً على الامتثال التنظيمي.');
+      return res.status(200).json({
+        success: true,
+        status: 'deferred_cst_window',
+        message: 'Cron deferred: Current KSA time is outside CST legal window (09:00-21:00).',
+        logs: logMessages
+      });
+    }
 
     for (const tenant of tenants) {
       if (tenant.tenant_slug === 'default') continue;
@@ -239,6 +250,11 @@ module.exports = async function handler(req, res) {
               nights: apt.nights,
               locationAddress: apt.location_address
             }, serviceTitle, activityTitle, hours);
+          }
+
+          if (await cstGuard.isPhoneOptedOut(supabase, apt.phone, tenantSlug)) {
+            log(`[PDPL Guard] Skipping appointment reminder for opted-out customer: ${apt.phone}`);
+            continue;
           }
 
           log(`Sending reminder ${hours}h for appointment ${apt.id} to ${apt.phone}...`);

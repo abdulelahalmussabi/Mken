@@ -33,6 +33,8 @@ import {
   applyRewaDefaults,
   hasRewaIdentityTheme,
   REWA_ACTIVITY_IDS,
+  REWA_CR_NAME,
+  REWA_CR_NUMBER,
   REWA_CUSTOM_SERVICES,
   REWA_LOCATION,
   REWA_MAP_CENTER,
@@ -777,7 +779,10 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
     const socialSaved = Boolean(
       social.instagram?.value && social.tiktok?.value && social.snapchat?.value && social.whatsapp?.value
     );
-    if (row && (!pinAlreadySaved || !identitySaved || !socialSaved)) {
+    const crSaved =
+      String(stored.commercialRegistryNumber || "").replace(/\D/g, "") === REWA_CR_NUMBER &&
+      String(stored.commercialRegistryName || "").trim() === REWA_CR_NAME;
+    if (row && (!pinAlreadySaved || !identitySaved || !socialSaved || !crSaved)) {
       void writeTenantConfig(key, applyRewaDefaults({
         ...stored,
         mapsUrl: REWA_MAPS_URL,
@@ -850,6 +855,8 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
       client.whatsapp ||
       REWA_WHATSAPP;
     client.location = merged.location || REWA_LOCATION;
+    client.commercialRegistryName = merged.commercialRegistryName || REWA_CR_NAME;
+    client.commercialRegistryNumber = merged.commercialRegistryNumber || REWA_CR_NUMBER;
   }
   if (key === "almahrusa") {
     client.name = merged.brand?.name || client.name;

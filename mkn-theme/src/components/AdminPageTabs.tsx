@@ -7,6 +7,7 @@ import type { Route } from "next";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import { resolveAdminClient, writeStoredAdminClient } from "@/lib/mken/admin-client";
+import { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
 import type { AppearancePublic, AppearanceUpdate } from "@/lib/mken/appearance";
 
 export const ADMIN_INPUT =
@@ -24,7 +25,7 @@ export function useAdminTenant() {
   const slugs = clients.map((client) => client.slug);
   const tenant = isSuperAdmin
     ? resolveAdminClient(param, slugs)
-    : session?.clientSlug || "";
+    : canonicalTenantSlug(session?.clientSlug || "");
   const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
   useEffect(() => {
     if (isSuperAdmin && tenant) writeStoredAdminClient(tenant);

@@ -82,6 +82,10 @@ export interface ClientRecord {
   heroImage: string;
   /** Brand mark from `config_data.brand.logo` (data URL or https). */
   logo?: string;
+  /** Official commercial-registration trade name shown in the public footer. */
+  commercialRegistryName?: string;
+  /** Official commercial-registration number (س.ت) shown in the public footer. */
+  commercialRegistryNumber?: string;
   demoNotice: string;
   adminEmail: string;
   /** Write-only: accepted when creating a client, never returned by the API. */
@@ -113,6 +117,8 @@ export type StorefrontClient = Pick<
   | "reviewsCount"
   | "heroImage"
   | "logo"
+  | "commercialRegistryName"
+  | "commercialRegistryNumber"
   | "demoNotice"
   | "theme"
   | "couponCode"

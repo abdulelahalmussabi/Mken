@@ -19,7 +19,7 @@ import {
   type AdCreative,
   type AdStatus,
 } from "@/lib/mken/ads";
-import { metaCapiConfigured } from "@/lib/mken/meta-ads";
+import { metaCapiConfiguredForSlug } from "@/lib/mken/meta-ads";
 import { buildGoogleAdsAuthUrl } from "@/lib/mken/google-ads";
 
 export async function GET(request: Request) {
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     generateCredits,
     adsAllowed: features.hasWhatsApp,
     intel: { mcs: intel.mcs, gridNote: intel.gridNote, winnerHeadlines: intel.winnerHeadlines },
-    capiReady: metaCapiConfigured(),
+    capiReady: await metaCapiConfiguredForSlug(scope.slug),
   });
 }
 
@@ -179,6 +179,7 @@ export async function POST(request: Request) {
     const result = await saveTenantAdsMeta(scope.slug, {
       adAccountId: typeof body.adAccountId === "string" ? body.adAccountId : "",
       pageId: typeof body.pageId === "string" ? body.pageId : "",
+      pixelId: typeof body.pixelId === "string" ? body.pixelId : "",
     });
     if (result.error || !result.adsMeta) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });

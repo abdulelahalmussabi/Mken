@@ -983,7 +983,77 @@
   Promise.all([store.init(), bookingStore.init()]).then(function () {
     boot();
     checkPaymentCallback();
+    checkPayLink();
   });
+
+  function checkPayLink() {
+    var params = new URLSearchParams(window.location.search);
+    var aptId = params.get('apt_id');
+    var isPaymentCallback = params.get('payment_callback') === '1';
+
+    if (aptId && !isPaymentCallback) {
+      fetch('/api/public/appointments/' + encodeURIComponent(aptId))
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.success && data.appointment) {
+            var apt = data.appointment;
+            if (apt.payment_status === 'paid') {
+              alert('هذا الموعد مدفوع مسبقاً.');
+              return;
+            }
+            var amount = apt.payment_amount;
+            if (!amount || amount <= 0) {
+              alert('لا توجد مبالغ مستحقة لهذا الموعد.');
+              return;
+            }
+
+            var payConfig = config.payment || {};
+            if (!payConfig.enabled || !window.Moyasar) {
+              alert('نظام الدفع غير مفعل حالياً.');
+              return;
+            }
+
+            showPanel('panelPayment');
+            setStep(4);
+
+            var amountLabel = document.getElementById('paymentAmountLabel');
+            if (amountLabel) {
+              amountLabel.textContent = 'إجمالي المبلغ المستحق للدفع: ' + amount + ' ' + (payConfig.currency || 'SAR');
+            }
+
+            var callbackUrl = window.location.origin + window.location.pathname + 
+                              '?payment_callback=1&apt_id=' + encodeURIComponent(aptId);
+
+            var formContainer = document.querySelector('.mysr-form');
+            if (formContainer) formContainer.innerHTML = '';
+
+            window.Moyasar.init({
+              element: '.mysr-form',
+              amount: Math.round(amount * 100),
+              currency: payConfig.currency || 'SAR',
+              description: 'دفع حجز',
+              publishable_api_key: payConfig.publishableKey || '',
+              callback_url: callbackUrl,
+              methods: ['creditcard', 'mada', 'applepay'],
+              metadata: {
+                appointment_id: apt.id,
+                tenant_slug: apt.tenant_slug,
+                type: 'booking'
+              },
+              on_completed: function (payment) {
+                handlePaymentSuccess(apt.id, payment);
+              }
+            });
+          } else {
+            alert('الموعد غير موجود.');
+          }
+        })
+        .catch(function(err) {
+          console.error(err);
+          alert('حدث خطأ أثناء تحميل بيانات الموعد.');
+        });
+    }
+  }
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') {

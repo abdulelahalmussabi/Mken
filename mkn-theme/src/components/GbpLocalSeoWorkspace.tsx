@@ -463,6 +463,7 @@ export default function GbpLocalSeoWorkspace() {
             query={query}
             locationId={gbpLocationId}
             mapsBound={mapsBound}
+            mapsUrl={mapsUrlInput}
             auditNonce={mapsAuditGen}
             websiteUrl={siteUrl}
             busy={gbpBusy}

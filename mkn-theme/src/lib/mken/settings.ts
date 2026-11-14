@@ -71,6 +71,8 @@ export interface TenantSettings {
   brand: { name: string; tagline: string; logo: string };
   phone: string;
   heroImage: string;
+  commercialRegistryName: string;
+  commercialRegistryNumber: string;
   social: Record<string, Toggle>;
   emails: Record<string, Toggle>;
   serviceArea: ServiceArea;
@@ -194,6 +196,8 @@ export function resolveSettings(config: MkenConfig): TenantSettings {
     },
     phone: str(config.phone),
     heroImage: str(config.heroImage),
+    commercialRegistryName: str(config.commercialRegistryName),
+    commercialRegistryNumber: str(config.commercialRegistryNumber),
     social: toggleMap(config.social, SOCIAL_PLATFORMS.map((p) => p.id)),
     emails: toggleMap(config.emails, EMAIL_TYPES.map((t) => t.id)),
     serviceArea: normalizeServiceArea(config.serviceArea),
@@ -225,6 +229,8 @@ export interface SettingsUpdate {
   brand?: { name?: string; tagline?: string; logo?: string };
   phone?: string;
   heroImage?: string;
+  commercialRegistryName?: string;
+  commercialRegistryNumber?: string;
   social?: Record<string, Partial<Toggle>>;
   emails?: Record<string, Partial<Toggle>>;
   serviceArea?: Partial<Omit<ServiceArea, "center">> & {
@@ -243,6 +249,11 @@ export function validateSettings(update: SettingsUpdate): string | null {
   if (update.phone !== undefined && update.phone.trim()) {
     const digits = digitsOnly(update.phone);
     if (digits.length < 9 || digits.length > 15) return "رقم الجوال غير صحيح";
+  }
+
+  if (update.commercialRegistryNumber !== undefined && update.commercialRegistryNumber.trim()) {
+    const digits = digitsOnly(update.commercialRegistryNumber);
+    if (digits.length < 7 || digits.length > 15) return "رقم السجل التجاري غير صحيح";
   }
 
   for (const [id, entry] of Object.entries(update.emails || {})) {
@@ -301,6 +312,12 @@ export async function updateTenantSettings(
 
   if (update.phone !== undefined) config.phone = update.phone.trim();
   if (update.heroImage !== undefined) config.heroImage = update.heroImage.trim();
+  if (update.commercialRegistryName !== undefined) {
+    config.commercialRegistryName = update.commercialRegistryName.trim();
+  }
+  if (update.commercialRegistryNumber !== undefined) {
+    config.commercialRegistryNumber = digitsOnly(update.commercialRegistryNumber) || update.commercialRegistryNumber.trim();
+  }
 
   if (update.social) {
     const next = { ...current.social };

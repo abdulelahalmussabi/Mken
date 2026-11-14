@@ -1,4 +1,5 @@
 import { getServiceRoleDb, getTenantDb } from "@/lib/mken/tenant";
+import { isSlotFree } from "@/lib/mken/slots";
 
 /**
  * Appointments live in `mken_appointments`, keyed by `tenant_slug`, and are
@@ -35,6 +36,7 @@ export interface Appointment {
   paymentStatus: PaymentStatus;
   paymentMethod: string | null;
   paymentAmount: number | null;
+  cancelRequestedAt: string | null;
 }
 
 interface AppointmentRow {
@@ -60,6 +62,7 @@ interface AppointmentRow {
   payment_status?: string | null;
   payment_method?: string | null;
   payment_amount?: number | string | null;
+  cancel_requested_at?: string | null;
 }
 
 function toAppointment(row: AppointmentRow): Appointment {
@@ -90,6 +93,7 @@ function toAppointment(row: AppointmentRow): Appointment {
       : "unpaid",
     paymentMethod: row.payment_method || null,
     paymentAmount: row.payment_amount != null ? Number(row.payment_amount) : null,
+    cancelRequestedAt: row.cancel_requested_at || null,
   };
 }
 
@@ -135,7 +139,12 @@ export async function fetchAppointmentsForStaff(
 export async function updateAppointment(
   tenantSlug: string,
   id: string,
-  updates: { status?: AppointmentStatus; notes?: string; paymentStatus?: PaymentStatus }
+  updates: {
+    status?: AppointmentStatus;
+    notes?: string;
+    paymentStatus?: PaymentStatus;
+    cancelAction?: "approve" | "reject";
+  }
 ): Promise<{ appointment?: Appointment; error?: string }> {
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
@@ -144,6 +153,12 @@ export async function updateAppointment(
   if (updates.status) patch.status = updates.status;
   if (updates.notes !== undefined) patch.notes = updates.notes;
   if (updates.paymentStatus) patch.payment_status = updates.paymentStatus;
+  if (updates.cancelAction === "approve") {
+    patch.status = "cancelled";
+  }
+  if (updates.cancelAction === "reject") {
+    patch.cancel_requested_at = null;
+  }
 
   // tenant_slug is part of the filter so one tenant can never touch another's rows.
   const { data, error } = await db
@@ -168,6 +183,7 @@ export type PublicBookingInput = {
   serviceId?: string;
   serviceName?: string;
   servicePrice?: string;
+  paymentAmount?: number;
   notes?: string;
   coupon?: string;
 };
@@ -228,6 +244,11 @@ export async function createPublicAppointment(
   if (!DATE_RE.test(date)) return { error: "تاريخ الحجز غير صالح" };
   if (!TIME_RE.test(time)) return { error: "وقت الحجز غير صالح" };
 
+  const free = await isSlotFree({ tenantSlug, date, time, excludeId: input.id });
+  if (!free) {
+    return { error: "عذراً، هذا الوقت محجوز مسبقاً. يرجى اختيار وقت آخر." };
+  }
+
   const minDate = addDaysIso(-1);
   const maxDate = plusYearsIso(1);
   if (date < minDate) return { error: "لا يمكن الحجز في تاريخ سابق" };
@@ -253,6 +274,7 @@ export async function createPublicAppointment(
     notes: noteParts.join(" | ") || null,
     status: "pending",
     payment_status: "unpaid",
+    payment_amount: input.paymentAmount ?? null,
     stay_booking: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

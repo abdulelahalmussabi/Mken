@@ -1,13 +1,18 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import SaasUpgradeNotice from "@/components/SaasUpgradeNotice";
+import { useAdminTenant } from "@/components/AdminPageTabs";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
+import { writeStoredAdminClient } from "@/lib/mken/admin-client";
 import { SAAS_FEATURE_MESSAGES } from "@/lib/mken/saas";
 import {
   EVENT_LABELS,
   PROVIDER_LABELS,
+  inboundWebhookUrl,
   type WhatsappApiPublic,
   type WhatsappLog,
   type WhatsappStats,
@@ -44,11 +49,27 @@ function formatDate(value: string | null) {
   });
 }
 
-export default function AdminMessagesPage() {
-  const { session, isSuperAdmin, clients, saas } = useAdmin();
-  const { showToast } = useApp();
+async function readApiJson(res: Response): Promise<{ ok: boolean; message?: string; data: Record<string, unknown> }> {
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text) as Record<string, unknown>;
+    return {
+      ok: res.ok && data.success !== false,
+      message: typeof data.message === "string" ? data.message : undefined,
+      data,
+    };
+  } catch {
+    return { ok: false, message: `تعذّر قراءة رد الخادم (${res.status})`, data: {} };
+  }
+}
 
-  const [selectedTenant, setSelectedTenant] = useState("");
+export default function AdminMessagesPage() {
+  const { saas } = useAdmin();
+  const { tenant, query, isSuperAdmin, clients, authLoading } = useAdminTenant();
+  const router = useRouter();
+  const { showToast } = useApp();
+  const webhookUrl = tenant ? inboundWebhookUrl(tenant) : "";
+
   const [logs, setLogs] = useState<WhatsappLog[]>([]);
   const [stats, setStats] = useState<WhatsappStats | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -71,16 +92,20 @@ export default function AdminMessagesPage() {
   const [replyPhone, setReplyPhone] = useState("");
   const [replyBody, setReplyBody] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [linkingInbound, setLinkingInbound] = useState(false);
 
-  const tenant = isSuperAdmin ? selectedTenant : session?.clientSlug || "";
-  const query = isSuperAdmin && tenant ? `?client=${encodeURIComponent(tenant)}` : "";
-
-  useEffect(() => {
-    if (isSuperAdmin && !selectedTenant && clients.length) setSelectedTenant(clients[0].slug);
-  }, [isSuperAdmin, selectedTenant, clients]);
+  const tenantQuery = query;
 
   const load = useCallback(async () => {
-    if (!tenant) return;
+    if (authLoading) return;
+    if (!tenant) {
+      setLogs([]);
+      setStats(null);
+      setWaConfig(null);
+      setLoading(false);
+      setError(isSuperAdmin ? "اختر المنشأة أولاً" : "");
+      return;
+    }
     if (!isSuperAdmin && !saas.hasWhatsApp) {
       setLoading(false);
       return;
@@ -89,31 +114,33 @@ export default function AdminMessagesPage() {
     setError("");
 
     try {
-      const res = await fetch(`/api/whatsapp-logs${query}`);
-      const data = await res.json();
+      const res = await fetch(`/api/whatsapp-logs${tenantQuery}`);
+      const parsed = await readApiJson(res);
 
-      if (!res.ok || !data.success) {
+      if (!parsed.ok) {
         setLogs([]);
         setStats(null);
-        setError(data.message || "تعذّر تحميل السجلات");
+        setError(parsed.message || "تعذّر تحميل السجلات");
       } else {
-        setLogs(data.logs || []);
-        setStats(data.stats || null);
+        setLogs((parsed.data.logs as WhatsappLog[]) || []);
+        setStats((parsed.data.stats as WhatsappStats) || null);
       }
 
-      const waRes = await fetch(`/api/whatsapp-settings${query}`);
-      const wa = await waRes.json();
-      if (waRes.ok && wa.success) {
-        setWaConfig(wa.config);
+      const waRes = await fetch(`/api/whatsapp-settings${tenantQuery}`);
+      const wa = await readApiJson(waRes);
+      if (wa.ok && wa.data.config) {
+        setWaConfig(wa.data.config as WhatsappApiPublic);
         setTokenInput("");
         setGatewayTokenInput("");
+      } else if (wa.message) {
+        setError((prev) => prev || wa.message || "تعذّر تحميل إعدادات واتساب");
       }
-    } catch {
-      setError("تعذّر الاتصال بالخادم");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم");
     } finally {
       setLoading(false);
     }
-  }, [tenant, query, isSuperAdmin, saas.hasWhatsApp]);
+  }, [tenant, tenantQuery, isSuperAdmin, saas.hasWhatsApp, authLoading]);
 
   useEffect(() => {
     load();
@@ -123,10 +150,10 @@ export default function AdminMessagesPage() {
     setBusyId(id);
     try {
       const res = await fetch(`/api/whatsapp-logs/${id}${query}`, { method: "DELETE" });
-      const data = await res.json();
+      const parsed = await readApiJson(res);
 
-      if (!res.ok || !data.success) {
-        showToast(data.message || "تعذّر حذف السجل", "error");
+      if (!parsed.ok) {
+        showToast(parsed.message || "تعذّر حذف السجل", "error");
         return;
       }
 
@@ -139,8 +166,11 @@ export default function AdminMessagesPage() {
     }
   };
 
-  const saveWhatsapp = async () => {
-    if (!waConfig) return;
+  const saveWhatsapp = async (): Promise<boolean> => {
+    if (!waConfig) {
+      showToast("لا توجد إعدادات للحفظ. اختر المنشأة أولاً", "error");
+      return false;
+    }
     setSavingWa(true);
     try {
       const res = await fetch(`/api/whatsapp-settings${query}`, {
@@ -152,17 +182,23 @@ export default function AdminMessagesPage() {
           gatewayToken: gatewayTokenInput.trim() || undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        showToast(data.message || "تعذّر حفظ إعدادات واتساب", "error");
-        return;
+      const parsed = await readApiJson(res);
+      if (!parsed.ok) {
+        showToast(parsed.message || "تعذّر حفظ إعدادات واتساب", "error");
+        return false;
       }
-      setWaConfig(data.config);
+      setWaConfig(parsed.data.config as WhatsappApiPublic);
       setTokenInput("");
       setGatewayTokenInput("");
       showToast("تم حفظ إعدادات واتساب", "success");
-    } catch {
-      showToast("تعذّر الاتصال بالخادم", "error");
+      const webhook = parsed.data.webhook as { ok?: boolean; message?: string } | undefined;
+      if (webhook?.message) {
+        showToast(webhook.message, webhook.ok ? "success" : "error");
+      }
+      return true;
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم", "error");
+      return false;
     } finally {
       setSavingWa(false);
     }
@@ -171,22 +207,24 @@ export default function AdminMessagesPage() {
   const sendTest = async () => {
     setSendingTest(true);
     try {
+      const saved = await saveWhatsapp();
+      if (!saved) return;
       const res = await fetch(`/api/whatsapp-logs${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: testPhone, body: testBody }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        showToast(data.message || "فشل الإرسال التجريبي", "error");
+      const parsed = await readApiJson(res);
+      if (!parsed.ok) {
+        showToast(parsed.message || "فشل الإرسال التجريبي", "error");
         await load();
         return;
       }
       showToast("أُرسلت الرسالة التجريبية", "success");
       setTestPhone("");
       await load();
-    } catch {
-      showToast("تعذّر الاتصال بالخادم", "error");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم", "error");
     } finally {
       setSendingTest(false);
     }
@@ -207,17 +245,17 @@ export default function AdminMessagesPage() {
           body: campaignBody,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        showToast(data.message || "فشل إطلاق الحملة", "error");
+      const parsed = await readApiJson(res);
+      if (!parsed.ok) {
+        showToast(parsed.message || "فشل إطلاق الحملة", "error");
         await load();
         return;
       }
-      const extra = data.truncated ? " (أُوقف عند 40 مستلماً)" : "";
-      showToast(`أُرسلت ${data.sent} وفشل ${data.failed} من ${data.total}${extra}`, "success");
+      const extra = parsed.data.truncated ? " (أُوقف عند 40 مستلماً)" : "";
+      showToast(`أُرسلت ${parsed.data.sent} وفشل ${parsed.data.failed} من ${parsed.data.total}${extra}`, "success");
       await load();
-    } catch {
-      showToast("تعذّر الاتصال بالخادم", "error");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم", "error");
     } finally {
       setSendingCampaign(false);
     }
@@ -235,19 +273,32 @@ export default function AdminMessagesPage() {
           body: replyBody,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        showToast(data.message || "فشل إرسال الرد", "error");
+      const parsed = await readApiJson(res);
+      if (!parsed.ok) {
+        showToast(parsed.message || "فشل إرسال الرد", "error");
         await load();
         return;
       }
       showToast("تم إرسال الرد", "success");
       setReplyBody("");
       await load();
-    } catch {
-      showToast("تعذّر الاتصال بالخادم", "error");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم", "error");
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const linkInbound = async () => {
+    setLinkingInbound(true);
+    try {
+      const res = await fetch(`/api/whatsapp-settings${query}`, { method: "POST" });
+      const parsed = await readApiJson(res);
+      showToast(parsed.message || (parsed.ok ? "تم ربط الوارد" : "تعذّر ربط الوارد"), parsed.ok ? "success" : "error");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setLinkingInbound(false);
     }
   };
 
@@ -294,16 +345,41 @@ export default function AdminMessagesPage() {
             </div>
           </div>
 
+          {stats && stats.outbound > 0 && stats.inbound === 0 && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 text-sm leading-relaxed space-y-3">
+              <p className="font-bold">الإرسال يعمل، والرد الآلي لا يصل لأن ميتا لا ترسل الوارد إلى مكّن.</p>
+              <p className="text-amber-200/90 text-xs">
+                من جوالك أرسل رسالة جديدة إلى رقم واتساب المنشأة (ليس الرد داخل إشعار فقط). إذا بقي تبويب «واردة» فارغاً
+                فالويب هوك غير مربوط.
+              </p>
+              {waConfig?.provider === "whatsapp_business" && (
+                <button
+                  type="button"
+                  onClick={() => void linkInbound()}
+                  disabled={linkingInbound}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50"
+                >
+                  {linkingInbound ? "جاري الربط…" : "ربط وارد ميتا الآن"}
+                </button>
+              )}
+            </div>
+          )}
+
           <h1 className="text-2xl font-extrabold text-white">سجل رسائل واتساب</h1>
 
           {isSuperAdmin && (
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-300">المنشأة</label>
               <select
-                value={selectedTenant}
-                onChange={(e) => setSelectedTenant(e.target.value)}
+                value={tenant}
+                onChange={(e) => {
+                  const slug = e.target.value;
+                  writeStoredAdminClient(slug);
+                  router.replace((slug ? `/admin/messages?client=${encodeURIComponent(slug)}` : "/admin/messages") as Route);
+                }}
                 className="px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500"
               >
+                <option value="">اختر المنشأة</option>
                 {clients.map((c) => (
                   <option key={c.slug} value={c.slug}>
                     {c.name} ({c.slug})
@@ -388,12 +464,13 @@ export default function AdminMessagesPage() {
                     dir="ltr"
                     className="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-300 text-left break-all"
                   >
-                    {waConfig.inboundWebhookUrl}
+                    {webhookUrl || "اختر المنشأة لعرض الرابط"}
                   </code>
                   <button
                     type="button"
                     onClick={() => {
-                      void navigator.clipboard.writeText(waConfig.inboundWebhookUrl);
+                      if (!webhookUrl) return;
+                      void navigator.clipboard.writeText(webhookUrl);
                       showToast("تم نسخ رابط الوارد", "success");
                     }}
                     className="p-2 rounded-xl border border-slate-700 text-slate-300 hover:text-white"
@@ -500,8 +577,8 @@ export default function AdminMessagesPage() {
                   ) : null}
                   <p className="md:col-span-2 text-[11px] text-slate-500">
                     استورد <code>data/n8n-whatsapp-dispatch-workflow.json</code> في n8n، عيّن
-                    SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY، ثم الصق رابط الـ webhook أعلاه. الاستقبال
-                    يبقى على <code>api/whatsapp-webhook.js</code> في مشروع Vercel الجذر.
+                    SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY، ثم الصق رابط الـ webhook أعلاه. التذكيرات المجدولة
+                    تعمل يومياً عبر <code>/api/cron/whatsapp</code> على مشروع mkn.
                   </p>
                 </>
               )}
@@ -522,9 +599,14 @@ export default function AdminMessagesPage() {
                   <input
                     value={waConfig.phoneNumberId}
                     onChange={(e) => setWaConfig({ ...waConfig, phoneNumberId: e.target.value })}
+                    placeholder="مثال: 1164287383444283"
                     dir="ltr"
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 text-left"
                   />
+                  <span className="block text-[11px] text-slate-500 leading-relaxed">
+                    من شاشة WhatsApp → API Setup فقط — ليس WhatsApp Business account ID. التوكن يجب أن يُولَّد من
+                    نفس هذه الشاشة ثم يُلصق أدناه ويُحفظ.
+                  </span>
                 </label>
               )}
               {waConfig.provider === "twilio" && (
@@ -582,6 +664,7 @@ export default function AdminMessagesPage() {
                 />
               </label>
             </div>
+            <p className="text-[11px] text-slate-500">الإرسال التجريبي يحفظ إعدادات هذه المنشأة أولاً ثم يرسل.</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-800">
               <input
                 value={testPhone}

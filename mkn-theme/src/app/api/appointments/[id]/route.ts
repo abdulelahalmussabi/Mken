@@ -8,6 +8,7 @@ import {
   type PaymentStatus,
 } from "@/lib/mken/appointments";
 import { sendMetaCapiEvent } from "@/lib/mken/meta-ads";
+import { sendOutboundWhatsapp } from "@/lib/mken/whatsapp";
 
 export async function PATCH(
   request: Request,
@@ -29,6 +30,7 @@ export async function PATCH(
       status?: AppointmentStatus;
       notes?: string;
       paymentStatus?: PaymentStatus;
+      cancelAction?: "approve" | "reject";
     } = {};
 
     if (body.status !== undefined) {
@@ -50,6 +52,10 @@ export async function PATCH(
 
     if (typeof body.notes === "string") updates.notes = body.notes;
 
+    if (body.cancelAction === "approve" || body.cancelAction === "reject") {
+      updates.cancelAction = body.cancelAction;
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, message: "لا توجد حقول للتحديث" },
@@ -68,10 +74,30 @@ export async function PATCH(
     if (updates.paymentStatus === "paid") {
       void sendMetaCapiEvent({
         eventName: "Purchase",
+        slug: scope.slug,
         phone: appointment.phone,
         eventId: `pay_${appointment.id}`,
         value: appointment.paymentAmount || undefined,
       });
+    }
+
+    if (updates.cancelAction === "approve" && appointment.phone) {
+      void sendOutboundWhatsapp(
+        scope.slug,
+        appointment.phone,
+        "تم اعتماد إلغاء موعدك. المبلغ المدفوع يبقى إلى حين معالجة الاسترداد من المنشأة إن وُجد.",
+        "confirmation",
+        { appointmentId: appointment.id }
+      );
+    }
+    if (updates.cancelAction === "reject" && appointment.phone) {
+      void sendOutboundWhatsapp(
+        scope.slug,
+        appointment.phone,
+        "لم يُعتمد طلب إلغاء موعدك. يبقى الموعد مؤكداً في موعده.",
+        "confirmation",
+        { appointmentId: appointment.id }
+      );
     }
 
     return NextResponse.json({ success: true, appointment });

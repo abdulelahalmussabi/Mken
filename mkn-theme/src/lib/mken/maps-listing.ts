@@ -1,9 +1,10 @@
 import { cityFromGbpAddress } from "@/lib/mken/nap";
 import {
   extractLatLngFromMapsUrl,
+  extractPlaceNameFromMapsUrl,
   expandMapsShortUrl,
   fetchLivePlaceDetails,
-  resolvePlaceId,
+  resolvePlaceIdFromListing,
 } from "@/lib/mken/preview";
 import { fetchTenantRow, writeTenantConfig } from "@/lib/mken/tenant";
 
@@ -46,35 +47,50 @@ export async function bindMapsListing(
   const preview = { ...(config.preview && typeof config.preview === "object" ? config.preview : {}) };
 
   let expanded = trimmed;
-  let placeId: string | null = null;
   try {
     expanded = await expandMapsShortUrl(trimmed);
-    const listingUrl = /\/maps\/place\/|@-?\d+\.\d+,-?\d+\.\d+/i.test(expanded) ? expanded : trimmed;
-    placeId = (await resolvePlaceId(listingUrl)) || (await resolvePlaceId(trimmed));
   } catch (err) {
-    console.error("bindMapsListing resolve", err);
+    console.error("bindMapsListing expand", err);
   }
-  if (placeId) preview.placeId = placeId;
+  const coords = extractLatLngFromMapsUrl(expanded) || extractLatLngFromMapsUrl(trimmed);
+  const listingName = extractPlaceNameFromMapsUrl(expanded);
+  const brandName = typeof config.brand?.name === "string" ? config.brand.name : "";
+  const currentCity =
+    config.serviceArea && typeof config.serviceArea === "object" && typeof config.serviceArea.city === "string"
+      ? config.serviceArea.city.trim()
+      : "";
+  const looked = await resolvePlaceIdFromListing({
+    mapsUrl: trimmed,
+    name: listingName || brandName,
+    city: currentCity,
+    lat: coords?.lat,
+    lng: coords?.lng,
+  });
+  const placeId = looked.placeId || null;
+  if (!placeId) {
+    return { error: looked.error || "تعذّر قراءة بيانات الخرائط لهذا الرابط." };
+  }
+  preview.placeId = placeId;
   config.mapsUrl = trimmed;
   config.preview = preview;
 
-  const details = placeId ? await fetchLivePlaceDetails(placeId).catch(() => null) : null;
+  const details = await fetchLivePlaceDetails(placeId).catch(() => null);
   if (details?.name) config.mapsListingName = details.name;
   const area =
     config.serviceArea && typeof config.serviceArea === "object" ? { ...config.serviceArea } : {};
-  const currentCity = typeof area.city === "string" ? area.city.trim() : "";
   const inferredCity = details
     ? cityFromGbpAddress({ addressLines: details.address ? [details.address] : [] }, details.address || "")
     : "";
   if (!currentCity && inferredCity) area.city = inferredCity;
-  const coords = extractLatLngFromMapsUrl(expanded) || extractLatLngFromMapsUrl(trimmed);
   const center = area.center && typeof area.center === "object" ? { ...area.center } : {};
   const hasCenter = Number.isFinite(Number(center.lat)) && Number(center.lat) !== 0;
   if (!hasCenter && coords) area.center = coords;
   if (Object.keys(area).length) config.serviceArea = area;
 
   const written = await writeTenantConfig(slug, config);
-  if (written.error) return { error: written.error };
+  if (written.error || !written.row) {
+    return { error: written.error || "تعذّر حفظ رابط الخرائط في بيانات المنشأة" };
+  }
   return {
     mapsUrl: trimmed,
     mapsPlaceId: placeId || undefined,

@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import type { ClientRecord, ClientType, SocialLinks } from "@/types/database";
 import { isStaleSeedLogo, logoValidationError, publicBrandSrc } from "@/lib/mken/logo-crop";
+import { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
 
 /**
  * Bridge to the existing مكّن tenant model: one row per tenant in
@@ -29,6 +30,8 @@ export const OCCASION_IDS = [
 export function isPlatformSlug(slug: string | undefined | null): boolean {
   return slug === PLATFORM_SLUG;
 }
+
+export { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
 
 export function isOccasionTheme(value: unknown): value is string {
   return typeof value === "string" && (OCCASION_IDS as readonly string[]).includes(value);
@@ -111,7 +114,25 @@ export interface MkenConfig {
   /** Monthly Geo-Grid + daily ad-copy usage keyed by Asia/Riyadh calendar. */
   localGrowth?: { geoMonth?: string; geoUsed?: number; genDay?: string; genUsed?: number };
   /** Per-tenant Meta placement. Token stays in Vercel env (META_ADS_ACCESS_TOKEN). */
-  adsMeta?: { adAccountId?: string; pageId?: string };
+  adsMeta?: {
+    adAccountId?: string;
+    pageId?: string;
+    pixelId?: string;
+    igUserId?: string;
+    igUsername?: string;
+  };
+  /** Cached Google Business Profile locations. Tokens stay in dedicated columns. */
+  gbp?: {
+    fetchedAt?: string;
+    locations?: {
+      id: string;
+      title: string;
+      websiteUri?: string;
+      newReviewUrl?: string;
+      mapsUri?: string;
+      city?: string;
+    }[];
+  };
   /** Per-tenant Google Ads customer. OAuth refresh token is a dedicated column, never returned to the browser. */
   adsGoogle?: {
     customerId?: string;
@@ -154,6 +175,10 @@ export interface MkenConfig {
   };
   location?: string;
   subtitle?: string;
+  /** Official CR trade name (اسم السجل التجاري) for the public footer. */
+  commercialRegistryName?: string;
+  /** Official CR number (رقم السجل التجاري) for the public footer. */
+  commercialRegistryNumber?: string;
   rating?: string;
   reviewsCount?: string;
   demoNotice?: string;
@@ -381,6 +406,8 @@ export function toClientRecord(row: TenantRow): ClientRecord {
       typeof brand.logo === "string" && brand.logo.trim()
         ? brand.logo
         : seed?.logo || "",
+    commercialRegistryName: config.commercialRegistryName || seed?.commercialRegistryName || "",
+    commercialRegistryNumber: config.commercialRegistryNumber || seed?.commercialRegistryNumber || "",
     demoNotice: config.demoNotice || "",
     claimStatus:
       config.preview?.claimStatus === "unclaimed" || config.preview?.claimStatus === "pending"
@@ -493,6 +520,14 @@ export function mergeIntoConfig(
   if (updates.phone !== undefined) next.phone = updates.phone;
   if (updates.location !== undefined) next.location = updates.location;
   if (updates.subtitle !== undefined) next.subtitle = updates.subtitle;
+  if (updates.commercialRegistryName !== undefined) {
+    next.commercialRegistryName = String(updates.commercialRegistryName || "").trim();
+  }
+  if (updates.commercialRegistryNumber !== undefined) {
+    const raw = String(updates.commercialRegistryNumber || "").trim();
+    const digits = raw.replace(/\D/g, "");
+    next.commercialRegistryNumber = digits || raw;
+  }
   if (updates.heroImage !== undefined) next.heroImage = updates.heroImage;
   if (updates.rating !== undefined) next.rating = updates.rating;
   if (updates.reviewsCount !== undefined) next.reviewsCount = updates.reviewsCount;
@@ -519,12 +554,28 @@ function isMissingColumnError(error: { message?: string; code?: string } | null 
 
 const MEMORY_TENANT_CONFIG: Record<string, MkenConfig> = {};
 
+function formatTenantWriteError(error: { code?: string; message?: string } | null): string {
+  const msg = (error?.message || "").trim();
+  if (/row-level security|permission denied|42501/i.test(msg)) {
+    return "تعذّر الحفظ بسبب صلاحيات قاعدة البيانات. أضف SUPABASE_SERVICE_ROLE_KEY في Vercel ثم أعد النشر.";
+  }
+  if (/null value|not-null|23502/i.test(msg)) {
+    return "تعذّر إنشاء صف المنشأة لأن حقولاً مطلوبة ناقصة في قاعدة البيانات.";
+  }
+  if (/duplicate|23505/i.test(msg)) {
+    return "تعذّر الحفظ: تكرار معرف المنشأة أو البريد في قاعدة البيانات.";
+  }
+  if (msg) return `تعذّر حفظ بيانات المنشأة: ${msg.slice(0, 180)}`;
+  return "تعذّر حفظ بيانات المنشأة";
+}
+
 export async function writeTenantConfig(
   slug: string,
   config: MkenConfig
 ): Promise<{ row?: TenantRow; error?: string }> {
+  slug = canonicalTenantSlug(slug);
   MEMORY_TENANT_CONFIG[slug] = config;
-  const db = getTenantDb();
+  const db = getServiceRoleDb() || getTenantDb();
   if (!db) {
     return {
       row: {
@@ -535,8 +586,10 @@ export async function writeTenantConfig(
     };
   }
 
+  let lastError: { code?: string; message?: string } | null = null;
+  const now = new Date().toISOString();
   const patches: Record<string, unknown>[] = [
-    { config_data: config, updated_at: new Date().toISOString() },
+    { config_data: config, updated_at: now },
     { config_data: config },
   ];
 
@@ -547,18 +600,33 @@ export async function writeTenantConfig(
       .eq("tenant_slug", slug)
       .select(TENANT_COLUMNS);
     if (error) {
+      lastError = error;
       if (isMissingColumnError(error)) continue;
       break;
     }
     if (data?.length) return { row: data[0] as TenantRow };
   }
 
+  const seed = DEFAULT_CLIENTS.find((client) => client.slug === slug);
+  const businessName = config.brand?.name || seed?.name || slug;
+  const email = config.adminEmail || seed?.adminEmail || seed?.email || `${slug}@clients.mken.live`;
+  const phone = String(config.phone || seed?.phone || "0000000000");
   const upserts: Record<string, unknown>[] = [
+    {
+      tenant_slug: slug,
+      business_name: businessName,
+      email,
+      phone,
+      subscription_status: "active",
+      subscription_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      config_data: config,
+      updated_at: now,
+    },
     {
       tenant_slug: slug,
       config_data: config,
       subscription_status: "active",
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     },
     { tenant_slug: slug, config_data: config, subscription_status: "active" },
     { tenant_slug: slug, config_data: config },
@@ -569,19 +637,15 @@ export async function writeTenantConfig(
       .upsert(payload, { onConflict: "tenant_slug" })
       .select(TENANT_COLUMNS);
     if (error) {
+      lastError = error;
       if (isMissingColumnError(error)) continue;
       continue;
     }
     if (data?.length) return { row: data[0] as TenantRow };
   }
 
-  return {
-    row: {
-      tenant_slug: slug,
-      config_data: config,
-      subscription_status: "active",
-    },
-  };
+  console.error("writeTenantConfig failed", slug, lastError?.code, lastError?.message);
+  return { error: formatTenantWriteError(lastError) };
 }
 
 export async function fetchTenants(): Promise<ClientRecord[] | null> {
@@ -617,6 +681,7 @@ export async function fetchTenantRow(slug: string): Promise<TenantRow | null> {
 async function fetchTenantRowResult(
   slug: string
 ): Promise<{ row?: TenantRow; error?: string }> {
+  slug = canonicalTenantSlug(slug);
   const mem = MEMORY_TENANT_CONFIG[slug];
   const db = getTenantDb();
   if (!db) {

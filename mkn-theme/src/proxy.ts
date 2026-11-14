@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { resolveBoundTenantFromHostname } from "@/lib/mken/bound-host";
 import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
+import { googleHtmlVerificationResponse } from "@/lib/mken/google-html-verification";
 import { attachUnclaimedRobotsHeader } from "@/lib/mken/preview";
 
 const ADMIN_COOKIE = "mkn_admin_session";
@@ -52,7 +53,7 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
       return NextResponse.redirect(url);
     }
   }
-  const alias = pathname.replace(/^\//, "").toLowerCase();
+  const alias = pathname.replace(/^\//, "").toLowerCase().replace(/\.html$/, "");
   if (SHORT_TENANT_ALIASES.has(alias) && alias !== tenant) {
     url.pathname = `/subscriber/${tenant}`;
     url.search = "";
@@ -76,6 +77,8 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
 export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const pathname = url.pathname;
+  const googleFile = googleHtmlVerificationResponse(pathname);
+  if (googleFile) return googleFile;
   if (
     pathname.startsWith("/brand/") ||
     pathname.startsWith("/_next/") ||
@@ -98,7 +101,17 @@ export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const hostOnly = hostname.split(":")[0].toLowerCase();
   if (hostOnly === "license.mken.live" || hostOnly === "licenses.mken.live") {
-    if (pathname === "/" || pathname === "/admin" || pathname === "/admin.html") {
+    if (pathname === "/" || pathname === "/pricing" || pathname === "/pricing.html") {
+      url.pathname = "/license";
+      url.search = request.nextUrl.search;
+      return NextResponse.rewrite(url);
+    }
+    if (pathname === "/license-success.html") {
+      url.pathname = "/license/success";
+      url.search = request.nextUrl.search;
+      return NextResponse.rewrite(url);
+    }
+    if (pathname === "/admin" || pathname === "/admin.html") {
       url.pathname = "/admin/licenses";
       url.search = "";
       return NextResponse.redirect(url);
@@ -190,7 +203,7 @@ export async function proxy(request: NextRequest) {
     return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);
   }
 
-  const tenantSitePage = pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
+  const tenantSitePage = pathname.replace(/^\/+|\/+$/g, "").toLowerCase().replace(/\.html$/, "");
   if (tenant && /^(about|services|work|contact)$/.test(tenantSitePage)) {
     url.pathname = `/subscriber/${tenant}/${tenantSitePage}`;
     return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), tenant);

@@ -676,28 +676,9 @@
 
   function checkPaymentCallback() {
     var params = new URLSearchParams(window.location.search);
-    if (params.get('payment_callback') === '1') {
-      var orderId = params.get('order_id');
-      var status = params.get('status');
-      var paymentId = params.get('id');
-      var message = params.get('message') || '';
-
-      if (status === 'paid' && orderId && paymentId) {
-        var paymentDetails = {
-          id: paymentId,
-          amount: params.get('amount') ? parseInt(params.get('amount'), 10) : 0,
-          source: {
-            type: 'card',
-            company: params.get('message') && params.get('message').indexOf('Mada') !== -1 ? 'mada' : 'creditcard'
-          }
-        };
-
-        handlePaymentSuccess(orderId, paymentDetails);
-      } else if (status === 'failed') {
-        alert('فشلت عملية الدفع: ' + (message || 'يرجى التحقق من بيانات البطاقة والمحاولة مرة أخرى.'));
-        showPanel('panelForm');
-        setStep(3);
-      }
+    if (params.get('payment_callback') === '1' || params.get('session_id')) {
+      // حظر معالجة الدفع عبر المتصفح وإعادة التوجيه لصفحة الفحص السيرفري والفوترة
+      window.location.replace('/order-status.html?' + params.toString());
     }
   }
 
@@ -716,12 +697,22 @@
     if (!name || !phone) return;
     if (needAddr && !address) return;
 
+    var cleanPhone = String(phone || '').trim().replace(/[\s\-\(\)]/g, '');
+    if (cleanPhone.startsWith('+966')) cleanPhone = '0' + cleanPhone.slice(4);
+    else if (cleanPhone.startsWith('00966')) cleanPhone = '0' + cleanPhone.slice(5);
+    else if (cleanPhone.startsWith('966')) cleanPhone = '0' + cleanPhone.slice(3);
+
+    if (!/^05\d{8}$/.test(cleanPhone)) {
+      alert('يرجى إدخال رقم جوال سعودي صحيح يبدأ بـ 05 ويتكون من 10 أرقام (مثال: 0501234567)');
+      return;
+    }
+
     var payload = {
       activityId: activeActivityId,
       activityTitle: activeActivity ? activeActivity.title : '',
       items: cart.slice(),
       customerName: name,
-      phone: phone,
+      phone: cleanPhone,
       district: district,
       locationAddress: address,
       notes: notes,
@@ -787,53 +778,92 @@
 
     // Check payment
     var payConfig = config.payment || {};
-    var priceVal = calculateCartTotal();
+    var tenantSlug = store.getCurrentTenantSlug() || 'default';
     
-    if (payConfig.enabled && !isNaN(priceVal) && priceVal > 0 && window.Moyasar) {
-      var orderId = 'ord_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
-      var tenantSlug = store.getCurrentTenantSlug() || 'default';
-      
-      var pendingOrder = Object.assign({
-        id: orderId,
-        createdAt: new Date().toISOString(),
-        status: payConfig.requirePayment ? 'pending' : 'confirmed',
-        paymentStatus: 'unpaid',
-        paymentAmount: priceVal,
-        tenantSlug: tenantSlug
-      }, payload);
-
-      orderStore.addPendingOrder(pendingOrder);
-      lastSubmittedOrder = pendingOrder;
-
-      showPanel('panelPayment');
-      setStep(3);
-
-      var amountLabel = document.getElementById('paymentAmountLabel');
-      if (amountLabel) {
-        amountLabel.textContent = 'إجمالي قيمة الطلب المستحقة للدفع: ' + priceVal + ' ' + (payConfig.currency || 'SAR');
+    if (payConfig.enabled && window.Moyasar) {
+      var submitBtn = orderForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'جاري تأمين جلسة السداد...';
       }
 
-      var callbackUrl = window.location.origin + window.location.pathname + 
-                        '?payment_callback=1&order_id=' + encodeURIComponent(orderId);
+      fetch('/api/v1/checkout/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantSlug: tenantSlug,
+          customerName: name,
+          customerPhone: cleanPhone,
+          shippingAddress: {
+            address: address,
+            district: district,
+            notes: notes
+          },
+          items: cart.map(function (line) {
+            var pVal = 0;
+            if (line.price !== undefined) pVal = Number(line.price);
+            else if (line.priceLabel) pVal = parseFloat(line.priceLabel.replace(/[^\d.]/g, '')) || 0;
+            return {
+              serviceId: line.serviceId,
+              serviceTitle: line.serviceTitle,
+              quantity: line.quantity,
+              unitPrice: pVal
+            };
+          }),
+          shippingCost: 0.00,
+          activityId: activeActivityId
+        })
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (sessionData) {
+        if (!sessionData || !sessionData.success) {
+          throw new Error(sessionData.error || 'تعذر بدء جلسة الدفع، يرجى التحقق من توفر المنتجات.');
+        }
 
-      var formContainer = document.querySelector('.mysr-form');
-      if (formContainer) formContainer.innerHTML = '';
+        showPanel('panelPayment');
+        setStep(3);
 
-      window.Moyasar.init({
-        element: '.mysr-form',
-        amount: Math.round(priceVal * 100),
-        currency: payConfig.currency || 'SAR',
-        description: 'طلب شراء: ' + (activeActivity ? activeActivity.title : '') + ' - ' + name,
-        publishable_api_key: payConfig.publishableKey || '',
-        callback_url: callbackUrl,
-        methods: ['creditcard', 'mada', 'applepay'],
-        metadata: {
-          order_id: orderId,
-          tenant_slug: tenantSlug,
-          type: 'order'
-        },
-        on_completed: function (payment) {
-          handlePaymentSuccess(orderId, payment);
+        var amountLabel = document.getElementById('paymentAmountLabel');
+        if (amountLabel) {
+          amountLabel.textContent = 'إجمالي قيمة الطلب المستحقة للدفع: ' + Number(sessionData.totalAmount).toFixed(2) + ' ر.س (شاملة الضريبة 15%)';
+        }
+
+        var callbackUrl = window.location.origin + '/order-status.html?session_id=' + encodeURIComponent(sessionData.sessionId);
+
+        var formContainer = document.querySelector('.mysr-form');
+        if (formContainer) formContainer.innerHTML = '';
+
+        window.Moyasar.init({
+          element: '.mysr-form',
+          amount: sessionData.totalHalalas,
+          currency: 'SAR',
+          description: 'طلب رقم ' + (sessionData.orderId || sessionData.sessionId) + ' من ' + brandName,
+          publishable_api_key: payConfig.publishableKey || '',
+          callback_url: callbackUrl,
+          methods: ['creditcard', 'applepay'],
+          metadata: {
+            session_id: sessionData.sessionId,
+            order_id: sessionData.orderId,
+            tenant_slug: tenantSlug,
+            type: 'order'
+          },
+          on_completed: function (payment) {
+            window.location.href = callbackUrl;
+          },
+          on_failure: function (err) {
+            alert('تعذر استكمال السداد: ' + (err.message || 'يرجى مراجعة بيانات البطاقة.'));
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'إرسال الطلب عبر واتساب';
+            }
+          }
+        });
+      })
+      .catch(function (err) {
+        alert(err.message || 'حدث خطأ أثناء معالجة الطلب');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'إرسال الطلب عبر واتساب';
         }
       });
       return;
@@ -889,6 +919,11 @@
       setStep(3);
       toggleAddressField();
       renderTailoringForm();
+
+      var submitBtn = orderForm.querySelector('button[type="submit"]');
+      if (submitBtn && config.payment && config.payment.enabled) {
+        submitBtn.textContent = 'المتابعة للدفع الإلكتروني الآمن (مدى / Apple Pay)';
+      }
     });
     document.getElementById('btnBackCart').addEventListener('click', function () {
       showPanel('panelCart');

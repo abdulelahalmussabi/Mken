@@ -445,6 +445,7 @@
     var commerceCheck = document.getElementById('adminRegSvcCommerce');
     var whatsappCheck = document.getElementById('adminRegSvcWhatsApp');
     var invoicesCheck = document.getElementById('adminRegSvcInvoices');
+    var queueCheck = document.getElementById('adminRegSvcQueue');
     var domainCheck = document.getElementById('adminRegSvcCustomDomain');
 
     var customFeatures = {
@@ -452,6 +453,7 @@
       hasCommerce: commerceCheck ? commerceCheck.checked : false,
       hasWhatsApp: whatsappCheck ? whatsappCheck.checked : false,
       hasInvoices: invoicesCheck ? invoicesCheck.checked : false,
+      hasQueue: queueCheck ? queueCheck.checked : false,
       hasCustomDomain: domainCheck ? domainCheck.checked : false
     };
 
@@ -630,6 +632,7 @@
     base: 99,
     extraActivity: 29,
     booking: 49,
+    queue: 79,
     commerce: 99,
     whatsapp: 149,
     invoices: 199,
@@ -752,6 +755,7 @@
       var commercePrice = readPrice('adminRegPriceCommerce', PRICE_DEFAULTS.commerce);
       var whatsappPrice = readPrice('adminRegPriceWhatsapp', PRICE_DEFAULTS.whatsapp);
       var invoicesPrice = readPrice('adminRegPriceInvoices', PRICE_DEFAULTS.invoices);
+      var queuePrice = readPrice('adminRegPriceQueue', PRICE_DEFAULTS.queue);
 
       var activityCount = document.querySelectorAll('.admin-reg-activity-check:checked').length;
 
@@ -769,6 +773,7 @@
       if (commerceCheck && commerceCheck.checked) monthly += commercePrice;
       if (whatsappCheck && whatsappCheck.checked) monthly += whatsappPrice;
       if (invoicesCheck && invoicesCheck.checked) monthly += invoicesPrice;
+      if (queueCheck && queueCheck.checked) monthly += queuePrice;
 
       yearly = monthly * 10;
     }

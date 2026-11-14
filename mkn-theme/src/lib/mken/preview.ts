@@ -388,16 +388,39 @@ async function mapsFetch(url: string, init: RequestInit = {}, timeoutMs = GOOGLE
   }
 }
 
+let lastGoogleMapsError = "";
+
+function rememberMapsError(data: unknown, httpStatus?: number): void {
+  const body = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+  const nested =
+    body?.error && typeof body.error === "object" ? (body.error as Record<string, unknown>) : null;
+  const message = [body?.error_message, nested?.message, body?.status, nested?.status]
+    .filter((value) => typeof value === "string" && value.trim())
+    .join(" — ");
+  if (message) lastGoogleMapsError = message;
+  else if (httpStatus && httpStatus >= 400) lastGoogleMapsError = `HTTP ${httpStatus}`;
+}
+
 async function mapsFetchJson<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T | null> {
   const res = await mapsFetch(url, init, timeoutMs);
-  if (!res?.ok) return null;
-  try {
-    const text = await res.text();
-    if (!text) return null;
-    return JSON.parse(text) as T;
-  } catch {
+  if (!res) {
+    lastGoogleMapsError = lastGoogleMapsError || "انتهت مهلة الاتصال بخرائط جوجل";
     return null;
   }
+  const text = await res.text().catch(() => "");
+  let data: T | null = null;
+  try {
+    data = text ? (JSON.parse(text) as T) : null;
+  } catch {
+    data = null;
+  }
+  rememberMapsError(data, res.status);
+  if (!res.ok) return null;
+  const status = data && typeof data === "object" ? (data as { status?: string }).status : "";
+  if (status && status !== "OK" && status !== "ZERO_RESULTS") {
+    rememberMapsError(data, res.status);
+  }
+  return data;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
@@ -602,6 +625,73 @@ export async function expandMapsShortUrl(url: string): Promise<string> {
 
 export async function resolvePlaceId(mapsInput: string): Promise<string | null> {
   return withTimeout(resolvePlaceIdUncapped(mapsInput), RESOLVE_PLACE_MS);
+}
+
+function listingSearchQueries(name?: string, city?: string): string[] {
+  const cleanName = (name || "")
+    .replace(/\|/g, " ")
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const cleanCity = (city || "").trim();
+  const arabicName = cleanName.split(/\s{2,}| - /)[0]?.trim() || cleanName;
+  return Array.from(
+    new Set(
+      [cleanName && cleanCity ? `${cleanName} ${cleanCity}` : "", cleanName, arabicName && cleanCity ? `${arabicName} ${cleanCity}` : "", arabicName].filter(
+        Boolean
+      )
+    )
+  );
+}
+
+export async function resolvePlaceIdFromListing(input: {
+  mapsUrl?: string;
+  placeId?: string;
+  name?: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+}): Promise<{ placeId?: string; error?: string }> {
+  lastGoogleMapsError = "";
+  if (!mapsKey()) {
+    return { error: "مفتاح خرائط جوجل غير معيّن على الخادم. أضف GOOGLE_MAPS_API_KEY في Vercel ثم أعد النشر." };
+  }
+
+  const direct = extractPlaceIdCandidate(input.placeId || input.mapsUrl || "");
+  if (direct) return { placeId: direct };
+
+  const bias =
+    Number.isFinite(input.lat) && Number.isFinite(input.lng)
+      ? { lat: Number(input.lat), lng: Number(input.lng) }
+      : undefined;
+
+  for (const query of listingSearchQueries(input.name, input.city)) {
+    const found = await findPlaceIdFromText(query, bias);
+    if (found) return { placeId: found };
+  }
+
+  if (input.mapsUrl?.trim()) {
+    const fromUrl = await resolvePlaceId(input.mapsUrl.trim());
+    if (fromUrl) return { placeId: fromUrl };
+  }
+
+  if (bias) {
+    const fromGeo = await findPlaceIdFromLatLng(bias, input.name || input.city || null);
+    if (fromGeo) return { placeId: fromGeo };
+  }
+
+  const denied = lastGoogleMapsError;
+  if (/REQUEST_DENIED|PERMISSION_DENIED|API[_ ]key|referer|referrer|not authorized/i.test(denied)) {
+    return {
+      error: `مفتاح خرائط جوجل مرفوض من جوجل. فعّل Places API (و Geocoding إن لزم) على مشروع Cloud، واستخدم مفتاح خادم بلا قيد HTTP referrer. ${denied}`,
+    };
+  }
+  if (denied) {
+    return { error: `تعذّر قراءة بيانات الخرائط: ${denied}` };
+  }
+  return {
+    error: "تعذّر قراءة بيانات الخرائط لهذا الرابط. أعد حفظ الرابط أو تأكد أن Places API مفعّل على الخادم.",
+  };
 }
 
 async function resolvePlaceIdUncapped(mapsInput: string): Promise<string | null> {

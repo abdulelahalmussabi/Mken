@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <script src="js/theme-early.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>حالة الطلب | منصة مكّن</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/platform.css">
+  <link rel="stylesheet" href="css/booking.css">
+  <link rel="stylesheet" href="css/order.css">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    .status-card {
+      max-width: 620px;
+      margin: 40px auto;
+      background: var(--color-surface, #ffffff);
+      border-radius: 20px;
+      padding: 36px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .invoice-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.95rem;
+    }
+    .invoice-table td {
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--color-border, #e2e8f0);
+    }
+    .invoice-table tr:last-child td {
+      border-bottom: none;
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding-top: 15px;
+      color: var(--color-primary, #0f172a);
+    }
+    .zatca-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin: 24px 0;
+    }
+    .zatca-qr-container {
+      display: inline-block;
+      padding: 12px;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e2e8f0;
+      border-top-color: var(--color-primary, #2563eb);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="index.html" class="logo" aria-label="العودة للصفحة الرئيسية">
+        <span data-brand-logo data-size="44"></span>
+        <div class="logo__text">
+          <span class="logo__name" data-brand="name">منصة مكّن</span>
+          <span class="logo__tagline" data-brand="tagline">حلول التجارة الإلكترونية المعتمدة</span>
+        </div>
+      </a>
+      <a href="order.html" class="btn btn--outline btn--sm no-print">المتجر</a>
+    </div>
+  </header>
+
+  <main class="container" style="min-height: 70vh;">
+    <!-- صندوق الانتظار والتحقق السيرفري -->
+    <div id="boxLoading" class="status-card" style="text-align: center;">
+      <div class="spinner"></div>
+      <h2 style="margin-top: 15px;">جاري تأكيد السداد وإصدار الفاتورة الضريبية...</h2>
+      <p style="color: #64748b; font-size: 0.95rem;">يتم الآن التحقق الآمن مع البنك وإصدار وثيقة الفاتورة المعتمدة. فضلاً انتظر ثوانٍ معدودة.</p>
+    </div>
+
+    <!-- صندوق نجاح الطلب والفاتورة الضريبية المبسطة ZATCA -->
+    <div id="boxSuccess" class="status-card" style="display: none;">
+      <div id="printArea">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 3.5rem; line-height: 1; margin-bottom: 10px;">✅</div>
+          <h1 style="font-size: 1.6rem; color: #0f172a; margin: 0;">تم تأكيد الطلب والسداد بنجاح!</h1>
+          <p style="color: #64748b; margin-top: 6px;" id="lblOrderId">رقم المرجع: --</p>
+        </div>
+
+        <div class="zatca-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+            <strong style="color: #1e293b; font-size: 1.05rem;">فاتورة ضريبية مبسطة (ZATCA)</strong>
+            <span style="background: #e0f2fe; color: #0284c7; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">مدفوعة إلكترونياً</span>
+          </div>
+
+          <table class="invoice-table">
+            <tbody>
+              <tr>
+                <td style="text-align: right; color: #64748b;">المجموع الخاضع للضريبة:</td>
+                <td style="text-align: left; font-weight: 600;" id="valSubtotal">0.00 ر.س</td>
+              </tr>
+              <tr>
+                <td style="text-align: right; color: #64748b;">ضريبة القيمة المضافة (15%):</td>
+                <td style="text-align: left; font-weight: 600;" id="valTax">0.00 ر.س</td>
+              </tr>
+              <tr id="rowShipping" style="display: none;">
+                <td style="text-align: right; color: #64748b;">رسوم التوصيل:</td>
+                <td style="text-align: left; font-weight: 600;" id="valShipping">0.00 ر.س</td>
+              </tr>
+              <tr>
+                <td style="text-align: right;">المجموع الإجمالي النهائي:</td>
+                <td style="text-align: left;" id="valTotal">0.00 ر.س</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 16px;">
+            <div id="qrCodeTarget" class="zatca-qr-container"></div>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 8px;">رمز التحقق المشفر المعتمد لهيئة الزكاة والضريبة والجمارك</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="booking-actions no-print" style="margin-top: 25px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn--outline" onclick="window.print()">طباعة الفاتورة 📄</button>
+        <a href="order.html" class="btn btn--primary" id="btnShopAgain">تسوق مجدداً</a>
+      </div>
+    </div>
+
+    <!-- صندوق الفشل أو التعثر -->
+    <div id="boxFailed" class="status-card" style="display: none; text-align: center;">
+      <div style="font-size: 3.5rem; line-height: 1; margin-bottom: 12px;">⚠️</div>
+      <h2 style="color: #e11d48;">تعذر تأكيد عملية الدفع</h2>
+      <p id="lblFailedMsg" style="color: #64748b; font-size: 0.95rem; margin: 15px 0;">لم يتم خصم أي مبلغ أو أن العملية ألغيت من قبل المستخدم.</p>
+      <div class="booking-actions" style="margin-top: 20px;">
+        <a href="order.html" class="btn btn--primary">العودة للسلة والمحاولة مجدداً</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/services-store.js"></script>
+  <script src="js/order-store.js"></script>
+  <script src="js/brand-logo.js"></script>
+  <script src="js/offline-store.js"></script>
+  <script src="js/unified-session.js"></script>
+  <script src="js/pwa.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var store = window.MkenServicesStore;
+      var orderStore = window.MkenOrderStore;
+      var params = new URLSearchParams(window.location.search);
+      var sessionId = params.get('session_id') || '';
+      var orderId = params.get('order_id') || '';
+      var rawStatus = params.get('status') || '';
+      var rawMsg = params.get('message') || '';
+
+      var boxLoading = document.getElementById('boxLoading');
+      var boxSuccess = document.getElementById('boxSuccess');
+      var boxFailed = document.getElementById('boxFailed');
+      var lblOrderId = document.getElementById('lblOrderId');
+      var valSubtotal = document.getElementById('valSubtotal');
+      var valTax = document.getElementById('valTax');
+      var valTotal = document.getElementById('valTotal');
+      var valShipping = document.getElementById('valShipping');
+      var rowShipping = document.getElementById('rowShipping');
+      var qrContainer = document.getElementById('qrCodeTarget');
+
+      if (rawStatus === 'failed') {
+        boxLoading.style.display = 'none';
+        boxFailed.style.display = 'block';
+        if (rawMsg) document.getElementById('lblFailedMsg').textContent = rawMsg;
+        return;
+      }
+
+      if (!sessionId && !orderId) {
+        boxLoading.style.display = 'none';
+        boxFailed.style.display = 'block';
+        document.getElementById('lblFailedMsg').textContent = 'بيانات الجلسة غير موجودة، يرجى إعادة الطلب من المتجر.';
+        return;
+      }
+
+      var maxPolls = 10;
+      var pollCount = 0;
+
+      async function verifyOrder() {
+        pollCount++;
+        try {
+          var query = sessionId ? ('session_id=' + encodeURIComponent(sessionId)) : ('order_id=' + encodeURIComponent(orderId));
+          var res = await fetch('/api/v1/checkout/verify?' + query);
+          var data = await res.json();
+
+          if (res.ok && data && (data.status === 'paid' || data.status === 'confirmed')) {
+            renderSuccess(data);
+            return;
+          }
+
+          if (pollCount < maxPolls) {
+            setTimeout(verifyOrder, 2500);
+          } else {
+            // انتهت المحاولات دون تأكيد مباشر من الويب هوك
+            boxLoading.style.display = 'none';
+            boxFailed.style.display = 'block';
+            document.getElementById('lblFailedMsg').textContent = 'عملية الدفع قيد التأكيد لدى البنك، وسيصلك إشعار بالواتساب أو الرسائل النصية فور اعتمادها.';
+          }
+        } catch (e) {
+          if (pollCount < maxPolls) {
+            setTimeout(verifyOrder, 3000);
+          } else {
+            boxLoading.style.display = 'none';
+            boxFailed.style.display = 'block';
+          }
+        }
+      }
+
+      function renderSuccess(order) {
+        boxLoading.style.display = 'none';
+        boxSuccess.style.display = 'block';
+
+        lblOrderId.textContent = 'رقم المرجع للطلب: ' + (order.orderId || order.sessionId);
+        valSubtotal.textContent = Number(order.subtotal || 0).toFixed(2) + ' ر.س';
+        valTax.textContent = Number(order.taxAmount || 0).toFixed(2) + ' ر.س';
+        valTotal.textContent = Number(order.totalAmount || 0).toFixed(2) + ' ر.س';
+
+        if (Number(order.shippingCost) > 0) {
+          rowShipping.style.display = 'table-row';
+          valShipping.textContent = Number(order.shippingCost).toFixed(2) + ' ر.س';
+        }
+
+        // توليد رمز الاستجابة السريع ZATCA
+        if (order.zatcaQr && window.QRCode) {
+          qrContainer.innerHTML = '';
+          new QRCode(qrContainer, {
+            text: order.zatcaQr,
+            width: 140,
+            height: 140,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
+
+        // تنظيف السلة المعتمد بعد إتمام السداد بنجاح موثق
+        if (orderStore && orderStore.clearCart) {
+          var tenant = order.tenantSlug || (store && store.getCurrentTenantSlug()) || 'default';
+          orderStore.clearCart(tenant);
+        }
+      }
+
+      verifyOrder();
+    })();
+  </script>
+</body>
+</html>

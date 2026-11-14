@@ -5,6 +5,8 @@ const cannedReplies = require('./_lib/whatsapp-canned-replies');
 const activityRouter = require('./_lib/activity-router');
 const handoffEngine = require('./_lib/handoff-engine');
 const reviewFunnel = require('./_lib/review-funnel');
+const bookingTools = require('./_lib/whatsapp-booking-tools');
+const cstGuard = require('./_lib/cst-time-guard');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
@@ -141,7 +143,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data } = await supabase
       .from('mken_saas_clients')
-      .select('config_data')
+      .select('config_data, phone')
       .eq('tenant_slug', tenantSlug)
       .maybeSingle();
     clientRow = data;
@@ -187,6 +189,7 @@ module.exports = async function handler(req, res) {
     let phone = '';
     let bodyText = '';
     let provider = 'unknown';
+    let messageId = null;
 
     // Parse incoming webhook based on payload signature
     // A. Twilio (x-www-form-urlencoded)
@@ -194,12 +197,14 @@ module.exports = async function handler(req, res) {
       phone = req.body.From.replace('whatsapp:', '').replace('+', '').trim();
       bodyText = req.body.Body.trim();
       provider = 'twilio';
+      messageId = req.body.MessageSid || req.body.SmsMessageSid || null;
     }
     // B. UltraMsg (JSON)
     else if (req.body.data && req.body.data.from && req.body.data.body) {
       phone = req.body.data.from.split('@')[0].replace('+', '').trim();
       bodyText = req.body.data.body.trim();
       provider = 'ultramsg';
+      messageId = req.body.data.id ? String(req.body.data.id) : null;
     }
     // C. WhatsApp Cloud API (JSON)
     else if (req.body.object === 'whatsapp_business_account' && req.body.entry) {
@@ -209,6 +214,7 @@ module.exports = async function handler(req, res) {
         if (changes.messages && changes.messages[0]) {
           const message = changes.messages[0];
           phone = message.from.replace('+', '').trim();
+          messageId = message.id || null;
           if (message.type === 'text') {
             bodyText = message.text.body.trim();
           } else {
@@ -228,6 +234,48 @@ module.exports = async function handler(req, res) {
     const cleanPhoneStr = cleanPhone(phone);
     if (!cleanPhoneStr) {
       return res.status(200).json({ status: 'ignored', message: 'Invalid phone number format' });
+    }
+
+    // 1. قفل منع التكرار الحتمي (Inbound Deduplication Gate - O(1))
+    // يحمي من عواصف إعادة الإرسال من Meta/Twilio وتكرار الردود الآلية
+    if (messageId) {
+      try {
+        const { error: dedupErr } = await supabase
+          .from('mken_whatsapp_inbound_dedup')
+          .insert({
+            provider: provider,
+            message_id: messageId,
+            phone: cleanPhoneStr,
+            tenant_slug: tenantSlug,
+            received_at: new Date().toISOString()
+          });
+
+        if (dedupErr) {
+          const errMsg = String(dedupErr.message || '').toLowerCase();
+          if (dedupErr.code === '23505' || errMsg.includes('unique') || errMsg.includes('duplicate')) {
+            console.log(`[Webhook Dedup] Duplicate inbound message detected (${messageId}). Returning 200 OK.`);
+            return res.status(200).json({ status: 'ignored', reason: 'duplicate_message_id', messageId: messageId });
+          }
+        }
+      } catch (dedupEx) {
+        console.warn('[Webhook Dedup Warning]:', dedupEx.message);
+      }
+    }
+
+    // 2. التحقق من رغبة الانسحاب الفوري (PDPL Art. 26 Opt-Out / Suppression List)
+    if (cstGuard.isOptOutIntent(bodyText)) {
+      await cstGuard.setPhoneDncStatus(supabase, cleanPhoneStr, tenantSlug, true, 'customer_inbound_opt_out');
+      const optOutReply = 'تم إلغاء اشتراكك وتحديث رغبتك بنجاح. لن تتلقى أي رسائل آلية أو تنبيهات تسويقية مستقبلاً. لإعادة التفعيل في أي وقت، يمكنك إرسال "تفعيل" أو "START". دمتم بخير 💚';
+      await sendServerWhatsAppReply(cleanPhoneStr, optOutReply, wa, supabase, tenantSlug);
+      return res.status(200).json({ status: 'success', action: 'opt_out_recorded', phone: cleanPhoneStr });
+    }
+
+    // 3. التحقق من رغبة إعادة الاشتراك (Opt-In / Resubscribe)
+    if (cstGuard.isOptInIntent(bodyText)) {
+      await cstGuard.setPhoneDncStatus(supabase, cleanPhoneStr, tenantSlug, false, 'customer_inbound_opt_in');
+      const optInReply = 'أهلاً بك مجدداً! تم إعادة تفعيل التنبيهات ورسائل الخدمة لرقمك بنجاح. نسعد بخدمتك دائماً 🌟';
+      await sendServerWhatsAppReply(cleanPhoneStr, optInReply, wa, supabase, tenantSlug);
+      return res.status(200).json({ status: 'success', action: 'opt_in_recorded', phone: cleanPhoneStr });
     }
 
     // === ACTIVITY DETECTION (Phase 1: keyword rules) ===
@@ -422,12 +470,31 @@ module.exports = async function handler(req, res) {
 
       if (apts && apts.length > 0) {
         const apt = apts[0];
-        await supabase
-          .from('mken_appointments')
-          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-          .eq('id', apt.id);
+        
+        if (apt.payment_status === 'paid') {
+          await supabase
+            .from('mken_appointments')
+            .update({ cancel_requested_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+            .eq('id', apt.id);
 
-        replyText = `تم إلغاء موعدك القادم بنجاح.\nالخدمة: ${apt.service_id}\nالتاريخ: ${formatDateArabic(apt.date)} - الوقت: ${formatTimeArabic(apt.time)}\n\nنشكرك لتفهمك!`;
+          replyText = 'طلبك قيد المراجعة ولن يُسترد المبلغ إلا بعد اعتماد المنشأة';
+
+          const merchantMsg = `⚠️ طلب إلغاء موعد مدفوع يحتاج اعتمادك\nرقم الموعد: ${apt.id}\nالمبلغ: ${apt.payment_amount || 0}\nجوال العميل: ${cleanPhoneStr}`;
+          const merchantPhone = cleanPhone(clientRow.phone || '');
+          if (merchantPhone) {
+            // Best-effort notification to merchant
+            sendServerWhatsAppReply(merchantPhone, merchantMsg, wa, supabase, tenantSlug).catch(err => {
+              console.error('Failed to notify merchant of cancel request:', err);
+            });
+          }
+        } else {
+          await supabase
+            .from('mken_appointments')
+            .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+            .eq('id', apt.id);
+
+          replyText = `تم إلغاء موعدك القادم بنجاح.\nالخدمة: ${apt.service_id}\nالتاريخ: ${formatDateArabic(apt.date)} - الوقت: ${formatTimeArabic(apt.time)}\n\nنشكرك لتفهمك!`;
+        }
       } else {
         replyText = 'عذراً، لم نجد أي موعد نشط ومسجل برقم جوالك حالياً لإلغائه.';
       }
@@ -454,7 +521,7 @@ module.exports = async function handler(req, res) {
           scopeReply += 'نقدم حالياً الخدمات التالية فقط:\n';
           availableTitles.forEach(function (t) { scopeReply += '• ' + t + '\n'; });
           scopeReply += '\nسعداء بخدمتك في أي منها! أيها يهمك؟ 😊\n';
-          scopeReply += '🌐 للحجز: https://' + siteDomain + '/book.html';
+          scopeReply += '🌐 للحجز: https://' + siteDomain + '/book';
         } else {
           scopeReply += 'تكرم، تواصل معنا لنرشدك للخدمات المتاحة 💚';
         }
@@ -503,12 +570,37 @@ module.exports = async function handler(req, res) {
         // No canned match → AI agent (with activity-scoped context)
         let aiReply = await aiAgent.generateAIReply(bodyText, config, tenantSlug, cleanPhoneStr, appointmentsInfo, conversationHistory, activityId);
 
-        if (aiReply && aiReply.trim()) {
+        if (aiReply && typeof aiReply === 'object' && aiReply.type === 'tool_call') {
+          try {
+            const { name, args } = aiReply;
+            if (name === 'list_slots') {
+              const available = await bookingTools.list_slots({ date: args.date, tenantSlug });
+              replyText = `الأوقات المتاحة في ${args.date} هي:\n${Array.isArray(available) ? available.join(' | ') : available}\n\nللحجز، يرجى تزويدي بالوقت المناسب لك والخدمة التي ترغب بها.`;
+            } else if (name === 'create_booking') {
+              const booking = await bookingTools.create_booking({ ...args, phone: cleanPhoneStr, tenantSlug });
+              replyText = `تم تسجيل حجزك مبدئياً بنجاح! 📅\nالخدمة: ${args.serviceName || args.serviceId}\nالتاريخ: ${args.date}\nالوقت: ${args.time}`;
+              
+              const price = parseFloat(String(args.servicePrice || booking.payment_amount || '0').replace(/[^\d.]/g, '')) || 0;
+              const paymentEnabled = config.payment && config.payment.enabled && config.payment.provider !== 'none';
+              
+              if (price > 0 && paymentEnabled) {
+                const link = bookingTools.payment_link({ appointmentId: booking.appointmentId, tenantSlug, siteDomain });
+                replyText += `\n\nلإكمال الحجز وتأكيده، يرجى الدفع عبر الرابط التالي:\n${link}`;
+              } else {
+                replyText += `\n\nبانتظار حضورك في الوقت المحدد!`;
+              }
+            } else {
+               replyText = "أعتذر، حدث خطأ أثناء تنفيذ طلبك. يمكنك المحاولة مجدداً أو الحجز عبر الرابط:\nhttps://" + siteDomain + "/book";
+            }
+          } catch (toolErr) {
+            replyText = `عذراً: ${toolErr.message}`;
+          }
+        } else if (aiReply && typeof aiReply === 'string' && aiReply.trim()) {
           replyText = aiReply.trim();
         } else {
           // Safe fallback if Gemini is unavailable or failed.
           // Always use "مكّن لايف" brand name (not config brand which may be wrong for admin tenant).
-          replyText = `مرحباً بك في مكّن لايف! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book.html\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
+          replyText = `مرحباً بك في مكّن لايف! 🌟\nسعداء بتواصلك معنا! فريقنا جاهز لمساعدتك.\n\nيمكنك الحجز والدفع المباشر عبر:\n🌐 https://${siteDomain}/book\n\nأو أرسل لنا استفسارك وسنرد قريباً 💚`;
         }
       }
       } // end out-of-scope else (in-scope → hybrid engine)
@@ -526,16 +618,18 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantSlug) {
+async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantSlug, options = {}) {
   const provider = wa.provider;
   let promise;
+  const isTemplate = options.isTemplate || (typeof messageText === 'object' && messageText && messageText.isTemplate);
+  const logBody = typeof messageText === 'string' ? messageText : (messageText.body || messageText.templateName || JSON.stringify(messageText));
 
   if (provider === 'ultramsg' && wa.instanceId) {
     const url = `https://api.ultramsg.com/${wa.instanceId}/messages/chat`;
     const params = new URLSearchParams();
     params.append('token', wa.token);
     params.append('to', phone);
-    params.append('body', messageText);
+    params.append('body', typeof messageText === 'string' ? messageText : (messageText.body || ''));
 
     promise = fetch(url, {
       method: 'POST',
@@ -545,7 +639,7 @@ async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantS
   } else if (provider === 'twilio' && wa.accountSid && wa.fromNumber) {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${wa.accountSid}/Messages.json`;
     const params = new URLSearchParams();
-    params.append('Body', messageText);
+    params.append('Body', typeof messageText === 'string' ? messageText : (messageText.body || ''));
     params.append('From', 'whatsapp:' + wa.fromNumber.replace(/^\+?/, '+'));
     params.append('To', 'whatsapp:+' + phone);
 
@@ -566,7 +660,7 @@ async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantS
       headers: headers,
       body: JSON.stringify({
         to: phone,
-        body: messageText,
+        body: typeof messageText === 'string' ? messageText : (messageText.body || ''),
         event: 'chatbot_reply'
       })
     }).then(r => r.ok ? r.text() : Promise.reject(new Error(`Custom Webhook status ${r.status}`)));
@@ -577,15 +671,25 @@ async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantS
       'Content-Type': 'application/json'
     };
 
-    const payload = {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: phone,
-      type: "text",
-      text: {
-        body: messageText
-      }
-    };
+    let payload;
+    if (isTemplate) {
+      payload = cstGuard.buildMetaTemplatePayload(
+        phone,
+        options.templateName || messageText.templateName || 'utility_alert',
+        options.languageCode || 'ar',
+        options.templateParams || messageText.templateParams || []
+      );
+    } else {
+      payload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: phone,
+        type: "text",
+        text: {
+          body: typeof messageText === 'string' ? messageText : (messageText.body || '')
+        }
+      };
+    }
 
     promise = fetch(url, {
       method: 'POST',
@@ -611,7 +715,7 @@ async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantS
     await supabase.from('mken_whatsapp_logs').insert({
       tenant_slug: tenantSlug,
       phone: phone,
-      body: messageText,
+      body: logBody,
       provider: provider,
       status: 'success',
       event_type: 'chatbot_reply',
@@ -622,7 +726,7 @@ async function sendServerWhatsAppReply(phone, messageText, wa, supabase, tenantS
     await supabase.from('mken_whatsapp_logs').insert({
       tenant_slug: tenantSlug,
       phone: phone,
-      body: messageText,
+      body: logBody,
       provider: provider,
       status: 'failed',
       error_message: err.message,

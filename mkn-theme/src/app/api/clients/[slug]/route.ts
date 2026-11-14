@@ -43,6 +43,8 @@ const CLIENT_EDITABLE: (keyof ClientRecord)[] = [
   "location",
   "heroImage",
   "logo",
+  "commercialRegistryName",
+  "commercialRegistryNumber",
   "theme",
   "couponCode",
   "discountText",
