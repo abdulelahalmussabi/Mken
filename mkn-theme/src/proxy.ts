@@ -4,10 +4,9 @@ import { resolveBoundTenantFromHostname } from "@/lib/mken/bound-host";
 import { boundTenantFromHostname } from "@/lib/mken/tenant-host";
 import { googleHtmlVerificationResponse } from "@/lib/mken/google-html-verification";
 import { attachUnclaimedRobotsHeader } from "@/lib/mken/preview";
+import { isReservedSlug, isValidTenantSlugPattern } from "@/lib/mken/reserved-slugs";
 
 const ADMIN_COOKIE = "mkn_admin_session";
-
-const SHORT_TENANT_ALIASES = new Set(["almahrusa", "demo", "almasabi", "rewa", "rewaq"]);
 const SKIP_NESTED_WWW = new Set(["www", "admin", "mken", "license", "licenses", "api"]);
 const PLATFORM_ADMIN_PATHS = new Set(["/admin", "/admin/", "/admin/licenses"]);
 
@@ -54,7 +53,7 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
     }
   }
   const alias = pathname.replace(/^\//, "").toLowerCase().replace(/\.html$/, "");
-  if (SHORT_TENANT_ALIASES.has(alias) && alias !== tenant) {
+  if (!isReservedSlug(alias) && isValidTenantSlugPattern(alias) && alias !== tenant) {
     url.pathname = `/subscriber/${tenant}`;
     url.search = "";
     return NextResponse.redirect(url);
@@ -82,14 +81,12 @@ export async function proxy(request: NextRequest) {
   if (
     pathname.startsWith("/brand/") ||
     pathname.startsWith("/_next/") ||
-    /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(pathname)
+    /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?|txt|xml|json|webmanifest)$/i.test(pathname)
   ) {
     return NextResponse.next();
   }
 
   // Public storefront APIs must not run hostname/DB lookups in the gate.
-  // Bound-host resolve has 500'd `/api/clients/*` on tenant subdomains (empty body),
-  // which left logos stuck on the 🏢 placeholder.
   const isPublicApi =
     pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/admin") &&
@@ -224,29 +221,42 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  if (pathname === "/almahrusa") {
-    url.pathname = "/subscriber/almahrusa";
-    return NextResponse.rewrite(url);
-  }
+  // Dynamic Path Multi-Tenant Engine across platform
+  // Matches URLs like https://www.mken.live/:slug or https://mken.live/:slug
+  if (
+    !tenant &&
+    (hostOnly === "mken.live" ||
+      hostOnly === "www.mken.live" ||
+      hostOnly === "localhost" ||
+      hostOnly === "127.0.0.1" ||
+      hostOnly.endsWith(".vercel.app"))
+  ) {
+    const rawClean = pathname.replace(/^\/+|\/+$/g, "").toLowerCase().replace(/\.html$/, "");
+    const segments = rawClean.split("/").filter(Boolean);
+    const candidateSlug = segments[0];
 
-  if (pathname === "/demo") {
-    url.pathname = "/subscriber/demo";
-    return NextResponse.rewrite(url);
-  }
+    if (
+      segments.length === 1 &&
+      candidateSlug &&
+      !isReservedSlug(candidateSlug) &&
+      isValidTenantSlugPattern(candidateSlug)
+    ) {
+      url.pathname = `/subscriber/${candidateSlug}`;
+      return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), candidateSlug);
+    }
 
-  if (pathname === "/almasabi") {
-    url.pathname = "/subscriber/almasabi";
-    return NextResponse.rewrite(url);
-  }
-
-  if (pathname === "/rewa") {
-    url.pathname = "/subscriber/rewa";
-    return NextResponse.rewrite(url);
-  }
-
-  if (pathname === "/rewaq") {
-    url.pathname = "/subscriber/rewaq";
-    return NextResponse.rewrite(url);
+    if (
+      segments.length === 2 &&
+      candidateSlug &&
+      !isReservedSlug(candidateSlug) &&
+      isValidTenantSlugPattern(candidateSlug)
+    ) {
+      const subPage = segments[1];
+      if (/^(about|services|work|contact)$/.test(subPage)) {
+        url.pathname = `/subscriber/${candidateSlug}/${subPage}`;
+        return attachUnclaimedRobotsHeader(NextResponse.rewrite(url), candidateSlug);
+      }
+    }
   }
 
   const next = NextResponse.next();

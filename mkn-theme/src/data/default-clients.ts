@@ -226,6 +226,34 @@ export const DEFAULT_CLIENTS: ClientRecord[] = [
     active: true,
     createdAt: new Date("2026-04-01").toISOString(),
   },
+  {
+    slug: "saj",
+    name: "مطعم ومخابز صاج الريف | Saj Al-Reef",
+    tagline: "أشهى الفطائر والشاورما والمخبوزات على الصاج الطازج",
+    subtitle:
+      "مطعم ومخابز صاج متخصص في الفطائر الطازجة والشاورما والمشاوي على الصاج الساخن مع تشكيلة واسعة من المقبلات والعصائر الطازجة.",
+    type: "restaurant",
+    phone: "0114991122",
+    whatsapp: "966554991122",
+    email: "contact@saj-alreef.sa",
+    location: "طريق الإمام سعود بن عبد العزيز بن محمد، حي التعاون، الرياض 12434",
+    commercialRegistryName: "شركة صاج الريف المحدودة لتقديم الوجبات",
+    commercialRegistryNumber: "1010887234",
+    rating: "4.8",
+    reviewsCount: "940 تقييم موثق",
+    heroImage: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80",
+    demoNotice: "مطعم صاج الريف — الرياض على منصة مكّن (معاينة تجريبية موثقة)",
+    adminEmail: "admin@saj-alreef.sa",
+    theme: "custom-saj",
+    customThemes: [{ id: "custom-saj", name: "هوية صاج الريف", accentColor: "#D9480F" }],
+    socialLinks: {
+      whatsapp: "https://wa.me/966554991122",
+      instagram: "https://instagram.com/saj_alreef_sa",
+      tiktok: "https://tiktok.com/@saj_alreef",
+    },
+    active: true,
+    createdAt: new Date("2026-05-01").toISOString(),
+  },
 ];
 
 type CredentialField = "adminPassword" | "admin_password" | "admin_password_hash";

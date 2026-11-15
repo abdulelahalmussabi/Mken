@@ -48,7 +48,7 @@ export interface ServiceItem {
 }
 
 // Admin Types
-export type ClientType = 'hotel' | 'salon' | 'restaurant' | 'cafe' | 'other';
+export type ClientType = 'hotel' | 'salon' | 'restaurant' | 'cafe' | 'other' | 'commerce';
 
 export interface SocialLinks {
   instagram?: string;
@@ -91,7 +91,7 @@ export interface ClientRecord {
   /** Write-only: accepted when creating a client, never returned by the API. */
   adminPassword?: string;
   theme: string; // OccasionId or custom-*
-  customThemes?: { id: string; name: string; accentColor: string }[];
+  customThemes?: { id: string; name: string; accentColor: string; badgeBg?: string; bgGradient?: string }[];
   couponCode?: string;
   discountText?: string;
   promoTitle?: string;

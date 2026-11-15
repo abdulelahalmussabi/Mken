@@ -92,16 +92,6 @@
       "source": "/staff.html",
       "destination": "/staff/login",
       "permanent": true
-    },
-    {
-      "source": "/almahrusa",
-      "destination": "/subscriber/almahrusa",
-      "permanent": true
-    },
-    {
-      "source": "/rewaq",
-      "destination": "/subscriber/rewaq",
-      "permanent": true
     }
   ]
 }

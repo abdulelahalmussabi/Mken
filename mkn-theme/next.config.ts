@@ -58,21 +58,6 @@ const nextConfig: NextConfig = {
         destination: "/book",
         permanent: true,
       },
-      {
-        source: "/almahrusa",
-        destination: "/subscriber/almahrusa",
-        permanent: true,
-      },
-      {
-        source: "/rewaq",
-        destination: "/subscriber/rewaq",
-        permanent: true,
-      },
-      {
-        source: "/demo",
-        destination: "/subscriber/demo",
-        permanent: true,
-      },
     ];
   },
   async rewrites() {

@@ -446,6 +446,74 @@ export function StorefrontFrame({
               },
             ],
           });
+        } else if (slug === "saj") {
+          setCatalog({
+            kind: "generic",
+            featuredActivity: "restaurant",
+            activities: [
+              {
+                id: "restaurant",
+                title: "فطائر ومشاوي الصاج",
+                shortTitle: "صاج",
+                icon: "Utensils",
+                tagline: "طازج يومياً",
+              },
+            ],
+            services: [
+              {
+                id: "saj-01",
+                activityId: "restaurant",
+                duration: "10-15 دقيقة",
+                name: "فطيرة شاورما صاج جامبو بالجبنة السائلة",
+                badge: "الأكثر طلباً",
+                price: "24 ر.س",
+                features: ["دجاج متبل طازج", "خبز صاج رقيق مخبوز طازجاً", "ثومية وجبنة ذائبة ومخلل"],
+                image: "https://images.unsplash.com/photo-1561651823-34feb02250e4?auto=format&fit=crop&w=600&q=80",
+                description: "شاورما دجاج محضرة على صاج ساخن مع صوص الثومية الخاص والجبنة الموتزاريلا الذائبة.",
+                popular: true,
+                category: "فطائر وشاورما الصاج",
+              },
+              {
+                id: "saj-02",
+                activityId: "restaurant",
+                duration: "15-20 دقيقة",
+                name: "صحن مشاوي مشكل صاج على الفحم",
+                badge: "وجبة عائلية",
+                price: "68 ر.س",
+                features: ["شيش طاووق وكباب لحم", "خبز صاج ساخن", "حمص ومتبل وبطاطس مقلية"],
+                image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80",
+                description: "تشكيلة من أسياخ المشاوي الطازجة المشوية على الفحم مع خبز الصاج الطازج والمقبلات.",
+                popular: true,
+                category: "مشاوي الصاج",
+              },
+              {
+                id: "saj-03",
+                activityId: "restaurant",
+                duration: "10 دقائق",
+                name: "فطيرة جبنة حلوم وزعتر بلدي على الصاج",
+                badge: "فطور ومساء",
+                price: "16 ر.س",
+                features: ["جبنة حلوم قبرصي مشوية", "زعتر فلسطيني بالسمسم", "طماطم ونعناع طازج"],
+                image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=600&q=80",
+                description: "فطيرة صاج مقرمشة محشوة بقطع الحلوم المشوي وزيت الزيتون البكر والنعناع.",
+                popular: false,
+                category: "معجنات وفطائر",
+              },
+              {
+                id: "saj-04",
+                activityId: "restaurant",
+                duration: "5 دقائق",
+                name: "عصير صاج عوار قلب طازج (لتر عائلي)",
+                badge: "طازج 100%",
+                price: "28 ر.س",
+                features: ["مانجو وفراولة طبيعية", "آيس كريم فانيلا", "قطع موز ومكسرات"],
+                image: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?auto=format&fit=crop&w=600&q=80",
+                description: "خلطة صاج المنعشة من الفواكه الطبيعية الطازجة مع الآيس كريم لترطيب وانتعاش يدوم.",
+                popular: true,
+                category: "المشروبات والعصائر",
+              },
+            ],
+          } as unknown as StorefrontCatalog);
         }
         setLoadState("ready");
         return;
@@ -1003,17 +1071,27 @@ export function StorefrontFrame({
                   {storeInfo.commercialRegistryName || storeInfo.name}
                 </div>
                 {storeInfo.commercialRegistryNumber ? (
-                  <div>
-                    السجل التجاري{" "}
-                    <span dir="ltr" className="font-mono">
+                  <div className="flex items-center gap-2">
+                    <span>السجل التجاري:</span>
+                    <span dir="ltr" className="font-mono font-bold text-foreground">
                       {storeInfo.commercialRegistryNumber}
                     </span>
                   </div>
                 ) : null}
               </div>
-              <Link href={"/" as Route} className="text-muted hover:text-foreground font-bold">
-                مشغّل بواسطة منصة مكّن 🇸🇦
-              </Link>
+              <div className="flex items-center gap-4 text-[11px]">
+                <Link href={"/privacy" as Route} className="hover:text-foreground transition-colors">
+                  سياسة الخصوصية وحماية البيانات (PDPL)
+                </Link>
+                <span>•</span>
+                <Link href={"/terms" as Route} className="hover:text-foreground transition-colors">
+                  الشروط والأحكام
+                </Link>
+                <span>•</span>
+                <Link href={"/" as Route} className="text-muted hover:text-foreground font-bold">
+                  مشغّل بواسطة منصة مكّن 🇸🇦
+                </Link>
+              </div>
             </div>
           </div>
         </footer>

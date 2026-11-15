@@ -3,8 +3,6 @@
  * (cache-first), so demo.mken.live kept showing "اسم منشأتك" until
  * a hard refresh. This worker deletes every cache, unregisters, and
  * reloads clients so the Next.js tenant UI loads from the network.
- *
- * Do not add a fetch handler. Do not reintroduce cache-first for HTML.
  */
 'use strict';
 
@@ -37,4 +35,8 @@ self.addEventListener('activate', function (event) {
         );
       })
   );
+});
+
+self.addEventListener('fetch', function (event) {
+  event.respondWith(fetch(event.request));
 });
