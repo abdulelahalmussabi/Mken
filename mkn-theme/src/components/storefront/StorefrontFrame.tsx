@@ -200,7 +200,7 @@ export function StorefrontFrame({
     map: null,
   });
   const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [showAppBanner, setShowAppBanner] = useState(true);
+  const [showAppBanner, setShowAppBanner] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<StorefrontServiceOption | null>(null);
   const [clientName, setClientName] = useState("");
@@ -218,6 +218,53 @@ export function StorefrontFrame({
   useEffect(() => {
     if (appearance) setDarkEnabled(appearance.darkModeEnabled !== false);
   }, [appearance, setDarkEnabled]);
+
+  // إدارة ظهور بانر تثبيت تطبيق المنشأة ومنع ظهوره نهائياً على الجوال
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 1024 || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      setShowAppBanner(false);
+      return;
+    }
+
+    try {
+      const dismissedUntil = localStorage.getItem(`mken_app_banner_dismissed_${slug}`);
+      if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
+        setShowAppBanner(false);
+        return;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+
+    setShowAppBanner(true);
+  }, [slug]);
+
+  const handleDismissAppBanner = () => {
+    setShowAppBanner(false);
+    try {
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      localStorage.setItem(`mken_app_banner_dismissed_${slug}`, (Date.now() + thirtyDaysMs).toString());
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
+  const handleActionInstallOrDownload = () => {
+    handleDismissAppBanner();
+    const anyWindow = typeof window !== "undefined" ? (window as any) : null;
+    if (anyWindow && anyWindow.deferredPrompt) {
+      try {
+        anyWindow.deferredPrompt.prompt();
+        anyWindow.deferredPrompt = null;
+      } catch (e) {
+        window.open(`/download/${slug}-desktop.exe`, "_blank");
+      }
+    } else {
+      window.open(`/download/${slug}-desktop.exe`, "_blank");
+    }
+  };
 
   // Live Preview Event Listener (Micro-Reconciler connection)
   useEffect(() => {
@@ -1021,22 +1068,34 @@ export function StorefrontFrame({
         </footer>
 
         {showAppBanner && (
-          <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full bg-surface/95 border border-line backdrop-blur-2xl rounded-2xl p-4 shadow-2xl space-y-3 text-right">
-            <div className="flex items-start justify-between gap-3">
-              <button onClick={() => setShowAppBanner(false)} className="text-muted hover:text-foreground p-1">
-                <X className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-bold text-foreground">ثبّت تطبيق المنشأة</span>
-                  <span className="text-[11px] text-muted">وصول أسرع وتذكير بالمواعيد</span>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-                  <Download className="w-5 h-5" />
-                </div>
+          <aside
+            aria-label="تثبيت تطبيق المنشأة"
+            className="hidden lg:flex fixed bottom-24 right-6 z-40 max-w-sm w-full bg-surface/95 border border-line backdrop-blur-2xl rounded-2xl p-4 shadow-2xl items-center justify-between gap-3 text-right"
+          >
+            <button
+              onClick={handleDismissAppBanner}
+              className="text-muted hover:text-foreground p-1.5 rounded-lg hover:bg-surface-2 transition"
+              aria-label="إغلاق الإشعار"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div
+              onClick={handleActionInstallOrDownload}
+              role="button"
+              tabIndex={0}
+              className="flex items-center gap-3 cursor-pointer group flex-1 justify-end"
+            >
+              <div className="flex flex-col text-right">
+                <span className="text-xs font-bold text-foreground group-hover:text-amber-500 transition">
+                  ثبّت تطبيق المنشأة
+                </span>
+                <span className="text-[11px] text-muted">وصول أسرع وتذكير بالمواعيد</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition">
+                <Download className="w-5 h-5" />
               </div>
             </div>
-          </div>
+          </aside>
         )}
 
         {inquiryWaHref ? <WhatsappCta href={inquiryWaHref} floating /> : null}
