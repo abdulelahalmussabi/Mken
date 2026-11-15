@@ -37,6 +37,12 @@ const SUITE = [
     args: ['tests/queue-zero-pii-display.test.cjs']
   },
   {
+    code: 'E2-CNT-03',
+    name: 'إدارة وتحرير عدد وأسماء الكاونترات والباركود العملاق (Dynamic Counters & Hero QR)',
+    command: 'node',
+    args: ['tests/queue-dynamic-counters.test.cjs']
+  },
+  {
     code: 'E1-SYN-02',
     name: 'توليد البيانات المعماة وتطهير بيئة الاختبار (PDPL Compliance)',
     command: 'node',

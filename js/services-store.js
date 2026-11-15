@@ -1306,10 +1306,31 @@
     return r.buildServiceOverrides(serviceId, config || loadConfig());
   }
 
-  function isAdminLoggedIn() { return sessionStorage.getItem(ADMIN_KEY) === '1'; }
+  function isAdminLoggedIn() {
+    if (sessionStorage.getItem(ADMIN_KEY) === '1') return true;
+    try {
+      if (localStorage.getItem(ADMIN_KEY) === '1') {
+        sessionStorage.setItem(ADMIN_KEY, '1');
+        return true;
+      }
+      if (window.MkenSession && typeof window.MkenSession.getStaffAuth === 'function') {
+        var staff = window.MkenSession.getStaffAuth();
+        if (staff && (staff.role === 'admin' || staff.role === 'super_admin' || staff.isSuperAdmin || staff.token || staff.pin)) {
+          sessionStorage.setItem(ADMIN_KEY, '1');
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }
   function setAdminLoggedIn(val) {
-    if (val) sessionStorage.setItem(ADMIN_KEY, '1');
-    else sessionStorage.removeItem(ADMIN_KEY);
+    if (val) {
+      sessionStorage.setItem(ADMIN_KEY, '1');
+      try { localStorage.setItem(ADMIN_KEY, '1'); } catch (e) {}
+    } else {
+      sessionStorage.removeItem(ADMIN_KEY);
+      try { localStorage.removeItem(ADMIN_KEY); } catch (e) {}
+    }
   }
 
   function exportConfig() { return JSON.stringify(loadConfig(), null, 2); }

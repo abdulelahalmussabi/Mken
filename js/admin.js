@@ -259,6 +259,9 @@
       var actId = (contentAdmin && contentAdmin.getCurrentActivityId()) || cfg.featuredActivity || cfg.enabledActivities[0];
       if (contentAdmin) contentAdmin.renderEditor(actId);
     }
+    if (tabId === 'queue' && window.MkenAdminQueue) {
+      window.MkenAdminQueue.refresh();
+    }
     if (tabId === 'appointments' && window.MkenAdminBooking) {
       window.MkenAdminBooking.refresh();
     }
@@ -2415,11 +2418,21 @@
         if (regBtn) regBtn.disabled = true;
       }
 
+      function handleInitialTab() {
+        var params = new URLSearchParams(window.location.search);
+        var hash = (window.location.hash || '').replace('#', '');
+        var tab = params.get('tab') || hash;
+        if (tab && document.querySelector('.admin-tab[data-tab="' + tab + '"]')) {
+          switchTab(tab);
+        }
+      }
+
       if (checkRecoveryMode()) {
         // Keep recovery visible
       } else if (store.isAdminLoggedIn()) {
         showAdmin();
         startWhatsappAutomationPolling();
+        handleInitialTab();
         if (new URLSearchParams(window.location.search).get('welcome') === 'trial') {
           showToast('مرحباً! تجربتك المجانية 14 يوماً — ابدأ بربط الزكاة وتفعيل واتساب CRM', 'success');
           if (window.history && window.history.replaceState) {
@@ -2427,8 +2440,41 @@
           }
         }
       } else {
-        showLogin();
-        updateTenantUrlHints('your-slug');
+        var db = window.MkenSupabaseDb;
+        var client = db && db.isConfigured() ? db.getClient() : null;
+        if (client && client.auth && typeof client.auth.getSession === 'function') {
+          client.auth.getSession().then(function (sessionRes) {
+            if (sessionRes && sessionRes.data && sessionRes.data.session) {
+              var user = sessionRes.data.session.user;
+              var userEmail = (user && user.email) ? String(user.email).trim().toLowerCase() : '';
+              var SUPER_ADMIN_EMAILS = ['admin@mken.live', 'admin@mkem.live'];
+              var isSuper = SUPER_ADMIN_EMAILS.indexOf(userEmail) !== -1;
+              store.setAdminLoggedIn(true);
+              if (isSuper) {
+                try { sessionStorage.setItem('mken_super_admin', '1'); } catch (e) {}
+              }
+              if (window.MkenSession && typeof window.MkenSession.setStaffAuth === 'function') {
+                window.MkenSession.setStaffAuth(store.getCurrentTenantSlug() || 'default', {
+                  email: userEmail,
+                  role: isSuper ? 'super_admin' : 'admin',
+                  isSuperAdmin: isSuper
+                });
+              }
+              showAdmin();
+              startWhatsappAutomationPolling();
+              handleInitialTab();
+              return;
+            }
+            showLogin();
+            updateTenantUrlHints('your-slug');
+          }).catch(function () {
+            showLogin();
+            updateTenantUrlHints('your-slug');
+          });
+        } else {
+          showLogin();
+          updateTenantUrlHints('your-slug');
+        }
         if (new URLSearchParams(window.location.search).get('welcome') === 'trial' && loginCardDesc) {
           loginCardDesc.textContent = 'تم إنشاء حسابك! سجّل الدخول ببريدك وكلمة المرور لبدء التجربة المجانية (14 يوماً).';
         }

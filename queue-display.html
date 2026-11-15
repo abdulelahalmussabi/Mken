@@ -170,31 +170,38 @@
     }
 
     .qr-join-box {
-      background: var(--disp-surface);
-      border: 2px solid var(--disp-surface-light);
-      border-radius: 20px;
-      padding: 24px;
+      background: linear-gradient(145deg, #162447, #1f2f5c);
+      border: 3px solid #3b82f6;
+      border-radius: 24px;
+      padding: 24px 20px;
       text-align: center;
+      box-shadow: 0 10px 35px rgba(59, 130, 246, 0.25);
+      position: relative;
     }
 
-    .qr-join-box h3 {
-      margin: 0 0 6px;
-      font-size: 1.25rem;
-    }
-
-    .qr-join-box p {
-      margin: 0 0 16px;
-      font-size: 0.88rem;
-      color: var(--disp-text-dim);
+    .qr-scanner-frame {
+      width: 250px;
+      height: 250px;
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px auto 14px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.25);
+      animation: scannerPulse 2.5s infinite alternate ease-in-out;
     }
 
     .qr-code-img {
-      width: 170px;
-      height: 170px;
-      background: #fff;
-      padding: 8px;
-      border-radius: 12px;
-      display: inline-block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    @keyframes scannerPulse {
+      0% { transform: scale(1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+      100% { transform: scale(1.02); box-shadow: 0 0 35px rgba(96, 165, 250, 0.6); }
     }
 
     /* Waiting List Panel */
@@ -268,13 +275,15 @@
 
     <!-- Side Column: QR Code + Waiting Pool -->
     <aside class="disp-side">
-      <!-- QR Join Box -->
+      <!-- QR Hero Join Station (High-Contrast & Large Visibility) -->
       <div class="qr-join-box">
-        <h3>امسح الرمز واحجز دورك الآن</h3>
-        <p>بدون تحميل أي تطبيق - تتبع دورك فورياً من جوالك</p>
-        <div id="qrContainer">
+        <div style="display:inline-block; background:rgba(59,130,246,0.25); color:#60a5fa; padding:4px 14px; border-radius:20px; font-size:0.85rem; font-weight:700; margin-bottom:8px;">📱 احجز دورك فورياً</div>
+        <h3 style="font-size:1.35rem; font-weight:800; margin:0 0 6px; color:#fff;">امسح الرمز بجوالك</h3>
+        <p style="margin:0 0 10px; font-size:0.88rem; color:#cbd5e1;">بدون تحميل أي تطبيق — تتبع دورك فورياً بكاميرا جوالك</p>
+        <div id="qrContainer" class="qr-scanner-frame">
           <img id="qrDisplayImg" class="qr-code-img" src="" alt="رمز QR للدخول الفوري">
         </div>
+        <div style="font-size:0.82rem; color:#93c5fd; font-weight:600;">⚡ مسح فوري من مسافة 5 أمتار</div>
       </div>
 
       <!-- Waiting Pool -->
@@ -342,10 +351,10 @@
         }
       }
 
-      // QR Code pointing to queue.html?tenant=slug
+      // QR Code pointing to queue.html?tenant=slug (High-resolution for 5-meter scan distance)
       var queueUrl = window.location.origin + '/queue.html?tenant=' + encodeURIComponent(currentTenant);
       if (qrDisplayImg) {
-        qrDisplayImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(queueUrl);
+        qrDisplayImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=2&data=' + encodeURIComponent(queueUrl);
       }
 
       // 3. Audio Chime
@@ -465,7 +474,7 @@
       setInterval(refreshDisplay, 6000);
 
       queueStore.listenToEvents(function (evt) {
-        if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed'].indexOf(evt) !== -1) {
+        if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed', 'config_updated'].indexOf(evt) !== -1) {
           refreshDisplay();
         }
       });

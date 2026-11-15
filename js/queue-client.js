@@ -521,6 +521,22 @@
   if (window.MkenSession && typeof window.MkenSession.prefillCustomerInputs === 'function') {
     window.MkenSession.prefillCustomerInputs();
   }
+  // فحص صلاحية الأدمن لعرض شريط الانتقال السريع للوحة التحكم
+  function checkAdminBanner() {
+    try {
+      var isAdm = false;
+      if (store && typeof store.isAdminLoggedIn === 'function' && store.isAdminLoggedIn()) isAdm = true;
+      if (window.MkenSession && typeof window.MkenSession.getStaffAuth === 'function') {
+        var s = window.MkenSession.getStaffAuth();
+        if (s && (s.role === 'admin' || s.role === 'super_admin' || s.isSuperAdmin)) isAdm = true;
+      }
+      var banner = document.getElementById('adminQueueBanner');
+      if (banner && isAdm) {
+        banner.style.display = 'flex';
+      }
+    } catch (e) {}
+  }
+  checkAdminBanner();
   checkSavedSession();
   setupSSE();
 

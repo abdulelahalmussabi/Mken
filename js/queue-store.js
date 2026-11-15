@@ -51,12 +51,30 @@
       });
     }
 
+    var headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+    try {
+      if (window.MkenSession && typeof window.MkenSession.getAuthHeaders === 'function') {
+        var authH = window.MkenSession.getAuthHeaders(slug);
+        Object.assign(headers, authH);
+      }
+      var adminPin = sessionStorage.getItem('mken_admin_pin') || localStorage.getItem('mken_admin_pin');
+      if (adminPin && !headers['x-admin-pin']) {
+        headers['x-admin-pin'] = adminPin;
+      }
+      if (store && typeof store.isAdminLoggedIn === 'function' && store.isAdminLoggedIn()) {
+        headers['x-admin-authenticated'] = '1';
+      }
+      if (window.MkenAdminAuth && typeof window.MkenAdminAuth.isSuperAdmin === 'function' && window.MkenAdminAuth.isSuperAdmin()) {
+        headers['x-is-super-admin'] = '1';
+      }
+    } catch (e) {}
+
     var options = {
       method: method || 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
+      headers: headers
     };
     if (body) {
       options.body = JSON.stringify(body);
@@ -245,6 +263,18 @@
 
     receptionHandover: function (payload) {
       return apiCall('reception-handover', 'POST', payload);
+    },
+
+    addCounter: function (payload) {
+      return apiCall('add-counter', 'POST', payload);
+    },
+
+    updateCounter: function (payload) {
+      return apiCall('update-counter', 'POST', payload);
+    },
+
+    deleteCounter: function (counterId) {
+      return apiCall('delete-counter', 'POST', { counterId: counterId });
     },
 
     listenToEvents: listenToEvents

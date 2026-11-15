@@ -454,7 +454,12 @@
     if (!counter) return;
 
     if (counterWorkspaceAgentName) {
-      counterWorkspaceAgentName.textContent = 'الموظف: ' + (counter.operator_name || 'سارة علي');
+      var isAdm = counter.operator_name && (counter.operator_name.indexOf('مدير') !== -1 || counter.operator_name.indexOf('Admin') !== -1);
+      counterWorkspaceAgentName.innerHTML = 'الموظف: <strong>' + escHtml(counter.operator_name || 'موظف') + '</strong>' + (isAdm ? ' 👑' : '');
+    }
+    if (counterAdminTakeoverBtn) {
+      var isAdm = counter.operator_name && (counter.operator_name.indexOf('مدير') !== -1 || counter.operator_name.indexOf('Admin') !== -1);
+      counterAdminTakeoverBtn.style.display = isAdm ? 'none' : 'inline-flex';
     }
 
     // زر الاستراحة
@@ -642,6 +647,11 @@
   var closeHotSwapModalBtn = document.getElementById('closeHotSwapModalBtn');
   var cancelHotSwapBtn = document.getElementById('cancelHotSwapBtn');
   var counterHotSwapBtn = document.getElementById('counterHotSwapBtn');
+  var counterAdminTakeoverBtn = document.getElementById('counterAdminTakeoverBtn');
+  var adminQuickHotSwapBox = document.getElementById('adminQuickHotSwapBox');
+  var btnAdminQuickHotSwap = document.getElementById('btnAdminQuickHotSwap');
+  var adminQuickRecBox = document.getElementById('adminQuickRecBox');
+  var btnAdminQuickRecHandover = document.getElementById('btnAdminQuickRecHandover');
 
   function openHotSwapModal() {
     var cnt = currentCounters.find(function (c) { return c.id === activeCounterId; });
@@ -656,6 +666,10 @@
 
     if (hotSwapIncomingPin) hotSwapIncomingPin.value = '';
     if (hotSwapNotesInput) hotSwapNotesInput.value = '';
+    if (adminQuickHotSwapBox) {
+      var isAdm = servicesStore && typeof servicesStore.isAdminLoggedIn === 'function' && servicesStore.isAdminLoggedIn();
+      adminQuickHotSwapBox.style.display = isAdm ? 'block' : 'none';
+    }
     if (hotSwapModal) hotSwapModal.style.display = 'flex';
   }
 
@@ -709,6 +723,10 @@
 
     if (incomingReceptionPin) incomingReceptionPin.value = '';
     if (receptionHandoverNotes) receptionHandoverNotes.value = '';
+    if (adminQuickRecBox) {
+      var isAdm = servicesStore && typeof servicesStore.isAdminLoggedIn === 'function' && servicesStore.isAdminLoggedIn();
+      adminQuickRecBox.style.display = isAdm ? 'block' : 'none';
+    }
     if (recHandoverModal) recHandoverModal.style.display = 'flex';
   }
 
@@ -789,7 +807,124 @@
     if (qrCodeImg) {
       qrCodeImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(url);
     }
+
+    renderCountersManagementTable();
   }
+
+  // -------------------------------------------------------------
+  // 6.1 بناء جدول إدارة وتعديل الكاونترات
+  // -------------------------------------------------------------
+  function renderCountersManagementTable() {
+    var tbody = document.getElementById('adminCountersManagementTbody');
+    if (!tbody) return;
+
+    if (!currentCounters || !currentCounters.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">لا توجد كاونترات مضافة حالياً. اضغط "➕ إضافة كاونتر جديد" للبدء.</td></tr>';
+      return;
+    }
+
+    var html = currentCounters.map(function (c) {
+      var queueNames = [];
+      if (Array.isArray(c.assigned_queue_ids)) {
+        c.assigned_queue_ids.forEach(function (qid) {
+          var q = currentQueues.find(function (item) { return item.id === qid; });
+          if (q) queueNames.push(q.name);
+        });
+      }
+      var queueLabel = queueNames.length ? queueNames.join('، ') : 'جميع المسارات';
+      var statusBadge = c.status === 'active'
+        ? '<span style="background:#dcfce7; color:#16a34a; padding:3px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">🟢 نشط</span>'
+        : (c.status === 'on_break'
+            ? '<span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">☕ استراحة</span>'
+            : '<span style="background:#f1f5f9; color:#64748b; padding:3px 10px; border-radius:12px; font-size:0.8rem;">⚪ غير متاح</span>');
+
+      return (
+        '<tr style="border-bottom: 1px solid var(--color-border);">' +
+          '<td style="padding: 10px 12px; font-weight: 700;">' + escHtml(c.counter_number || 1) + '</td>' +
+          '<td style="padding: 10px 12px;">' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<input type="text" class="admin-input" title="اضغط Enter أو غيّر الاسم لحفظه فوراً" style="padding:5px 10px; font-size:0.88rem; font-weight:600; width:min(280px, 100%);" value="' + escHtml(c.name) + '" data-inline-counter-id="' + c.id + '" onchange="window.mkenInlineUpdateCounterName(this)">' +
+            '</div>' +
+          '</td>' +
+          '<td style="padding: 10px 12px;">' + statusBadge + '</td>' +
+          '<td style="padding: 10px 12px; font-size:0.85rem; color:#475569;">' + escHtml(queueLabel) + '</td>' +
+          '<td style="padding: 10px 12px; text-align: center;">' +
+            '<div style="display:flex; gap:6px; justify-content:center;">' +
+              '<button type="button" class="btn btn--outline" style="padding:4px 8px; font-size:0.75rem;" onclick="window.mkenOpenEditCounterModal(\'' + c.id + '\')">✏️ تعديل</button>' +
+              '<button type="button" class="btn btn--danger" style="padding:4px 8px; font-size:0.75rem; background:#ef4444; color:#fff; border:none; border-radius:4px;" onclick="window.mkenDeleteCounterClick(\'' + c.id + '\')">🗑️ حذف</button>' +
+            '</div>' +
+          '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    tbody.innerHTML = html;
+  }
+
+  window.mkenInlineUpdateCounterName = function (inputEl) {
+    var cid = inputEl.getAttribute('data-inline-counter-id');
+    var newName = inputEl.value.trim();
+    if (!cid || !newName) return;
+
+    queueStore.updateCounter({ counterId: cid, name: newName }).then(function (res) {
+      if (res.ok) {
+        toast('تم تحديث اسم الكاونتر بنجاح ✅', 'success');
+        refreshState();
+      } else {
+        toast(res.error || 'فشل تحديث اسم الكاونتر', 'error');
+      }
+    }).catch(function (err) {
+      toast(err.message, 'error');
+    });
+  };
+
+  window.mkenOpenEditCounterModal = function (counterId) {
+    var c = currentCounters.find(function (item) { return item.id === counterId; });
+    if (!c) return;
+
+    var modal = document.getElementById('adminCounterModal');
+    var title = document.getElementById('adminCounterModalTitle');
+    var idInput = document.getElementById('modalCounterEditId');
+    var nameInput = document.getElementById('modalCounterNameInput');
+    var numInput = document.getElementById('modalCounterNumberInput');
+    var queuesBox = document.getElementById('modalCounterQueuesCheckboxes');
+
+    if (title) title.textContent = '✏️ تعديل بيانات الكاونتر';
+    if (idInput) idInput.value = c.id;
+    if (nameInput) nameInput.value = c.name;
+    if (numInput) numInput.value = c.counter_number || 1;
+
+    if (queuesBox) {
+      queuesBox.innerHTML = currentQueues.map(function (q) {
+        var isChecked = Array.isArray(c.assigned_queue_ids) && c.assigned_queue_ids.indexOf(q.id) !== -1;
+        return (
+          '<label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem;">' +
+            '<input type="checkbox" name="counterModalQueueItem" value="' + q.id + '"' + (isChecked ? ' checked' : '') + '> ' +
+            '<span>' + escHtml(q.name) + '</span>' +
+          '</label>'
+        );
+      }).join('');
+    }
+
+    if (modal) modal.style.display = 'flex';
+  };
+
+  window.mkenDeleteCounterClick = function (counterId) {
+    var c = currentCounters.find(function (item) { return item.id === counterId; });
+    var name = c ? c.name : 'الكاونتر';
+    if (!confirm('هل أنت متأكد من حذف ' + name + '؟')) return;
+
+    queueStore.deleteCounter(counterId).then(function (res) {
+      if (res.ok) {
+        toast('تم حذف الكاونتر بنجاح 🗑️', 'info');
+        refreshState();
+      } else {
+        toast(res.error || 'تعذر حذف الكاونتر', 'error');
+      }
+    }).catch(function (err) {
+      toast(err.message, 'error');
+    });
+  };
 
   // -------------------------------------------------------------
   // 7. ربط الأحداث وعمليات النقر واختصارات لوحة المفاتيح
@@ -994,6 +1129,94 @@
           }
         }).catch(function (err) {
           counterEndBreakBtn.disabled = false;
+          toast(err.message, 'error');
+        });
+      });
+    }
+
+    // أحداث الاستلام الفوري لمدير النظام (Admin Direct Takeover)
+    if (counterAdminTakeoverBtn) {
+      counterAdminTakeoverBtn.addEventListener('click', function () {
+        if (!activeCounterId) return;
+        var cnt = currentCounters.find(function (c) { return c.id === activeCounterId; });
+        if (!cnt) return;
+        if (confirm('هل ترغب في استلام ' + cnt.name + ' فوراً وتولي خدمته كمدير للنظام؟')) {
+          counterAdminTakeoverBtn.disabled = true;
+          queueStore.hotSwapCounter({
+            counterId: activeCounterId,
+            isAdmin: true,
+            adminName: 'مدير النظام (Admin)',
+            handoverOption: 'handover_active',
+            handoverNotes: 'استلام مباشر بصلاحية الإدارة'
+          }).then(function (res) {
+            counterAdminTakeoverBtn.disabled = false;
+            if (res.ok) {
+              toast('تم تولي الكاونتر بنجاح! أنت الآن المشغل المعتمد 👑', 'success');
+              refresh();
+            }
+          }).catch(function (err) {
+            counterAdminTakeoverBtn.disabled = false;
+            toast(err.message, 'error');
+          });
+        }
+      });
+    }
+
+    if (btnAdminQuickHotSwap) {
+      btnAdminQuickHotSwap.addEventListener('click', function () {
+        if (!activeCounterId) return;
+        var checkedOpt = document.querySelector('input[name="hotSwapHandoverOption"]:checked');
+        var option = checkedOpt ? checkedOpt.value : 'handover_active';
+        var notes = hotSwapNotesInput ? hotSwapNotesInput.value.trim() : 'استلام مباشر بصلاحية الإدارة';
+
+        btnAdminQuickHotSwap.disabled = true;
+        btnAdminQuickHotSwap.textContent = 'جاري الاعتماد...';
+
+        queueStore.hotSwapCounter({
+          counterId: activeCounterId,
+          isAdmin: true,
+          adminName: 'مدير النظام (Admin)',
+          handoverOption: option,
+          handoverNotes: notes
+        }).then(function (res) {
+          btnAdminQuickHotSwap.disabled = false;
+          btnAdminQuickHotSwap.textContent = '👑 استلام الكاونتر فوراً بصلاحية الأدمن (تجاوز رمز PIN)';
+          closeHotSwapModal();
+          if (res.ok) {
+            toast('تم استلام الكاونتر فوراً بصلاحية الأدمن بنجاح 🚀', 'success');
+            refresh();
+          }
+        }).catch(function (err) {
+          btnAdminQuickHotSwap.disabled = false;
+          btnAdminQuickHotSwap.textContent = '👑 استلام الكاونتر فوراً بصلاحية الأدمن (تجاوز رمز PIN)';
+          toast(err.message, 'error');
+        });
+      });
+    }
+
+    if (btnAdminQuickRecHandover) {
+      btnAdminQuickRecHandover.addEventListener('click', function () {
+        var notes = receptionHandoverNotes ? receptionHandoverNotes.value.trim() : 'استلام شاشة القيادة لمدير النظام';
+
+        btnAdminQuickRecHandover.disabled = true;
+        btnAdminQuickRecHandover.textContent = 'جاري الاعتماد...';
+
+        queueStore.receptionHandover({
+          outgoingUserId: 'usr-admin',
+          isAdmin: true,
+          adminName: 'مدير النظام (Admin)',
+          handoverNotes: notes
+        }).then(function (res) {
+          btnAdminQuickRecHandover.disabled = false;
+          btnAdminQuickRecHandover.textContent = '👑 اعتماد تسليم شاشة القيادة للأدمن (تجاوز رمز PIN)';
+          closeReceptionHandoverModal();
+          if (res.ok) {
+            toast('تم اعتماد شاشة القيادة لمدير النظام بنجاح 📋', 'success');
+            refresh();
+          }
+        }).catch(function (err) {
+          btnAdminQuickRecHandover.disabled = false;
+          btnAdminQuickRecHandover.textContent = '👑 اعتماد تسليم شاشة القيادة للأدمن (تجاوز رمز PIN)';
           toast(err.message, 'error');
         });
       });
@@ -1252,6 +1475,101 @@
       openHallDisplayBtn.addEventListener('click', function () {
         var slug = queueStore.getTenantSlug();
         window.open('queue-display.html?tenant=' + encodeURIComponent(slug), '_blank');
+      });
+    }
+
+    // 7.71 إدارة الكاونترات ونقاط الخدمة (Add, Edit, Delete)
+    var addNewCounterBtn = document.getElementById('adminAddNewCounterBtn');
+    var counterModal = document.getElementById('adminCounterModal');
+    var closeCounterModalBtn = document.getElementById('closeCounterModalBtn');
+    var cancelCounterModalBtn = document.getElementById('cancelCounterModalBtn');
+    var counterModalForm = document.getElementById('adminCounterModalForm');
+
+    function openAddCounterModal() {
+      var title = document.getElementById('adminCounterModalTitle');
+      var idInput = document.getElementById('modalCounterEditId');
+      var nameInput = document.getElementById('modalCounterNameInput');
+      var numInput = document.getElementById('modalCounterNumberInput');
+      var queuesBox = document.getElementById('modalCounterQueuesCheckboxes');
+
+      if (title) title.textContent = '➕ إضافة كاونتر جديد';
+      if (idInput) idInput.value = '';
+      if (nameInput) nameInput.value = 'كاونتر ' + (currentCounters.length + 1);
+      if (numInput) numInput.value = currentCounters.length + 1;
+
+      if (queuesBox) {
+        queuesBox.innerHTML = currentQueues.map(function (q) {
+          return (
+            '<label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem;">' +
+              '<input type="checkbox" name="counterModalQueueItem" value="' + q.id + '" checked> ' +
+              '<span>' + escHtml(q.name) + '</span>' +
+            '</label>'
+          );
+        }).join('');
+      }
+
+      if (counterModal) counterModal.style.display = 'flex';
+    }
+
+    function closeCounterModal() {
+      if (counterModal) counterModal.style.display = 'none';
+    }
+
+    if (addNewCounterBtn) addNewCounterBtn.addEventListener('click', openAddCounterModal);
+    if (closeCounterModalBtn) closeCounterModalBtn.addEventListener('click', closeCounterModal);
+    if (cancelCounterModalBtn) cancelCounterModalBtn.addEventListener('click', closeCounterModal);
+
+    if (counterModalForm) {
+      counterModalForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var idInput = document.getElementById('modalCounterEditId');
+        var nameInput = document.getElementById('modalCounterNameInput');
+        var numInput = document.getElementById('modalCounterNumberInput');
+        var editId = idInput ? idInput.value : '';
+        var name = nameInput ? nameInput.value.trim() : '';
+        var num = numInput ? parseInt(numInput.value, 10) : 1;
+
+        var selectedQueues = [];
+        var checkboxes = document.querySelectorAll('input[name="counterModalQueueItem"]:checked');
+        checkboxes.forEach(function (cb) { selectedQueues.push(cb.value); });
+
+        if (!name) {
+          toast('يرجى إدخال اسم الكاونتر', 'error');
+          return;
+        }
+
+        if (editId) {
+          // تعديل كاونتر قائم
+          queueStore.updateCounter({
+            counterId: editId,
+            name: name,
+            counterNumber: num,
+            assignedQueueIds: selectedQueues
+          }).then(function (res) {
+            if (res.ok) {
+              toast('تم تعديل بيانات الكاونتر بنجاح ✅', 'success');
+              closeCounterModal();
+              refreshState();
+            } else {
+              toast(res.error || 'فشل التعديل', 'error');
+            }
+          }).catch(function (err) { toast(err.message, 'error'); });
+        } else {
+          // إضافة كاونتر جديد
+          queueStore.addCounter({
+            name: name,
+            counterNumber: num,
+            assignedQueueIds: selectedQueues
+          }).then(function (res) {
+            if (res.ok) {
+              toast('تمت إضافة الكاونتر بنجاح 🪑', 'success');
+              closeCounterModal();
+              refreshState();
+            } else {
+              toast(res.error || 'فشل إضافة الكاونتر', 'error');
+            }
+          }).catch(function (err) { toast(err.message, 'error'); });
+        }
       });
     }
 

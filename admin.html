@@ -409,6 +409,7 @@
               <span id="counterWorkspaceAgentName" style="font-size: 0.9rem; color: var(--color-text-muted); font-weight: 600;">الموظف: --</span>
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
+              <button type="button" id="counterAdminTakeoverBtn" class="btn btn--outline" style="font-weight: 700; color: #1e40af; border-color: #93c5fd; background: #eff6ff;" title="تولي خدمة هذا الكاونتر مباشرة بصفتك المدير الحالي">👑 تولي الكاونتر كمسؤول</button>
               <button type="button" id="counterHotSwapBtn" class="btn btn--primary" style="background: #2563eb; font-weight: 700;">🔄 تسليم الوردية / تغطية سريعة</button>
               <button type="button" id="counterWorkspaceBreakBtn" class="btn btn--outline" style="font-weight: 700;">☕ طلب استراحة</button>
             </div>
@@ -574,8 +575,69 @@
               </div>
             </div>
           </section>
+
+          <!-- قسم إدارة الكاونترات وتعديل أسمائها وعددها -->
+          <section class="admin-section" style="margin-top: 24px; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h4 style="margin: 0 0 4px; color: var(--color-primary); font-size: 1.1rem;">🪑 إدارة وتخصيص الكاونترات ونقاط الخدمة</h4>
+                <p class="admin-hint" style="margin: 0;">يمكنك إضافة كاونترات جديدة، أو تعديل أسمائها ومساراتها، أو حذف الكاونترات غير النشطة.</p>
+              </div>
+              <button type="button" id="adminAddNewCounterBtn" class="btn btn--primary">
+                <span>➕ إضافة كاونتر جديد</span>
+              </button>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table class="admin-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f1f5f9; text-align: right;">
+                    <th style="padding: 10px 12px; width: 60px;">#</th>
+                    <th style="padding: 10px 12px;">اسم الكاونتر</th>
+                    <th style="padding: 10px 12px; width: 120px;">الحالة</th>
+                    <th style="padding: 10px 12px;">المسارات المخصصة</th>
+                    <th style="padding: 10px 12px; text-align: center; width: 140px;">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCountersManagementTbody">
+                  <!-- Rendered dynamically via admin-queue.js -->
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
+      </div>
+
+      <!-- نافذة إضافة وتعديل الكاونتر (Add/Edit Counter Modal) -->
+      <div id="adminCounterModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(480px, 100%); padding: 24px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 id="adminCounterModalTitle" style="margin: 0; font-size: 1.15rem; color: var(--color-primary);">➕ إضافة كاونتر جديد</h3>
+            <button type="button" id="closeCounterModalBtn" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+          <form id="adminCounterModalForm">
+            <input type="hidden" id="modalCounterEditId" value="">
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="modalCounterNameInput" style="font-weight: 600; display: block; margin-bottom: 6px;">اسم الكاونتر المخصص:</label>
+              <input type="text" id="modalCounterNameInput" class="admin-input" placeholder="مثال: كاونتر الاستقبال 1 أو شباك العقود" required style="width: 100%;">
+            </div>
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label for="modalCounterNumberInput" style="font-weight: 600; display: block; margin-bottom: 6px;">رقم الكاونتر:</label>
+              <input type="number" id="modalCounterNumberInput" class="admin-input" min="1" max="99" value="1" required style="width: 100%;">
+            </div>
+            <div class="admin-field" style="margin-bottom: 18px;">
+              <label style="font-weight: 600; display: block; margin-bottom: 6px;">الأقسام والمسارات المخصصة:</label>
+              <div id="modalCounterQueuesCheckboxes" style="display: flex; flex-direction: column; gap: 8px; max-height: 140px; overflow-y: auto; padding: 8px; border: 1px solid var(--color-border); border-radius: 8px; background: #f8fafc;">
+                <!-- Checkboxes populated dynamically -->
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--color-border); padding-top: 14px;">
+              <button type="button" id="cancelCounterModalBtn" class="btn btn--outline">إلغاء</button>
+              <button type="submit" id="saveCounterModalBtn" class="btn btn--primary">حفظ الكاونتر</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- النافذة المنبثقة لعملية التحويل الذكي (Smart Transfer Modal) -->
@@ -720,6 +782,14 @@
               <textarea id="hotSwapNotesInput" class="admin-input" rows="2" placeholder="أية تفاصيل تخص المعاملة أو الصندوق..."></textarea>
             </div>
 
+            <!-- زر التولي المباشر لمدير النظام بدون PIN -->
+            <div id="adminQuickHotSwapBox" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius); padding: 12px; margin-bottom: 14px; text-align: center;">
+              <p style="margin: 0 0 8px; font-size: 0.85rem; color: #1e40af; font-weight: 600;">أنت مسجل حالياً كمسؤول (Admin) — يمكنك استلام الكاونتر فوراً:</p>
+              <button type="button" id="btnAdminQuickHotSwap" class="btn btn--primary" style="background: #1e40af; width: 100%; font-weight: 700; justify-content: center;">
+                👑 استلام الكاونتر فوراً بصلاحية الأدمن (تجاوز رمز PIN)
+              </button>
+            </div>
+
             <!-- شاشة القفل وإدخال رمز PIN للموظف البديل -->
             <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: var(--radius); padding: 18px; text-align: center; margin-bottom: 20px;">
               <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🔐</span>
@@ -816,6 +886,14 @@
             <div class="admin-field" style="margin-bottom: 14px;">
               <label for="receptionHandoverNotes" style="font-weight: 700; margin-bottom: 6px; display: block;">ملاحظات عامة ومهمة للوردية القادمة:</label>
               <textarea id="receptionHandoverNotes" class="admin-input" rows="3" placeholder="مثال: يرجى متابعة المراجعين في قسم العقود، كاونتر 2 سيستأنف عمله بعد الصلاة..."></textarea>
+            </div>
+
+            <!-- زر التولي المباشر للاستقبال لمدير النظام بدون PIN -->
+            <div id="adminQuickRecBox" style="display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius); padding: 12px; margin-bottom: 14px; text-align: center;">
+              <p style="margin: 0 0 8px; font-size: 0.85rem; color: #1e40af; font-weight: 600;">أنت مسجل حالياً كمسؤول (Admin) — يمكنك تولي شاشة القيادة فوراً:</p>
+              <button type="button" id="btnAdminQuickRecHandover" class="btn btn--primary" style="background: #1e40af; width: 100%; font-weight: 700; justify-content: center;">
+                👑 اعتماد تسليم شاشة القيادة للأدمن (تجاوز رمز PIN)
+              </button>
             </div>
 
             <!-- إدخال الـ PIN لموظف الاستقبال الجديد -->
