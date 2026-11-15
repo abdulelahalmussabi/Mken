@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated_at": "2026-11-15T08:51:50.496Z",
+    "generated_at": "2026-11-15T10:38:28.271Z",
     "total_records": 100,
     "compliance_standard": "Saudi PDPL & NCA ECC-1:2018",
     "classification": "SYNTHETIC / ZERO-PII",
@@ -22,16 +22,16 @@
       "time": "10:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_0544654dab6b7c70",
+      "payment_id": "pay_syn_c94431806e7ccd56",
       "status": "confirmed",
-      "created_at": "2026-11-15T06:51:50.492Z",
+      "created_at": "2026-11-15T08:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1001",
-        "uuid": "f607b54f-64c2-45c4-800d-fc4b0fd229db",
+        "uuid": "48f08cde-f7a0-4c3b-b783-85cffc009977",
         "invoice_number": "MKN-2026-00002",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0001",
-        "issue_date": "2026-11-15T07:51:50.492Z",
+        "issue_date": "2026-11-15T09:38:28.267Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -40,7 +40,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2b99add85239c22e21da09f2da7209caea35083b9b33c1dbf4efdd518e8bf26e"
+        "zatca_hash": "4f6f3d2e4d04ca3d6a9588db4c83ead890e9c941d450ea7a88f6301b4425c735"
       }
     },
     {
@@ -58,16 +58,16 @@
       "time": "11:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_99599751209e8f19",
+      "payment_id": "pay_syn_d6958412d8ce8b93",
       "status": "confirmed",
-      "created_at": "2026-11-15T04:51:50.492Z",
+      "created_at": "2026-11-15T06:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1002",
-        "uuid": "8847cd23-2ea6-4e60-9406-4ae214f28d4d",
+        "uuid": "542bffd7-5d82-4a3f-bd20-e83ab9eafd05",
         "invoice_number": "MKN-2026-00003",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0002",
-        "issue_date": "2026-11-15T06:51:50.492Z",
+        "issue_date": "2026-11-15T08:38:28.268Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -76,7 +76,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "58b3e0f6d39d325516a04a9df4b9756ca89f5469ff0916fa005bc76cd00f0c2c"
+        "zatca_hash": "15539e2cebb3887a194914aeef5806c42f2e1538b9594ceccca91cfac49590b3"
       }
     },
     {
@@ -94,16 +94,16 @@
       "time": "12:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_d43786b36ed10030",
+      "payment_id": "pay_syn_10ce05fd7ab1b393",
       "status": "confirmed",
-      "created_at": "2026-11-15T02:51:50.492Z",
+      "created_at": "2026-11-15T04:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1003",
-        "uuid": "0bbe0cbc-4f1a-45f5-93b7-107c41308c17",
+        "uuid": "7c4164df-b373-46d7-b12b-687a166e9835",
         "invoice_number": "MKN-2026-00004",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0003",
-        "issue_date": "2026-11-15T05:51:50.492Z",
+        "issue_date": "2026-11-15T07:38:28.268Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -112,7 +112,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2304b94375eb2ee364411a6dae28280b6ebd76ff87e26ad84c03b8e1e84f5102"
+        "zatca_hash": "7fe0b2512597fbf3d61aec2527b27fbc7ea3a6c08d0745f4f70b2a83245d7217"
       }
     },
     {
@@ -130,16 +130,16 @@
       "time": "13:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_f1bfc3a8772adaf4",
+      "payment_id": "pay_syn_9eeaad666b19820f",
       "status": "completed",
-      "created_at": "2026-11-15T00:51:50.493Z",
+      "created_at": "2026-11-15T02:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1004",
-        "uuid": "d6518397-eb00-44e3-af93-38c88354247c",
+        "uuid": "c150fb4c-387e-425f-b56f-5867985f9078",
         "invoice_number": "MKN-2026-00005",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0004",
-        "issue_date": "2026-11-15T04:51:50.492Z",
+        "issue_date": "2026-11-15T06:38:28.268Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -148,7 +148,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "504817eccf6f18c1246fceddebf934086c30883d9f1cc34bd4408b7e6aa07c56"
+        "zatca_hash": "61e4d166df7d247208793e141cad41937bbf308129dd98f3da3b74dfd7da3747"
       }
     },
     {
@@ -166,16 +166,16 @@
       "time": "14:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_636d65c2e74bddaa",
+      "payment_id": "pay_syn_5e96579a254be493",
       "status": "confirmed",
-      "created_at": "2026-11-14T22:51:50.493Z",
+      "created_at": "2026-11-15T00:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1005",
-        "uuid": "f70fef6a-f4ca-412f-852d-cf8217e9c8a7",
+        "uuid": "3e111b53-4aff-4287-a853-0c629f4f3125",
         "invoice_number": "MKN-2026-00006",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0005",
-        "issue_date": "2026-11-15T03:51:50.493Z",
+        "issue_date": "2026-11-15T05:38:28.268Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -184,7 +184,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "a5aeef31fe37b05c3fbaf477f28ce43d174c8c25f15671f810a36e6375e47df7"
+        "zatca_hash": "a061ac9fdc7385986cf215fe3087e923098f9ed9e8408af3152e7ab4275d7e12"
       }
     },
     {
@@ -202,16 +202,16 @@
       "time": "15:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_dd8581497722b83e",
+      "payment_id": "pay_syn_b6a78fcaa614a79d",
       "status": "confirmed",
-      "created_at": "2026-11-14T20:51:50.493Z",
+      "created_at": "2026-11-14T22:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1006",
-        "uuid": "b7ba82c6-da0f-4371-99c0-425569e288e8",
+        "uuid": "75d7e10f-2673-456e-913b-1b38be448f5b",
         "invoice_number": "MKN-2026-00007",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0006",
-        "issue_date": "2026-11-15T02:51:50.493Z",
+        "issue_date": "2026-11-15T04:38:28.268Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -220,7 +220,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "70ec07405214a0fac918cd3dd33a2e472177b5021e315d44e5c4e6ec0c07ad3a"
+        "zatca_hash": "e947a1e7e27155e7eedd851ae4e5b165d5d2a934e1fa5e301b996a49cef497cd"
       }
     },
     {
@@ -238,16 +238,16 @@
       "time": "16:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_07556472bb589145",
+      "payment_id": "pay_syn_4a5d6abc89463d2b",
       "status": "confirmed",
-      "created_at": "2026-11-14T18:51:50.493Z",
+      "created_at": "2026-11-14T20:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1007",
-        "uuid": "3a55d966-a5bf-463b-b995-ecb0c76ea0ac",
+        "uuid": "1d5fa8f1-c619-466d-b0a6-2da3185d1e2f",
         "invoice_number": "MKN-2026-00008",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0007",
-        "issue_date": "2026-11-15T01:51:50.493Z",
+        "issue_date": "2026-11-15T03:38:28.268Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -256,7 +256,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "89b16461a77c356a754cba343bd750b28467f4e21ed09015b8c16966320c0220"
+        "zatca_hash": "092667bd9de783015f0d8caec08830b72a58407582d86de4fc8903df45d0988c"
       }
     },
     {
@@ -274,16 +274,16 @@
       "time": "17:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e9581d45725cea4c",
+      "payment_id": "pay_syn_dbc520e763ecdae3",
       "status": "completed",
-      "created_at": "2026-11-14T16:51:50.493Z",
+      "created_at": "2026-11-14T18:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1008",
-        "uuid": "48eda5ad-d86c-4c17-8691-394aa0a1a251",
+        "uuid": "f4f5477b-6368-4690-9ce5-f2370300da5a",
         "invoice_number": "MKN-2026-00009",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0008",
-        "issue_date": "2026-11-15T00:51:50.493Z",
+        "issue_date": "2026-11-15T02:38:28.268Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -292,7 +292,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "36d0ff2f8c7d9fc1675e392acf37d6866f4858eda0ad65f0b13af87536ba0478"
+        "zatca_hash": "4695a01446bce14182607731ef25b9250a0c23f2ee9f4375efb2a3c21db2949f"
       }
     },
     {
@@ -310,16 +310,16 @@
       "time": "18:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_4f3d6262c146bb63",
+      "payment_id": "pay_syn_0d7937584c120233",
       "status": "confirmed",
-      "created_at": "2026-11-14T14:51:50.493Z",
+      "created_at": "2026-11-14T16:38:28.268Z",
       "invoice": {
         "id": "INV-SYN-1009",
-        "uuid": "100b5245-32e8-49cf-93d4-faf6dde3da28",
+        "uuid": "fcaf26bd-55ca-4fa5-a232-ccde97197cf0",
         "invoice_number": "MKN-2026-00010",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0009",
-        "issue_date": "2026-11-14T23:51:50.493Z",
+        "issue_date": "2026-11-15T01:38:28.268Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -328,7 +328,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "ea90e62b8a5e6f00a27a3fa59f1d29c089ba6cd2b00ec7546fdfb986366904a7"
+        "zatca_hash": "864f43fdae057bbcf481f06475d021ad8594c63edfa06542ac0d02031f2e6688"
       }
     },
     {
@@ -346,16 +346,16 @@
       "time": "19:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e0c2e834d4d732a1",
+      "payment_id": "pay_syn_850893adab09aa58",
       "status": "confirmed",
-      "created_at": "2026-11-14T12:51:50.493Z",
+      "created_at": "2026-11-14T14:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1010",
-        "uuid": "0e37aac3-54c2-4a1f-8255-593a342a814f",
+        "uuid": "868ce020-2b9a-4560-9c74-dfba7ed3bd7e",
         "invoice_number": "MKN-2026-00011",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0010",
-        "issue_date": "2026-11-14T22:51:50.493Z",
+        "issue_date": "2026-11-15T00:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -364,7 +364,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b23cbdf6574b518399fd48043cb705c7e64398e9f11e3f87d05b08567129a5f5"
+        "zatca_hash": "9c1840ea1b2ca180f0ac9f07ee78ff75b225eea5254e20517ebce06255ba9c1a"
       }
     },
     {
@@ -382,16 +382,16 @@
       "time": "09:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_d5c22a9ec812ee1c",
+      "payment_id": "pay_syn_e41bbe86b5b3c431",
       "status": "confirmed",
-      "created_at": "2026-11-14T10:51:50.493Z",
+      "created_at": "2026-11-14T12:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1011",
-        "uuid": "4fb6efc0-8e5a-4725-98c8-4c26bbeb69cf",
+        "uuid": "f3bdc121-a950-494f-b38e-27e383e4dd56",
         "invoice_number": "MKN-2026-00012",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0011",
-        "issue_date": "2026-11-14T21:51:50.493Z",
+        "issue_date": "2026-11-14T23:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -400,7 +400,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "03f39ba02cbe798af022e747e9b46e534942c05bab22ccc3c06cc40dd305380b"
+        "zatca_hash": "4af74aa513bd3dbb3110f7908ec6655b4148163ef2ec7e4b847537c50a2b3f3f"
       }
     },
     {
@@ -418,16 +418,16 @@
       "time": "10:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_218d5a95eec396a9",
+      "payment_id": "pay_syn_2daad2003a1be478",
       "status": "completed",
-      "created_at": "2026-11-14T08:51:50.493Z",
+      "created_at": "2026-11-14T10:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1012",
-        "uuid": "bf4deb8e-d0c8-4e14-84ec-bd9216dd02ca",
+        "uuid": "02ad9485-8675-4097-a057-ffe32b9e6430",
         "invoice_number": "MKN-2026-00013",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0012",
-        "issue_date": "2026-11-14T20:51:50.493Z",
+        "issue_date": "2026-11-14T22:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -436,7 +436,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "32042f610d65da97399802062b3fb6c00e9ab4020401bceab01e743b72016eae"
+        "zatca_hash": "0c93cf59ac3036e2309e89e057393d8932a1fac6bef13ddb52aaccb5bf24ccb5"
       }
     },
     {
@@ -454,16 +454,16 @@
       "time": "11:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_797399b4412cdefc",
+      "payment_id": "pay_syn_fa83086e8b68784d",
       "status": "confirmed",
-      "created_at": "2026-11-14T06:51:50.493Z",
+      "created_at": "2026-11-14T08:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1013",
-        "uuid": "d942f2cb-caaa-486b-b1d0-b9ef33bad280",
+        "uuid": "654d1181-73c6-4a10-b967-7a230501738d",
         "invoice_number": "MKN-2026-00014",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0013",
-        "issue_date": "2026-11-14T19:51:50.493Z",
+        "issue_date": "2026-11-14T21:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -472,7 +472,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "af057170da4b30f495c640d8cc21c6ea861ff3ca13ada10f2db397b1c6fb7139"
+        "zatca_hash": "c130416f6e34dd0fd39b7e8ffbcc0eadeffe99baf2e59d5fca212c92c9d4cb7c"
       }
     },
     {
@@ -490,16 +490,16 @@
       "time": "12:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e5a34027515577df",
+      "payment_id": "pay_syn_4db43ff5d2c80895",
       "status": "confirmed",
-      "created_at": "2026-11-14T04:51:50.493Z",
+      "created_at": "2026-11-14T06:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1014",
-        "uuid": "bfd4d127-90cb-4dfb-9c38-f105707fe4c9",
+        "uuid": "f883dff8-e4be-48fd-885b-f145bde7d6c4",
         "invoice_number": "MKN-2026-00015",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0014",
-        "issue_date": "2026-11-14T18:51:50.493Z",
+        "issue_date": "2026-11-14T20:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -508,7 +508,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "6589ef5d0df2a2b7b4901f9faafff959024d3870cc3126829e7cc544a19e87bc"
+        "zatca_hash": "77c51bedbd9d1fe0805aa766129eb3daab0db7a299dfcefbd6a15f35d571cc52"
       }
     },
     {
@@ -526,16 +526,16 @@
       "time": "13:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_a195bfc2734d84ce",
+      "payment_id": "pay_syn_f8b7029b4b83e807",
       "status": "confirmed",
-      "created_at": "2026-11-14T02:51:50.493Z",
+      "created_at": "2026-11-14T04:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1015",
-        "uuid": "a7caf3e5-6c77-4997-be4b-2c0b47722480",
+        "uuid": "af6699d4-f5ac-42df-9338-ffdb3f73890d",
         "invoice_number": "MKN-2026-00016",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0015",
-        "issue_date": "2026-11-14T17:51:50.493Z",
+        "issue_date": "2026-11-14T19:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -544,7 +544,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "5f04f86a17e7ba77a2e1d2200b90ceef582109f9c21c217b2da07eb5bd9a0384"
+        "zatca_hash": "5d43088c77e496d89541e33defd70d602f278b86ac13d3aee844a55c2de161f7"
       }
     },
     {
@@ -562,16 +562,16 @@
       "time": "14:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_290ac19a570f6f47",
+      "payment_id": "pay_syn_1e4357c5792d5805",
       "status": "completed",
-      "created_at": "2026-11-14T00:51:50.493Z",
+      "created_at": "2026-11-14T02:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1016",
-        "uuid": "3f65653b-a6b0-481f-984d-dc94a04bf231",
+        "uuid": "adb167be-7606-4d29-a1ca-a67f1d2fa448",
         "invoice_number": "MKN-2026-00017",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0016",
-        "issue_date": "2026-11-14T16:51:50.493Z",
+        "issue_date": "2026-11-14T18:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -580,7 +580,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "161bb017b0ec829ca8b49d4b1cf23bfb13acd8de80a58de18925e793d38be6e9"
+        "zatca_hash": "996a6c29d5832d94bdcbf847dbf2c85480c423220057b27cca50bd264d643d66"
       }
     },
     {
@@ -598,16 +598,16 @@
       "time": "15:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_b800a59617feb9d3",
+      "payment_id": "pay_syn_b5b33ab61de90155",
       "status": "confirmed",
-      "created_at": "2026-11-13T22:51:50.493Z",
+      "created_at": "2026-11-14T00:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1017",
-        "uuid": "90618f92-3bbb-485e-93c3-247d794b1017",
+        "uuid": "79c2bc18-3955-447d-b1a0-8a169493067d",
         "invoice_number": "MKN-2026-00018",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0017",
-        "issue_date": "2026-11-14T15:51:50.493Z",
+        "issue_date": "2026-11-14T17:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -616,7 +616,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "7b202d10aefd8c3195ed0640cdac02684b0fe4e726b636b2cd3edc4719f3a505"
+        "zatca_hash": "6a280c840049c8796da94821ca6a95d1d152726cd401177f838cb7032dc24e4d"
       }
     },
     {
@@ -634,16 +634,16 @@
       "time": "16:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_50f91af5af558d3e",
+      "payment_id": "pay_syn_94cba0c14cbd78c8",
       "status": "confirmed",
-      "created_at": "2026-11-13T20:51:50.493Z",
+      "created_at": "2026-11-13T22:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1018",
-        "uuid": "661139d6-d7c7-4999-bd20-0db649b2fdd6",
+        "uuid": "52551472-1694-4863-9bff-38046a240b8a",
         "invoice_number": "MKN-2026-00019",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0018",
-        "issue_date": "2026-11-14T14:51:50.493Z",
+        "issue_date": "2026-11-14T16:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -652,7 +652,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "89daa1e09db92ad5cf2884bc9ca5dbdb131234d6fa9f5c9ad5e1122f46c9382e"
+        "zatca_hash": "c5358650141d83c88f3ad986bab1be9b97c9ab801736ddc242e40600add1b170"
       }
     },
     {
@@ -670,16 +670,16 @@
       "time": "17:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_78c1c80a485506bd",
+      "payment_id": "pay_syn_1023a8dd9339b303",
       "status": "confirmed",
-      "created_at": "2026-11-13T18:51:50.493Z",
+      "created_at": "2026-11-13T20:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1019",
-        "uuid": "0235197b-a720-4680-8626-af2994f6570c",
+        "uuid": "b5415e49-d94f-4754-aca5-842856bc9f6b",
         "invoice_number": "MKN-2026-00020",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0019",
-        "issue_date": "2026-11-14T13:51:50.493Z",
+        "issue_date": "2026-11-14T15:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -688,7 +688,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "c01e81c624b828b8c201334d764af848cceb5377bce757dad24085d946017c0a"
+        "zatca_hash": "09168c23b303f4621e84d4246030b20bb71397bf1f18ddc94a56343d7004061d"
       }
     },
     {
@@ -706,16 +706,16 @@
       "time": "18:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_749f3e90790b7c8a",
+      "payment_id": "pay_syn_b646ca05f992a911",
       "status": "completed",
-      "created_at": "2026-11-13T16:51:50.493Z",
+      "created_at": "2026-11-13T18:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1020",
-        "uuid": "3405b2e6-a2db-44d2-9e89-d5cf8c01d80b",
+        "uuid": "71e6eb22-1103-4348-8f94-3b662699a6e9",
         "invoice_number": "MKN-2026-00021",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0020",
-        "issue_date": "2026-11-14T12:51:50.493Z",
+        "issue_date": "2026-11-14T14:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -724,7 +724,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "f5e2fdf947103ec15229975f3245d549a27869c317dae5e2590e98ed41a73b1d"
+        "zatca_hash": "8e89efa02ab352a6e037f0e314fb83e9513465a3778fd9491f8a58887fa9e267"
       }
     },
     {
@@ -742,16 +742,16 @@
       "time": "19:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_5e0ed3b138789726",
+      "payment_id": "pay_syn_7502623d0d5cdcc3",
       "status": "confirmed",
-      "created_at": "2026-11-13T14:51:50.493Z",
+      "created_at": "2026-11-13T16:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1021",
-        "uuid": "9119a1d1-1984-4493-a990-9102237d0846",
+        "uuid": "4aa5a669-e261-4156-a011-153e1d4f93cf",
         "invoice_number": "MKN-2026-00022",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0021",
-        "issue_date": "2026-11-14T11:51:50.493Z",
+        "issue_date": "2026-11-14T13:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -760,7 +760,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b7aa4934bfc610c10c4aa16daef153e31208a036d725f0ef8907ca2ecfd2633a"
+        "zatca_hash": "3cc1f17a87b9ea63cc3395069efda145ea7edbe3a21ce8a1d24dc0e7c5735c04"
       }
     },
     {
@@ -778,16 +778,16 @@
       "time": "09:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_57e9787c256c923b",
+      "payment_id": "pay_syn_984f625a22911a2e",
       "status": "confirmed",
-      "created_at": "2026-11-13T12:51:50.493Z",
+      "created_at": "2026-11-13T14:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1022",
-        "uuid": "37108f54-7f38-478c-b593-3c796afa2c29",
+        "uuid": "37014983-21cb-4924-8c1d-7e3bca8abfac",
         "invoice_number": "MKN-2026-00023",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0022",
-        "issue_date": "2026-11-14T10:51:50.493Z",
+        "issue_date": "2026-11-14T12:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -796,7 +796,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "5395a24e641a94ae353895f110f47212f16db9461ac48f41e9ba29fe1fcf2786"
+        "zatca_hash": "a45ebed3fa347be45a897dd6a5cf799faac143085ef9f35561bc450b77558025"
       }
     },
     {
@@ -814,16 +814,16 @@
       "time": "10:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_779e339bd5de637c",
+      "payment_id": "pay_syn_4bd351feb371039e",
       "status": "confirmed",
-      "created_at": "2026-11-13T10:51:50.493Z",
+      "created_at": "2026-11-13T12:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1023",
-        "uuid": "1b9ffcdc-307e-4481-bc70-de0dc984cc75",
+        "uuid": "f03138af-8625-4a7b-bc3a-ff0c51805176",
         "invoice_number": "MKN-2026-00024",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0023",
-        "issue_date": "2026-11-14T09:51:50.493Z",
+        "issue_date": "2026-11-14T11:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -832,7 +832,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "00297bd5c43f7bc41c4555af1d10e22e94491b33b0cebb45f25243a546fb0d9e"
+        "zatca_hash": "83b0ce8832fe9d35ec31be92f6d6f449fc299cbf95bc360a404f273afca505a8"
       }
     },
     {
@@ -850,16 +850,16 @@
       "time": "11:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_82cabc6a21c0e3d1",
+      "payment_id": "pay_syn_85d0a68493db6d00",
       "status": "completed",
-      "created_at": "2026-11-13T08:51:50.493Z",
+      "created_at": "2026-11-13T10:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1024",
-        "uuid": "be54223c-1a11-48a2-98ce-e0f9504e9465",
+        "uuid": "dfa8d7d0-f28b-4045-86df-ae300a62d931",
         "invoice_number": "MKN-2026-00025",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0024",
-        "issue_date": "2026-11-14T08:51:50.493Z",
+        "issue_date": "2026-11-14T10:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -868,7 +868,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "6eb9217ee89128d59fe145d3773ef3673d82c62cdb1c55e53c7e0c9c165c6977"
+        "zatca_hash": "969ab98fb32de9b28220bae00d6d04b34f57c94ac6b3da73267565491215bbe7"
       }
     },
     {
@@ -886,16 +886,16 @@
       "time": "12:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_5d85fb3a68ffd387",
+      "payment_id": "pay_syn_6cc2f4528386830e",
       "status": "confirmed",
-      "created_at": "2026-11-13T06:51:50.493Z",
+      "created_at": "2026-11-13T08:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1025",
-        "uuid": "445c70ed-f58b-404f-83e6-0414337c006d",
+        "uuid": "3798e2dc-2c11-4489-92ca-a8564d76478c",
         "invoice_number": "MKN-2026-00026",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0025",
-        "issue_date": "2026-11-14T07:51:50.493Z",
+        "issue_date": "2026-11-14T09:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -904,7 +904,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "391d8d61a09b55c071710713fc984bde877874671a0fe57200ea9f5eb66d5bae"
+        "zatca_hash": "f39d21df46f5d87fe212e601d779ed282869a66cf3e4e1a8ebdf805708c7b8a8"
       }
     },
     {
@@ -922,16 +922,16 @@
       "time": "13:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e8af7b259601d7cb",
+      "payment_id": "pay_syn_719a7f1edd0505bb",
       "status": "confirmed",
-      "created_at": "2026-11-13T04:51:50.493Z",
+      "created_at": "2026-11-13T06:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1026",
-        "uuid": "1f987d1b-6345-4bf7-99fe-08925f4086d5",
+        "uuid": "1f942c26-0676-4226-b68d-332f24ddb17d",
         "invoice_number": "MKN-2026-00027",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0026",
-        "issue_date": "2026-11-14T06:51:50.493Z",
+        "issue_date": "2026-11-14T08:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -940,7 +940,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "10328fd2017ccee107cc54e461446d0c7aac39c96fb598ea4d0d8d655f7cb7f1"
+        "zatca_hash": "77c83c6af1e65d8c7a3fe744e33b92da6f99c24de382b359bedd85e09ff805e4"
       }
     },
     {
@@ -958,16 +958,16 @@
       "time": "14:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_eb0850d8c3c8a4d5",
+      "payment_id": "pay_syn_85f40c2920d0297d",
       "status": "confirmed",
-      "created_at": "2026-11-13T02:51:50.493Z",
+      "created_at": "2026-11-13T04:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1027",
-        "uuid": "d00663be-ce1d-442c-ba00-ada322741e82",
+        "uuid": "832ea2a8-e780-42ba-a49e-4c89a98057b3",
         "invoice_number": "MKN-2026-00028",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0027",
-        "issue_date": "2026-11-14T05:51:50.493Z",
+        "issue_date": "2026-11-14T07:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -976,7 +976,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "7ee3fc82fe178024eede41a1f22b2a3fbb27e3698ee8fd8df69f801f9c8948dc"
+        "zatca_hash": "069d3a8d8b9fb2b1aa08557c87d98b01a4479a50b9875ae56f14f6e4d31de7b1"
       }
     },
     {
@@ -994,16 +994,16 @@
       "time": "15:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_037c829d181e27da",
+      "payment_id": "pay_syn_ea5c35a1c994ffab",
       "status": "completed",
-      "created_at": "2026-11-13T00:51:50.493Z",
+      "created_at": "2026-11-13T02:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1028",
-        "uuid": "be55d3d5-9679-4f77-a57d-2a8703d7d460",
+        "uuid": "c6fd4a96-49a8-4502-8985-39a858f2a392",
         "invoice_number": "MKN-2026-00029",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0028",
-        "issue_date": "2026-11-14T04:51:50.493Z",
+        "issue_date": "2026-11-14T06:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1012,7 +1012,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "cc14aadcc692bae34ce99b27c53087105f6754af7a02529f3205afd645a40fe0"
+        "zatca_hash": "048303e02c5ac09cc3abbffeb57e690f03e973b5610c77ad3486a01a8b282501"
       }
     },
     {
@@ -1030,16 +1030,16 @@
       "time": "16:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_7262b7cae8cb8a4f",
+      "payment_id": "pay_syn_5395371856a5eb4d",
       "status": "confirmed",
-      "created_at": "2026-11-12T22:51:50.493Z",
+      "created_at": "2026-11-13T00:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1029",
-        "uuid": "4cc75b74-4138-4531-9357-58f3738af175",
+        "uuid": "9bf41562-fa01-4e5a-ba2f-f66599249d3a",
         "invoice_number": "MKN-2026-00030",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0029",
-        "issue_date": "2026-11-14T03:51:50.493Z",
+        "issue_date": "2026-11-14T05:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1048,7 +1048,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "c1b56e6c1302a9e5368bf0667102c7ce8c709432b600cfa43f01062d17f0145f"
+        "zatca_hash": "ff039415c870f71230cbe2c7d808952fec15f4df97d345963828a1e318303fb7"
       }
     },
     {
@@ -1066,16 +1066,16 @@
       "time": "17:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_3e28ed75dd8e379f",
+      "payment_id": "pay_syn_7848096819237344",
       "status": "confirmed",
-      "created_at": "2026-11-12T20:51:50.493Z",
+      "created_at": "2026-11-12T22:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1030",
-        "uuid": "aef59245-54ce-46c8-a131-8a0a21240913",
+        "uuid": "ef892489-918d-4949-ad06-95fdb6f2f12d",
         "invoice_number": "MKN-2026-00031",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0030",
-        "issue_date": "2026-11-14T02:51:50.493Z",
+        "issue_date": "2026-11-14T04:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1084,7 +1084,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "28773ad45951230441c0f93d1435b883a1e06de9508739a49b4d2dbc7dd4f445"
+        "zatca_hash": "c6628cff87d6c78ad4a1f91227af2ea437ea7a8ba4ea537648de98e82a2a4736"
       }
     },
     {
@@ -1102,16 +1102,16 @@
       "time": "18:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_8e750b323a7a32d6",
+      "payment_id": "pay_syn_e4ad6b95d0121ae3",
       "status": "confirmed",
-      "created_at": "2026-11-12T18:51:50.493Z",
+      "created_at": "2026-11-12T20:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1031",
-        "uuid": "1b2d0b4d-5018-46bf-9a80-c5a88f61e0ca",
+        "uuid": "546b3cb8-085b-4a7f-9ceb-c23ed78d3f72",
         "invoice_number": "MKN-2026-00032",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0031",
-        "issue_date": "2026-11-14T01:51:50.493Z",
+        "issue_date": "2026-11-14T03:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -1120,7 +1120,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "8573bfd0e466f85e5bc96fe88d1f6f3db19fd586c9944e55c93303bcd61c2fd5"
+        "zatca_hash": "87ca8222cdfc15fe729bcbc89bbf083302046de1c6f275131f05dd3286f39625"
       }
     },
     {
@@ -1138,16 +1138,16 @@
       "time": "19:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_75c5d7cfee37f59d",
+      "payment_id": "pay_syn_49507751938a50f8",
       "status": "completed",
-      "created_at": "2026-11-12T16:51:50.493Z",
+      "created_at": "2026-11-12T18:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1032",
-        "uuid": "d81bf647-bd13-4ce0-bcfe-cd3c67e4f256",
+        "uuid": "d0bb8413-bc79-484d-bba5-f590ca4705fa",
         "invoice_number": "MKN-2026-00033",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0032",
-        "issue_date": "2026-11-14T00:51:50.493Z",
+        "issue_date": "2026-11-14T02:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -1156,7 +1156,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "93c113e371b33212f399c99f83041b3fc006b9a8dad5e8bb20e3b5166aafa646"
+        "zatca_hash": "fa1c8e768e7f19007ad7c4d567450966c74b182c9edba28a485188a28e4f2824"
       }
     },
     {
@@ -1174,16 +1174,16 @@
       "time": "09:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e730584c2e4f7fb8",
+      "payment_id": "pay_syn_adaf0a8829af6fc8",
       "status": "confirmed",
-      "created_at": "2026-11-12T14:51:50.493Z",
+      "created_at": "2026-11-12T16:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1033",
-        "uuid": "0ca77770-6eed-4233-80b0-4ddef3b2eab3",
+        "uuid": "e3d9db6f-5a4e-4240-a5b6-55f2bf0339cc",
         "invoice_number": "MKN-2026-00034",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0033",
-        "issue_date": "2026-11-13T23:51:50.493Z",
+        "issue_date": "2026-11-14T01:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1192,7 +1192,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "7382626c92e49625a2af43da2ab0a4dffd86cd36359f597789fdf064dfb1a69b"
+        "zatca_hash": "f2ce6e7f2ee64644359e7e7b5cb4d2391ef8f98bf0115608ad8f918fdc380bb0"
       }
     },
     {
@@ -1210,16 +1210,16 @@
       "time": "10:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_cb84505125795dfb",
+      "payment_id": "pay_syn_c7480c08e1460264",
       "status": "confirmed",
-      "created_at": "2026-11-12T12:51:50.493Z",
+      "created_at": "2026-11-12T14:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1034",
-        "uuid": "843ae911-4006-427c-9d6e-ba0af210cdc3",
+        "uuid": "b3d9d28e-fab7-4d16-99be-9289d9594857",
         "invoice_number": "MKN-2026-00035",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0034",
-        "issue_date": "2026-11-13T22:51:50.493Z",
+        "issue_date": "2026-11-14T00:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1228,7 +1228,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "ca6d21d8e2983e145c800f060f7821c55b0f87f4fbe3c93bd0d7eb266643397d"
+        "zatca_hash": "c267d8859b493370809f17de6262009116e8925601e40c732083837fc3c8d37c"
       }
     },
     {
@@ -1246,16 +1246,16 @@
       "time": "11:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_f230d1db6548dceb",
+      "payment_id": "pay_syn_da08c8d9f4b37f5b",
       "status": "confirmed",
-      "created_at": "2026-11-12T10:51:50.494Z",
+      "created_at": "2026-11-12T12:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1035",
-        "uuid": "a29c7e29-efd5-4e3f-beae-47ce80117384",
+        "uuid": "f91c3ab0-efe8-405c-a872-0048aa90b95a",
         "invoice_number": "MKN-2026-00036",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0035",
-        "issue_date": "2026-11-13T21:51:50.493Z",
+        "issue_date": "2026-11-13T23:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1264,7 +1264,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "072a770c9ee348462fb57d6871e06089f8ee499ae2699c85d358d4ccd6aa538a"
+        "zatca_hash": "65dd304b05b0a1524f1401d96a5618488f45b8640ab990c5122963e080bf840a"
       }
     },
     {
@@ -1282,16 +1282,16 @@
       "time": "12:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_48744fef28fb1eb4",
+      "payment_id": "pay_syn_beebbccaf2f5b9d8",
       "status": "completed",
-      "created_at": "2026-11-12T08:51:50.494Z",
+      "created_at": "2026-11-12T10:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1036",
-        "uuid": "fc258fa1-e397-4e34-bf79-3a680b454ccc",
+        "uuid": "9ed1a7f7-f257-41e6-b1f8-2386fd19b289",
         "invoice_number": "MKN-2026-00037",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0036",
-        "issue_date": "2026-11-13T20:51:50.494Z",
+        "issue_date": "2026-11-13T22:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -1300,7 +1300,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "896e4fc4dbfe18bdc14e0b6f8a1bdf4864f1e85fc4fb0f38673006a56292fe6a"
+        "zatca_hash": "6db8f44f0e6a5c57d67fee80bc704b26c60cf17ef6da6836c908dc8f4fa89660"
       }
     },
     {
@@ -1318,16 +1318,16 @@
       "time": "13:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e3a290ddf4bf0f24",
+      "payment_id": "pay_syn_5175e024b8a4d5c8",
       "status": "confirmed",
-      "created_at": "2026-11-12T06:51:50.494Z",
+      "created_at": "2026-11-12T08:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1037",
-        "uuid": "300fb7cb-3f3f-4e7f-a5f3-77276ff522de",
+        "uuid": "85e1da6c-ae90-4d67-aa8f-1a5fe3215f2e",
         "invoice_number": "MKN-2026-00038",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0037",
-        "issue_date": "2026-11-13T19:51:50.494Z",
+        "issue_date": "2026-11-13T21:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -1336,7 +1336,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b780884caed008c9694c5d40ac26600116dfee90c1c25aa2d3f590a8f18792e7"
+        "zatca_hash": "24815b03b8e9c935d6e9088b9c6b19c9e096a6a70d7202a323b8d02de14b36db"
       }
     },
     {
@@ -1354,16 +1354,16 @@
       "time": "14:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_72c0a93da50c4101",
+      "payment_id": "pay_syn_9589be635c497f60",
       "status": "confirmed",
-      "created_at": "2026-11-12T04:51:50.494Z",
+      "created_at": "2026-11-12T06:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1038",
-        "uuid": "5917f393-8d70-4242-9aa5-17d93d050d84",
+        "uuid": "5a8df62e-3469-4c4e-beaa-a6ccae2bdd2d",
         "invoice_number": "MKN-2026-00039",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0038",
-        "issue_date": "2026-11-13T18:51:50.494Z",
+        "issue_date": "2026-11-13T20:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1372,7 +1372,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "0e5f702f05e7132c644420cdd78bdf4efedc2b1c05d1384e574e569195dc0ef4"
+        "zatca_hash": "4a7bfdcdef660567a6989f722236cf4539d0b84eade3a98f9a4c58b625f98fcc"
       }
     },
     {
@@ -1390,16 +1390,16 @@
       "time": "15:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_c4f536ac12a26611",
+      "payment_id": "pay_syn_c660d0145c1c1d6e",
       "status": "confirmed",
-      "created_at": "2026-11-12T02:51:50.494Z",
+      "created_at": "2026-11-12T04:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1039",
-        "uuid": "fbfebe00-717c-45e5-a3d6-83ed1d5c3a9c",
+        "uuid": "5a269252-9d21-4bf3-9c72-690395503e83",
         "invoice_number": "MKN-2026-00040",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0039",
-        "issue_date": "2026-11-13T17:51:50.494Z",
+        "issue_date": "2026-11-13T19:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1408,7 +1408,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "41b261c589f8ccd7d5dfcfc734a42c9ed6e99e7303c728c02d0accd9bfb1ee23"
+        "zatca_hash": "427f3f95949f93298adeb5e2caf42e0077f6902ad4979b92248ead53390ba1d3"
       }
     },
     {
@@ -1426,16 +1426,16 @@
       "time": "16:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_5bf81e58ea82304b",
+      "payment_id": "pay_syn_7f5a018991d28a0b",
       "status": "completed",
-      "created_at": "2026-11-12T00:51:50.494Z",
+      "created_at": "2026-11-12T02:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1040",
-        "uuid": "e385fee4-6deb-41c1-8543-467b017782cb",
+        "uuid": "edb97655-5426-42b3-8cb5-f449de46c3a5",
         "invoice_number": "MKN-2026-00041",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0040",
-        "issue_date": "2026-11-13T16:51:50.494Z",
+        "issue_date": "2026-11-13T18:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1444,7 +1444,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "3e4b8338d5fe5429ea3913cd4ff908cc4e52e1ec12bccf7cc38ee21708992627"
+        "zatca_hash": "44a23fcf4ce11cb630f0a695bb471179dc22bbbc1268affb3b923938705cbc78"
       }
     },
     {
@@ -1462,16 +1462,16 @@
       "time": "17:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_020ea9ec2388972c",
+      "payment_id": "pay_syn_7d8c3c70be1bb8ab",
       "status": "confirmed",
-      "created_at": "2026-11-11T22:51:50.494Z",
+      "created_at": "2026-11-12T00:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1041",
-        "uuid": "0fd24e38-13ee-4b0e-9b4e-f72a47f85523",
+        "uuid": "f9375c79-96c7-4812-8a5e-aa998d982c93",
         "invoice_number": "MKN-2026-00042",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0041",
-        "issue_date": "2026-11-13T15:51:50.494Z",
+        "issue_date": "2026-11-13T17:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -1480,7 +1480,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "c7fb2a4864c29cbb95d0ac305d8e0fd9626ce9e6cb558a380a42f5630e9df9fe"
+        "zatca_hash": "6564e17bdffd990b5035fa3599ee048aac2be54b6e4bfdd43d9ecd29ad4e3539"
       }
     },
     {
@@ -1498,16 +1498,16 @@
       "time": "18:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_35a174cf2433a591",
+      "payment_id": "pay_syn_ed3b713ebdd1f566",
       "status": "confirmed",
-      "created_at": "2026-11-11T20:51:50.494Z",
+      "created_at": "2026-11-11T22:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1042",
-        "uuid": "62024173-4abf-4d88-9141-dfd0cf5d671d",
+        "uuid": "6aaca811-7fcb-436d-afe5-49efe365adb4",
         "invoice_number": "MKN-2026-00043",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0042",
-        "issue_date": "2026-11-13T14:51:50.494Z",
+        "issue_date": "2026-11-13T16:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -1516,7 +1516,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "9c2e743c095a3f4fccd4d8129d31837933580f02ff0926856ae4893ce5cb9932"
+        "zatca_hash": "dfa7ce604a3d6ec3b9755853eaedfe271b240b55a1a482747e4e9f83adea9840"
       }
     },
     {
@@ -1534,16 +1534,16 @@
       "time": "19:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_246f6938f999b1f3",
+      "payment_id": "pay_syn_87ebbf9c2f303679",
       "status": "confirmed",
-      "created_at": "2026-11-11T18:51:50.494Z",
+      "created_at": "2026-11-11T20:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1043",
-        "uuid": "630764e8-4e8c-4ea0-b381-30b5a0a9241c",
+        "uuid": "b826974a-9c56-4949-ba72-766c9ae3845a",
         "invoice_number": "MKN-2026-00044",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0043",
-        "issue_date": "2026-11-13T13:51:50.494Z",
+        "issue_date": "2026-11-13T15:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1552,7 +1552,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "005f7aac1c7b6f7bf29fd8e3b9b70da06ad77d0725dc7689630b41cf695df06a"
+        "zatca_hash": "e97ed8f6ff0f1d39372d58642d8260962ea695a24ba3da6d3182fdbf556d404f"
       }
     },
     {
@@ -1570,16 +1570,16 @@
       "time": "09:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_3cea2b07ae62ab25",
+      "payment_id": "pay_syn_08205c3eada837f1",
       "status": "completed",
-      "created_at": "2026-11-11T16:51:50.494Z",
+      "created_at": "2026-11-11T18:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1044",
-        "uuid": "e10986c8-1cac-4fe0-b65b-de22d280268c",
+        "uuid": "d1a8e903-cb0e-4005-9d52-0664bfee84e1",
         "invoice_number": "MKN-2026-00045",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0044",
-        "issue_date": "2026-11-13T12:51:50.494Z",
+        "issue_date": "2026-11-13T14:38:28.269Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1588,7 +1588,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "06972720c836a441fd0f4e0591aacc1c9c722c1a4197acdd399462ab48c90b40"
+        "zatca_hash": "16e08fb1cab9e94703d459623c3d03d82a7f5a2ab34c36c86c8cd79909d81a10"
       }
     },
     {
@@ -1606,16 +1606,16 @@
       "time": "10:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_55132b4b43b88a93",
+      "payment_id": "pay_syn_ad94aedfe47ce222",
       "status": "confirmed",
-      "created_at": "2026-11-11T14:51:50.494Z",
+      "created_at": "2026-11-11T16:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1045",
-        "uuid": "7a8bf89c-86dc-47a6-90a2-4d4164e1c82c",
+        "uuid": "b18a24b8-8f94-40e1-847d-cf741e715712",
         "invoice_number": "MKN-2026-00046",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0045",
-        "issue_date": "2026-11-13T11:51:50.494Z",
+        "issue_date": "2026-11-13T13:38:28.269Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1624,7 +1624,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "fbf0a0be63b9116aef8f930c0327da449d349eda8589ef7f05edfcf1e3edcb11"
+        "zatca_hash": "c22b93e6d08055d6f90e3b8a4598a77904c3b816349b5a988655a1163bb2476f"
       }
     },
     {
@@ -1642,16 +1642,16 @@
       "time": "11:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_9c8e5068b880ebe2",
+      "payment_id": "pay_syn_109d30266e003fa8",
       "status": "confirmed",
-      "created_at": "2026-11-11T12:51:50.494Z",
+      "created_at": "2026-11-11T14:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1046",
-        "uuid": "2c63eef4-d46d-4054-ba3f-d8e958f5eb2b",
+        "uuid": "4ff6ceea-0348-4051-81c8-d485f0a2660b",
         "invoice_number": "MKN-2026-00047",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0046",
-        "issue_date": "2026-11-13T10:51:50.494Z",
+        "issue_date": "2026-11-13T12:38:28.269Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -1660,7 +1660,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "adb69f7c987b9af82b7ac5f0211b49d617a8ce598bb367f41643944899b44b0a"
+        "zatca_hash": "0585e87977286990979fe71f283783004e47af25c77507fb19bbe883e4836c16"
       }
     },
     {
@@ -1678,16 +1678,16 @@
       "time": "12:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_38989c27279cb88a",
+      "payment_id": "pay_syn_24f13634ed39fd92",
       "status": "confirmed",
-      "created_at": "2026-11-11T10:51:50.494Z",
+      "created_at": "2026-11-11T12:38:28.269Z",
       "invoice": {
         "id": "INV-SYN-1047",
-        "uuid": "3629bf82-f897-4463-b0a3-f76ca8cab284",
+        "uuid": "f93452c6-761f-4480-bef0-fceb8fd8fa96",
         "invoice_number": "MKN-2026-00048",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0047",
-        "issue_date": "2026-11-13T09:51:50.494Z",
+        "issue_date": "2026-11-13T11:38:28.269Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -1696,7 +1696,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "f1a2546ac8ba97cb02e9121c67696072352af27aaa42fa3a7fa45bbc677b8dce"
+        "zatca_hash": "08b9a8b3e3f42b6a7aa549e9c2424ee725dcd733d9d203aff1daea1a96484960"
       }
     },
     {
@@ -1714,16 +1714,16 @@
       "time": "13:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_8ccfb3c5d178dcbb",
+      "payment_id": "pay_syn_483da0e5ac912c47",
       "status": "completed",
-      "created_at": "2026-11-11T08:51:50.494Z",
+      "created_at": "2026-11-11T10:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1048",
-        "uuid": "133ae875-3e60-449b-b124-18c4953cb1fe",
+        "uuid": "71a10ddf-9c5c-4f6d-9255-7a9d918a071f",
         "invoice_number": "MKN-2026-00049",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0048",
-        "issue_date": "2026-11-13T08:51:50.494Z",
+        "issue_date": "2026-11-13T10:38:28.269Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1732,7 +1732,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "47fab2bd1bb5461af852cbe75aaae218efb2d4f9232e284de81e713579a61032"
+        "zatca_hash": "d5eab220d1ec05bc1dcf73e13a4e171810930a83c2814b5548c946d107dd4e28"
       }
     },
     {
@@ -1750,16 +1750,16 @@
       "time": "14:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_d5aa1b86fe956e00",
+      "payment_id": "pay_syn_f9925724e1884dc6",
       "status": "confirmed",
-      "created_at": "2026-11-11T06:51:50.494Z",
+      "created_at": "2026-11-11T08:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1049",
-        "uuid": "8633e280-8e87-40c0-8c8c-6ea4059257e2",
+        "uuid": "251fb4c6-ed49-468b-8725-c1d008224546",
         "invoice_number": "MKN-2026-00050",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0049",
-        "issue_date": "2026-11-13T07:51:50.494Z",
+        "issue_date": "2026-11-13T09:38:28.270Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1768,7 +1768,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "eb0c061621bca1bcbe0beb1eb08ac6cf35677773eeb9a624f8f5230296b36e24"
+        "zatca_hash": "3bb5a8ee883125e6f57fb5ae68864f3ab3d76f0f6a6fd9ed895768c3a132ea53"
       }
     },
     {
@@ -1786,16 +1786,16 @@
       "time": "15:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_86504196b0cd582b",
+      "payment_id": "pay_syn_862065480efd76a0",
       "status": "confirmed",
-      "created_at": "2026-11-11T04:51:50.494Z",
+      "created_at": "2026-11-11T06:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1050",
-        "uuid": "dec60f84-4624-4785-ba75-639e711faea2",
+        "uuid": "d4bc024e-f415-4081-8678-f9c79d750142",
         "invoice_number": "MKN-2026-00051",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0050",
-        "issue_date": "2026-11-13T06:51:50.494Z",
+        "issue_date": "2026-11-13T08:38:28.270Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1804,7 +1804,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2fb9d0c09a2991c9631f4e60f7eb14be3ab3fb76b2404be3a3007aaf91f97230"
+        "zatca_hash": "b976fb4c44964a53bea1a0f1aa425e8ebcbae0b7363270a5a27cf8596ac40cd0"
       }
     },
     {
@@ -1822,16 +1822,16 @@
       "time": "16:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_556fa76df59cb49c",
+      "payment_id": "pay_syn_73dc47e846cf9c76",
       "status": "confirmed",
-      "created_at": "2026-11-11T02:51:50.494Z",
+      "created_at": "2026-11-11T04:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1051",
-        "uuid": "075bc336-282e-4e48-9861-1aaba72ec398",
+        "uuid": "a2d90995-5251-4641-829f-180097e2678e",
         "invoice_number": "MKN-2026-00052",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0051",
-        "issue_date": "2026-11-13T05:51:50.494Z",
+        "issue_date": "2026-11-13T07:38:28.270Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -1840,7 +1840,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "85b62455582a961650952611217d1651c9f4f26a64b87f5f684cdfa06a289882"
+        "zatca_hash": "37a7466f1df672f49c073ce962adc26fa4c9d12f5e8baa3508cbd261a88e11b6"
       }
     },
     {
@@ -1858,16 +1858,16 @@
       "time": "17:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_0d053596f54a9eb5",
+      "payment_id": "pay_syn_68c04120075efe8c",
       "status": "completed",
-      "created_at": "2026-11-11T00:51:50.494Z",
+      "created_at": "2026-11-11T02:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1052",
-        "uuid": "db2b544a-828e-457f-87b5-177462e4da6a",
+        "uuid": "fbf0bf89-3d64-4392-a4d6-6071ef2fd12b",
         "invoice_number": "MKN-2026-00053",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0052",
-        "issue_date": "2026-11-13T04:51:50.494Z",
+        "issue_date": "2026-11-13T06:38:28.270Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -1876,7 +1876,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "69aa981bd1a60018a3ea4777f08eee7265a07982690288b694e584383bcbdd0d"
+        "zatca_hash": "418b201c87f4793f72bc25f91578b84ac325c51e4fa4131d18862cb79e76b427"
       }
     },
     {
@@ -1894,16 +1894,16 @@
       "time": "18:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_16640aa4381d2566",
+      "payment_id": "pay_syn_4fdbc02974b8a2e0",
       "status": "confirmed",
-      "created_at": "2026-11-10T22:51:50.494Z",
+      "created_at": "2026-11-11T00:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1053",
-        "uuid": "71fe8b2e-72f1-4a3c-818b-34cc93e5c2e2",
+        "uuid": "9280c82e-f3dd-43ca-b4e8-57de3d1fe205",
         "invoice_number": "MKN-2026-00054",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0053",
-        "issue_date": "2026-11-13T03:51:50.494Z",
+        "issue_date": "2026-11-13T05:38:28.270Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -1912,7 +1912,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "5235677be8c5685b784aa1ae410eb0a5ffbc1f85c9631c254eff3b5a90cd49d2"
+        "zatca_hash": "85d57070d2d48733280cf10dc5632a090d7c22c7dec08b898d90bfe617cb9f11"
       }
     },
     {
@@ -1930,16 +1930,16 @@
       "time": "19:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_8fd8ecc47976177b",
+      "payment_id": "pay_syn_6c1c78e3ed0509bf",
       "status": "confirmed",
-      "created_at": "2026-11-10T20:51:50.494Z",
+      "created_at": "2026-11-10T22:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1054",
-        "uuid": "2d1f955a-99db-47b3-ba5a-ac9fbd8bf622",
+        "uuid": "4a155ce0-28c7-48c3-bc12-121f0b06bb40",
         "invoice_number": "MKN-2026-00055",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0054",
-        "issue_date": "2026-11-13T02:51:50.494Z",
+        "issue_date": "2026-11-13T04:38:28.270Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -1948,7 +1948,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b86e1cc1bbf3fa11b28925cb6494d9c038f577895a7fa5fb55a1cf42e90b2978"
+        "zatca_hash": "bbe169e72b349e3b29bec18aa61047cf0c5317279583db6c58dce8da8720339f"
       }
     },
     {
@@ -1966,16 +1966,16 @@
       "time": "09:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_1b39e79e94c51ac9",
+      "payment_id": "pay_syn_a8525daf5c980185",
       "status": "confirmed",
-      "created_at": "2026-11-10T18:51:50.494Z",
+      "created_at": "2026-11-10T20:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1055",
-        "uuid": "8e79dfa8-8a13-4b12-9bc9-c57cec7e624e",
+        "uuid": "0d229b53-b12e-4010-9f05-97f9abab6c7b",
         "invoice_number": "MKN-2026-00056",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0055",
-        "issue_date": "2026-11-13T01:51:50.494Z",
+        "issue_date": "2026-11-13T03:38:28.270Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -1984,7 +1984,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "04a70215094a1e6e4ebe02f44a64adeb31a36fdfef06a206d113c891989fc76b"
+        "zatca_hash": "d3643d616445f0d22b8b9602c8e1f78057f6babcd171f2bee0fbd0c34a0742f1"
       }
     },
     {
@@ -2002,16 +2002,16 @@
       "time": "10:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_db2783402407a86d",
+      "payment_id": "pay_syn_93209b00ac149a12",
       "status": "completed",
-      "created_at": "2026-11-10T16:51:50.494Z",
+      "created_at": "2026-11-10T18:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1056",
-        "uuid": "24b8240b-3b03-4edc-abc3-0fa679ff11bd",
+        "uuid": "c8680be0-d333-4e84-9927-e15a727c201b",
         "invoice_number": "MKN-2026-00057",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0056",
-        "issue_date": "2026-11-13T00:51:50.494Z",
+        "issue_date": "2026-11-13T02:38:28.270Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2020,7 +2020,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "f0598ede95509d2c8e5196ef922bcf6bebe2b278b141f3bf47a4edd51e6fd9cc"
+        "zatca_hash": "f147051b588f8cd09bfb3749a8918d102ce39711ee576797f73ee64495efad60"
       }
     },
     {
@@ -2038,16 +2038,16 @@
       "time": "11:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_611a5f3f6bf61c77",
+      "payment_id": "pay_syn_bd9498f7e44d4a25",
       "status": "confirmed",
-      "created_at": "2026-11-10T14:51:50.494Z",
+      "created_at": "2026-11-10T16:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1057",
-        "uuid": "717664de-3f42-44b8-a5f7-e7151b929008",
+        "uuid": "e3f6ba03-736b-4abc-ae4a-973e35d2249b",
         "invoice_number": "MKN-2026-00058",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0057",
-        "issue_date": "2026-11-12T23:51:50.494Z",
+        "issue_date": "2026-11-13T01:38:28.270Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2056,7 +2056,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "d5bdfe6ef96f65ae70f88bcbe9ed4757c6cf29518f97c1f762ba10aa77003f32"
+        "zatca_hash": "7b021472e474bbf731e1c86d8f5900efcc9c10993ab397099559194f0da21e03"
       }
     },
     {
@@ -2074,16 +2074,16 @@
       "time": "12:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_2eddfd920fbd156b",
+      "payment_id": "pay_syn_3223e5854a615710",
       "status": "confirmed",
-      "created_at": "2026-11-10T12:51:50.494Z",
+      "created_at": "2026-11-10T14:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1058",
-        "uuid": "54bfb48b-ac64-43ae-a3e3-3c3a6fcffbc9",
+        "uuid": "e5d64fca-f29c-4f3f-887e-2ceb4343a05d",
         "invoice_number": "MKN-2026-00059",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0058",
-        "issue_date": "2026-11-12T22:51:50.494Z",
+        "issue_date": "2026-11-13T00:38:28.270Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2092,7 +2092,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "55bc580873ad8c4d42199cd36f04103f6fa7a908c1e3cf2280fd32f208167a85"
+        "zatca_hash": "5dce3db51d28f72e3767554306159f543531ad3221b54d998abb0cebe9ee0f91"
       }
     },
     {
@@ -2110,16 +2110,16 @@
       "time": "13:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_d6a07620f641780d",
+      "payment_id": "pay_syn_95f0eb59d8e28d0c",
       "status": "confirmed",
-      "created_at": "2026-11-10T10:51:50.494Z",
+      "created_at": "2026-11-10T12:38:28.270Z",
       "invoice": {
         "id": "INV-SYN-1059",
-        "uuid": "b4b58a3d-6260-4fb5-9b27-ef707ad75767",
+        "uuid": "6bf46651-d5b8-4b3d-ada9-591effe0a5f9",
         "invoice_number": "MKN-2026-00060",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0059",
-        "issue_date": "2026-11-12T21:51:50.494Z",
+        "issue_date": "2026-11-12T23:38:28.270Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -2128,7 +2128,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "362e3845496beacfc48c15abaab575e22f7bf6683da07765a806d1c3046bc6c6"
+        "zatca_hash": "a1c3b1f3c0e8cde22a5aa45551382021d76baa0bfaf224e489d5132b2dae26b3"
       }
     },
     {
@@ -2146,16 +2146,16 @@
       "time": "14:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_94462e40588e0ad7",
+      "payment_id": "pay_syn_e38ed515a41a88eb",
       "status": "completed",
-      "created_at": "2026-11-10T08:51:50.495Z",
+      "created_at": "2026-11-10T10:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1060",
-        "uuid": "9ffe0db6-76b7-4906-b7c1-6626ef95dd8b",
+        "uuid": "bc20cf1b-0984-495b-9ee2-213a2abe5463",
         "invoice_number": "MKN-2026-00061",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0060",
-        "issue_date": "2026-11-12T20:51:50.494Z",
+        "issue_date": "2026-11-12T22:38:28.270Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -2164,7 +2164,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b6580d016ece3ca0ecc213656d1ea47581cd31f2f28f0adb4b221c7c8c572871"
+        "zatca_hash": "9a48ccbab89cbf97bf10b0da87df3140f332d4b637391e67a58e53b4c39577fe"
       }
     },
     {
@@ -2182,16 +2182,16 @@
       "time": "15:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_98c8c3f18114c259",
+      "payment_id": "pay_syn_7f1177b8c50a9351",
       "status": "confirmed",
-      "created_at": "2026-11-10T06:51:50.495Z",
+      "created_at": "2026-11-10T08:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1061",
-        "uuid": "9b8ca929-99b2-4e12-97c5-7d81eba212f2",
+        "uuid": "a69d4999-3a86-4144-abf0-3cf372cb8b23",
         "invoice_number": "MKN-2026-00062",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0061",
-        "issue_date": "2026-11-12T19:51:50.495Z",
+        "issue_date": "2026-11-12T21:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2200,7 +2200,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "655d4b593786227c565251eb7917fe6a2f2f591693cdc7bd9059162014092c92"
+        "zatca_hash": "7d5501816c43843098ccce0d3622e4e8e71ffdd641d0c3c27cf2da1301c46657"
       }
     },
     {
@@ -2218,16 +2218,16 @@
       "time": "16:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_1451a9cd6d792617",
+      "payment_id": "pay_syn_507322578838e830",
       "status": "confirmed",
-      "created_at": "2026-11-10T04:51:50.495Z",
+      "created_at": "2026-11-10T06:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1062",
-        "uuid": "6a9a9283-ecd4-459d-a6a6-6162c99077c0",
+        "uuid": "68ae596e-a1f5-49fa-9160-ce11daccd889",
         "invoice_number": "MKN-2026-00063",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0062",
-        "issue_date": "2026-11-12T18:51:50.495Z",
+        "issue_date": "2026-11-12T20:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2236,7 +2236,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "8603171959e1d59c6203231934868f7e4de9daaf14782351b3f0f71b16f68fb9"
+        "zatca_hash": "e031fad273cadcbf13d605cee4947d21cba43b3bd8cd3628cd9a7b676e1130d9"
       }
     },
     {
@@ -2254,16 +2254,16 @@
       "time": "17:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_a4ac60a3a6eba5ba",
+      "payment_id": "pay_syn_58e4e08fbb15acb1",
       "status": "confirmed",
-      "created_at": "2026-11-10T02:51:50.495Z",
+      "created_at": "2026-11-10T04:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1063",
-        "uuid": "1c997402-72c4-46bf-a371-3c92871c803d",
+        "uuid": "ac7fc5e5-bb32-4c19-9e86-c873c42f0d6e",
         "invoice_number": "MKN-2026-00064",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0063",
-        "issue_date": "2026-11-12T17:51:50.495Z",
+        "issue_date": "2026-11-12T19:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2272,7 +2272,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b57c2f25e77c61a8fe8af7f1ec742273094bbd7d9da5f352ac696634f6785bc9"
+        "zatca_hash": "4ce1085196de5ecbb7b6c8cff4d43df2ed4b045b310edd9b8d1ac72f78f2bd58"
       }
     },
     {
@@ -2290,16 +2290,16 @@
       "time": "18:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_64d7c1d0054cef9d",
+      "payment_id": "pay_syn_6e139a9241e41820",
       "status": "completed",
-      "created_at": "2026-11-10T00:51:50.495Z",
+      "created_at": "2026-11-10T02:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1064",
-        "uuid": "e93a6682-a27d-4a7e-aae2-3b981270d58a",
+        "uuid": "5368fccc-7596-4228-b20d-ce6e458fd930",
         "invoice_number": "MKN-2026-00065",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0064",
-        "issue_date": "2026-11-12T16:51:50.495Z",
+        "issue_date": "2026-11-12T18:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -2308,7 +2308,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "bae72a3a7604d86d98264d22f46c64d0266a10ffae41326f760efc0d6beb6401"
+        "zatca_hash": "84f49db7484a8fe6e175b523f3317dd690b1c68a0e1308e30e4cc581fd14c26a"
       }
     },
     {
@@ -2326,16 +2326,16 @@
       "time": "19:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_0049770a705807cf",
+      "payment_id": "pay_syn_46a5c13a991e865a",
       "status": "confirmed",
-      "created_at": "2026-11-09T22:51:50.495Z",
+      "created_at": "2026-11-10T00:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1065",
-        "uuid": "da760852-d620-4197-9e88-5682e1ba0b90",
+        "uuid": "2b1cb6b3-9447-4c2d-98db-0f35667760cb",
         "invoice_number": "MKN-2026-00066",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0065",
-        "issue_date": "2026-11-12T15:51:50.495Z",
+        "issue_date": "2026-11-12T17:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -2344,7 +2344,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "d89a75ad4e234596d13c52391ff4b53a6b10d9f83f70f48ac6ba265f2f1acc11"
+        "zatca_hash": "c779799d62c4de4f1132cdf318419431c044513d9e0ff43a8c76698ebf077bcf"
       }
     },
     {
@@ -2362,16 +2362,16 @@
       "time": "09:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_5aa860079fbaf841",
+      "payment_id": "pay_syn_fc4f94a1bd28f152",
       "status": "confirmed",
-      "created_at": "2026-11-09T20:51:50.495Z",
+      "created_at": "2026-11-09T22:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1066",
-        "uuid": "c6831e79-e581-44a2-bf0c-80e65de33416",
+        "uuid": "1d309cf7-6d09-44b6-94dd-13b0f9a243c3",
         "invoice_number": "MKN-2026-00067",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0066",
-        "issue_date": "2026-11-12T14:51:50.495Z",
+        "issue_date": "2026-11-12T16:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2380,7 +2380,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "e1e12555d77efbff4a3d68947350b06536bb837c127d26aac24eaf0ed2582a99"
+        "zatca_hash": "8482a54cc559c779cb3013fcbf74f7c7e92018f25e8e6226abfe26aaf70f46ad"
       }
     },
     {
@@ -2398,16 +2398,16 @@
       "time": "10:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_c348f69e712f7501",
+      "payment_id": "pay_syn_89c61c7db72c83dc",
       "status": "confirmed",
-      "created_at": "2026-11-09T18:51:50.495Z",
+      "created_at": "2026-11-09T20:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1067",
-        "uuid": "89261be2-1d2c-411c-bae6-4d27414c1cc0",
+        "uuid": "6109def1-331e-40cb-aa1b-9dbd8addab31",
         "invoice_number": "MKN-2026-00068",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0067",
-        "issue_date": "2026-11-12T13:51:50.495Z",
+        "issue_date": "2026-11-12T15:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2416,7 +2416,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "be37cec7a2229581f20fc3eb83f24eefcfd0787919def506bea855e8a0752226"
+        "zatca_hash": "0841102610e9ba6127db9e1da7504f147a1dcbaeedb8ce94e178d379f6342dbe"
       }
     },
     {
@@ -2434,16 +2434,16 @@
       "time": "11:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_e1b98bcb0d50d0bf",
+      "payment_id": "pay_syn_11e6ceebf5a09c4a",
       "status": "completed",
-      "created_at": "2026-11-09T16:51:50.495Z",
+      "created_at": "2026-11-09T18:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1068",
-        "uuid": "0576c0ef-4093-450c-b173-3a2e13fa0d08",
+        "uuid": "ff56931b-887a-4494-8d31-0ed6871c7d49",
         "invoice_number": "MKN-2026-00069",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0068",
-        "issue_date": "2026-11-12T12:51:50.495Z",
+        "issue_date": "2026-11-12T14:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2452,7 +2452,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "58c7c89013db8268617a2a21233c5d75c86792dfc556df9345e3e3c9159676bc"
+        "zatca_hash": "60d496877cc47f9e1bbe7eb5a473c9e3fc136cee385e3c2103bd6bdca3fa8a17"
       }
     },
     {
@@ -2470,16 +2470,16 @@
       "time": "12:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_bd5cae1af58c049c",
+      "payment_id": "pay_syn_aadbdb37c9504cad",
       "status": "confirmed",
-      "created_at": "2026-11-09T14:51:50.495Z",
+      "created_at": "2026-11-09T16:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1069",
-        "uuid": "8dfd3673-cfcb-495e-b0fc-c377292fbe3d",
+        "uuid": "ba862ee5-5df4-483b-987e-560f1d7b4663",
         "invoice_number": "MKN-2026-00070",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0069",
-        "issue_date": "2026-11-12T11:51:50.495Z",
+        "issue_date": "2026-11-12T13:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -2488,7 +2488,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "a6e648446c600f03ed3bec4c40085391a4775c933b0f77d4d7ef6c430e4221fd"
+        "zatca_hash": "f21b11b0d7302ad88dd094b7d47b7318321b81cad342690aa9bf6ee549222145"
       }
     },
     {
@@ -2506,16 +2506,16 @@
       "time": "13:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_2ea3db6212ccb437",
+      "payment_id": "pay_syn_899b4e8691751b78",
       "status": "confirmed",
-      "created_at": "2026-11-09T12:51:50.495Z",
+      "created_at": "2026-11-09T14:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1070",
-        "uuid": "8529c833-236a-42c5-b113-aa74f365ba56",
+        "uuid": "9b0c5558-6761-4f61-a5c6-d9eedc2faf09",
         "invoice_number": "MKN-2026-00071",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0070",
-        "issue_date": "2026-11-12T10:51:50.495Z",
+        "issue_date": "2026-11-12T12:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -2524,7 +2524,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "8b67b04a970788f2642a1b22f2db99749318a02cd8a3b02d5efec99ca756b211"
+        "zatca_hash": "278b51b2c5065d6a60252bb2633a37bee9f46f81209c2e2aeb943263d53eafea"
       }
     },
     {
@@ -2542,16 +2542,16 @@
       "time": "14:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_053dae50be2d7899",
+      "payment_id": "pay_syn_a3862276baba7be1",
       "status": "confirmed",
-      "created_at": "2026-11-09T10:51:50.495Z",
+      "created_at": "2026-11-09T12:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1071",
-        "uuid": "eb18b5b7-9744-4fad-a01d-894b6b542b5e",
+        "uuid": "368eb8ef-1210-447f-8822-6a88f38fa04b",
         "invoice_number": "MKN-2026-00072",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0071",
-        "issue_date": "2026-11-12T09:51:50.495Z",
+        "issue_date": "2026-11-12T11:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2560,7 +2560,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2c16f3bbc3d4eeed47053586c35f0f3065704ca98563287756e717682337fe3d"
+        "zatca_hash": "f558040b5357fa4c3940deb9c04eaee887dd8feb513e990e5c239d8d066ad334"
       }
     },
     {
@@ -2578,16 +2578,16 @@
       "time": "15:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_6e03c96e5bb9cd02",
+      "payment_id": "pay_syn_60c5e920d5f373e6",
       "status": "completed",
-      "created_at": "2026-11-09T08:51:50.495Z",
+      "created_at": "2026-11-09T10:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1072",
-        "uuid": "8efce955-94eb-4f86-8b43-d3eb3d3e65c4",
+        "uuid": "70d51697-42ed-4b26-a752-b5c9067db31c",
         "invoice_number": "MKN-2026-00073",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0072",
-        "issue_date": "2026-11-12T08:51:50.495Z",
+        "issue_date": "2026-11-12T10:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2596,7 +2596,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "87f3881f9b8732c50a52dd0a2f464b633bca47b0f0c859470007aa0230aa7e9d"
+        "zatca_hash": "a1964ddfbc48971a432e49c2540ef171d39d8edacace22830f85dd3c50468696"
       }
     },
     {
@@ -2614,16 +2614,16 @@
       "time": "16:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_49194f2d57af037b",
+      "payment_id": "pay_syn_01ea6f1d97b3b2d9",
       "status": "confirmed",
-      "created_at": "2026-11-09T06:51:50.495Z",
+      "created_at": "2026-11-09T08:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1073",
-        "uuid": "2bb4a3ad-3b33-424b-8e12-247a8f571630",
+        "uuid": "56812103-7a90-41ac-a7e0-a1a18610b7ae",
         "invoice_number": "MKN-2026-00074",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0073",
-        "issue_date": "2026-11-12T07:51:50.495Z",
+        "issue_date": "2026-11-12T09:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2632,7 +2632,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "ccf27efb030490dd4ac6cd7143516622329827395a06aed327ff4191c7706ee3"
+        "zatca_hash": "a7759ebcf86d090a31e49cf2f3c7247587f4736ad46efbc377a4daf989f3198f"
       }
     },
     {
@@ -2650,16 +2650,16 @@
       "time": "17:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_eeb899db8a3423fc",
+      "payment_id": "pay_syn_c08adb695da072af",
       "status": "confirmed",
-      "created_at": "2026-11-09T04:51:50.495Z",
+      "created_at": "2026-11-09T06:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1074",
-        "uuid": "0b786904-d018-4fe8-896b-b98f92ea2b57",
+        "uuid": "8c122a1a-7b67-411f-966c-05fc1b9a1bd7",
         "invoice_number": "MKN-2026-00075",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0074",
-        "issue_date": "2026-11-12T06:51:50.495Z",
+        "issue_date": "2026-11-12T08:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -2668,7 +2668,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2639bd54e6e10c735c0ee6bbf2b8623ecd3da63be7955f308825dc6ee326e723"
+        "zatca_hash": "04c80500ef203bbca542515656a86270c9be7306a084e9201375e84d78347773"
       }
     },
     {
@@ -2686,16 +2686,16 @@
       "time": "18:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_ca08dd258af57d14",
+      "payment_id": "pay_syn_42e7c25019c57472",
       "status": "confirmed",
-      "created_at": "2026-11-09T02:51:50.495Z",
+      "created_at": "2026-11-09T04:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1075",
-        "uuid": "d13ee254-6e07-43a9-ac57-214f468e0a7e",
+        "uuid": "5356536e-8225-4730-b7ea-268aaaf8ab67",
         "invoice_number": "MKN-2026-00076",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0075",
-        "issue_date": "2026-11-12T05:51:50.495Z",
+        "issue_date": "2026-11-12T07:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -2704,7 +2704,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "698ca846425a5c863b1bb415f057da04386836bc3cd9295e20e74dbd864b1b9b"
+        "zatca_hash": "ec727ca28d28c69afacbc7b3614609e355e1a25c125a748b7a5a8b448dee2847"
       }
     },
     {
@@ -2722,16 +2722,16 @@
       "time": "19:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_f22c11e3ccc17eb7",
+      "payment_id": "pay_syn_70e1e8fcb5287277",
       "status": "completed",
-      "created_at": "2026-11-09T00:51:50.495Z",
+      "created_at": "2026-11-09T02:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1076",
-        "uuid": "fd7efdcb-9c6a-4d21-ba49-c630af5e547c",
+        "uuid": "58cc4bcd-4d41-4937-9866-17a4b6511a9f",
         "invoice_number": "MKN-2026-00077",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0076",
-        "issue_date": "2026-11-12T04:51:50.495Z",
+        "issue_date": "2026-11-12T06:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2740,7 +2740,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "59d4cc608327b75e50267f22c14efa3634825748bd866cfbdad8f8287282008a"
+        "zatca_hash": "d601d6017d18c08a40f67d1fdc4a6c961b644221444c07015c4aeb823f95aa8c"
       }
     },
     {
@@ -2758,16 +2758,16 @@
       "time": "09:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_3742b8c5512ede57",
+      "payment_id": "pay_syn_7819adcb5328efb2",
       "status": "confirmed",
-      "created_at": "2026-11-08T22:51:50.495Z",
+      "created_at": "2026-11-09T00:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1077",
-        "uuid": "917a8469-6671-40c4-8bbe-89f05a2d9db0",
+        "uuid": "fb114f6f-1293-4cdc-b0b3-bbb9430a7de5",
         "invoice_number": "MKN-2026-00078",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0077",
-        "issue_date": "2026-11-12T03:51:50.495Z",
+        "issue_date": "2026-11-12T05:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2776,7 +2776,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "1e7b906d649214ed2b0db8632f2a9c037d81c5cdf4c3ac0774bdd1e7cbdbfe69"
+        "zatca_hash": "9e5160a56b8ec8d4d42f017e34b35312e8b58639c86b0b87a6860f42927733c1"
       }
     },
     {
@@ -2794,16 +2794,16 @@
       "time": "10:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_b0a89845c15358b5",
+      "payment_id": "pay_syn_9da9ad5637890334",
       "status": "confirmed",
-      "created_at": "2026-11-08T20:51:50.495Z",
+      "created_at": "2026-11-08T22:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1078",
-        "uuid": "96752a95-5072-4bd5-a412-c21242d6668f",
+        "uuid": "1d55dd7f-6aea-4a10-b1ec-fbd1216c3f85",
         "invoice_number": "MKN-2026-00079",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0078",
-        "issue_date": "2026-11-12T02:51:50.495Z",
+        "issue_date": "2026-11-12T04:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2812,7 +2812,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "8bd0cbf49b7df0d3a108ec082751c59b33b3ca430a7712f491154e3f817d4f51"
+        "zatca_hash": "2bb6b585a630ec71b9ef9f446f4e54db7c73c384eaec5ff9271715abf9053186"
       }
     },
     {
@@ -2830,16 +2830,16 @@
       "time": "11:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_191a3c3bb5e7a240",
+      "payment_id": "pay_syn_b65a7983e8084176",
       "status": "confirmed",
-      "created_at": "2026-11-08T18:51:50.495Z",
+      "created_at": "2026-11-08T20:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1079",
-        "uuid": "d9b3a3b3-7a74-409b-ad41-0e2cd3cf04d8",
+        "uuid": "2048c0cd-8a66-4e02-95a4-755cee28ad36",
         "invoice_number": "MKN-2026-00080",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0079",
-        "issue_date": "2026-11-12T01:51:50.495Z",
+        "issue_date": "2026-11-12T03:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -2848,7 +2848,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "4cacb57acffb8c130ae1fbcbcfd88e92a4286b3b8b1edf4da3d29be615b31bcf"
+        "zatca_hash": "95f141573d9922543823348b5ec86c2d1a75254c5181f6aa6eb9b06076f4605b"
       }
     },
     {
@@ -2866,16 +2866,16 @@
       "time": "12:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_cc3304ab3488222b",
+      "payment_id": "pay_syn_edb36ef07d24fcbb",
       "status": "completed",
-      "created_at": "2026-11-08T16:51:50.495Z",
+      "created_at": "2026-11-08T18:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1080",
-        "uuid": "6ddb7e35-54e7-4fea-867a-f595ca455cba",
+        "uuid": "51350e1d-ad3d-4994-bd64-03475064421b",
         "invoice_number": "MKN-2026-00081",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0080",
-        "issue_date": "2026-11-12T00:51:50.495Z",
+        "issue_date": "2026-11-12T02:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -2884,7 +2884,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "a6393b2b078ccbd3eeac2c149adb5900a0a4227ff74b1a61510c13afa6de42f1"
+        "zatca_hash": "7bb53808c6d9b65ee6343bf12429326cf9bb054cc0be51435aa6b8367e517904"
       }
     },
     {
@@ -2902,16 +2902,16 @@
       "time": "13:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_61824e13d5fb2886",
+      "payment_id": "pay_syn_20b196173dc34d88",
       "status": "confirmed",
-      "created_at": "2026-11-08T14:51:50.495Z",
+      "created_at": "2026-11-08T16:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1081",
-        "uuid": "62444dd3-4508-4346-aaa0-e5f63e29f037",
+        "uuid": "fffec995-a156-4454-b23c-6a18f5677d6a",
         "invoice_number": "MKN-2026-00082",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0081",
-        "issue_date": "2026-11-11T23:51:50.495Z",
+        "issue_date": "2026-11-12T01:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -2920,7 +2920,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "7dd872cd60d013fc74ff99d25c118fccfad77d139ac7fb3c074bf5d789bd018e"
+        "zatca_hash": "bff20c32bea5be1793587d6824684097d240ebddf2c62d46b3b36fb6dce319af"
       }
     },
     {
@@ -2938,16 +2938,16 @@
       "time": "14:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_c321bd268f9d8f60",
+      "payment_id": "pay_syn_615b02d0d095c22c",
       "status": "confirmed",
-      "created_at": "2026-11-08T12:51:50.495Z",
+      "created_at": "2026-11-08T14:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1082",
-        "uuid": "0f1d8646-447a-4ab0-8007-44f91e117dac",
+        "uuid": "2cc64ada-e418-4c05-a11f-9b4a52f9754d",
         "invoice_number": "MKN-2026-00083",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0082",
-        "issue_date": "2026-11-11T22:51:50.495Z",
+        "issue_date": "2026-11-12T00:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -2956,7 +2956,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "6309f9bb8d1cc71eab90a4e707886c7974cf63073f0a071c89fe14b3c42ed3bd"
+        "zatca_hash": "dbda9e53e630f9e676153f3892843ad0dc65efe266e5ba1ee69d0d7f639d9b56"
       }
     },
     {
@@ -2974,16 +2974,16 @@
       "time": "15:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_ca7e9424540eb061",
+      "payment_id": "pay_syn_7cebb08e408dec97",
       "status": "confirmed",
-      "created_at": "2026-11-08T10:51:50.495Z",
+      "created_at": "2026-11-08T12:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1083",
-        "uuid": "4b4184f4-51c3-4aad-b6b4-642a68f93767",
+        "uuid": "f18994c1-f0ee-43b1-8792-c93766c2a209",
         "invoice_number": "MKN-2026-00084",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0083",
-        "issue_date": "2026-11-11T21:51:50.495Z",
+        "issue_date": "2026-11-11T23:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -2992,7 +2992,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "f1ed2a0a90bcaaa4c8fb755f789ae7ca95ff0e5cda8bc5cdbeced5ab4541aed0"
+        "zatca_hash": "132b78e93310b010d2ffc541bdf47a15cd83df1f26ca333b04b21cf4d6826110"
       }
     },
     {
@@ -3010,16 +3010,16 @@
       "time": "16:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_0461ab8521b91c36",
+      "payment_id": "pay_syn_631de3527b5270f2",
       "status": "completed",
-      "created_at": "2026-11-08T08:51:50.495Z",
+      "created_at": "2026-11-08T10:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1084",
-        "uuid": "62c3ddf0-cb10-4f66-84cd-5d349cb2e3b5",
+        "uuid": "74283506-95dc-4471-a98b-6a28a9c762ba",
         "invoice_number": "MKN-2026-00085",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0084",
-        "issue_date": "2026-11-11T20:51:50.495Z",
+        "issue_date": "2026-11-11T22:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -3028,7 +3028,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "bb70370073efe11dc249d9753e533c7315b91e05d2016d3fcfb173c72e449d64"
+        "zatca_hash": "fdba5e8df1c835d039aac43f332eff01a9512ccec08412171eefe35d1f341d97"
       }
     },
     {
@@ -3046,16 +3046,16 @@
       "time": "17:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_95eb93eb842e05e6",
+      "payment_id": "pay_syn_f9f6ef8f5e09b5c2",
       "status": "confirmed",
-      "created_at": "2026-11-08T06:51:50.495Z",
+      "created_at": "2026-11-08T08:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1085",
-        "uuid": "0808cd48-4fed-4381-ae3c-9f71fc18eb4c",
+        "uuid": "40e6ec88-5533-44db-a14f-33260d3599c6",
         "invoice_number": "MKN-2026-00086",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0085",
-        "issue_date": "2026-11-11T19:51:50.495Z",
+        "issue_date": "2026-11-11T21:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -3064,7 +3064,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "17e0738885228bc7faad08f6ef53a6ca43f10a6430a713bbe149fd507880bd1e"
+        "zatca_hash": "391a38de55db63ada599644e7cfe5e9e9fba0305b8f347cdc2fb50a1cedd2db9"
       }
     },
     {
@@ -3082,16 +3082,16 @@
       "time": "18:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_ffab3a9b755131d2",
+      "payment_id": "pay_syn_bb627167bba70f61",
       "status": "confirmed",
-      "created_at": "2026-11-08T04:51:50.495Z",
+      "created_at": "2026-11-08T06:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1086",
-        "uuid": "f9675d7c-9a1b-444d-a39a-3cdd4d35738b",
+        "uuid": "a19cf048-5b86-4ffd-b53f-3218fcdfc519",
         "invoice_number": "MKN-2026-00087",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0086",
-        "issue_date": "2026-11-11T18:51:50.495Z",
+        "issue_date": "2026-11-11T20:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -3100,7 +3100,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "8ebd430bae8df05a73d486d7aea4967fdfdd83b184e3caf039d4edb8de8e1459"
+        "zatca_hash": "8e52ea1f838bf27de49b9b3b1215999f59e052604c3e52f8d0efe5c82a04382a"
       }
     },
     {
@@ -3118,16 +3118,16 @@
       "time": "19:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_5b02d2d13d7a000a",
+      "payment_id": "pay_syn_ba87416f32d9dc23",
       "status": "confirmed",
-      "created_at": "2026-11-08T02:51:50.495Z",
+      "created_at": "2026-11-08T04:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1087",
-        "uuid": "f6dc14b9-c77d-48f9-91e3-e46c21b49d53",
+        "uuid": "b6456a5d-129a-4067-ba09-5f7addc16b5a",
         "invoice_number": "MKN-2026-00088",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0087",
-        "issue_date": "2026-11-11T17:51:50.495Z",
+        "issue_date": "2026-11-11T19:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -3136,7 +3136,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2f7afe44ec223bb3303a4304b19fa2540c9d9d17e91eb965860190bde887da73"
+        "zatca_hash": "a81f504b01facd9c196b229661ae1154c4963e9ec59cdfc2febe7929980b3cf5"
       }
     },
     {
@@ -3154,16 +3154,16 @@
       "time": "09:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_65968abe3499deca",
+      "payment_id": "pay_syn_ebd12def427b7c09",
       "status": "completed",
-      "created_at": "2026-11-08T00:51:50.495Z",
+      "created_at": "2026-11-08T02:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1088",
-        "uuid": "c090ec69-cf30-4bed-9c65-131d84d443ca",
+        "uuid": "f6d52b82-354f-4d5f-9bf8-f8e38e439213",
         "invoice_number": "MKN-2026-00089",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0088",
-        "issue_date": "2026-11-11T16:51:50.495Z",
+        "issue_date": "2026-11-11T18:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -3172,7 +3172,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "854da0571dbfbff93de307ca85da7719a94ffd68a8a407c05f48350a35e831f2"
+        "zatca_hash": "bfbbf2d9edfd1f373f1d8fbcfa6473db5a57422d62f2904919f2530d56f534a8"
       }
     },
     {
@@ -3190,16 +3190,16 @@
       "time": "10:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_caf62679d0b03707",
+      "payment_id": "pay_syn_f62b96b6d022f86a",
       "status": "confirmed",
-      "created_at": "2026-11-07T22:51:50.495Z",
+      "created_at": "2026-11-08T00:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1089",
-        "uuid": "183c1c26-93b7-48b3-88b5-9646b209e51a",
+        "uuid": "cd2eb917-ad13-4be0-b272-d72fa53578b1",
         "invoice_number": "MKN-2026-00090",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0089",
-        "issue_date": "2026-11-11T15:51:50.495Z",
+        "issue_date": "2026-11-11T17:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -3208,7 +3208,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "d2ac0b014385c088295f7fb414b812dc5d010f86e7ec06fe6bd060f0f026d906"
+        "zatca_hash": "46cb9c2d4cbf312b135821c12087f5ab6eb9bbf0fd4db96fc15cafa622ff107d"
       }
     },
     {
@@ -3226,16 +3226,16 @@
       "time": "11:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_b29b74f71c0b9137",
+      "payment_id": "pay_syn_e6e3ebe0245daa1d",
       "status": "confirmed",
-      "created_at": "2026-11-07T20:51:50.495Z",
+      "created_at": "2026-11-07T22:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1090",
-        "uuid": "4c2a61a3-4b04-4fb9-a1b5-b6eb799e0cb4",
+        "uuid": "4dc33b88-5399-4aba-93ce-7af3b8e9998c",
         "invoice_number": "MKN-2026-00091",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0090",
-        "issue_date": "2026-11-11T14:51:50.495Z",
+        "issue_date": "2026-11-11T16:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -3244,7 +3244,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "5d71fc4e38ac8c334925f23a61b1590db20933daa950c467c7af45748910ce87"
+        "zatca_hash": "334e1cd85855923690a51c3966df2a8cf0e338b57c17e5e01973943cf2843a79"
       }
     },
     {
@@ -3262,16 +3262,16 @@
       "time": "12:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_a9d3bc67c9d80cfb",
+      "payment_id": "pay_syn_9ab8b81d0381583e",
       "status": "confirmed",
-      "created_at": "2026-11-07T18:51:50.495Z",
+      "created_at": "2026-11-07T20:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1091",
-        "uuid": "0c991064-2101-4f24-a385-d26f238e61f4",
+        "uuid": "3094ed05-6fd6-40e9-98fe-b03797ba025e",
         "invoice_number": "MKN-2026-00092",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0091",
-        "issue_date": "2026-11-11T13:51:50.495Z",
+        "issue_date": "2026-11-11T15:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -3280,7 +3280,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "c69e07da6ecf2a0e672b7ee09b2640007c7fa89a00272aa68cf23d6e36f6a5ce"
+        "zatca_hash": "fef9ea86ea86ed765656c5b08631e64a753814fbdc9f668616bab657513bc36b"
       }
     },
     {
@@ -3298,16 +3298,16 @@
       "time": "13:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_2855d63c1aca47b1",
+      "payment_id": "pay_syn_e425d4fdbc48a0ff",
       "status": "completed",
-      "created_at": "2026-11-07T16:51:50.495Z",
+      "created_at": "2026-11-07T18:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1092",
-        "uuid": "1c91a0ab-a9ac-4ae5-a5ef-cf1a904e2125",
+        "uuid": "716a9fee-8eff-44ee-bd87-dfb53391f8a0",
         "invoice_number": "MKN-2026-00093",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0092",
-        "issue_date": "2026-11-11T12:51:50.495Z",
+        "issue_date": "2026-11-11T14:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -3316,7 +3316,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "d2e0b53b5a983710bbd0080e4149a0ca479db867c07f744db9a6205d1a879cf4"
+        "zatca_hash": "6f9243188e5874276865d47067cbd8646566dd46d5aa6345c88d1aedcd288061"
       }
     },
     {
@@ -3334,16 +3334,16 @@
       "time": "14:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_648f6dae40d14015",
+      "payment_id": "pay_syn_c4d9b01f3592e5a1",
       "status": "confirmed",
-      "created_at": "2026-11-07T14:51:50.495Z",
+      "created_at": "2026-11-07T16:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1093",
-        "uuid": "f5e3d840-829c-48c8-bee8-c44017b06068",
+        "uuid": "a2d7cdd8-5965-49a8-b70c-cce53c3c03e7",
         "invoice_number": "MKN-2026-00094",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0093",
-        "issue_date": "2026-11-11T11:51:50.495Z",
+        "issue_date": "2026-11-11T13:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -3352,7 +3352,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "cfad88c717314c2ec9ed08b4f951d29467d5866813f759ab93177faebcd13f9c"
+        "zatca_hash": "10752ca9af3473d19742c9098f77cd7a6142ca8bde3a28211bd9c719a93e0485"
       }
     },
     {
@@ -3370,16 +3370,16 @@
       "time": "15:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_3b7335ab68e3baad",
+      "payment_id": "pay_syn_f55888a4971c3c7a",
       "status": "confirmed",
-      "created_at": "2026-11-07T12:51:50.496Z",
+      "created_at": "2026-11-07T14:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1094",
-        "uuid": "f5764dd1-94d7-43de-9c37-9edf221e393c",
+        "uuid": "821d6f38-9c90-4713-a63a-a9a91d5bd7d1",
         "invoice_number": "MKN-2026-00095",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0094",
-        "issue_date": "2026-11-11T10:51:50.495Z",
+        "issue_date": "2026-11-11T12:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -3388,7 +3388,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "3e6fd91bd26b23fceb4d05914137e88e6afed49ab779b4c30c9e3ad01fa107d7"
+        "zatca_hash": "78200a433f5b869b06164b93d0fa25455df1b10e435cc942db1082bd3ba0dd09"
       }
     },
     {
@@ -3406,16 +3406,16 @@
       "time": "16:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_0e7da26cc1304414",
+      "payment_id": "pay_syn_5912f2799dcb29c1",
       "status": "confirmed",
-      "created_at": "2026-11-07T10:51:50.496Z",
+      "created_at": "2026-11-07T12:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1095",
-        "uuid": "54f56079-1afa-4b77-9561-b08dd58de228",
+        "uuid": "e955d627-a61d-4658-a1c3-dfc097c35396",
         "invoice_number": "MKN-2026-00096",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0095",
-        "issue_date": "2026-11-11T09:51:50.496Z",
+        "issue_date": "2026-11-11T11:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -3424,7 +3424,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "b76592890c1f8bc5b7cd102491c2ae55e46ec07d0a5f9168d3fbfa64bb3966ec"
+        "zatca_hash": "e4f8ac272279438e970016dccd628e18a747902f90f57627a69a8d4d577b463c"
       }
     },
     {
@@ -3442,16 +3442,16 @@
       "time": "17:00",
       "payment_amount": 150,
       "payment_status": "paid",
-      "payment_id": "pay_syn_72cb75dc739a3cb0",
+      "payment_id": "pay_syn_763fc01fdcc9b42e",
       "status": "completed",
-      "created_at": "2026-11-07T08:51:50.496Z",
+      "created_at": "2026-11-07T10:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1096",
-        "uuid": "45501ea5-a4cd-4fde-ac89-60b903f1f5ee",
+        "uuid": "d5222701-dbe2-405a-b240-341c3cb60232",
         "invoice_number": "MKN-2026-00097",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0096",
-        "issue_date": "2026-11-11T08:51:50.496Z",
+        "issue_date": "2026-11-11T10:38:28.271Z",
         "subtotal": 150,
         "vat_rate": 15,
         "tax_amount": 22.5,
@@ -3460,7 +3460,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "954d894cc23b6b47ba30145dea103ae68241ab38eba2bcd91f5c75cdf2b39eed"
+        "zatca_hash": "cac71e4b323fe03b7795ba40c5e58f1d6df6f03f4c20b0347659d309f15c3a09"
       }
     },
     {
@@ -3478,16 +3478,16 @@
       "time": "18:00",
       "payment_amount": 225,
       "payment_status": "paid",
-      "payment_id": "pay_syn_aa3ec30c50b60dba",
+      "payment_id": "pay_syn_944f2d198c4d7be3",
       "status": "confirmed",
-      "created_at": "2026-11-07T06:51:50.496Z",
+      "created_at": "2026-11-07T08:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1097",
-        "uuid": "37759aa6-fd08-49cd-8d38-38596a0a8b5a",
+        "uuid": "666415ed-e5c2-4f1e-807a-ddd0c8ff8ff8",
         "invoice_number": "MKN-2026-00098",
         "tenant_slug": "rewa",
         "appointment_id": "APT-SYN-0097",
-        "issue_date": "2026-11-11T07:51:50.496Z",
+        "issue_date": "2026-11-11T09:38:28.271Z",
         "subtotal": 225,
         "vat_rate": 15,
         "tax_amount": 33.75,
@@ -3496,7 +3496,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "ef45dba4d859df671e378925d6daec1037a1b3a014b6a2ad12a5d709ee3fc069"
+        "zatca_hash": "3f1b4a3a416270d60f28567fde4911ce104b16a69c6ffb8baeba4dfb81227110"
       }
     },
     {
@@ -3514,16 +3514,16 @@
       "time": "19:00",
       "payment_amount": 300,
       "payment_status": "paid",
-      "payment_id": "pay_syn_eb0cee640eec4d8b",
+      "payment_id": "pay_syn_df691feaa89f5de0",
       "status": "confirmed",
-      "created_at": "2026-11-07T04:51:50.496Z",
+      "created_at": "2026-11-07T06:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1098",
-        "uuid": "b1bb9e25-01b3-40f4-9fe0-2827a8714980",
+        "uuid": "180a64e6-567f-4fbf-82e0-e6653e02e770",
         "invoice_number": "MKN-2026-00099",
         "tenant_slug": "almasabi",
         "appointment_id": "APT-SYN-0098",
-        "issue_date": "2026-11-11T06:51:50.496Z",
+        "issue_date": "2026-11-11T08:38:28.271Z",
         "subtotal": 300,
         "vat_rate": 15,
         "tax_amount": 45,
@@ -3532,7 +3532,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "2c274f92fb1e97aa07a2727b5f6af6ada594ee2ed09cda13eb142c65e2c5a66e"
+        "zatca_hash": "1605b72802a907b48f72bfd32a4bfd397ccbb9849465b4bbcb980cce3985a59a"
       }
     },
     {
@@ -3550,16 +3550,16 @@
       "time": "09:00",
       "payment_amount": 375,
       "payment_status": "paid",
-      "payment_id": "pay_syn_8736d510a7d04d24",
+      "payment_id": "pay_syn_4843ec1a1980bd83",
       "status": "confirmed",
-      "created_at": "2026-11-07T02:51:50.496Z",
+      "created_at": "2026-11-07T04:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1099",
-        "uuid": "6545fd0b-ecd7-4124-ab0c-845ea5b4f6aa",
+        "uuid": "efd6167d-d449-499c-9f1b-869bcfb5cdba",
         "invoice_number": "MKN-2026-00100",
         "tenant_slug": "demo-salon",
         "appointment_id": "APT-SYN-0099",
-        "issue_date": "2026-11-11T05:51:50.496Z",
+        "issue_date": "2026-11-11T07:38:28.271Z",
         "subtotal": 375,
         "vat_rate": 15,
         "tax_amount": 56.25,
@@ -3568,7 +3568,7 @@
         "payment_method": "apple_pay",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "3a8145c105f21ff99b574e32ec7ffe35de6248f86fdb56b9530b4ba76e94ebab"
+        "zatca_hash": "7fb006be89df9d2ce0cefaeb7ed33b97f40a91085de29e132e3e339b390e0379"
       }
     },
     {
@@ -3586,16 +3586,16 @@
       "time": "10:00",
       "payment_amount": 75,
       "payment_status": "paid",
-      "payment_id": "pay_syn_3a68a7fe2226f615",
+      "payment_id": "pay_syn_299d7fce55e69905",
       "status": "completed",
-      "created_at": "2026-11-07T00:51:50.496Z",
+      "created_at": "2026-11-07T02:38:28.271Z",
       "invoice": {
         "id": "INV-SYN-1100",
-        "uuid": "09e0c38b-b6d0-4956-b849-406e608e1223",
+        "uuid": "12992996-08e2-4a5c-b8c9-e49b2184de47",
         "invoice_number": "MKN-2026-00101",
         "tenant_slug": "almahrusa",
         "appointment_id": "APT-SYN-0100",
-        "issue_date": "2026-11-11T04:51:50.496Z",
+        "issue_date": "2026-11-11T06:38:28.271Z",
         "subtotal": 75,
         "vat_rate": 15,
         "tax_amount": 11.25,
@@ -3604,7 +3604,7 @@
         "payment_method": "mada",
         "payment_status": "paid",
         "zatca_status": "reported",
-        "zatca_hash": "788305f9becd4af47bf072f66783b223fd7be1a68618cafd927683f3e6a69d74"
+        "zatca_hash": "8a6f520966c4d1fc23b1a11d8c2a1a90289f6cff7809963af631358a578871ad"
       }
     }
   ]

@@ -336,6 +336,37 @@
                 ➕ تذكرة يدوية جديدة
               </button>
 
+              <!-- [1.1] شريط التدخل البشري السريع (Manual Override Bar) -->
+              <div id="adminManualOverrideBar" style="background: #fff; border: 1px solid #fecaca; border-right: 4px solid #ef4444; border-radius: var(--radius); padding: 12px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <h5 style="margin: 0; font-size: 0.82rem; color: #991b1b; display: flex; align-items: center; gap: 5px;">
+                    <span>🚨</span> التدخل البشري السريع
+                  </h5>
+                  <span id="overrideCurrentStatusBadge" class="badge" style="background: #dcfce7; color: #166534; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px;">
+                    🟢 تشغيل طبيعي
+                  </span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                  <button type="button" id="btnOverrideAddCapacity" class="btn btn--outline btn--sm" style="font-weight: 700; border-color: #3b82f6; color: #1d4ed8; font-size: 0.76rem; padding: 6px 4px; justify-content: center;" title="إتاحة 10 تذاكر إضافية بعد اكتمال الطاقة">
+                    ➕ سعة (+10)
+                  </button>
+                  <button type="button" id="btnOverrideExtendTime" class="btn btn--outline btn--sm" style="font-weight: 700; border-color: #8b5cf6; color: #6d28d9; font-size: 0.76rem; padding: 6px 4px; justify-content: center;" title="تمديد الوردية 30 دقيقة لإنهاء المنتظرين">
+                    ⏰ تمديد (+30 د)
+                  </button>
+                  <button type="button" id="btnOverridePause" class="btn btn--outline btn--sm" style="font-weight: 700; border-color: #f59e0b; color: #b45309; font-size: 0.76rem; padding: 6px 4px; justify-content: center;" title="تعليق إصدار التذاكر 15 دقيقة">
+                    ⏸️ إيقاف (15 د)
+                  </button>
+                  <button type="button" id="btnOverrideForceLock" class="btn btn--outline btn--sm" style="font-weight: 700; border-color: #ef4444; color: #dc2626; font-size: 0.76rem; padding: 6px 4px; justify-content: center;" title="إغلاق الطابور ومنع مسح الـ QR نهائياً اليوم">
+                    🛑 قفل اليوم
+                  </button>
+                </div>
+
+                <button type="button" id="btnOverrideResume" class="btn btn--primary btn--sm" style="display: none; width: 100%; margin-top: 8px; background: #16a34a; border-color: #16a34a; font-weight: 700; font-size: 0.8rem; justify-content: center;">
+                  🟢 استئناف التشغيل الفوري
+                </button>
+              </div>
+
               <div class="admin-field" style="margin-bottom: 14px; position: relative;">
                 <label for="dispatcherSearchInput" style="font-size: 0.8rem; font-weight: 600;">🔍 بحث فوري عن عميل / تذكرة:</label>
                 <input type="text" id="dispatcherSearchInput" class="admin-input" placeholder="رقم التذكرة أو الجوال..." style="font-size: 0.88rem;">
@@ -950,6 +981,43 @@
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
               <button type="button" id="cancelOverrideBtn" class="btn btn--outline">إغلاق</button>
               <button type="button" id="submitOverrideReassignBtn" class="btn btn--primary">حفظ التعيين الجديد</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- النافذة المنبثقة لتأكيد التدخل البشري والامتثال (Override Confirmation & Audit Modal) -->
+        <div id="adminOverrideConfirmModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+          <div style="background: #fff; border-radius: var(--radius); width: 100%; max-width: 460px; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 2px solid #ef4444;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <h3 id="overrideConfirmModalTitle" style="margin: 0; font-size: 1.15rem; color: #dc2626; display: flex; align-items: center; gap: 8px;">
+                <span>⚠️</span> تأكيد الإجراء الاستثنائي
+              </h3>
+              <button type="button" id="closeOverrideConfirmModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+            </div>
+
+            <div id="overrideConfirmModalDesc" style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.88rem; color: #991b1b; line-height: 1.5;">
+              أنت على وشك تنفيذ إجراء تشغيلي استثنائي يؤثر على كامل الصالة والمراجعين.
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 20px;">
+              <label for="overrideConfirmModalReason" style="font-weight: 700; margin-bottom: 6px; display: block; font-size: 0.85rem; color: #1e293b;">
+                سبب التدخل التشغيلي (إلزامي لسجل الامتثال السيبراني NCA):
+              </label>
+              <select id="overrideConfirmModalReason" class="admin-input" style="font-size: 0.9rem;">
+                <option value="ازدحام غير متوقع وضغط شديد بالصالة">ازدحام غير متوقع وضغط شديد بالصالة</option>
+                <option value="انتهاء الطاقة الاستيعابية اليومية للكاونترات">انتهاء الطاقة الاستيعابية اليومية للكاونترات</option>
+                <option value="اجتماع طارئ وتنسيق داخلي للصالة (15 د)">اجتماع طارئ وتنسيق داخلي للصالة (15 د)</option>
+                <option value="خلل فني / صيانة طارئة لنقاط الخدمة">خلل فني / صيانة طارئة لنقاط الخدمة</option>
+                <option value="قفل تشغيلي لنهاية اليوم وتصفية المتبقين">قفل تشغيلي لنهاية اليوم وتصفية المتبقين</option>
+                <option value="أخرى - بقرار مشرف الفرع">أخرى - بقرار مشرف الفرع</option>
+              </select>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button type="button" id="cancelOverrideConfirmBtn" class="btn btn--outline" style="flex: 1;">إلغاء التراجع</button>
+              <button type="button" id="submitOverrideConfirmBtn" class="btn btn--primary" style="flex: 1.5; background: #dc2626; border-color: #dc2626; font-weight: 700;">
+                تأكيد الإجراء فوراً ⚡
+              </button>
             </div>
           </div>
         </div>

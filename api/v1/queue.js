@@ -19,7 +19,10 @@ const MEMORY_DB = {
   sseClients: {},          // tenantSlug -> [res]
   counterSessions: {},     // tenantSlug -> [sessionObj]
   agentBreaks: {},         // tenantSlug -> [breakObj]
-  receptionHandovers: {}   // tenantSlug -> [handoverObj]
+  receptionHandovers: {},  // tenantSlug -> [handoverObj]
+  overrides: {},           // tenantSlug -> overrideObj (Revision & Operational Overrides)
+  auditLogs: {},           // tenantSlug -> [logEntry] (NCA/PDPL Immutable Audit Trail)
+  idempotencyKeys: {}      // tenantSlug -> { idempotencyKey: { revision, override } }
 };
 
 function getOrCreateMemoryTenant(tenantSlug) {
@@ -163,6 +166,20 @@ function getOrCreateMemoryTenant(tenantSlug) {
 
   if (!MEMORY_DB.agentBreaks[slug]) MEMORY_DB.agentBreaks[slug] = [];
   if (!MEMORY_DB.receptionHandovers[slug]) MEMORY_DB.receptionHandovers[slug] = [];
+  if (!MEMORY_DB.overrides[slug]) {
+    MEMORY_DB.overrides[slug] = {
+      state_revision: 1,
+      capacity_override_delta: 0,
+      extended_closing_minutes: 0,
+      paused_until: null,
+      is_force_locked_today: false,
+      lock_reason: null,
+      pause_reason: null,
+      updated_at: new Date().toISOString()
+    };
+  }
+  if (!MEMORY_DB.auditLogs[slug]) MEMORY_DB.auditLogs[slug] = [];
+  if (!MEMORY_DB.idempotencyKeys[slug]) MEMORY_DB.idempotencyKeys[slug] = {};
 
   if (!MEMORY_DB.tickets[slug]) MEMORY_DB.tickets[slug] = [];
   if (!MEMORY_DB.serviceLogs[slug]) MEMORY_DB.serviceLogs[slug] = [];
@@ -213,6 +230,11 @@ function broadcastSSE(tenantSlug, event, data) {
   const slug = (tenantSlug || 'default').toLowerCase();
   const clients = MEMORY_DB.sseClients[slug] || [];
   if (!clients.length) return;
+  if (data && typeof data === 'object') {
+    if (!data.state_revision && MEMORY_DB.overrides && MEMORY_DB.overrides[slug]) {
+      data.state_revision = MEMORY_DB.overrides[slug].state_revision;
+    }
+  }
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (let i = clients.length - 1; i >= 0; i--) {
     try {
@@ -669,7 +691,13 @@ module.exports = async function handler(req, res) {
         };
       });
 
-      return res.status(200).json({ ok: true, queues: queueStats, settings });
+      return res.status(200).json({
+        ok: true,
+        queues: queueStats,
+        settings,
+        override: MEMORY_DB.overrides[tenantSlug],
+        state_revision: MEMORY_DB.overrides[tenantSlug] ? MEMORY_DB.overrides[tenantSlug].state_revision : 1
+      });
     }
 
     // ---------------------------------------------------------------
@@ -684,6 +712,24 @@ module.exports = async function handler(req, res) {
 
       if (!queueIds.length) {
         return res.status(400).json({ error: 'الرجاء اختيار مسار أو خدمة واحدة على الأقل للطابور.' });
+      }
+
+      // فحص التدخل البشري السريع (Manual Override Guard)
+      const currentOverride = MEMORY_DB.overrides[tenantSlug];
+      if (currentOverride && currentOverride.is_force_locked_today) {
+        return res.status(423).json({
+          error: 'عفواً، تم إغلاق استقبال التذاكر لهذا اليوم بقرار إداري استثنائي.',
+          is_locked: true,
+          lock_reason: currentOverride.lock_reason || 'اكتمال الطاقة الاستيعابية اليومية'
+        });
+      }
+      if (currentOverride && currentOverride.paused_until && new Date(currentOverride.paused_until) > new Date()) {
+        const remainingMins = Math.ceil((new Date(currentOverride.paused_until) - new Date()) / 60000);
+        return res.status(423).json({
+          error: `عفواً، تم تعليق إصدار التذاكر مؤقتاً لمدة ${remainingMins} دقيقة لتهدئة الصالة، يرجى المحاولة بعد قليل.`,
+          is_paused: true,
+          paused_until: currentOverride.paused_until
+        });
       }
 
       const sessionToken = (body.sessionToken && body.sessionToken.length > 8)
@@ -1805,6 +1851,178 @@ module.exports = async function handler(req, res) {
       }
 
       return res.status(200).json({ ok: true, cleanedCount: cleaned.length, cleaned });
+    }
+
+    // ---------------------------------------------------------------
+    // 28. إجراءات التدخل البشري السريع (Manual Override & Operational Mutex)
+    // ---------------------------------------------------------------
+    if (action === 'manual-override') {
+      const body = req.body || {};
+      const actionType = body.action_type || body.actionType;
+      const deltaValue = parseInt(body.delta_value || body.deltaValue || '0', 10);
+      const reason = (body.reason || 'تدخل يدوي من الاستقبال').trim();
+      const userId = body.user_id || body.userId || 'admin-rec';
+      const userName = body.user_name || body.userName || 'مشرف الاستقبال';
+      const idempotencyKey = body.idempotency_key || body.idempotencyKey;
+      const userIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+
+      if (!actionType) {
+        return res.status(400).json({ error: 'نوع التدخل البشري (action_type) مطلوب.' });
+      }
+
+      if (!MEMORY_DB.overrides[tenantSlug]) {
+        MEMORY_DB.overrides[tenantSlug] = {
+          state_revision: 1,
+          capacity_override_delta: 0,
+          extended_closing_minutes: 0,
+          paused_until: null,
+          is_force_locked_today: false,
+          lock_reason: null,
+          pause_reason: null,
+          updated_at: new Date().toISOString()
+        };
+      }
+      if (!MEMORY_DB.auditLogs[tenantSlug]) MEMORY_DB.auditLogs[tenantSlug] = [];
+      if (!MEMORY_DB.idempotencyKeys[tenantSlug]) MEMORY_DB.idempotencyKeys[tenantSlug] = {};
+
+      const override = MEMORY_DB.overrides[tenantSlug];
+
+      // فحص عدم التكرار (Idempotency Key Check)
+      if (idempotencyKey && MEMORY_DB.idempotencyKeys[tenantSlug][idempotencyKey]) {
+        return res.status(200).json({
+          ok: true,
+          success: true,
+          idempotent_replay: true,
+          revision: override.state_revision,
+          override: override,
+          message: 'تم استرجاع نتيجة الإجراء المنفذ مسبقاً بنجاح (Idempotent).'
+        });
+      }
+
+      // زيادة الإصدار المتصاعد حتماً (Monotonic State Revision)
+      override.state_revision = (override.state_revision || 1) + 1;
+      override.updated_at = new Date().toISOString();
+
+      switch (actionType) {
+        case 'ADD_CAPACITY':
+          const addedCap = deltaValue > 0 ? deltaValue : 10;
+          override.capacity_override_delta = (override.capacity_override_delta || 0) + addedCap;
+          break;
+
+        case 'EXTEND_TIME':
+          const addedMins = deltaValue > 0 ? deltaValue : 30;
+          override.extended_closing_minutes = (override.extended_closing_minutes || 0) + addedMins;
+          break;
+
+        case 'PAUSE_QUEUE':
+          const pauseMins = deltaValue > 0 ? deltaValue : 15;
+          override.paused_until = new Date(Date.now() + pauseMins * 60000).toISOString();
+          override.pause_reason = reason;
+          break;
+
+        case 'FORCE_LOCK':
+          override.is_force_locked_today = true;
+          override.lock_reason = reason;
+          break;
+
+        case 'RESUME_OR_UNLOCK':
+          override.is_force_locked_today = false;
+          override.paused_until = null;
+          override.lock_reason = null;
+          override.pause_reason = null;
+          break;
+
+        default:
+          return res.status(400).json({ error: `نوع الإجراء ${actionType} غير مدعوم.` });
+      }
+
+      // تسجيل الحدث في سجل التدقيق الأمني والامتثال (NCA & PDPL Audit Trail)
+      const auditEntry = {
+        id: 'aud_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+        tenant_slug: tenantSlug,
+        action_type: actionType,
+        delta_value: deltaValue,
+        reason: reason,
+        performed_by_user_id: userId,
+        performed_by_name: userName,
+        user_ip_address: userIp,
+        state_revision_after: override.state_revision,
+        idempotency_key: idempotencyKey || ('gen_' + Date.now()),
+        created_at: new Date().toISOString()
+      };
+      MEMORY_DB.auditLogs[tenantSlug].push(auditEntry);
+
+      if (idempotencyKey) {
+        MEMORY_DB.idempotencyKeys[tenantSlug][idempotencyKey] = {
+          revision: override.state_revision,
+          override: { ...override }
+        };
+      }
+
+      // محاولة المزامنة المستمرة مع Supabase إن كانت متاحة
+      const supabaseUrl = sbEnv.getSupabaseUrl();
+      const supabaseKey = sbEnv.getSupabaseServiceKey();
+      if (supabaseUrl && supabaseKey) {
+        try {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          supabase.from('queue_audit_logs').insert([{
+            tenant_slug: tenantSlug,
+            queue_id: 'all',
+            action_type: actionType,
+            delta_value: String(deltaValue),
+            performed_by_user_id: userId,
+            performed_by_name: userName,
+            user_ip_address: userIp,
+            reason: reason,
+            state_revision_after: override.state_revision,
+            idempotency_key: idempotencyKey || auditEntry.id,
+            created_at: auditEntry.created_at
+          }]).then(() => {}).catch(e => console.warn('[Supabase Audit Log non-blocking]', e.message));
+        } catch (e) {
+          console.warn('[Supabase Client Error]', e.message);
+        }
+      }
+
+      // بث الحدث عبر SSE لجميع الشاشات والصالات
+      broadcastSSE(tenantSlug, 'override_applied', {
+        state_revision: override.state_revision,
+        action_type: actionType,
+        override: override,
+        performed_by: userName,
+        created_at: auditEntry.created_at
+      });
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        revision: override.state_revision,
+        override: override,
+        audit_log: auditEntry
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // 29. استرجاع حالة التدخل البشري وسجل التدقيق (Get Override State)
+    // ---------------------------------------------------------------
+    if (action === 'get-override-state') {
+      if (!MEMORY_DB.overrides[tenantSlug]) {
+        MEMORY_DB.overrides[tenantSlug] = {
+          state_revision: 1,
+          capacity_override_delta: 0,
+          extended_closing_minutes: 0,
+          paused_until: null,
+          is_force_locked_today: false,
+          lock_reason: null,
+          pause_reason: null,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return res.status(200).json({
+        ok: true,
+        revision: MEMORY_DB.overrides[tenantSlug].state_revision,
+        override: MEMORY_DB.overrides[tenantSlug],
+        recent_audit_logs: (MEMORY_DB.auditLogs[tenantSlug] || []).slice(-10)
+      });
     }
 
     return res.status(400).json({ error: 'إجراء غير معروف.' });

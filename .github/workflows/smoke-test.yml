@@ -1,4 +1,4 @@
-name: Mken Platform Smoke Test CI
+name: Mken Platform Sovereign Gate & Test CI
 
 on:
   push:
@@ -18,28 +18,19 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20
+        cache: 'npm'
 
     - name: Install dependencies (Root)
       run: npm install
 
-    - name: Install dependencies (Scripts)
-      run: |
-        cd scripts
-        npm install
+    - name: Run Master Sovereign Quality & Regulatory Gate (10 Gates)
+      run: node scripts/verify-master-gate.cjs
 
-    - name: Install Playwright Browsers
+    - name: Run Queue Engine & Core Test Suite
       run: |
-        cd scripts
-        npx playwright install chromium --with-deps
-
-    - name: Start local server & run tests
-      run: |
-        # Start a local static server in the background
-        npx http-server . -p 8080 &
-        
-        # Wait for server to boot
-        sleep 3
-        
-        # Run Playwright E2E smoke tests
-        cd scripts
-        node smoke-test.mjs
+        node tests/queue-engine.test.cjs
+        node tests/queue-shifts-hotswap.test.cjs
+        node tests/queue-transfer-rbac.test.cjs
+        node tests/queue-production-chaos.test.cjs
+        node tests/queue-admin-auth.test.cjs
+        node tests/queue-manual-override.test.cjs

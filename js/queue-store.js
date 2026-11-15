@@ -127,6 +127,7 @@
         'counter_forced_signout',
         'counter_reassigned',
         'reception_handover',
+        'override_applied',
         'config_updated', 
         'system_notice'
       ];
@@ -275,6 +276,14 @@
 
     deleteCounter: function (counterId) {
       return apiCall('delete-counter', 'POST', { counterId: counterId });
+    },
+
+    manualOverride: function (payload) {
+      return apiCall('manual-override', 'POST', payload);
+    },
+
+    getOverrideState: function () {
+      return apiCall('get-override-state', 'GET');
     },
 
     listenToEvents: listenToEvents

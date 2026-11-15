@@ -147,6 +147,158 @@
   }
 
   // -------------------------------------------------------------
+  // وحدة التدخل البشري السريع وحظر الارتداد اللحظي (Manual Override Controller)
+  // -------------------------------------------------------------
+  var QueueOverrideController = (function () {
+    var activeRevision = 1;
+    var isMutating = false;
+    var pendingAction = null;
+
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    function applyGranularBadge(override) {
+      if (!override) return;
+      var badge = document.getElementById('overrideCurrentStatusBadge');
+      var resumeBtn = document.getElementById('btnOverrideResume');
+      if (!badge) return;
+
+      if (override.is_force_locked_today) {
+        badge.textContent = '🛑 مقفل إجبارياً لليوم';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#991b1b';
+        if (resumeBtn) resumeBtn.style.display = 'block';
+      } else if (override.paused_until && new Date(override.paused_until) > new Date()) {
+        var minsLeft = Math.ceil((new Date(override.paused_until) - new Date()) / 60000);
+        badge.textContent = '⏸️ معلق مؤقتاً (' + minsLeft + ' د)';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+        if (resumeBtn) resumeBtn.style.display = 'block';
+      } else {
+        var extraCap = override.capacity_override_delta || 0;
+        var extraTime = override.extended_closing_minutes || 0;
+        var info = '🟢 تشغيل طبيعي';
+        if (extraCap > 0) info += ' (+' + extraCap + ' سعة)';
+        if (extraTime > 0) info += ' (+' + extraTime + ' د)';
+        badge.textContent = info;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+        if (resumeBtn) resumeBtn.style.display = 'none';
+      }
+    }
+
+    function execute(actionType, deltaValue, reason, targetBtn) {
+      if (isMutating) return Promise.resolve();
+
+      var originalHtml = targetBtn ? targetBtn.innerHTML : '';
+      isMutating = true;
+      if (targetBtn) {
+        targetBtn.disabled = true;
+        targetBtn.innerHTML = 'جاري التنفيذ...';
+      }
+
+      var idempotencyKey = generateUUID();
+      var currentUser = window.AdminAuth && typeof window.AdminAuth.getUser === 'function'
+        ? window.AdminAuth.getUser()
+        : { id: 'admin-rec', name: 'مشرف الاستقبال' };
+
+      return queueStore.manualOverride({
+        action_type: actionType,
+        delta_value: deltaValue,
+        reason: reason || 'تدخل يدوي من شاشة الاستقبال',
+        user_id: currentUser.id || 'admin-rec',
+        user_name: currentUser.name || currentUser.full_name || 'مشرف الاستقبال',
+        idempotency_key: idempotencyKey
+      }).then(function (res) {
+        if (!res.ok || !res.success) {
+          throw new Error(res.error || 'فشل تنفيذ الإجراء');
+        }
+
+        activeRevision = res.revision || (activeRevision + 1);
+        if (res.override) {
+          applyGranularBadge(res.override);
+        }
+        toast('تم تطبيق الإجراء التشغيلي بنجاح وتحديث كافة الشاشات ✅', 'success');
+        return res;
+      }).catch(function (err) {
+        console.error('[Override Error]', err);
+        toast('تعذر تنفيذ الإجراء: ' + err.message, 'error');
+      }).finally(function () {
+        isMutating = false;
+        if (targetBtn) {
+          targetBtn.disabled = false;
+          targetBtn.innerHTML = originalHtml;
+        }
+      });
+    }
+
+    function handleRealtime(data) {
+      if (!data) return;
+      if (data.state_revision && data.state_revision < activeRevision) {
+        console.warn('[Override Controller] Ignored stale revision:', data.state_revision, 'current:', activeRevision);
+        return;
+      }
+      if (data.state_revision) activeRevision = data.state_revision;
+      if (data.override) applyGranularBadge(data.override);
+    }
+
+    function sync(override, revision) {
+      if (!override) return;
+      if (revision && revision < activeRevision) return;
+      if (revision) activeRevision = revision;
+      applyGranularBadge(override);
+    }
+
+    function openConfirmModal(actionType, deltaValue, title, desc, defaultReason) {
+      pendingAction = { actionType: actionType, deltaValue: deltaValue };
+      var modal = document.getElementById('adminOverrideConfirmModal');
+      var modalTitle = document.getElementById('overrideConfirmModalTitle');
+      var modalDesc = document.getElementById('overrideConfirmModalDesc');
+      var reasonSelect = document.getElementById('overrideConfirmModalReason');
+
+      if (modalTitle) modalTitle.innerHTML = '<span>⚠️</span> ' + (title || 'تأكيد الإجراء الاستثنائي');
+      if (modalDesc) modalDesc.textContent = desc || 'أنت على وشك تنفيذ إجراء تشغيلي استثنائي يؤثر على كامل الصالة.';
+      if (reasonSelect && defaultReason) reasonSelect.value = defaultReason;
+
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeConfirmModal() {
+      var modal = document.getElementById('adminOverrideConfirmModal');
+      if (modal) modal.style.display = 'none';
+      pendingAction = null;
+    }
+
+    function confirmPendingAction() {
+      if (!pendingAction) return;
+      var reasonSelect = document.getElementById('overrideConfirmModalReason');
+      var reason = reasonSelect ? reasonSelect.value : 'بقرار مشرف الفرع';
+
+      var action = pendingAction.actionType;
+      var delta = pendingAction.deltaValue;
+      closeConfirmModal();
+
+      execute(action, delta, reason, null);
+    }
+
+    return {
+      execute: execute,
+      handleRealtime: handleRealtime,
+      sync: sync,
+      getActiveRevision: function () { return activeRevision; },
+      openConfirmModal: openConfirmModal,
+      closeConfirmModal: closeConfirmModal,
+      confirmPendingAction: confirmPendingAction
+    };
+  })();
+
+  // -------------------------------------------------------------
   // 2. تحديث البيانات المركزية الشاملة
   // -------------------------------------------------------------
   function refresh() {
@@ -159,6 +311,9 @@
       queueStore.listQueues().then(function (qRes) {
         if (qRes.ok && qRes.queues) {
           currentQueues = qRes.queues;
+          if (qRes.override) {
+            QueueOverrideController.sync(qRes.override, qRes.state_revision);
+          }
           collectAllActiveTickets();
           updateTopBarSummary();
 
@@ -941,6 +1096,62 @@
     if (dispatcherNewTicketBtn) dispatcherNewTicketBtn.addEventListener('click', openManualTicketModal);
     if (dispatcherBroadcastBtn) dispatcherBroadcastBtn.addEventListener('click', openBroadcastModal);
 
+    // أزرار التدخل البشري السريع (Manual Override Bar)
+    var btnAddCap = document.getElementById('btnOverrideAddCapacity');
+    var btnExtTime = document.getElementById('btnOverrideExtendTime');
+    var btnPause = document.getElementById('btnOverridePause');
+    var btnForceLock = document.getElementById('btnOverrideForceLock');
+    var btnResume = document.getElementById('btnOverrideResume');
+    var closeConfirmModalBtn = document.getElementById('closeOverrideConfirmModalBtn');
+    var cancelConfirmModalBtn = document.getElementById('cancelOverrideConfirmBtn');
+    var submitConfirmModalBtn = document.getElementById('submitOverrideConfirmBtn');
+
+    if (btnAddCap) {
+      btnAddCap.addEventListener('click', function () {
+        QueueOverrideController.execute('ADD_CAPACITY', 10, 'زيادة استيعاب الصالة الميدانية (+10)', btnAddCap);
+      });
+    }
+
+    if (btnExtTime) {
+      btnExtTime.addEventListener('click', function () {
+        QueueOverrideController.execute('EXTEND_TIME', 30, 'تمديد فترة عمل الوردية (+30 دقيقة)', btnExtTime);
+      });
+    }
+
+    if (btnPause) {
+      btnPause.addEventListener('click', function () {
+        QueueOverrideController.openConfirmModal(
+          'PAUSE_QUEUE', 
+          15, 
+          'تأكيد الإيقاف المؤقت (15 دقيقة)', 
+          'سيتم تعليق إصدار التذاكر الجديدة عبر الـ QR وكافة القنوات لمدة 15 دقيقة لتهدئة الصالة. العملاء الحاصلون على أرقام مسبقاً سيستمر خدمتهم دون انقطاع.',
+          'اجتماع طارئ وتنسيق داخلي للصالة (15 د)'
+        );
+      });
+    }
+
+    if (btnForceLock) {
+      btnForceLock.addEventListener('click', function () {
+        QueueOverrideController.openConfirmModal(
+          'FORCE_LOCK', 
+          0, 
+          'تأكيد القفل الإجباري النهائي لليوم 🛑', 
+          'تنبيه صارم: سيتم منع أي تذكرة جديدة نهائياً حتى بداية يوم العمل التالي. التذاكر الصادرة قبل هذه اللحظة تظل نشطة ومستحقة للخدمة نظامياً.',
+          'انتهاء الطاقة الاستيعابية اليومية للكاونترات'
+        );
+      });
+    }
+
+    if (btnResume) {
+      btnResume.addEventListener('click', function () {
+        QueueOverrideController.execute('RESUME_OR_UNLOCK', 0, 'استئناف التشغيل الطبيعي للصالة', btnResume);
+      });
+    }
+
+    if (closeConfirmModalBtn) closeConfirmModalBtn.addEventListener('click', QueueOverrideController.closeConfirmModal);
+    if (cancelConfirmModalBtn) cancelConfirmModalBtn.addEventListener('click', QueueOverrideController.closeConfirmModal);
+    if (submitConfirmModalBtn) submitConfirmModalBtn.addEventListener('click', QueueOverrideController.confirmPendingAction);
+
     // البحث السريع
     if (dispatcherSearchInput) {
       dispatcherSearchInput.addEventListener('input', function () {
@@ -1598,10 +1809,18 @@
   }
 
   // -------------------------------------------------------------
-  // 8. الاستماع لأحداث SSE الحية
+  // 8. الاستماع لأحداث SSE الحية مع حظر الاسترجاع المتقادم
   // -------------------------------------------------------------
   function setupSSE() {
-    queueStore.listenToEvents(function (evt) {
+    queueStore.listenToEvents(function (evt, data) {
+      if (evt === 'override_applied' && data) {
+        QueueOverrideController.handleRealtime(data);
+        return;
+      }
+      if (data && data.state_revision && data.state_revision < QueueOverrideController.getActiveRevision()) {
+        console.warn('[SSE Guard] Ignored stale event revision:', data.state_revision, 'current:', QueueOverrideController.getActiveRevision());
+        return;
+      }
       if (['ticket_created', 'ticket_called', 'ticket_in_service', 'service_completed', 'ticket_transferred', 'ticket_held', 'ticket_snoozed', 'counter_status_changed', 'counter_swapped', 'reception_handover'].indexOf(evt) !== -1) {
         refresh();
       }

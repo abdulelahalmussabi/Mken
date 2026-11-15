@@ -349,3 +349,181 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
 
+-- =========================================================
+-- 9. إجراءات التدخل البشري السريع وسجل التدقيق والامتثال (NCA & PDPL Manual Overrides)
+-- =========================================================
+
+-- جدول إعدادات الطابور وإصدارات الحالة المتصاعدة حتماً (Queue Operational Overrides)
+CREATE TABLE IF NOT EXISTS queue_configs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_slug VARCHAR(100) NOT NULL DEFAULT 'default',
+    queue_id VARCHAR(100) NOT NULL DEFAULT 'all',
+    state_revision BIGINT DEFAULT 1,
+    capacity_override_delta INT DEFAULT 0,
+    extended_closing_minutes INT DEFAULT 0,
+    paused_until TIMESTAMPTZ DEFAULT NULL,
+    is_force_locked_today BOOLEAN DEFAULT FALSE,
+    lock_reason TEXT DEFAULT NULL,
+    pause_reason TEXT DEFAULT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_slug, queue_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_queue_configs_tenant ON queue_configs (tenant_slug, queue_id);
+
+-- جدول سجلات التدقيق الجنائي غير القابلة للتعديل (NCA ECC-1:2018 & PDPL Immutable Audit Logs)
+CREATE TABLE IF NOT EXISTS queue_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_slug VARCHAR(100) NOT NULL DEFAULT 'default',
+    queue_id VARCHAR(100) NOT NULL DEFAULT 'all',
+    action_type VARCHAR(50) NOT NULL, -- ADD_CAPACITY, EXTEND_TIME, PAUSE_QUEUE, FORCE_LOCK, RESUME_OR_UNLOCK
+    delta_value VARCHAR(50),
+    performed_by_user_id VARCHAR(100) NOT NULL,
+    performed_by_name VARCHAR(150) NOT NULL,
+    user_ip_address VARCHAR(50),
+    reason TEXT NOT NULL,
+    state_revision_after BIGINT NOT NULL,
+    idempotency_key UUID UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_queue_audit_tenant ON queue_audit_logs(tenant_slug, created_at DESC);
+
+-- تفعيل سياسات الأمان لسجل التدقيق
+ALTER TABLE queue_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE queue_audit_logs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY queue_configs_admin_all ON queue_configs
+  FOR ALL TO authenticated
+  USING (
+      EXISTS (
+          SELECT 1 FROM users 
+          WHERE users.id = auth.uid() 
+            AND users.tenant_slug = queue_configs.tenant_slug 
+            AND users.role IN ('admin', 'receptionist')
+      )
+  );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY queue_audit_read_admin ON queue_audit_logs
+  FOR SELECT TO authenticated
+  USING (
+      EXISTS (
+          SELECT 1 FROM users 
+          WHERE users.id = auth.uid() 
+            AND users.tenant_slug = queue_audit_logs.tenant_slug 
+            AND users.role = 'admin'
+      )
+  );
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+
+-- إجراء مخزن ذري لتنفيذ التدخل البشري السريع بدون Race Conditions (Stored Procedure)
+CREATE OR REPLACE FUNCTION sp_apply_manual_override(
+    p_tenant_slug TEXT,
+    p_queue_id TEXT,
+    p_action_type TEXT,
+    p_delta_value INT,
+    p_reason TEXT,
+    p_user_id TEXT,
+    p_user_name TEXT,
+    p_user_ip TEXT,
+    p_idempotency_key UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_config queue_configs%ROWTYPE;
+    v_new_revision BIGINT;
+    v_existing_log queue_audit_logs%ROWTYPE;
+BEGIN
+    -- 1. فحص عدم التكرار (Idempotency Check)
+    SELECT * INTO v_existing_log FROM queue_audit_logs WHERE idempotency_key = p_idempotency_key;
+    IF FOUND THEN
+        SELECT * INTO v_config FROM queue_configs WHERE tenant_slug = p_tenant_slug AND queue_id = p_queue_id;
+        RETURN jsonb_build_object(
+            'success', true, 
+            'idempotent_replay', true,
+            'revision', v_config.state_revision,
+            'override', to_jsonb(v_config)
+        );
+    END IF;
+
+    -- 2. إيجاد أو تهيئة سطر الإعدادات مع القفل الذري (Row-Level Mutex)
+    INSERT INTO queue_configs (tenant_slug, queue_id, state_revision)
+    VALUES (p_tenant_slug, p_queue_id, 1)
+    ON CONFLICT (tenant_slug, queue_id) DO NOTHING;
+
+    SELECT * INTO v_config 
+    FROM queue_configs 
+    WHERE tenant_slug = p_tenant_slug AND queue_id = p_queue_id 
+    FOR UPDATE;
+
+    -- 3. زيادة الإصدار المتصاعد حتماً
+    v_new_revision := COALESCE(v_config.state_revision, 1) + 1;
+
+    -- 4. تطبيق العملية بحسب النوع
+    CASE p_action_type
+        WHEN 'ADD_CAPACITY' THEN
+            v_config.capacity_override_delta := COALESCE(v_config.capacity_override_delta, 0) + COALESCE(p_delta_value, 10);
+            
+        WHEN 'EXTEND_TIME' THEN
+            v_config.extended_closing_minutes := COALESCE(v_config.extended_closing_minutes, 0) + COALESCE(p_delta_value, 30);
+            
+        WHEN 'PAUSE_QUEUE' THEN
+            v_config.paused_until := NOW() + (COALESCE(p_delta_value, 15) || ' minutes')::INTERVAL;
+            v_config.pause_reason := p_reason;
+            
+        WHEN 'FORCE_LOCK' THEN
+            v_config.is_force_locked_today := TRUE;
+            v_config.lock_reason := p_reason;
+
+        WHEN 'RESUME_OR_UNLOCK' THEN
+            v_config.paused_until := NULL;
+            v_config.is_force_locked_today := FALSE;
+            v_config.lock_reason := NULL;
+            v_config.pause_reason := NULL;
+            
+        ELSE
+            RAISE EXCEPTION 'Invalid manual override action type: %', p_action_type;
+    END CASE;
+
+    v_config.state_revision := v_new_revision;
+    v_config.updated_at := NOW();
+
+    -- 5. تحديث الإعدادات
+    UPDATE queue_configs
+    SET capacity_override_delta = v_config.capacity_override_delta,
+        extended_closing_minutes = v_config.extended_closing_minutes,
+        paused_until = v_config.paused_until,
+        is_force_locked_today = v_config.is_force_locked_today,
+        lock_reason = v_config.lock_reason,
+        pause_reason = v_config.pause_reason,
+        state_revision = v_new_revision,
+        updated_at = v_config.updated_at
+    WHERE tenant_slug = p_tenant_slug AND queue_id = p_queue_id;
+
+    -- 6. كتابة سجل الامتثال الأمني غير القابل للتعديل
+    INSERT INTO queue_audit_logs (
+        tenant_slug, queue_id, action_type, delta_value, 
+        performed_by_user_id, performed_by_name, user_ip_address, 
+        reason, state_revision_after, idempotency_key
+    ) VALUES (
+        p_tenant_slug, p_queue_id, p_action_type, p_delta_value::TEXT,
+        p_user_id, p_user_name, p_user_ip,
+        p_reason, v_new_revision, p_idempotency_key
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'revision', v_new_revision,
+        'override', to_jsonb(v_config)
+    );
+END;
+$$;
+
+

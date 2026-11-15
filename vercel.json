@@ -7,7 +7,7 @@
   ],
   "build": {
     "env": {
-      "CACHE_BREAKER": "force-rebuild-2026-11-15-clean-ux"
+      "CACHE_BREAKER": "force-rebuild-2026-11-15-v1.3.0"
     }
   },
   "redirects": [
