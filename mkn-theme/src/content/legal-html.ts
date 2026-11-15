@@ -19,11 +19,11 @@ export const privacyHtml = `
   <h3>ب) ربط الملف التجاري على Google (Google Business Profile)</h3>
   <p>إذا وافقت على ربط نشاطك التجاري، نطلب صلاحية <span dir="ltr">business.manage</span> لإدارة ملفك نيابةً عنك. قد تشمل البيانات:</p>
   <ul>
-    <li>رموز الوصول والتحديث (OAuth access/refresh tokens) لتشغيل الربط</li>
-    <li>بيانات المواقع: الاسم، العنوان، الهاتف، الموقع الإلكتروني، ساعات العمل، التصنيف</li>
-    <li>التقييمات والردود والمنشورات والصور المرتبطة بالملف</li>
+    <li>رموز الوصول والتحديث (OAuth access/refresh tokens) لتشغيل الربط، وتُحفظ مشفرة بالكامل بمعيار <span dir="ltr">AES-256-GCM</span> لحمايتها وفق متطلبات الهيئة الوطنية للأمن السيبراني (NCA).</li>
+    <li>بيانات المواقع: الاسم، العنوان، الهاتف، الموقع الإلكتروني، ساعات العمل، والتصنيف الجغرافي.</li>
+    <li>التقييمات والردود والمنشورات والصور المرتبطة بالملف.</li>
   </ul>
-  <p>نستخدم هذه البيانات فقط لعرض حالة الربط، مزامنة بيانات النشاط (NAP)، نشر المحتوى الذي تطلبه، والرد على التقييمات وفق إعداداتك. يمكنك إلغاء الربط في أي وقت من لوحة الإدارة أو من <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">صلاحيات حساب Google</a>.</p>
+  <p>نستخدم هذه البيانات فقط لعرض حالة الربط، ومزامنة بيانات النشاط (NAP)، ونشر المحتوى الذي تعتمده يدوياً، والرد على التقييمات وفق إعداداتك. لا نقوم بالنشر التلقائي نيابةً عنك دون موافقة مسبقة وصريحة. يمكنك إلغاء الربط في أي وقت من لوحة الإدارة (حيث يتم إتلاف الرموز المشفرة فوراً) أو من <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">صلاحيات حساب Google</a>.</p>
   <h3>ج) إعلانات Google (إن فعّلتها)</h3>
   <p>عند ربط حساب إعلانات Google بموافقتك، نصل إلى بيانات الحملات والحساب اللازمة لإدارة الإعلانات وعرض التقارير داخل لوحة مكّن فقط. لا نستخدم بيانات إعلاناتك لبناء ملفات إعلانية لطرف ثالث.</p>
   <h2>3. بيانات أخرى نجمعها</h2>
@@ -50,15 +50,15 @@ export const privacyHtml = `
     <li>لا نستخدم بيانات Google للإعلان، بما في ذلك الإعلان المخصص أو إعادة الاستهداف أو الإعلانات المعتمدة على الاهتمامات</li>
     <li>لا يسمح للبشر بقراءة بيانات Google إلا بموافقة المستخدم للدعم، أو لأغراض أمنية/قانونية، أو عندما تكون البيانات مجمّعة ومجهولة الهوية</li>
   </ul>
-  <h2>6. أين تُحفظ البيانات ولمن تُشارك</h2>
-  <p>تُستضاف المنصة لدى مزوّدين تقنيين يعملون كمعالجين وفق تعليماتنا، أبرزهم Vercel (الاستضافة) وSupabase (قاعدة البيانات والمصادقة). تُحفظ رموز Google OAuth على الخادم ولا تُعرض في المتصفح. قد نشارك حداً أدنى من البيانات مع:</p>
+  <h2>6. أين تُحفظ البيانات ولمن تُشارك والتعمية التشفيرية</h2>
+  <p>تُستضاف المنصة لدى مزوّدين تقنيين يعملون كمعالجين وفق تعليماتنا، أبرزهم Vercel (الاستضافة) وSupabase (قاعدة البيانات والمصادقة). تُحفظ رموز Google OAuth على الخادم بعد تشفيرها ببروتوكول <span dir="ltr">AES-256-GCM</span> ولا تُعرض في المتصفح ولا تُخزن كنص صريح، مع تطبيق سجلات تدقيق أمنية رقمية محصنة (Audit Logs) لجميع عمليات الربط والمزامنة. قد نشارك حداً أدنى من البيانات مع:</p>
   <ul>
     <li>مزوّد الدفع لإتمام الفاتورة</li>
     <li>WhatsApp Cloud API لإرسال الرسائل التي تطلبها</li>
-    <li>الجهات المختصة إذا ألزمنا النظام بذلك</li>
+    <li>الجهات المختصة إذا ألزمنا النظام بذلك وفق الأنظمة السارية في المملكة العربية السعودية</li>
   </ul>
-  <h2>7. مدة الاحتفاظ</h2>
-  <p>نحتفظ ببيانات الحساب طوال فترة الاشتراك وما يلزم للالتزامات النظامية (مثل الفواتير). رموز Google تُحفظ بينما الربط فعّال وتُحذف عند إلغاء الربط أو حذف الحساب. سجلات الأمان تُحفظ مدة محدودة ثم تُحذف أو تُجهَّل.</p>
+  <h2>7. مدة الاحتفاظ والإتلاف التلقائي</h2>
+  <p>نحتفظ ببيانات الحساب طوال فترة الاشتراك وما يلزم للالتزامات النظامية (مثل الفواتير). رموز Google تُحفظ مشفرة بينما الربط فعّال، ويتم إتلافها فورياً ونهائياً من قواعد البيانات بمجرد طلب إلغاء الربط (Disconnect) أو حذف الحساب دون أي نسخ استرجاعية معلقة. سجلات الأمان تُحفظ مدة محدودة ثم تُحذف أو تُجهَّل.</p>
   <h2>8. حقك في الوصول والحذف</h2>
   <p>يمكنك طلب الاطلاع على بياناتك أو تصحيحها أو حذفها أو سحب الموافقة. لطلب حذف بيانات Google أو حساب مكّن:</p>
   <ol>
@@ -98,11 +98,11 @@ export const privacyHtml = `
   <h3>B) Google Business Profile connection</h3>
   <p>If you authorize connecting your business listing, we request the <code>business.manage</code> scope to manage the listing on your behalf. Data may include:</p>
   <ul>
-    <li>OAuth access and refresh tokens needed to keep the connection working</li>
-    <li>Location data: name, address, phone, website, hours, category</li>
-    <li>Reviews, review replies, posts, and photos on the listing</li>
+    <li>OAuth access and refresh tokens needed to maintain the connection, stored fully encrypted at rest using <code>AES-256-GCM</code> in compliance with Saudi National Cybersecurity Authority (NCA) controls.</li>
+    <li>Location data: name, address, phone, website, hours, and business category.</li>
+    <li>Reviews, review replies, posts, and photos on the listing.</li>
   </ul>
-  <p>We use this data only to show connection status, sync business NAP data, publish content you request, and reply to reviews according to your settings. You may disconnect at any time in the admin panel or via <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">Google Account permissions</a>.</p>
+  <p>We use this data only to show connection status, sync business NAP data, publish content you explicitly review and approve, and reply to reviews according to your settings. We do not automatically publish posts without prior explicit authorization. You may disconnect at any time in the admin panel (which immediately and permanently purges stored tokens) or via <a href="https://myaccount.google.com/permissions" rel="noopener" target="_blank">Google Account permissions</a>.</p>
   <h3>C) Google Ads (if you enable it)</h3>
   <p>If you connect Google Ads, we access campaign and account data needed to manage ads and show reports inside Mken only. We do not use your ads data to build advertising profiles for third parties.</p>
   <h2>3. Other data we collect</h2>
@@ -129,15 +129,15 @@ export const privacyHtml = `
     <li>We do not use Google user data for serving advertisements, including personalized, retargeting, or interest-based ads</li>
     <li>Humans do not read Google user data unless we have the user’s affirmative agreement for support, it is necessary for security / legal compliance, or the data is aggregated and anonymized</li>
   </ul>
-  <h2>6. Storage and sharing</h2>
-  <p>The platform is hosted with technical processors acting on our instructions, primarily Vercel (hosting) and Supabase (database and authentication). Google OAuth tokens are stored on the server and are not exposed in the browser. We may share the minimum necessary data with:</p>
+  <h2>6. Storage, security controls, and encryption</h2>
+  <p>The platform is hosted with technical processors acting on our instructions, primarily Vercel (hosting) and Supabase (database and authentication). Google OAuth tokens are stored on the server encrypted at rest using <code>AES-256-GCM</code>, are never stored in plaintext, and are never exposed in the client browser. Digital audit logs track all synchronization and management events. We may share the minimum necessary data with:</p>
   <ul>
     <li>Our payment processor to complete a charge</li>
     <li>WhatsApp Cloud API to send messages you request</li>
-    <li>Competent authorities when the law requires it</li>
+    <li>Competent Saudi authorities when statutory laws require it</li>
   </ul>
-  <h2>7. Retention</h2>
-  <p>We keep account data for the life of the subscription and as required for legal records (for example invoices). Google tokens are kept while the connection is active and are deleted when you disconnect or delete the account. Security logs are kept for a limited period and then deleted or anonymized.</p>
+  <h2>7. Retention and immediate destruction</h2>
+  <p>We keep account data for the life of the subscription and as required for legal records (for example invoices). Google tokens are encrypted while the connection is active and are permanently destroyed immediately upon disconnection or account deletion. Security logs are kept for a limited period and then purged or anonymized.</p>
   <h2>8. Access and deletion</h2>
   <p>You may request access, correction, deletion, or withdrawal of consent. To delete Google data or your Mken account:</p>
   <ol>

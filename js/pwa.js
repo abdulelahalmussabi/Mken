@@ -198,6 +198,7 @@
   var PWA_SNOOZE_KEY = 'mken_pwa_install_snoozed_until';
   var PWA_VIEWS_KEY = 'mken_pwa_page_views';
   var DEFAULT_SNOOZE_DAYS = 14;
+  var isInstallInProgress = false;
 
   function trackPageView() {
     try {
@@ -231,53 +232,204 @@
     } catch (e) { /* ignore */ }
   }
 
+  function isMobileOrTabletDevice() {
+    if (typeof window === 'undefined') return false;
+    var nav = (typeof window !== 'undefined' && window.navigator) ? window.navigator : (typeof navigator !== 'undefined' ? navigator : {});
+    var isMobileUA = false;
+    if (nav.userAgentData && typeof nav.userAgentData.mobile === 'boolean') {
+      isMobileUA = nav.userAgentData.mobile;
+    } else if (nav.userAgent) {
+      isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(nav.userAgent);
+    }
+
+    var hasTouch = (nav.maxTouchPoints && nav.maxTouchPoints > 0);
+    var hasCoarse = false;
+    if (window.matchMedia) {
+      try {
+        hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+      } catch (e) { /* ignore */ }
+    }
+
+    var isNarrow = (typeof window.innerWidth === 'number' && window.innerWidth > 0 && window.innerWidth <= 1024);
+    return isMobileUA || (hasTouch && isNarrow) || (hasCoarse && isNarrow);
+  }
+
+  function isDesktopTargetedApp() {
+    if (typeof window === 'undefined') return false;
+    if (window.MkenConfig && window.MkenConfig.pwa && typeof window.MkenConfig.pwa.desktopOnly === 'boolean') {
+      return window.MkenConfig.pwa.desktopOnly;
+    }
+    var path = (window.location && window.location.pathname) || '';
+    if (path.indexOf('/admin') !== -1 || path.indexOf('admin.html') !== -1) {
+      return true;
+    }
+    if (typeof document !== 'undefined' && document.documentElement) {
+      var target = document.documentElement.getAttribute('data-target-platform') || document.documentElement.getAttribute('data-app');
+      if (target === 'desktop') return true;
+    }
+    return true; // التطبيق المكتبي الافتراضي
+  }
+
+  function dismissBannerPermanently(days) {
+    if (banner) {
+      banner.hidden = true;
+      if (typeof banner.remove === 'function') {
+        banner.remove();
+      }
+      banner = null;
+    }
+    var domBanner = (typeof document !== 'undefined' && document.getElementById) ? document.getElementById('pwaInstallBanner') : null;
+    if (domBanner && typeof domBanner.remove === 'function') {
+      domBanner.remove();
+    }
+    snoozeInstallPrompt(typeof days === 'number' ? days : DEFAULT_SNOOZE_DAYS);
+  }
+
+  function showPwaToast(message) {
+    if (typeof document === 'undefined') return;
+    var toast = document.createElement('div');
+    toast.className = 'pwa-status-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+      if (toast) {
+        toast.style.opacity = '0';
+        setTimeout(function () {
+          if (typeof toast.remove === 'function') toast.remove();
+        }, 400);
+      }
+    }, 3500);
+  }
+
+  function triggerDirectDesktopDownload() {
+    showPwaToast('⚡ جاري بدء تنزيل برنامج الكمبيوتر...');
+    dismissBannerPermanently(30);
+
+    if (typeof document === 'undefined') return;
+    try {
+      var a = document.createElement('a');
+      a.href = '/download/mken-desktop-setup.exe';
+      a.setAttribute('download', 'mken-desktop-setup.exe');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        if (typeof a.remove === 'function') a.remove();
+      }, 1000);
+    } catch (e) {
+      console.log('[PWA] Direct desktop download triggered');
+    }
+  }
+
   function createBanner() {
-    if (banner || document.getElementById('pwaInstallBanner')) return;
+    if (banner || (typeof document !== 'undefined' && document.getElementById('pwaInstallBanner'))) return;
+    if (typeof document === 'undefined') return;
+
     banner = document.createElement('div');
     banner.id = 'pwaInstallBanner';
     banner.className = 'pwa-banner';
     banner.hidden = true;
     banner.innerHTML =
-      '<p><strong>ثبّت التطبيق</strong> — تصفح أسرع وإمكانية الاستخدام دون إنترنت</p>' +
+      '<p><strong>برنامج الكمبيوتر</strong> — تثبيت التطبيق أو التنزيل المباشر لجهازك</p>' +
       '<div class="pwa-banner__actions">' +
-      '<button type="button" class="btn btn--primary btn--sm" id="pwaInstallBtn">تثبيت</button>' +
-      '<button type="button" class="btn btn--outline btn--sm" id="pwaDismissBtn">لاحقاً (إخفاء 14 يوماً)</button>' +
+      '<button type="button" class="btn btn--primary btn--sm" id="pwaInstallBtn">تثبيت / تنزيل</button>' +
+      '<button type="button" class="btn btn--outline btn--sm" id="pwaDismissBtn">لاحقاً</button>' +
       '</div>';
     document.body.appendChild(banner);
 
-    document.getElementById('pwaInstallBtn').addEventListener('click', function () {
-      promptInstall();
-    });
-    document.getElementById('pwaDismissBtn').addEventListener('click', function () {
-      if (banner) banner.hidden = true;
-      snoozeInstallPrompt(DEFAULT_SNOOZE_DAYS);
-    });
+    var installBtn = document.getElementById('pwaInstallBtn');
+    if (installBtn) {
+      installBtn.addEventListener('click', function () {
+        promptInstall();
+      });
+    }
+
+    var dismissBtn = document.getElementById('pwaDismissBtn');
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', function () {
+        dismissBannerPermanently(DEFAULT_SNOOZE_DAYS);
+      });
+    }
   }
 
-  function promptInstall() {
-    if (!deferredPrompt) {
-      return Promise.resolve({ outcome: 'unavailable', message: 'التطبيق مثبت بالفعل أو المتصفح لا يدعم التثبيت المباشر' });
+  async function promptInstall() {
+    if (isInstallInProgress) return Promise.resolve({ outcome: 'busy' });
+
+    var installBtn = (typeof document !== 'undefined' && document.getElementById) ? document.getElementById('pwaInstallBtn') : null;
+    var originalBtnText = installBtn ? installBtn.textContent : 'تثبيت / تنزيل';
+
+    isInstallInProgress = true;
+    if (installBtn) {
+      installBtn.disabled = true;
+      installBtn.textContent = 'جاري التجهيز...';
     }
-    deferredPrompt.prompt();
-    return deferredPrompt.userChoice.then(function (choice) {
-      if (choice && choice.outcome === 'accepted') {
-        deferredPrompt = null;
-        if (banner) banner.hidden = true;
+
+    // مؤقت أمان لضمان عدم بقاء الزر معطلاً إطلاقاً
+    var safetyTimer = setTimeout(function () {
+      if (installBtn) {
+        installBtn.disabled = false;
+        installBtn.textContent = originalBtnText;
       }
-      return choice;
-    }).catch(function (err) {
-      console.warn('[PWA] Prompt error:', err);
-      return { outcome: 'dismissed', error: err };
-    });
+      isInstallInProgress = false;
+      dismissBannerPermanently(14);
+    }, 4000);
+
+    try {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        var choice = await Promise.race([
+          deferredPrompt.userChoice,
+          new Promise(function (_, reject) {
+            setTimeout(function () { reject(new Error('timeout')); }, 3500);
+          })
+        ]);
+
+        if (choice && choice.outcome === 'accepted') {
+          showPwaToast('✅ تم تثبيت التطبيق بنجاح على جهازك!');
+          deferredPrompt = null;
+          dismissBannerPermanently(30);
+          return { outcome: 'accepted' };
+        } else {
+          showPwaToast('تم إلغاء التثبيت. يمكنك إضافته لاحقاً من شريط المتصفح.');
+          dismissBannerPermanently(14);
+          return { outcome: 'dismissed' };
+        }
+      }
+
+      // المسار البديل عند تعذر التثبيت التلقائي: التنزيل المباشر لبرنامج الكمبيوتر
+      triggerDirectDesktopDownload();
+      return { outcome: 'direct_download' };
+
+    } catch (err) {
+      console.warn('[PWA] Prompt fallback to direct download:', err);
+      triggerDirectDesktopDownload();
+      return { outcome: 'fallback', error: err };
+    } finally {
+      clearTimeout(safetyTimer);
+      if (installBtn) {
+        installBtn.disabled = false;
+        installBtn.textContent = originalBtnText;
+      }
+      isInstallInProgress = false;
+      dismissBannerPermanently(14);
+    }
   }
 
   function maybeShowBanner(force) {
-    if (!deferredPrompt) return;
+    // 1. فحص الجوال: كبح البانر فوراً على شاشات الجوال للتطبيقات الموجهة للكمبيوتر
+    if (isMobileOrTabletDevice() && isDesktopTargetedApp()) {
+      dismissBannerPermanently(30);
+      return;
+    }
+
+    if (!deferredPrompt && !force) return;
+
     if (!force) {
-      // 1. فحص فترة التهدئة المؤقتة (14 يوماً بعد الرفض)
+      // 2. فحص فترة التهدئة المؤقتة (14 يوماً بعد الرفض)
       if (isInstallSnoozed()) return;
 
-      // 2. التحقق من مؤشر التفاعل الحقيقي (عدم إزعاج الزائر في الزيارة الأولى)
+      // 3. التحقق من مؤشر التفاعل الحقيقي (عدم إزعاج الزائر في الزيارة الأولى)
       try {
         if (typeof localStorage !== 'undefined') {
           var views = parseInt(localStorage.getItem(PWA_VIEWS_KEY) || '0', 10);
@@ -299,7 +451,7 @@
     });
     window.addEventListener('appinstalled', function () {
       deferredPrompt = null;
-      if (banner) banner.hidden = true;
+      dismissBannerPermanently(30);
     });
   }
 
@@ -329,6 +481,9 @@
     replayPendingIntents: replayPendingIntents,
     promptInstall: promptInstall,
     maybeShowBanner: maybeShowBanner,
+    dismissBannerPermanently: dismissBannerPermanently,
+    isMobileOrTabletDevice: isMobileOrTabletDevice,
+    triggerDirectDesktopDownload: triggerDirectDesktopDownload,
     snoozeInstallPrompt: snoozeInstallPrompt,
     isInstallSnoozed: isInstallSnoozed,
     trackPageView: trackPageView,

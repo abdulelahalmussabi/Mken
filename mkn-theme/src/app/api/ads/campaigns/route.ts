@@ -15,9 +15,12 @@ import {
   saveTenantAdsMeta,
   saveTenantGoogleAds,
   setAdCampaignStatus,
+  terminateAdCampaign,
+  processAdKillQueue,
   unlinkTenantGoogleAds,
   type AdCreative,
   type AdStatus,
+  type SaudiComplianceInput,
 } from "@/lib/mken/ads";
 import { metaCapiConfiguredForSlug } from "@/lib/mken/meta-ads";
 import { buildGoogleAdsAuthUrl } from "@/lib/mken/google-ads";
@@ -146,11 +149,35 @@ export async function POST(request: Request) {
       radiusKm: Number(body.radiusKm),
       serviceName: typeof body.serviceName === "string" ? body.serviceName : "",
       creative,
+      compliance: isObject(body.compliance) ? (body.compliance as unknown as SaudiComplianceInput) : undefined,
+      durationDays: Number(body.durationDays) || 7,
     });
     if (result.error || !result.campaign) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
     return NextResponse.json({ success: true, campaign: result.campaign });
+  }
+
+  if (action === "terminate" || action === "delete") {
+    const id = typeof body.id === "string" ? body.id : "";
+    const result = await terminateAdCampaign(scope.slug, id);
+    if (result.error) {
+      return NextResponse.json(
+        { success: false, message: result.error, campaign: result.campaign },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      campaign: result.campaign,
+      refundedSar: result.refundedSar || 0,
+      message: "تم إيقاف الخدمة فوراً، وتجميد الحملات الإعلانية في قوقل وميتا وتسوية الرصيد المستحق.",
+    });
+  }
+
+  if (action === "processKillQueue") {
+    const result = await processAdKillQueue();
+    return NextResponse.json({ success: true, ...result });
   }
 
   if (action === "publish") {

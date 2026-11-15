@@ -1,6 +1,8 @@
 const { getValidAccessToken, ensureTenantClient, getSupabaseAdmin } = require('./_lib/google-auth-helper');
 const { authorizeGbpAiRequest } = require('./_lib/gbp-ai-guard');
 const { buildNapAuditReport, planNapSync } = require('./_lib/nap-audit');
+const { encryptToken } = require('./_lib/token-crypto');
+const { generateOAuthState, verifyOAuthState, recordGbpAuditLog } = require('./_lib/gbp-audit');
 
 const GBP_POST_MAX_CHARS = 1500;
 const GBP_LOCATION_READ_MASK = 'title,phoneNumbers,websiteUri,storefrontAddress,regularHours,primaryCategory';
@@ -93,16 +95,21 @@ function trimGbpPostText(text) {
 
 function getAction(req) {
   var url = req.url || '';
-  if (url.indexOf('/callback') !== -1 || req.query.action === 'callback') return 'callback';
-  if (url.indexOf('/locations') !== -1 || req.query.action === 'locations') return 'locations';
-  if (url.indexOf('/update-website') !== -1 || req.query.action === 'update-website') return 'update-website';
-  if (url.indexOf('/sync-services') !== -1 || req.query.action === 'sync-services') return 'sync-services';
-  if (url.indexOf('/auth-url') !== -1 || req.query.action === 'auth-url') return 'auth-url';
-  if (url.indexOf('/generate-post') !== -1 || req.query.action === 'generate-post') return 'generate-post';
-  if (url.indexOf('/generate-reply') !== -1 || req.query.action === 'generate-reply') return 'generate-reply';
-  if (url.indexOf('/nap-audit') !== -1 || req.query.action === 'nap-audit') return 'nap-audit';
-  if (url.indexOf('/sync-nap') !== -1 || req.query.action === 'sync-nap') return 'sync-nap';
-  if (url.indexOf('/competitors') !== -1 || req.query.action === 'competitors') return 'competitors';
+  var bodyAction = (req.body && req.body.action) || '';
+  var queryAction = (req.query && req.query.action) || '';
+  var action = bodyAction || queryAction;
+  if (action === 'attributes-and-categories' || action === 'save-attributes-and-categories' || action === 'sync-attributes') return action;
+  if (url.indexOf('/callback') !== -1 || action === 'callback') return 'callback';
+  if (url.indexOf('/locations') !== -1 || action === 'locations') return 'locations';
+  if (url.indexOf('/update-website') !== -1 || action === 'update-website') return 'update-website';
+  if (url.indexOf('/sync-services') !== -1 || action === 'sync-services') return 'sync-services';
+  if (url.indexOf('/auth-url') !== -1 || action === 'auth-url') return 'auth-url';
+  if (url.indexOf('/generate-post') !== -1 || action === 'generate-post') return 'generate-post';
+  if (url.indexOf('/publish-post') !== -1 || action === 'publish-post') return 'publish-post';
+  if (url.indexOf('/generate-reply') !== -1 || action === 'generate-reply') return 'generate-reply';
+  if (url.indexOf('/nap-audit') !== -1 || action === 'nap-audit') return 'nap-audit';
+  if (url.indexOf('/sync-nap') !== -1 || action === 'sync-nap') return 'sync-nap';
+  if (url.indexOf('/competitors') !== -1 || action === 'competitors') return 'competitors';
   if (req.query.code && req.query.state) return 'callback';
   return 'auth-url';
 }
@@ -118,6 +125,9 @@ async function handleAuthUrl(req, res) {
     });
   }
 
+  // توليد رمز حالة مشفر وموقع رقمياً (Signed HMAC CSRF State)
+  const stateToken = generateOAuthState(tenant);
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -125,7 +135,7 @@ async function handleAuthUrl(req, res) {
     scope: 'https://www.googleapis.com/auth/business.manage',
     access_type: 'offline',
     prompt: 'consent',
-    state: tenant,
+    state: stateToken,
   });
 
   return res.status(200).json({ url: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() });
@@ -145,6 +155,22 @@ async function handleCallback(req, res) {
 
   if (!code || !state) {
     return res.redirect(baseRedirectUrl + '?google_connect=error&error_desc=' + encodeURIComponent('Missing code or state parameter'));
+  }
+
+  // التحقق الأمني المشدد من رمز الحالة (CSRF & State Signature Validation)
+  let tenantSlug;
+  const stateCheck = verifyOAuthState(state);
+  if (!stateCheck.valid) {
+    // في حال وصول رمز قديم مجرد خلال مرحلة الانتقال، نقبله بحذر شديد مع تسجيل تحذير أمني
+    if (state && !state.startsWith('s1.') && /^[a-z0-9_-]+$/i.test(state.trim())) {
+      console.warn('Google OAuth received legacy unsigned state token:', state);
+      tenantSlug = normalizeTenantSlug(state);
+    } else {
+      console.error('Google OAuth CSRF validation failed:', stateCheck.error);
+      return res.redirect(baseRedirectUrl + '?google_connect=error&error_desc=' + encodeURIComponent(stateCheck.error || 'فشل التحقق الأمني من جلسة الربط (CSRF Token Invalid)'));
+    }
+  } else {
+    tenantSlug = normalizeTenantSlug(stateCheck.tenant);
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -172,17 +198,17 @@ async function handleCallback(req, res) {
 
   const tokenData = await tokenRes.json();
   const expiryDate = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString();
-  const tenantSlug = normalizeTenantSlug(state);
   const supabase = getSupabaseAdmin();
   await ensureTenantClient(supabase, tenantSlug);
 
+  // تشفير الرموز (AES-256-GCM) قبل التخزين في قاعدة البيانات لحماية الاعتمادات
   const updateData = {
-    google_access_token: tokenData.access_token,
+    google_access_token: encryptToken(tokenData.access_token),
     google_token_expiry: expiryDate,
     updated_at: new Date().toISOString(),
   };
   if (tokenData.refresh_token) {
-    updateData.google_refresh_token = tokenData.refresh_token;
+    updateData.google_refresh_token = encryptToken(tokenData.refresh_token);
   }
 
   const { error: updateError } = await supabase
@@ -191,6 +217,14 @@ async function handleCallback(req, res) {
     .eq('tenant_slug', tenantSlug);
 
   if (updateError) throw updateError;
+
+  // تسجيل حدث التدقيق الأمني لعملية ربط الحساب
+  await recordGbpAuditLog(req, {
+    tenantSlug,
+    action: 'GBP_CONNECT',
+    status: 'SUCCESS',
+    details: { expiresIn: tokenData.expires_in || 3600 }
+  });
 
   const { data: previewRow } = await supabase
     .from('mken_saas_clients')
@@ -301,6 +335,14 @@ async function handleUpdateWebsite(req, res) {
       .eq('tenant_slug', tenant);
 
     if (updateError) throw updateError;
+
+    await recordGbpAuditLog(req, {
+      tenantSlug: tenant,
+      action: 'GBP_DISCONNECT',
+      status: 'SUCCESS',
+      details: { disconnectedAt: new Date().toISOString() }
+    });
+
     return res.status(200).json({ success: true, message: 'Disconnected Google account successfully' });
   }
 
@@ -332,6 +374,14 @@ async function handleUpdateWebsite(req, res) {
     .eq('tenant_slug', tenant);
 
   if (dbError) throw dbError;
+
+  await recordGbpAuditLog(req, {
+    tenantSlug: tenant,
+    action: 'GBP_UPDATE_WEBSITE',
+    status: 'SUCCESS',
+    details: { locationId, websiteUrl }
+  });
+
   return res.status(200).json({ success: true, message: 'Website URL updated successfully on Google Business Profile' });
 }
 
@@ -401,6 +451,13 @@ async function handleSyncServices(req, res) {
     await handleGoogleResponseError(updateRes, 'Google API update failed');
   }
 
+  await recordGbpAuditLog(req, {
+    tenantSlug: tenant,
+    action: 'GBP_SYNC_SERVICES',
+    status: 'SUCCESS',
+    details: { locationId, count: serviceItems.length }
+  });
+
   return res.status(200).json({ success: true, message: 'Services synchronized successfully on Google Business Profile' });
 }
 
@@ -411,81 +468,64 @@ async function handleCompetitors(req, res) {
   const { lat, lng, category, city } = req.body || {};
   const mapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-  if (mapsApiKey && (category || city)) {
-    try {
-      const params = new URLSearchParams({
-        query: [category, city].filter(Boolean).join(' '),
-        language: 'ar',
-        region: 'sa',
-        key: mapsApiKey,
-      });
-      if (lat && lng) {
-        params.set('location', lat + ',' + lng);
-        params.set('radius', '12000');
-      }
-      const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?' + params.toString();
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Places API returned ' + response.status);
-      
-      const data = await response.json();
-      const results = (data.results || []).slice(0, 5).map(function (item) {
-        const name = item.name || '';
-        const address = item.formatted_address || '';
-        const placeId = item.place_id || '';
-        const mapsUrl = placeId
-          ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name || 'place') + '&query_place_id=' + encodeURIComponent(placeId)
-          : (name ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name + ' ' + address) : '');
-        return {
-          name: name,
-          rating: item.rating || 0,
-          userRatingsTotal: item.user_ratings_total || 0,
-          address: address,
-          placeId: placeId,
-          mapsUrl: mapsUrl
-        };
-      });
-      return res.status(200).json({ success: true, competitors: results, source: 'google_places' });
-    } catch (e) {
-      console.warn('Google Places API failed, falling back to Gemini simulation', e);
-    }
-  }
-
   if (!city || !category) {
     return res.status(400).json({
-      error: 'تعذّر جلب المنافسين. أرسل مدينة المنشأة ونشاطها بدون افتراض جدة أو صالون.',
+      error: 'تعذّر جلب المنافسين. يرجى تحديد مدينة المنشأة وتصنيف نشاطها بدقة.',
     });
   }
 
-  const prompt = `أرجع 4 منافسين محليين في نفس النشاط ونفس المدينة فقط.
-النشاط: "${category}"
-المدينة: "${city}"
-ممنوع ذكر مدن أخرى أو أنشطة مختلفة.
-أرجع مصفوفة JSON فقط تبدأ بـ [ وتنتهي بـ ] بالحقول: name, rating, userRatingsTotal, address.`;
+  // وفق توجيهات الأمان والشفافية: يُحظر توليد منافسين وهميين بالذكاء الاصطناعي (Prompt Injection Prevention)
+  // البيانات يجب أن تُستقى حصراً وموثقاً من واجهة خرائط Google Places الرسمية
+  if (!mapsApiKey) {
+    return res.status(200).json({
+      success: true,
+      competitors: [],
+      source: 'places_missing_key',
+      message: 'ميزة جلب المنافسين تتطلب ضبط GOOGLE_MAPS_API_KEY على الخادم لجلب نتائج موثقة وحقيقية من خرائط Google.',
+    });
+  }
 
   try {
-    const aiText = await callGemini(prompt);
-    let cleanJson = aiText.trim();
-    if (cleanJson.startsWith('```')) {
-      cleanJson = cleanJson.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+    const params = new URLSearchParams({
+      query: [category, city].filter(Boolean).join(' '),
+      language: 'ar',
+      region: 'sa',
+      key: mapsApiKey,
+    });
+    if (lat && lng) {
+      params.set('location', lat + ',' + lng);
+      params.set('radius', '12000');
     }
-    const competitors = JSON.parse(cleanJson).map(function (item) {
+    const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?' + params.toString();
+    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Places API returned HTTP ' + response.status);
+    
+    const data = await response.json();
+    const results = (data.results || []).slice(0, 5).map(function (item) {
       const name = item.name || '';
-      const address = item.address || '';
+      const address = item.formatted_address || '';
+      const placeId = item.place_id || '';
+      const mapsUrl = placeId
+        ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name || 'place') + '&query_place_id=' + encodeURIComponent(placeId)
+        : (name ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name + ' ' + address) : '');
       return {
         name: name,
         rating: item.rating || 0,
-        userRatingsTotal: item.userRatingsTotal || 0,
+        userRatingsTotal: item.user_ratings_total || 0,
         address: address,
-        mapsUrl: name
-          ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([name, address, city].filter(Boolean).join(' '))
-          : ''
+        placeId: placeId,
+        mapsUrl: mapsUrl
       };
     });
-    return res.status(200).json({ success: true, competitors: competitors, source: 'gemini_simulation' });
-  } catch (err) {
-    console.error('Gemini Competitor Simulation failed:', err);
-    return res.status(502).json({ error: 'تعذّر جلب منافسين من خرائط جوجل لهذه المدينة والنشاط.' });
+    return res.status(200).json({ success: true, competitors: results, source: 'google_places' });
+  } catch (e) {
+    console.error('Google Places API Error:', e.message);
+    return res.status(502).json({
+      success: false,
+      competitors: [],
+      error: 'تعذّر جلب بيانات المنافسين من خرائط Google Places: ' + (e.message || 'خطأ في الاتصال'),
+    });
   }
 }
 
@@ -576,6 +616,17 @@ async function handleSyncNap(req, res) {
   const afterLocation = await fetchGbpLocation(locationId, accessToken);
   const afterReport = buildNapAuditReport(site, afterLocation);
 
+  await recordGbpAuditLog(req, {
+    tenantSlug: tenant,
+    action: 'GBP_SYNC_NAP',
+    status: 'SUCCESS',
+    details: {
+      locationId,
+      updatedFields: (plan.updated || []).map(function(u) { return u.field; }),
+      includeName: includeName === true
+    }
+  });
+
   return res.status(200).json({
     success: true,
     updated: plan.updated,
@@ -585,8 +636,141 @@ async function handleSyncNap(req, res) {
   });
 }
 
+async function handlePublishPost(req, res) {
+  const { locationId, text, serviceName, callToAction } = req.body || {};
+  const tenant = normalizeTenantSlug(req.body && req.body.tenant);
+
+  if (!locationId) {
+    return res.status(400).json({ error: 'locationId is required for publishing' });
+  }
+  if (!text || !String(text).trim()) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+
+  const accessToken = await getValidAccessToken(tenant);
+  const trimmedText = trimGbpPostText(text);
+
+  // GBP localPosts API endpoint
+  const locResource = locationId.includes('/') ? locationId : `locations/${locationId}`;
+  const apiUrl = `https://mybusiness.googleapis.com/v4/${locResource}/localPosts`;
+
+  const postBody = {
+    languageCode: 'ar',
+    summary: trimmedText,
+    topicType: 'STANDARD',
+  };
+
+  if (callToAction && callToAction.url) {
+    postBody.callToAction = {
+      actionType: callToAction.actionType || 'BOOK',
+      url: callToAction.url,
+    };
+  }
+
+  const postRes = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(postBody),
+  });
+
+  if (!postRes.ok) {
+    await handleGoogleResponseError(postRes, 'فشل نشر المنشور على Google Business');
+  }
+
+  const postData = await postRes.json();
+
+  await recordGbpAuditLog(req, {
+    tenantSlug: tenant,
+    action: 'GBP_PUBLISH_POST',
+    status: 'SUCCESS',
+    details: {
+      locationId,
+      serviceName: serviceName || '',
+      chars: trimmedText.length,
+      postId: postData.name || null
+    }
+  });
+
+  return res.status(200).json({
+    success: true,
+    post: postData,
+    message: 'تم نشر المنشور على ملف Google Business بنجاح'
+  });
+}
+
+async function handleGetAttributesAndCategories(req, res) {
+  const tenant = normalizeTenantSlug(req.query && req.query.tenant);
+  const supabase = getSupabaseAdmin();
+  const { data: client } = await supabase
+    .from('mken_saas_clients')
+    .select('config_data, business_name')
+    .eq('tenant_slug', tenant)
+    .maybeSingle();
+
+  const config = (client && client.config_data) || {};
+  return res.status(200).json({
+    success: true,
+    tenant,
+    attributes: config.gbpAttributes || {},
+    secondaryCategories: Array.isArray(config.gbpSecondaryCategories) ? config.gbpSecondaryCategories : [],
+    primaryCategory: config.featuredActivity || (client && client.business_name) || '',
+  });
+}
+
+async function handleSaveAttributesAndCategories(req, res) {
+  const tenant = normalizeTenantSlug(req.body && req.body.tenant);
+  const { attributes, secondaryCategories } = req.body || {};
+  const supabase = getSupabaseAdmin();
+  const { data: client } = await supabase
+    .from('mken_saas_clients')
+    .select('config_data')
+    .eq('tenant_slug', tenant)
+    .maybeSingle();
+
+  const prevConfig = (client && client.config_data) || {};
+  const nextConfig = Object.assign({}, prevConfig, {
+    gbpAttributes: attributes || {},
+    gbpSecondaryCategories: Array.isArray(secondaryCategories) ? secondaryCategories : [],
+  });
+
+  await supabase
+    .from('mken_saas_clients')
+    .update({ config_data: nextConfig, updated_at: new Date().toISOString() })
+    .eq('tenant_slug', tenant);
+
+  await recordGbpAuditLog({
+    tenantSlug: tenant,
+    action: 'save-attributes-and-categories',
+    details: {
+      attributesCount: Object.keys(attributes || {}).length,
+      categoriesCount: (secondaryCategories || []).length,
+    },
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'تم حفظ الخصائص والتصنيفات في إعدادات المنشأة بنجاح',
+  });
+}
+
 module.exports = async function handler(req, res) {
   const action = getAction(req);
+
+  if (action === 'attributes-and-categories') {
+    await corsGet(req, res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    return await handleGetAttributesAndCategories(req, res);
+  }
+
+  if (action === 'save-attributes-and-categories' || action === 'sync-attributes') {
+    await corsPost(req, res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    return await handleSaveAttributesAndCategories(req, res);
+  }
 
   if (action === 'callback') {
     try {
@@ -659,6 +843,20 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, text: generatedText });
     } catch (err) {
       console.error('Generate Post Error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  if (action === 'publish-post') {
+    await corsPost(req, res);
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+    try {
+      const auth = await authorizeGbpAiRequest(req, res, 'publish-post');
+      if (!auth) return;
+      return await handlePublishPost(req, res);
+    } catch (err) {
+      console.error('Publish Post Error:', err);
       return res.status(500).json({ error: err.message });
     }
   }

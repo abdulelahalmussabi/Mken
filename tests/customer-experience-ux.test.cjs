@@ -402,6 +402,39 @@ test('Idempotency Guard: توليد مفاتيح فريدة غير متكررة 
   assert.notEqual(key1, key2, 'كل مفتاح يجب أن يكون فريداً عشوائياً');
 });
 
+// =========================================================================
+// Suite 7: حماية الواجهة من بالونة الجوال وحل تعليق زر التثبيت المكتبي
+// =========================================================================
+test('PWA UX: كبح بالونة التثبيت تماماً على الجوال وتجاوز التعليق الصامت', async () => {
+  const { mockLocalStorage, mockWindow } = setupMockDom();
+  delete require.cache[require.resolve('../js/pwa.js')];
+  
+  // محاكاة بيئة الجوال (User-Agent جوال + شاشة ضيقة)
+  mockWindow.navigator = { userAgent: 'iPhone; CPU iPhone OS 16_0 like Mac OS X', maxTouchPoints: 5 };
+  global.navigator = mockWindow.navigator;
+  mockWindow.innerWidth = 390;
+
+  const Pwa = require('../js/pwa.js');
+
+  // فحص استشعار الجوال
+  assert.equal(Pwa.isMobileOrTabletDevice(), true, 'استشعار بيئة الجوال بنجاح');
+
+  let bannerCreated = false;
+  global.document.createElement = (tag) => {
+    bannerCreated = true;
+    return { id: 'pwaInstallBanner', style: {}, classList: { add: () => {} } };
+  };
+
+  // محاولة إظهار البانر على الجوال
+  Pwa.maybeShowBanner(true);
+  assert.equal(bannerCreated, false, 'تم منع إنشاء البانر نهائياً على الجوال');
+
+  // فحص المسار الهجين للتنزيل وفك قفل الزر (Zero-Freeze)
+  const result = await Pwa.promptInstall();
+  assert.ok(result.outcome === 'direct_download' || result.outcome === 'fallback', 'تفعيل مسار التنزيل المكتبي البديل');
+  assert.equal(Pwa.isInstallSnoozed(), true, 'إخفاء وسكون البانر بعد التفاعل لضمان عدم تعليق الشاشة');
+});
+
 // إغلاق نظيف للعملية بعد إتمام جميع الاختبارات
 test.after(() => {
   setTimeout(() => {

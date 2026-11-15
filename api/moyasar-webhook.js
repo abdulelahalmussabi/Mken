@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
 const licenseIssue = require('./_lib/license-issue');
+const erpEngine = require('./_lib/erp-inventory-engine');
 
 /**
  * محرك تشفير ZATCA Fatoora Phase 2 وفق معيار TLV Base64
@@ -262,6 +263,16 @@ module.exports = async function handler(req, res) {
           .select();
         if (uErr) throw uErr;
         if (uOrd && uOrd.length > 0) updatedOrderData = uOrd[0];
+      }
+
+      // 7.5 تثبيت حجز المخزون الذري وتسجيل لقطة التكلفة التاريخية COGS Snapshot في دفتر المخزون
+      if (session && session.id) {
+        try {
+          await erpEngine.commitReservation(slug, session.id, effectiveOrderId, supabase);
+          console.log(`[ERP-Suite] Stock committed & COGS snapshot logged for order: ${effectiveOrderId}`);
+        } catch (erpErr) {
+          console.warn('[ERP-Suite] Reservation commit warning (non-blocking):', erpErr.message);
+        }
       }
 
       // 8. إنشاء فاتورة مبيعات إلكترونية معتمدة في mken_invoices

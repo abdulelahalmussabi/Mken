@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { Loader2, Megaphone, Sparkles, Save, PauseCircle, PlayCircle, Rocket, Link2, Unlink } from "lucide-react";
+import { Loader2, Megaphone, Sparkles, Save, PauseCircle, PlayCircle, Rocket, Link2, Unlink, ShieldCheck, Trash2, AlertTriangle, FileText } from "lucide-react";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useApp } from "@/context/AppContext";
 import SaasUpgradeNotice from "@/components/SaasUpgradeNotice";
@@ -25,7 +25,13 @@ type AdCampaign = {
   status: string;
   dailyBudgetHalalas: number;
   spentHalalas: number;
+  allocatedTotalHalalas?: number;
+  refundedHalalas?: number;
   radiusKm: number;
+  mawthoogLicenseNo?: string | null;
+  freelanceCertNo?: string | null;
+  crNumber?: string | null;
+  isContentLocked?: boolean;
   adCreative: AdCreative;
   metrics: { impressions: number; clicks: number; conversations: number; bookings: number };
 };
@@ -52,10 +58,12 @@ const RADII = [5, 8, 10, 15];
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "مسودة",
-  ACTIVE: "نشطة",
-  PAUSED: "متوقفة",
+  ACTIVE: "نشطة ومروجة",
+  PAUSED: "متوقفة مؤقتاً",
   COMPLETED: "مكتملة",
   FAILED: "فشلت",
+  TERMINATED: "ملغاة ومستردة",
+  KILL_IN_PROGRESS: "جاري إيقاف الترويج",
 };
 
 export default function AdsCampaignsPage() {
@@ -93,6 +101,10 @@ export default function AdsCampaignsPage() {
   const [serviceName, setServiceName] = useState("");
   const [campaignName, setCampaignName] = useState("");
   const [dailyBudgetSar, setDailyBudgetSar] = useState(30);
+  const [durationDays, setDurationDays] = useState(7);
+  const [licenseType, setLicenseType] = useState<"MAWTHOOG" | "FREELANCE" | "COMMERCIAL_REG">("MAWTHOOG");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [terminatingId, setTerminatingId] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [dialect, setDialect] = useState<"gulf" | "fusha">("gulf");
   const [creative, setCreative] = useState<AdCreative | null>(null);
@@ -204,6 +216,10 @@ export default function AdsCampaignsPage() {
       showToast("ولّد النصوص أولاً", "error");
       return;
     }
+    if (!licenseNumber.trim()) {
+      showToast("أدخل رقم الترخيص أو الاعتماد النظامي السعودي (موثوق / العمل الحر / السجل التجاري)", "error");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/ads/campaigns${query}`, {
@@ -215,9 +231,14 @@ export default function AdsCampaignsPage() {
           campaignName,
           objective: platform === "google_ads" ? "LOCAL_LEADS" : "MESSAGES",
           dailyBudgetSar,
+          durationDays,
           radiusKm,
           serviceName,
           creative,
+          compliance: {
+            licenseType,
+            licenseNumber,
+          },
         }),
       });
       const data = await res.json();
@@ -227,8 +248,8 @@ export default function AdsCampaignsPage() {
       }
       showToast(
         platform === "google_ads"
-          ? "حُفظت الحملة كمسودة. انشرها على جوجل من القائمة أدناه عند جاهزية الحساب."
-          : "حُفظت الحملة كمسودة. انشرها على ميتا من القائمة أدناه عند جاهزية التوكن.",
+          ? "حُفظت الحملة ومطابقة نظامياً لـ ZATCA وموثوق. انشرها على جوجل من القائمة أدناه."
+          : "حُفظت الحملة ومطابقة نظامياً لـ ZATCA وموثوق. انشرها على ميتا من القائمة أدناه.",
         "success"
       );
       setCreative(null);
@@ -237,6 +258,40 @@ export default function AdsCampaignsPage() {
       showToast("تعذّر الاتصال بالخادم", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const terminate = async (id: string) => {
+    if (
+      !window.confirm(
+        "هل أنت متأكد من رغبتك في إيقاف الترويج وحذف الحملة؟ سيتم تجميد الحملات في قوقل وميتا فوراً وتسوية الرصيد المتبقي بموجب إشعار دائن ضريبي."
+      )
+    ) {
+      return;
+    }
+    setTerminatingId(id);
+    try {
+      const res = await fetch(`/api/ads/campaigns${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "terminate", id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || "تعذّر إيقاف الحملة", "error");
+        return;
+      }
+      showToast(
+        data.refundedSar > 0
+          ? `تم إيقاف الخدمة وحجبها وتجميد الإعلانات الخارجية. الرصيد المسترجع: ${data.refundedSar} ر.س`
+          : "تم إيقاف الخدمة وتجميد الحملات الإعلانية بنجاح",
+        "success"
+      );
+      await load();
+    } catch {
+      showToast("تعذّر الاتصال بالخادم", "error");
+    } finally {
+      setTerminatingId(null);
     }
   };
 
@@ -667,6 +722,89 @@ export default function AdsCampaignsPage() {
             <span className="block text-xs font-bold text-slate-300">اسم الحملة</span>
             <input className={ADMIN_INPUT} value={campaignName} onChange={(e) => setCampaignName(e.target.value)} />
           </label>
+          <label className="space-y-1.5">
+            <span className="block text-xs font-bold text-slate-300">مدة الحملة (أيام)</span>
+            <select
+              className={ADMIN_INPUT}
+              value={durationDays}
+              onChange={(e) => setDurationDays(Number(e.target.value))}
+            >
+              <option value={3}>3 أيام</option>
+              <option value={7}>7 أيام (أسبوع)</option>
+              <option value={14}>14 يوماً (أسبوعين)</option>
+              <option value={30}>30 يوماً (شهر)</option>
+            </select>
+          </label>
+        </div>
+
+        {/* متطلبات الامتثال والأنظمة السعودية (موثوق / العمل الحر / السجل التجاري) */}
+        <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold text-white">الاعتماد النظامي الإلزامي في المملكة العربية السعودية</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1.5">
+              <span className="block text-xs font-bold text-slate-300">نوع الترخيص / الاعتماد</span>
+              <select
+                className={ADMIN_INPUT}
+                value={licenseType}
+                onChange={(e) =>
+                  setLicenseType(e.target.value as "MAWTHOOG" | "FREELANCE" | "COMMERCIAL_REG")
+                }
+              >
+                <option value="MAWTHOOG">رخصة موثوق للأفراد (هيئة تنظيم الإعلام)</option>
+                <option value="FREELANCE">وثيقة العمل الحر (وزارة الموارد البشرية)</option>
+                <option value="COMMERCIAL_REG">السجل التجاري للمنشأة (وزارة التجارة)</option>
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="block text-xs font-bold text-slate-300">
+                {licenseType === "MAWTHOOG"
+                  ? "رقم رخصة موثوق (مثال: MW-891230)"
+                  : licenseType === "FREELANCE"
+                    ? "رقم وثيقة العمل الحر (مثال: FL-9128301)"
+                    : "رقم السجل التجاري (10 أرقام)"}
+              </span>
+              <input
+                className={ADMIN_INPUT}
+                dir="ltr"
+                placeholder={
+                  licenseType === "MAWTHOOG"
+                    ? "MW-..."
+                    : licenseType === "FREELANCE"
+                      ? "FL-..."
+                      : "1010..."
+                }
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {/* الحاسبة المالية وضريبة ZATCA 15% */}
+          <div className="rounded-xl bg-slate-900 border border-slate-800 p-3 flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div>
+              <p className="text-slate-400">صافي الميزانية المخصصة:</p>
+              <p className="font-extrabold text-white text-sm">{dailyBudgetSar * durationDays} ر.س</p>
+            </div>
+            <div>
+              <p className="text-slate-400">ضريبة القيمة المضافة (15%):</p>
+              <p className="font-extrabold text-amber-300 text-sm">
+                {(dailyBudgetSar * durationDays * 0.15).toFixed(2)} ر.س
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400">الإجمالي المستحق للترويج:</p>
+              <p className="font-extrabold text-emerald-300 text-base">
+                {(dailyBudgetSar * durationDays * 1.15).toFixed(2)} ر.س
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1.5 rounded-lg border border-emerald-500/20">
+              <FileText className="w-3.5 h-3.5" />
+              <span>فاتورة إلكترونية ZATCA المرحلة 2</span>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -746,7 +884,19 @@ export default function AdsCampaignsPage() {
             <article key={campaign.id} className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-extrabold text-white">{campaign.campaignName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-extrabold text-white">{campaign.campaignName}</p>
+                    {campaign.isContentLocked && campaign.status === "ACTIVE" && (
+                      <span className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                        🔒 المحتوى مقفل للترويج
+                      </span>
+                    )}
+                    {campaign.status === "TERMINATED" && (
+                      <span className="text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full font-bold">
+                        ملغاة ومستردة {campaign.refundedHalalas ? `(${(campaign.refundedHalalas / 100).toFixed(0)} ر.س)` : ""}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-400 mt-1">
                     {PLATFORM_LABELS[campaign.platform]} · {STATUS_LABEL[campaign.status] || campaign.status} ·{" "}
                     {(campaign.dailyBudgetHalalas / 100).toFixed(0)} ر.س / يوم · {campaign.radiusKm} كم
@@ -789,7 +939,23 @@ export default function AdsCampaignsPage() {
                       className="inline-flex items-center gap-1 text-xs text-slate-300"
                     >
                       <PauseCircle className="w-4 h-4" />
-                      إيقاف
+                      إيقاف مؤقت
+                    </button>
+                  )}
+                  {campaign.status !== "TERMINATED" && (
+                    <button
+                      type="button"
+                      disabled={terminatingId === campaign.id}
+                      onClick={() => terminate(campaign.id)}
+                      className="inline-flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 disabled:opacity-50"
+                      title="إيقاف الترويج فوراً وتجميد الحملات في قوقل وميتا واسترداد الرصيد"
+                    >
+                      {terminatingId === campaign.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      <span>إيقاف الترويج وحذف</span>
                     </button>
                   )}
                 </div>

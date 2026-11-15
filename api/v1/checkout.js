@@ -5,6 +5,7 @@ const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
 const gccTaxEngine = require('../_lib/gcc-tax-engine');
 const adaptiveIam = require('../_lib/adaptive-iam');
+const erpEngine = require('../_lib/erp-inventory-engine');
 
 /**
  * دالة التحقق وتنسيق رقم الجوال السعودي والخليجي المعتمد
@@ -227,10 +228,10 @@ module.exports = async function handler(req, res) {
         const sId = line.serviceId;
         const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
 
-        // فحص المخزون الفعلي من mken_inventory_items
+        // فحص المخزون الفعلي والـ ATP من mken_inventory_items
         const { data: invItem } = await supabase
           .from('mken_inventory_items')
-          .select('id, name, sell_price, quantity')
+          .select('id, name, sell_price, quantity, physical_qty, reserved_qty, allocated_qty')
           .eq('id', sId)
           .eq('tenant_slug', tenantSlug)
           .maybeSingle();
@@ -239,23 +240,39 @@ module.exports = async function handler(req, res) {
         let title = line.serviceTitle || line.name || 'منتج';
 
         if (invItem) {
-          if (invItem.quantity < qty) {
+          const physical = invItem.physical_qty !== undefined && invItem.physical_qty !== null ? Number(invItem.physical_qty) : Number(invItem.quantity || 0);
+          const reserved = Number(invItem.reserved_qty || 0);
+          const allocated = Number(invItem.allocated_qty || 0);
+          const atp = Math.max(0, physical - (reserved + allocated));
+
+          if (atp < qty) {
             return res.status(400).json({
-              error: `عذراً، الكمية المتوفرة من "${invItem.name}" هي ${invItem.quantity} فقط.`
+              error: `عذراً، الكمية المتاحة للبيع من "${invItem.name}" هي ${atp} فقط.`
             });
           }
           unitPrice = Number(invItem.sell_price) || 0;
           title = invItem.name;
 
-          // خصم مؤقت للمخزون
-          await supabase
-            .from('mken_inventory_items')
-            .update({
-              quantity: invItem.quantity - qty,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sId)
-            .eq('tenant_slug', tenantSlug);
+          // حجز مؤقت للكمية (زيادة reserved_qty دون مساس بالرصيد الفيزيائي)
+          if (invItem.physical_qty !== undefined && invItem.physical_qty !== null) {
+            await supabase
+              .from('mken_inventory_items')
+              .update({
+                reserved_qty: reserved + qty,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sId)
+              .eq('tenant_slug', tenantSlug);
+          } else {
+            await supabase
+              .from('mken_inventory_items')
+              .update({
+                quantity: Math.max(0, (invItem.quantity || 0) - qty),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sId)
+              .eq('tenant_slug', tenantSlug);
+          }
         } else {
           unitPrice = Math.max(0, parseFloat(line.unitPrice || line.price) || 0);
         }
@@ -366,6 +383,31 @@ module.exports = async function handler(req, res) {
           updated_at: new Date().toISOString()
         })
         .select();
+
+      // تسجيل الحجوزات النشطة في جدول الحجوزات المؤقتة mken_inventory_reservations
+      if (sessionRecord && sessionRecord.id) {
+        try {
+          const resvRecords = [];
+          for (const it of items) {
+            const sid = it.serviceId || it.itemId || it.id;
+            if (sid && sid.length === 36) { // فحص UUID
+              resvRecords.push({
+                tenant_slug: tenantSlug,
+                session_id: sessionRecord.id,
+                item_id: sid,
+                quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
+                status: 'active',
+                expires_at: expiresAt
+              });
+            }
+          }
+          if (resvRecords.length > 0) {
+            await supabase.from('mken_inventory_reservations').insert(resvRecords);
+          }
+        } catch (resvErr) {
+          console.warn('[ERP-Suite] Reservation record insert warning:', resvErr.message);
+        }
+      }
 
       return res.status(200).json({
         success: true,

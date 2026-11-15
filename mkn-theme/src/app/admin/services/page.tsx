@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
 import type { ResolvedActivity, ResolvedService } from "@/lib/mken/catalog";
-import { LayoutGrid, RefreshCw, Save, Star, Tag, Check, X } from "lucide-react";
+import { LayoutGrid, RefreshCw, Save, Star, Tag, Check, X, ExternalLink, Globe } from "lucide-react";
 
 export default function AdminServicesPage() {
   const { session, isSuperAdmin, clients } = useAdmin();
@@ -366,6 +366,34 @@ export default function AdminServicesPage() {
                           </button>
                         )}
                       </div>
+
+                      {/* مؤشر جاهزية صفحة الخدمة لمحركات البحث (Sprint 6 Anti-Doorway) */}
+                      {service.enabled && (
+                        <div className="w-full flex items-center justify-between pt-2.5 mt-1 border-t border-slate-800/80 text-[11px]">
+                          <div className="flex items-center gap-1.5">
+                            {Boolean(prices[service.id]?.trim() || service.price?.trim()) ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+                                <Globe className="w-3 h-3" />
+                                صفحة مستقلة مفهرسة
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-medium">
+                                حماية الفهرسة: أضف السعر للظهور في Google
+                              </span>
+                            )}
+                          </div>
+
+                          <a
+                            href={`/subscriber/${tenant}/services/${service.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-slate-400 hover:text-amber-400 transition"
+                          >
+                            <span>معاينة الصفحة</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

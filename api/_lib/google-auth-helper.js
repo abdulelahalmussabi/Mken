@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./supabase-env');
+const { encryptToken, decryptToken } = require('./token-crypto');
 
 function getSupabaseAdmin() {
   return createClient(sbEnv.getSupabaseUrl(), sbEnv.getSupabaseServiceKey());
@@ -50,7 +51,9 @@ async function getValidAccessToken(tenantSlug) {
     throw new Error('Google Business account is not connected');
   }
 
-  const { google_access_token: accessToken, google_refresh_token: refreshToken, google_token_expiry: tokenExpiry } = client;
+  const { google_access_token: rawAccessToken, google_refresh_token: rawRefreshToken, google_token_expiry: tokenExpiry } = client;
+  const accessToken = decryptToken(rawAccessToken);
+  const refreshToken = decryptToken(rawRefreshToken);
 
   if (!refreshToken) {
     throw new Error('Google Business account is not connected');
@@ -92,11 +95,11 @@ async function getValidAccessToken(tenantSlug) {
   const expiresIn = tokenData.expires_in || 3600;
   const newExpiryDate = new Date(Date.now() + expiresIn * 1000).toISOString();
 
-  // Save new token to database
+  // Save new token to database (encrypted with AES-256-GCM)
   const { error: updateError } = await supabase
     .from('mken_saas_clients')
     .update({
-      google_access_token: newAccessToken,
+      google_access_token: encryptToken(newAccessToken),
       google_token_expiry: newExpiryDate,
       updated_at: new Date().toISOString()
     })

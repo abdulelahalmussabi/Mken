@@ -188,7 +188,7 @@ function groupedServices(services: StorefrontServiceOption[]): { category: strin
 }
 
 function ServicesBody() {
-  const { pages, appearance, currentServices, accentColor, openBooking, servicesNavLabel } = useStorefront();
+  const { slug, pages, appearance, currentServices, accentColor, openBooking, servicesNavLabel } = useStorefront();
   const heading = appearance?.interfaceCopy?.servicesHeading || resolvePageLabel(pages, "services", servicesNavLabel);
   const intro = appearance?.interfaceCopy?.servicesIntro || "اختر الخدمة المناسبة واطّلع على التفاصيل والفوائد.";
   const steps = pages.services.processSteps.length ? pages.services.processSteps : defaultProcessSteps();
@@ -209,6 +209,7 @@ function ServicesBody() {
                     srv={srv}
                     accentColor={accentColor}
                     showPrice={pages.services.showPrices}
+                    detailsHref={`/subscriber/${slug}/services/${srv.id}`}
                     onBook={() => openBooking(srv)}
                   />
                 ))}
@@ -223,6 +224,7 @@ function ServicesBody() {
                   srv={srv}
                   accentColor={accentColor}
                   showPrice={pages.services.showPrices}
+                  detailsHref={`/subscriber/${slug}/services/${srv.id}`}
                   onBook={() => openBooking(srv)}
                 />
               ))}

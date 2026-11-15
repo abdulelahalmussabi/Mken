@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink, Link2 } from "lucide-react";
 import GbpSeoPanel from "@/components/GbpSeoPanel";
+import GbpAttributesAndCategories from "@/components/GbpAttributesAndCategories";
+import TenantSeoHeroCards from "@/components/TenantSeoHeroCards";
 import { ADMIN_INPUT, useAdminTenant } from "@/components/AdminPageTabs";
 import { useAdmin } from "@/context/AdminContext";
 import { useApp } from "@/context/AppContext";
@@ -18,6 +21,7 @@ export default function GbpLocalSeoWorkspace() {
   const { tenant, query, isSuperAdmin, authLoading } = useAdminTenant();
   const { session } = useAdmin();
   const { showToast } = useApp();
+  const router = useRouter();
   const [brandName, setBrandName] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,6 +36,14 @@ export default function GbpLocalSeoWorkspace() {
   const [quotaBlocked, setQuotaBlocked] = useState(false);
   const [mapsAuditGen, setMapsAuditGen] = useState(0);
 
+  // مؤشرات لوحة السيو البسيطة (البطاقات الثلاث)
+  const [geoRank, setGeoRank] = useState<number | null>(null);
+  const [geoTop3, setGeoTop3] = useState<number | null>(null);
+  const [ownRating, setOwnRating] = useState<number | null>(null);
+  const [reviewsCount, setReviewsCount] = useState<number | null>(null);
+  const [competitorAvgRating, setCompetitorAvgRating] = useState<number | null>(null);
+  const [napScore, setNapScore] = useState<number | null>(null);
+
   const load = useCallback(async () => {
     if (authLoading) return;
     if (!tenant) {
@@ -40,10 +52,11 @@ export default function GbpLocalSeoWorkspace() {
     }
     setLoading(true);
     try {
-      const [gbpRes, settingsRes, domainRes] = await Promise.all([
+      const [gbpRes, settingsRes, domainRes, geoRes] = await Promise.all([
         fetch(`/api/google-business${query}`),
         fetch(`/api/settings${query}`),
         fetch(`/api/admin/domains${query}`),
+        fetch(`/api/ads/geo-grid${query}`).catch(() => null),
       ]);
       const gbp = await gbpRes.json();
       const connected = Boolean(gbpRes.ok && gbp.success && gbp.connected);
@@ -67,11 +80,30 @@ export default function GbpLocalSeoWorkspace() {
         setGbpLocationError("");
       }
 
+      if (gbp.report?.summary?.scorePercent != null) {
+        setNapScore(gbp.report.summary.scorePercent);
+      }
+
       const settingsData = await settingsRes.json();
       if (settingsRes.ok && settingsData.success) {
-        setBrandName(settingsData.settings?.brand?.name || tenant);
+        const brand = settingsData.settings?.brand?.name || tenant;
+        setBrandName(brand);
+        const rVal = parseFloat(settingsData.settings?.rating || settingsData.settings?.storeInfo?.rating || "");
+        if (!isNaN(rVal) && rVal > 0) setOwnRating(rVal);
+        const rcVal = parseInt(String(settingsData.settings?.reviewsCount || settingsData.settings?.storeInfo?.reviewsCount || ""), 10);
+        if (!isNaN(rcVal) && rcVal > 0) setReviewsCount(rcVal);
       } else {
         setBrandName(tenant);
+      }
+
+      if (geoRes && geoRes.ok) {
+        try {
+          const geoData = await geoRes.json();
+          if (geoData.success && Array.isArray(geoData.scans) && geoData.scans[0]) {
+            setGeoRank(geoData.scans[0].averageRank ?? null);
+            setGeoTop3(geoData.scans[0].top3Percentage ?? null);
+          }
+        } catch {}
       }
 
       const domainData = await domainRes.json();
@@ -280,6 +312,28 @@ export default function GbpLocalSeoWorkspace() {
     }
   };
 
+  const handleCardAction = (actionId: "connect" | "geogrid" | "reviews" | "nap" | "services") => {
+    if (actionId === "geogrid") {
+      router.push((`/admin/ads/geo-grid${query}`) as any);
+      return;
+    }
+    if (actionId === "reviews") {
+      router.push((`/admin/ads/local-seo/reviews${query}`) as any);
+      return;
+    }
+    if (actionId === "connect") {
+      void connectGbp();
+      return;
+    }
+    if (actionId === "nap") {
+      showToast("توجّه إلى زر «فحص NAP» أو «مزامنة NAP إلى جوجل» أدناه للمزامنة المباشرة", "success");
+      return;
+    }
+    if (actionId === "services") {
+      showToast("اضغط على زر «مزامنة الخدمات إلى جوجل» أدناه لتحديث الأسعار بالريال", "success");
+    }
+  };
+
   if (authLoading || loading) {
     return <div className="h-40 rounded-3xl bg-slate-900/80 border border-slate-800 animate-pulse" />;
   }
@@ -289,11 +343,24 @@ export default function GbpLocalSeoWorkspace() {
   }
 
   return (
-    <section className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-      <h1 className="text-lg font-extrabold text-white flex items-center gap-2 justify-end">
-        التواجد المحلي وخرائط جوجل
-        <Link2 className="w-5 h-5 text-amber-400" />
-      </h1>
+    <div className="space-y-6">
+      <TenantSeoHeroCards
+        rank={geoRank}
+        top3Percentage={geoTop3}
+        isMapBound={mapsBound}
+        isConnected={gbpConnected}
+        ownRating={ownRating}
+        reviewsCount={reviewsCount}
+        competitorsAverageRating={competitorAvgRating}
+        napScore={napScore}
+        onActionClick={handleCardAction}
+      />
+
+      <section className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+        <h1 className="text-lg font-extrabold text-white flex items-center gap-2 justify-end">
+          التواجد المحلي وخرائط جوجل
+          <Link2 className="w-5 h-5 text-amber-400" />
+        </h1>
       <p className="text-xs font-bold text-amber-300">
         الربط الحالي للمنشأة: {brandName} ({tenant})
       </p>
@@ -470,8 +537,14 @@ export default function GbpLocalSeoWorkspace() {
             setBusy={setGbpBusy}
             onToast={showToast}
           />
+          <GbpAttributesAndCategories
+            query={query}
+            locationId={gbpLocationId}
+            onToast={showToast}
+          />
         </div>
       ) : null}
     </section>
-  );
+  </div>
+);
 }

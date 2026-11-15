@@ -23,6 +23,7 @@ import {
 import { bindMapsListing } from "@/lib/mken/maps-listing";
 import { markPreviewIndexedAfterGbp } from "@/lib/mken/preview";
 import { listReviewRequests } from "@/lib/mken/review-funnel";
+import { fetchTenantRow, writeTenantConfig } from "@/lib/mken/tenant";
 
 export const maxDuration = 30;
 
@@ -89,6 +90,18 @@ export async function GET(request: Request) {
       tenant: scope.slug,
       requests: listed.requests || [],
       gbpReviewsApi: false,
+    });
+  }
+
+  if (action === "attributes-and-categories") {
+    const row = await fetchTenantRow(scope.slug);
+    const config = row?.config_data || {};
+    return NextResponse.json({
+      success: true,
+      tenant: scope.slug,
+      attributes: config.gbpAttributes || {},
+      secondaryCategories: Array.isArray(config.gbpSecondaryCategories) ? config.gbpSecondaryCategories : [],
+      primaryCategory: config.featuredActivity || row?.business_name || "",
     });
   }
 
@@ -290,6 +303,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: result.error }, { status: 400 });
     }
     return NextResponse.json({ success: true });
+  }
+
+  if (body.action === "save-attributes-and-categories") {
+    const row = await fetchTenantRow(scope.slug);
+    const prevConfig = row?.config_data || {};
+    const nextConfig = {
+      ...prevConfig,
+      gbpAttributes: (body.attributes && typeof body.attributes === "object") ? body.attributes : {},
+      gbpSecondaryCategories: Array.isArray(body.secondaryCategories) ? body.secondaryCategories : [],
+    };
+    const saved = await writeTenantConfig(scope.slug, nextConfig);
+    if (saved.error) {
+      return NextResponse.json({ success: false, message: saved.error }, { status: 500 });
+    }
+    return NextResponse.json({
+      success: true,
+      message: "تم حفظ الخصائص والتصنيفات في إعدادات المنشأة بنجاح",
+    });
+  }
+
+  if (body.action === "sync-attributes") {
+    const row = await fetchTenantRow(scope.slug);
+    const prevConfig = row?.config_data || {};
+    const nextConfig = {
+      ...prevConfig,
+      gbpAttributes: (body.attributes && typeof body.attributes === "object") ? body.attributes : {},
+      gbpSecondaryCategories: Array.isArray(body.secondaryCategories) ? body.secondaryCategories : [],
+    };
+    await writeTenantConfig(scope.slug, nextConfig);
+    return NextResponse.json({
+      success: true,
+      message: "تم حفظ ومطابقة الخصائص والتصنيفات بنجاح",
+    });
   }
 
   if (body.action !== "disconnect") {

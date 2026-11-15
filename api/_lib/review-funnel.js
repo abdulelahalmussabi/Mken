@@ -1,6 +1,10 @@
 /**
  * Smart review funnel — inbound 1–5 star replies after a post-visit WhatsApp survey.
  * Used by api/whatsapp-webhook.js. Missing table is non-fatal.
+ *
+ * Anti-Review-Gating & Saudi E-Commerce/Consumer Protection Compliance:
+ * Customers giving ratings 1-3 are thanked and their feedback is addressed,
+ * AND the public Google Maps review link is provided transparently without filtering.
  */
 
 function normalizePhone(value) {
@@ -42,8 +46,9 @@ async function handleRatingReply(supabase, tenantSlug, phoneRaw, text) {
 
   if (error || !data || !data.id) return null;
 
+  const url = data.google_review_url || '';
+
   if (stars >= 4) {
-    const url = data.google_review_url || '';
     await supabase
       .from('mken_review_requests')
       .update({
@@ -67,7 +72,11 @@ async function handleRatingReply(supabase, tenantSlug, phoneRaw, text) {
     })
     .eq('id', data.id);
 
-  return 'نأسف إن التجربة ما كانت على المطلوب. اكتب ملاحظتك هنا وسنعالجها مع المدير فوراً — بدون نشر على الخرائط.';
+  const name = data.customer_name ? ' ' + data.customer_name : '';
+  if (url) {
+    return 'نأسف جداً' + name + ' إن التجربة لم تكن بالمستوى المطلوب. ملاحظتك تهمنا وسنعالجها مع المدير فوراً.\nكما نرحب بمشاركة تقييمك الشفاف على خرائط جوجل عبر الرابط التالي:\n' + url;
+  }
+  return 'نأسف جداً' + name + ' إن التجربة لم تكن بالمستوى المطلوب. اكتب ملاحظتك هنا وسنعالجها مع المدير فوراً.';
 }
 
 module.exports = { handleRatingReply, parseStarRating };

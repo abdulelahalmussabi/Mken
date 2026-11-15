@@ -44,8 +44,11 @@ function thanksGoogleBody(name: string, url: string): string {
   return `شكراً لك${name ? ` ${name}` : ""}. يسعدنا تقييمك على خرائط جوجل من هنا:\n${url}`;
 }
 
-function internalFollowupBody(): string {
-  return "نأسف إن التجربة ما كانت على المطلوب. اكتب ملاحظتك هنا وسنعالجها مع المدير فوراً — بدون نشر على الخرائط.";
+function internalFollowupBody(url?: string): string {
+  if (url) {
+    return `نأسف جداً إن التجربة لم تكن بالمستوى المطلوب. ملاحظتك تهمنا وسيعالجها المدير فوراً.\nكما نرحب بمشاركة تقييمك الشفاف على خرائط جوجل من هنا:\n${url}`;
+  }
+  return "نأسف جداً إن التجربة لم تكن بالمستوى المطلوب. اكتب ملاحظتك هنا وسيعالجها المدير فوراً.";
 }
 
 async function placeIdForTenant(slug: string): Promise<string> {
@@ -195,8 +198,8 @@ export async function handleReviewRatingReply(
 
   if (!data?.id) return { handled: false };
 
+  const url = data.google_review_url || "";
   if (stars >= 4) {
-    const url = data.google_review_url || "";
     await db
       .from("mken_review_requests")
       .update({
@@ -222,7 +225,7 @@ export async function handleReviewRatingReply(
     })
     .eq("id", data.id);
 
-  return { handled: true, reply: internalFollowupBody() };
+  return { handled: true, reply: internalFollowupBody(url) };
 }
 
 export interface ReviewRequestRow {

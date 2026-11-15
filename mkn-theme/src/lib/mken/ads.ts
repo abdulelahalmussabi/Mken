@@ -4,6 +4,7 @@ import { tenantWebsiteUrl } from "@/lib/mken/custom-domain";
 import { generateGeminiImage, generateGeminiText } from "@/lib/mken/gemini";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { randomUUID, createHash } from "crypto";
 import { listRecentRankScans } from "@/lib/mken/geo-grid";
 import { riyadhTodayYmd } from "@/lib/mken/ad-schedule";
 import {
@@ -44,8 +45,54 @@ export const LIVE_AD_PLATFORMS = ["meta_ctwa", "google_ads"] as const;
 export const LIVE_AD_PLATFORM: AdPlatformId = "meta_ctwa";
 export const LIVE_AD_PLATFORM_ERROR = "التوليد والنشر متاحان حالياً لواتساب ميتا وإعلانات جوجل المحلية فقط";
 
-export const AD_STATUSES = ["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "FAILED"] as const;
+export const AD_STATUSES = [
+  "DRAFT",
+  "ACTIVE",
+  "PAUSED",
+  "COMPLETED",
+  "FAILED",
+  "TERMINATED",
+  "KILL_IN_PROGRESS",
+] as const;
 export type AdStatus = (typeof AD_STATUSES)[number];
+
+export type SaudiLicenseType = "MAWTHOOG" | "FREELANCE" | "COMMERCIAL_REG";
+
+export interface SaudiComplianceInput {
+  licenseType?: SaudiLicenseType;
+  licenseNumber?: string;
+  nationalId?: string;
+}
+
+export function verifySaudiAdCompliance(input: SaudiComplianceInput): {
+  valid: boolean;
+  error?: string;
+  cleanLicense?: string;
+} {
+  if (!input.licenseType) {
+    return { valid: false, error: "اختر نوع الاعتماد النظامي السعودي (موثوق أو وثيقة العمل الحر أو السجل التجاري)" };
+  }
+  const clean = (input.licenseNumber || "").trim().toUpperCase();
+  if (!clean || clean.length < 5) {
+    return { valid: false, error: "رقم الترخيص أو الوثيقة غير صالح — أدخل رقماً صحيحاً لا يقل عن 5 خانات" };
+  }
+
+  if (input.licenseType === "MAWTHOOG") {
+    if (!/^(MW-)?[A-Z0-9]{5,20}$/i.test(clean)) {
+      return { valid: false, error: "صيغة رخصة موثوق غير صالحة. مثال: MW-123456" };
+    }
+  } else if (input.licenseType === "COMMERCIAL_REG") {
+    if (!/^\d{10}$/.test(clean.replace(/\D/g, ""))) {
+      return { valid: false, error: "رقم السجل التجاري يجب أن يتكون من 10 أرقام" };
+    }
+  } else if (input.licenseType === "FREELANCE") {
+    if (!/^(FL-)?[A-Z0-9]{6,25}$/i.test(clean)) {
+      return { valid: false, error: "صيغة وثيقة العمل الحر غير صالحة. مثال: FL-8923412" };
+    }
+  }
+
+  return { valid: true, cleanLicense: clean };
+}
 
 export const AD_OBJECTIVES = ["MESSAGES", "LOCAL_LEADS", "STORE_VISITS"] as const;
 export type AdObjective = (typeof AD_OBJECTIVES)[number];
@@ -93,8 +140,15 @@ export interface AdCampaign {
   status: AdStatus;
   dailyBudgetHalalas: number;
   spentHalalas: number;
+  allocatedTotalHalalas: number;
+  refundedHalalas: number;
   radiusKm: number;
   serviceName: string;
+  mawthoogLicenseNo: string | null;
+  freelanceCertNo: string | null;
+  crNumber: string | null;
+  isContentLocked: boolean;
+  zatcaInvoiceUuid: string | null;
   metrics: {
     impressions: number;
     clicks: number;
@@ -119,8 +173,15 @@ interface CampaignRow {
   status?: string | null;
   daily_budget_halalas?: number | null;
   spent_halalas?: number | null;
+  allocated_total_halalas?: number | null;
+  refunded_halalas?: number | null;
   radius_km?: number | string | null;
   service_name?: string | null;
+  mawthoog_license_no?: string | null;
+  freelance_cert_no?: string | null;
+  cr_number?: string | null;
+  is_content_locked?: boolean | null;
+  zatca_invoice_uuid?: string | null;
   metrics?: AdCampaign["metrics"] | null;
   ad_creative?: AdCreative | null;
   start_date?: string | null;
@@ -467,8 +528,15 @@ function toCampaign(row: CampaignRow): AdCampaign {
     status: isStatus(statusRaw) ? statusRaw : "DRAFT",
     dailyBudgetHalalas: Number(row.daily_budget_halalas) || 0,
     spentHalalas: Number(row.spent_halalas) || 0,
+    allocatedTotalHalalas: Number(row.allocated_total_halalas) || 0,
+    refundedHalalas: Number(row.refunded_halalas) || 0,
     radiusKm: Number(row.radius_km) || 5,
     serviceName: row.service_name || "",
+    mawthoogLicenseNo: row.mawthoog_license_no || null,
+    freelanceCertNo: row.freelance_cert_no || null,
+    crNumber: row.cr_number || null,
+    isContentLocked: Boolean(row.is_content_locked),
+    zatcaInvoiceUuid: row.zatca_invoice_uuid || null,
     metrics: {
       impressions: Number(metrics.impressions) || 0,
       clicks: Number(metrics.clicks) || 0,
@@ -643,6 +711,8 @@ export async function createAdCampaign(input: {
   radiusKm: number;
   serviceName: string;
   creative: AdCreative;
+  compliance?: SaudiComplianceInput;
+  durationDays?: number;
 }): Promise<{ campaign?: AdCampaign; error?: string }> {
   const db = getTenantDb();
   if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
@@ -662,6 +732,21 @@ export async function createAdCampaign(input: {
 
   if (!input.creative?.variants?.length) return { error: "ولّد النصوص الإعلانية أولاً" };
 
+  let mawthoogNo: string | null = null;
+  let freelanceNo: string | null = null;
+  let crNo: string | null = null;
+
+  if (input.compliance && input.compliance.licenseType) {
+    const verified = verifySaudiAdCompliance(input.compliance);
+    if (!verified.valid) return { error: verified.error };
+    if (input.compliance.licenseType === "MAWTHOOG") mawthoogNo = verified.cleanLicense || null;
+    else if (input.compliance.licenseType === "FREELANCE") freelanceNo = verified.cleanLicense || null;
+    else if (input.compliance.licenseType === "COMMERCIAL_REG") crNo = verified.cleanLicense || null;
+  }
+
+  const duration = Math.max(1, Math.min(30, Number(input.durationDays) || 7));
+  const totalAllocatedHalalas = sarToHalalas(sar * duration);
+
   const now = new Date().toISOString();
   const { data, error } = await db
     .from("mken_ad_campaigns")
@@ -672,8 +757,13 @@ export async function createAdCampaign(input: {
       objective: input.objective,
       status: "DRAFT",
       daily_budget_halalas: sarToHalalas(sar),
+      allocated_total_halalas: totalAllocatedHalalas,
       radius_km: radius,
       service_name: input.serviceName.trim().slice(0, 80),
+      mawthoog_license_no: mawthoogNo,
+      freelance_cert_no: freelanceNo,
+      cr_number: crNo,
+      is_content_locked: false,
       ad_creative: input.creative,
       created_at: now,
       updated_at: now,
@@ -804,6 +894,7 @@ export async function publishAdCampaign(
     .update({
       status: "ACTIVE",
       external_campaign_id: published.campaignId,
+      is_content_locked: true,
       error_log: null,
       start_date: new Date().toISOString().slice(0, 10),
       updated_at: new Date().toISOString(),
@@ -992,4 +1083,179 @@ export async function syncAdCampaignInsights(): Promise<{
   }
 
   return { synced, failed, skipped };
+}
+
+/**
+ * بروتوكول القتل الخارجي المتزامن وسلسلة الإلغاء (Cascade Kill-Switch)
+ * يضمن إيقاف الحملة في قوقل وميتا فوراً، وجدولتها في طابور القتل عند تعطل الشبكة،
+ * وتصفية الميزانية المستهلكة وإصدار إشعار دائن ضريبي مطابق لـ ZATCA.
+ */
+export async function terminateAdCampaign(
+  slug: string,
+  id: string
+): Promise<{ campaign?: AdCampaign; refundedSar?: number; error?: string }> {
+  const db = getTenantDb();
+  if (!db) return { error: "قاعدة البيانات غير مهيأة على الخادم" };
+  if (!id.trim()) return { error: "معرّف الحملة ناقص" };
+
+  const loaded = await getAdCampaign(slug, id);
+  if (loaded.error || !loaded.campaign) return { error: loaded.error || "الحملة غير موجودة" };
+  const campaign = loaded.campaign;
+
+  if (campaign.status === "TERMINATED") {
+    return { campaign, refundedSar: halalasToSar(campaign.refundedHalalas || 0) };
+  }
+
+  // 1. عزل محلي فوري وتحويل الحالة لتجميد الحملة
+  await db
+    .from("mken_ad_campaigns")
+    .update({
+      status: "KILL_IN_PROGRESS",
+      is_content_locked: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("tenant_slug", slug);
+
+  // 2. محاولة القتل الفوري المباشر عبر الـ API الخارجي
+  let remoteStopped = false;
+  let remoteError = "";
+
+  if (campaign.externalCampaignId) {
+    if (campaign.platform === "google_ads") {
+      const stopped = await pauseGoogleForSlug(slug, campaign.externalCampaignId);
+      if (stopped.error) remoteError = stopped.error;
+      else remoteStopped = true;
+    } else if (campaign.platform === "meta_ctwa") {
+      const stopped = await pauseMetaCampaign(campaign.externalCampaignId);
+      if (stopped.error) remoteError = stopped.error;
+      else remoteStopped = true;
+    }
+  } else {
+    remoteStopped = true;
+  }
+
+  // 3. في حال تعثر الـ API الخارجي أو تأخره، الإدراج الإجباري في طابور القتل لإعادة المحاولة آلياً
+  if (!remoteStopped && campaign.externalCampaignId) {
+    await db.from("mken_ad_kill_queue").insert({
+      campaign_id: id,
+      tenant_slug: slug,
+      platform: campaign.platform,
+      external_campaign_id: campaign.externalCampaignId,
+      status: "QUEUED",
+      last_error: remoteError,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // 4. تسوية الرصيد واحتساب المتبقي غير المستهلك
+  const allocated = campaign.allocatedTotalHalalas || (campaign.dailyBudgetHalalas * 7);
+  const spent = campaign.spentHalalas || 0;
+  const refundHalalas = Math.max(0, allocated - spent);
+  const refundSar = halalasToSar(refundHalalas);
+
+  // 5. تسجيل إشعار دائن ضريبي في دفتر أستاذ الترويج (ZATCA Compliant Credit Note)
+  if (refundHalalas > 0) {
+    const vatRefund = Math.round(refundSar * 0.15 * 100) / 100;
+    const netRefund = Math.round((refundSar - vatRefund) * 100) / 100;
+    const creditNoteUuid = randomUUID();
+
+    try {
+      await db.from("mken_promotion_billing_ledger").insert({
+        campaign_id: id,
+        tenant_slug: slug,
+        transaction_type: "REFUND_UNUSED",
+        gross_amount: refundSar,
+        vat_amount: vatRefund,
+        net_amount: netRefund,
+        zatca_invoice_uuid: creditNoteUuid,
+        zatca_hash: createHash("sha256").update(`${slug}:${creditNoteUuid}:${refundSar}`).digest("hex"),
+        created_at: new Date().toISOString(),
+      });
+    } catch {
+      // عدم تعطيل واجهة المستخدم إذا لم تكن الجداول الثانوية منشأة بعد
+    }
+  }
+
+  // 6. تحديث الحالة النهائية إلى TERMINATED وتصفية القفل
+  const { data, error } = await db
+    .from("mken_ad_campaigns")
+    .update({
+      status: "TERMINATED",
+      is_content_locked: false,
+      refunded_halalas: refundHalalas,
+      error_log: remoteError ? `تنبيه: تم الجدولة في طابور القتل الخارجي: ${remoteError}` : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("tenant_slug", slug)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) {
+    return { error: error?.message || "تعذّر حفظ حالة إنهاء الحملة" };
+  }
+
+  return { campaign: toCampaign(data as CampaignRow), refundedSar: refundSar };
+}
+
+/**
+ * معالج طابور القتل الخارجي (Kill Queue Worker)
+ * يعالج الحملات العالقة التي تعذر إيقافها لحظياً بسبب انقطاع الشبكة أو انتهاء مهلة الـ API
+ */
+export async function processAdKillQueue(): Promise<{ processed: number; failed: number }> {
+  const db = getTenantDb();
+  if (!db) return { processed: 0, failed: 0 };
+
+  const { data: jobs, error } = await db
+    .from("mken_ad_kill_queue")
+    .select("*")
+    .in("status", ["QUEUED", "PROCESSING"])
+    .lt("attempts", 5)
+    .order("created_at", { ascending: true })
+    .limit(10);
+
+  if (error || !jobs?.length) return { processed: 0, failed: 0 };
+
+  let processed = 0;
+  let failed = 0;
+
+  for (const job of jobs) {
+    await db
+      .from("mken_ad_kill_queue")
+      .update({ status: "PROCESSING", attempts: (job.attempts || 0) + 1 })
+      .eq("id", job.id);
+
+    let stopped = false;
+    let stopError = "";
+
+    if (job.platform === "google_ads") {
+      const res = await pauseGoogleForSlug(job.tenant_slug, job.external_campaign_id);
+      if (res.error) stopError = res.error;
+      else stopped = true;
+    } else if (job.platform === "meta_ctwa") {
+      const res = await pauseMetaCampaign(job.external_campaign_id);
+      if (res.error) stopError = res.error;
+      else stopped = true;
+    }
+
+    if (stopped) {
+      await db
+        .from("mken_ad_kill_queue")
+        .update({ status: "TERMINATED", processed_at: new Date().toISOString(), last_error: null })
+        .eq("id", job.id);
+      processed += 1;
+    } else {
+      await db
+        .from("mken_ad_kill_queue")
+        .update({
+          status: (job.attempts || 0) + 1 >= 5 ? "FAILED" : "QUEUED",
+          last_error: stopError,
+        })
+        .eq("id", job.id);
+      failed += 1;
+    }
+  }
+
+  return { processed, failed };
 }

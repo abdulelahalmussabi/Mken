@@ -40,3 +40,35 @@
     margin: 0;
   }
 }
+
+
+/* حظر بالونة التثبيت نهائياً على كافة شاشات وأجهزة الجوال واللمس للتطبيقات المكتبية */
+@media (max-width: 1024px), (pointer: coarse) {
+  #pwaInstallBanner,
+  .pwa-banner {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+/* تنسيق إشعار التثبيت العائم الخفيف */
+.pwa-status-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 100000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  direction: rtl;
+  text-align: center;
+  transition: opacity 0.3s ease;
+}
