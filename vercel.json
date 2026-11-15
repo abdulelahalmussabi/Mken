@@ -7,7 +7,7 @@
   ],
   "build": {
     "env": {
-      "CACHE_BREAKER": "phase2-2026-08-07"
+      "CACHE_BREAKER": "force-rebuild-2026-11-15-clean-ux"
     }
   },
   "redirects": [

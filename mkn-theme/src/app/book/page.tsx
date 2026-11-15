@@ -21,7 +21,6 @@ import {
   ShieldCheck,
   Tag,
   Send,
-  Download,
   X,
   Loader2,
 } from "lucide-react";
@@ -62,7 +61,6 @@ function BookAppointmentContent() {
   const [couponInput, setCouponInput] = useState<string>(occasionDetails.couponCode);
   const [couponApplied, setCouponApplied] = useState<boolean>(Boolean(occasionDetails.couponCode));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showAppBanner, setShowAppBanner] = useState<boolean>(true);
   const [tenantName, setTenantName] = useState<string>("منصة مكّن");
   const [tenantLogo, setTenantLogo] = useState<string>("");
   const [tenantTagline, setTenantTagline] = useState<string>("");
@@ -580,44 +578,6 @@ function BookAppointmentContent() {
         </form>
       </main>
 
-      {/* Floating App Installation Banner */}
-      {showAppBanner && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-full bg-surface/95 border border-line backdrop-blur-2xl rounded-2xl p-4 shadow-2xl space-y-3 animate-fade-in text-right mx-auto">
-          <div className="flex items-start justify-between gap-3">
-            <button onClick={() => setShowAppBanner(false)} className="text-muted hover:text-foreground p-1">
-              <X className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col text-right">
-                <span className="text-xs font-bold text-foreground">ثبت التطبيق الخاصة بالمنشأة</span>
-                <span className="text-[11px] text-muted">وصول أسرع وإشعارات لتذكير بمواعيدك وحجوزاتك</span>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-700 dark:text-amber-400 shrink-0">
-                <Download className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button
-              onClick={() => setShowAppBanner(false)}
-              className="px-3 py-1.5 rounded-lg bg-surface-2 text-muted text-xs font-medium hover:bg-background border border-line"
-            >
-              لاحقاً
-            </button>
-            <button
-              onClick={() => {
-                showToast(`جاري تثبيت تطبيق ${tenantName} على جهازك...`, "success");
-                setShowAppBanner(false);
-              }}
-              className="px-4 py-1.5 text-slate-950 font-bold text-xs rounded-lg shadow-md"
-              style={{ backgroundColor: occasionDetails.accentColor }}
-            >
-              تثبيت
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

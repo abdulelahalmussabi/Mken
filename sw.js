@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE_VERSION = 'mken-pwa-v3.2.0';
+var CACHE_VERSION = 'mken-pwa-v3.3.0';
 var STATIC_CACHE = 'static-' + CACHE_VERSION;
 var DYNAMIC_CACHE = 'dynamic-' + CACHE_VERSION;
 
