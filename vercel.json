@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "[ \"$VERCEL_PROJECT_NAME\" = \"mken\" ] && echo '[skip] legacy mken project' && exit 0 || exit 1",
+  "ignoreCommand": "[ \"$VERCEL_PROJECT_NAME\" = \"mken\" ] && echo \"[skip] legacy mken project\" && exit 0 || exit 1",
   "crons": [
     {
       "path": "/api/cron-whatsapp",
@@ -8,7 +8,7 @@
   ],
   "build": {
     "env": {
-      "CACHE_BREAKER": "force-rebuild-2026-11-16-hobby-concurrency"
+      "CACHE_BREAKER": "force-rebuild-2026-11-16-mkn-rootdir"
     }
   },
   "redirects": [
