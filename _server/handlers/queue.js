@@ -1,9 +1,9 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../supabase-env');
-const { handleCors } = require('../cors');
-const pushLib = require('../web-push');
+const sbEnv = require('../../api/_lib/supabase-env');
+const { handleCors } = require('../../api/_lib/cors');
+const pushLib = require('../../api/_lib/web-push');
 
 /**
  * الذاكرة التشغيلية المعزولة لكل مستأجر (In-Memory High-Performance Failover Store)

@@ -17,13 +17,13 @@
  */
 
 const HANDLERS = {
-  queue: () => require('../_lib/handlers/queue'),
-  checkout: () => require('../_lib/handlers/checkout'),
-  dispatch: () => require('../_lib/handlers/dispatch'),
-  governance: () => require('../_lib/handlers/governance'),
-  procurement: () => require('../_lib/handlers/procurement'),
-  'erp-reports': () => require('../_lib/handlers/erp-reports'),
-  instagram: () => require('../_lib/handlers/instagram'),
+  queue: () => require('../../_server/handlers/queue'),
+  checkout: () => require('../../_server/handlers/checkout'),
+  dispatch: () => require('../../_server/handlers/dispatch'),
+  governance: () => require('../../_server/handlers/governance'),
+  procurement: () => require('../../_server/handlers/procurement'),
+  'erp-reports': () => require('../../_server/handlers/erp-reports'),
+  instagram: () => require('../../_server/handlers/instagram'),
 };
 
 function resolveModule(req) {

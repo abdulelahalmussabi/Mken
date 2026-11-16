@@ -3,7 +3,7 @@
 const assert = require('assert');
 const gccTaxEngine = require('../api/_lib/gcc-tax-engine');
 const zatcaEngine = require('../api/_lib/zatca-engine');
-const checkoutHandler = require('../api/_lib/handlers/checkout');
+const checkoutHandler = require('../_server/handlers/checkout');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة لمحرك الضرائب والعملات الخليجية (E4.2)');

@@ -6,8 +6,8 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../supabase-env');
-const { handleCors } = require('../cors');
+const sbEnv = require('../../api/_lib/supabase-env');
+const { handleCors } = require('../../api/_lib/cors');
 
 module.exports = async function handler(req, res) {
   if (handleCors && res.setHeader) {

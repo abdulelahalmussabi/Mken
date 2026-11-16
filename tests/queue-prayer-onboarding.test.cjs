@@ -5,7 +5,7 @@
  */
 
 const assert = require('assert');
-const queueHandler = require('../api/_lib/handlers/queue.js');
+const queueHandler = require('../_server/handlers/queue.js');
 
 // Mock Request / Response Helpers
 function createMockReq(options = {}) {

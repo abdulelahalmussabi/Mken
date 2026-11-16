@@ -6,9 +6,9 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../supabase-env');
-const { handleCors } = require('../cors');
-const erpEngine = require('../erp-inventory-engine');
+const sbEnv = require('../../api/_lib/supabase-env');
+const { handleCors } = require('../../api/_lib/cors');
+const erpEngine = require('../../api/_lib/erp-inventory-engine');
 
 module.exports = async function handler(req, res) {
   if (handleCors && res.setHeader) {

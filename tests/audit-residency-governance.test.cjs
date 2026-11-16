@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const auditEngine = require('../api/_lib/audit-governance-engine');
-const governanceHandler = require('../api/_lib/handlers/governance');
+const governanceHandler = require('../_server/handlers/governance');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة لحوكمة توطين البيانات وسجلات التدقيق');
