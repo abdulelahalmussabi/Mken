@@ -30,6 +30,7 @@ export default function Navbar() {
 
   const navLinks: { name: string; href: Route }[] = [
     { name: "الرئيسية", href: "/" },
+    { name: "الباقات", href: "/pricing" as Route },
     { name: "خدماتنا", href: "/#services" as Route },
     { name: "لماذا مكّن؟", href: "/#features" as Route },
     { name: "تواصل معنا", href: "/#contact" as Route },
@@ -60,7 +61,7 @@ export default function Navbar() {
               />
             </span>
             <span className="text-[10px] font-medium text-muted -mt-1 tracking-wide">
-              Local SEO Saudi
+              زاتكا · واتساب · خرائط
             </span>
           </div>
         </Link>

@@ -78,6 +78,7 @@ export default function ClientDetailPage() {
   const [discountEnabled, setDiscountEnabled] = useState(true);
   const [commercialRegistryName, setCommercialRegistryName] = useState("");
   const [commercialRegistryNumber, setCommercialRegistryNumber] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function ClientDetailPage() {
       setDiscountEnabled(targetClient.discountEnabled ?? true);
       setCommercialRegistryName(targetClient.commercialRegistryName || "");
       setCommercialRegistryNumber(targetClient.commercialRegistryNumber || "");
+      setTaxNumber(targetClient.taxNumber || "");
     }
   }, [targetClient]);
 
@@ -140,6 +142,7 @@ export default function ClientDetailPage() {
       discountEnabled,
       commercialRegistryName,
       commercialRegistryNumber,
+      taxNumber,
     });
 
     setIsSaving(false);
@@ -277,7 +280,7 @@ export default function ClientDetailPage() {
               <h3 className="text-base font-extrabold text-white">السجل التجاري</h3>
             </div>
             <p className="text-[11px] text-slate-500">
-              يظهر اسم ورقم السجل في تذييل الموقع العام بجانب عبارة حقوق النشر.
+              يظهر اسم ورقم السجل والرقم الضريبي (إن وُجد) في تذييل الموقع العام — عامل ثقة مطلوب للمتاجر الإلكترونية.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
@@ -297,6 +300,17 @@ export default function ClientDetailPage() {
                   value={commercialRegistryNumber}
                   onChange={(e) => setCommercialRegistryNumber(e.target.value)}
                   placeholder="7043321418"
+                  dir="ltr"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="block text-xs font-bold text-slate-300">الرقم الضريبي (إن وجد)</label>
+                <input
+                  type="text"
+                  value={taxNumber}
+                  onChange={(e) => setTaxNumber(e.target.value)}
+                  placeholder="311234567800003"
                   dir="ltr"
                   className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
                 />

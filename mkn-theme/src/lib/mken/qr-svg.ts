@@ -21,7 +21,7 @@ function gfMul(x: number, y: number): number {
 }
 
 function polyMul(p1: Uint8Array, p2: Uint8Array): Uint8Array {
-  const result = new Uint8Array(p1.length + p2.length - 1);
+  const result = new Uint8Array(p1.length + p2.length - 1) as Uint8Array<ArrayBuffer>;
   for (let i = 0; i < p1.length; i++) {
     for (let j = 0; j < p2.length; j++) {
       result[i + j] ^= gfMul(p1[i], p2[j]);
@@ -31,7 +31,7 @@ function polyMul(p1: Uint8Array, p2: Uint8Array): Uint8Array {
 }
 
 function rsGenPoly(n: number): Uint8Array {
-  let g = new Uint8Array([1]);
+  let g: Uint8Array = new Uint8Array([1]);
   for (let i = 0; i < n; i++) {
     g = polyMul(g, new Uint8Array([1, GF_EXP[i]]));
   }
@@ -236,6 +236,11 @@ export interface QrSvgOptions {
   margin?: number;
   darkColor?: string;
   lightColor?: string;
+  /** Alias for darkColor (admin QR callers). */
+  foreground?: string;
+  /** Alias for lightColor (admin QR callers). */
+  background?: string;
+  title?: string;
 }
 
 export function generateQrSvg(text: string, options: QrSvgOptions = {}): string {
@@ -244,8 +249,8 @@ export function generateQrSvg(text: string, options: QrSvgOptions = {}): string 
   const margin = options.margin ?? 3;
   const totalDim = N + margin * 2;
   const size = options.size ?? 250;
-  const dark = options.darkColor || "#0f172a";
-  const light = options.lightColor || "#ffffff";
+  const dark = options.darkColor || options.foreground || "#0f172a";
+  const light = options.lightColor || options.background || "#ffffff";
 
   let rects = "";
   for (let r = 0; r < N; r++) {

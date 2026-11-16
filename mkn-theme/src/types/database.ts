@@ -43,7 +43,7 @@ export interface ServiceItem {
   shortDesc: string;
   fullDesc: string;
   features: string[];
-  iconName: 'MapPin' | 'Search' | 'Star' | 'BarChart3' | 'TrendingUp';
+  iconName: 'MapPin' | 'Search' | 'Star' | 'BarChart3' | 'TrendingUp' | 'Receipt' | 'MessageSquare';
   badge?: string;
 }
 
@@ -86,6 +86,8 @@ export interface ClientRecord {
   commercialRegistryName?: string;
   /** Official commercial-registration number (س.ت) shown in the public footer. */
   commercialRegistryNumber?: string;
+  /** VAT / tax number (الرقم الضريبي) shown in the public footer when present. */
+  taxNumber?: string;
   demoNotice: string;
   adminEmail: string;
   /** Write-only: accepted when creating a client, never returned by the API. */
@@ -119,6 +121,7 @@ export type StorefrontClient = Pick<
   | "logo"
   | "commercialRegistryName"
   | "commercialRegistryNumber"
+  | "taxNumber"
   | "demoNotice"
   | "theme"
   | "couponCode"
@@ -133,7 +136,7 @@ export type StorefrontKind = "hotel" | "salon" | "commerce" | "generic";
 
 export interface StorefrontCatalogService {
   id: string;
-  activityId: string;
+  activityId?: string;
   name: string;
   badge: string;
   price: string;
@@ -141,7 +144,7 @@ export interface StorefrontCatalogService {
   description: string;
   image: string;
   popular?: boolean;
-  duration: string;
+  duration?: string;
   category?: string;
 }
 

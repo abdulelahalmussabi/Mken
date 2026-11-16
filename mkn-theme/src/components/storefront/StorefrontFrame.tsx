@@ -24,6 +24,7 @@ import type {
   StorefrontClient,
   StorefrontKind,
 } from "@/types/database";
+import type { PublicStorefront } from "@/lib/mken/catalog";
 import { DEFAULT_CLIENTS } from "@/data/default-clients";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 import { BrandCutout } from "@/components/PlatformMark";
@@ -148,6 +149,7 @@ export interface StorefrontContextValue {
     discountEnabled?: boolean;
     commercialRegistryName?: string;
     commercialRegistryNumber?: string;
+    taxNumber?: string;
   };
   href: (page: StorefrontPageId) => string;
   whatsappHref: string;
@@ -179,26 +181,31 @@ function catalogServiceToOption(service: StorefrontCatalogService): StorefrontSe
 export function StorefrontFrame({
   slug,
   children,
+  initialData = null,
 }: {
   slug: string;
   children: React.ReactNode;
+  initialData?: PublicStorefront | null;
 }) {
   const pathname = usePathname() || "/";
   const { occasionDetails } = useOccasion();
   const { showToast, user, logout } = useApp();
   const { setDarkEnabled } = useColorScheme();
-  const [storeClient, setStoreClient] = useState<StorefrontClient | null>(null);
-  const [catalog, setCatalog] = useState<StorefrontCatalog | null>(null);
-  const [appearance, setAppearance] = useState<AppearancePublic | null>(null);
-  const [pages, setPages] = useState<StorefrontPagesPublic>(emptyPages());
-  const [contactExtras, setContactExtras] = useState<StorefrontContactPublic>({
-    emails: [],
-    social: [],
-    hoursStart: "",
-    hoursEnd: "",
-    map: null,
-  });
-  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const hasInitial = Boolean(initialData?.client && initialData?.catalog);
+  const [storeClient, setStoreClient] = useState<StorefrontClient | null>(initialData?.client ?? null);
+  const [catalog, setCatalog] = useState<StorefrontCatalog | null>(initialData?.catalog ?? null);
+  const [appearance, setAppearance] = useState<AppearancePublic | null>(initialData?.appearance ?? null);
+  const [pages, setPages] = useState<StorefrontPagesPublic>(initialData?.pages ?? emptyPages());
+  const [contactExtras, setContactExtras] = useState<StorefrontContactPublic>(
+    initialData?.contactExtras ?? {
+      emails: [],
+      social: [],
+      hoursStart: "",
+      hoursEnd: "",
+      map: null,
+    }
+  );
+  const [loadState, setLoadState] = useState<LoadState>(hasInitial ? "ready" : "loading");
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<StorefrontServiceOption | null>(null);
   const [clientName, setClientName] = useState("");
@@ -269,7 +276,7 @@ export function StorefrontFrame({
       return;
     }
     let cancelled = false;
-    setLoadState("loading");
+    if (!hasInitial) setLoadState("loading");
 
     const initSyntheticStore = () => {
       const foundClient = DEFAULT_CLIENTS.find((c) => c.slug === slug);
@@ -299,6 +306,8 @@ export function StorefrontFrame({
         if (slug === "qasr-najd") {
           setCatalog({
             kind: "generic",
+            featuredActivity: "restaurant",
+            activities: [],
             services: [
               {
                 id: "qn-01",
@@ -349,6 +358,8 @@ export function StorefrontFrame({
         } else if (slug === "arkan-spa") {
           setCatalog({
             kind: "salon",
+            featuredActivity: "salon",
+            activities: [],
             services: [
               {
                 id: "ark-01",
@@ -399,6 +410,8 @@ export function StorefrontFrame({
         } else if (slug === "dar-maysan") {
           setCatalog({
             kind: "commerce",
+            featuredActivity: "commerce",
+            activities: [],
             services: [
               {
                 id: "dm-01",
@@ -542,6 +555,8 @@ export function StorefrontFrame({
       });
       setCatalog({
         kind: "generic",
+        featuredActivity: "other",
+        activities: [],
         services: [
           {
             id: "srv-01",
@@ -576,6 +591,7 @@ export function StorefrontFrame({
     const isStorefrontPayload = (data: { success?: boolean; client?: unknown; catalog?: unknown } | null) =>
       Boolean(data?.success && data.client && data.catalog);
     const fetchOpts: RequestInit = { cache: "no-store" };
+    // When SSR already hydrated the storefront, refresh in background without blanking crawlers/users.
     fetch(path, fetchOpts)
       .then(readJson)
       .then((data) => (isStorefrontPayload(data) ? data : Promise.reject(new Error("incomplete"))))
@@ -647,7 +663,7 @@ export function StorefrontFrame({
             }
           );
           setLoadState("ready");
-        } else {
+        } else if (!hasInitial) {
           if (slug === "demo" || (typeof window !== "undefined" && window.location.search.includes("preview=true"))) {
             initSyntheticStore();
           } else {
@@ -656,7 +672,7 @@ export function StorefrontFrame({
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelled && !hasInitial) {
           if (slug === "demo" || (typeof window !== "undefined" && window.location.search.includes("preview=true"))) {
             initSyntheticStore();
           } else {
@@ -667,7 +683,7 @@ export function StorefrontFrame({
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, hasInitial]);
 
   const kind: StorefrontKind = catalog?.kind || "generic";
   const isSalon = kind === "salon";
@@ -703,6 +719,7 @@ export function StorefrontFrame({
         discountEnabled: storeClient.discountEnabled,
         commercialRegistryName: storeClient.commercialRegistryName || "",
         commercialRegistryNumber: storeClient.commercialRegistryNumber || "",
+        taxNumber: storeClient.taxNumber || "",
       }
     : null;
 
@@ -1075,6 +1092,14 @@ export function StorefrontFrame({
                     <span>السجل التجاري:</span>
                     <span dir="ltr" className="font-mono font-bold text-foreground">
                       {storeInfo.commercialRegistryNumber}
+                    </span>
+                  </div>
+                ) : null}
+                {storeInfo.taxNumber ? (
+                  <div className="flex items-center gap-2">
+                    <span>الرقم الضريبي:</span>
+                    <span dir="ltr" className="font-mono font-bold text-foreground">
+                      {storeInfo.taxNumber}
                     </span>
                   </div>
                 ) : null}

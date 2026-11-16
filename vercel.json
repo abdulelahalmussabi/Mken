@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "[ \"$VERCEL_PROJECT_NAME\" = \"mken\" ] && echo \"[skip] legacy mken project\" && exit 0 || exit 1",
   "crons": [
     {
       "path": "/api/cron-whatsapp",
@@ -7,7 +8,7 @@
   ],
   "build": {
     "env": {
-      "CACHE_BREAKER": "force-rebuild-2026-11-15-v1.3.0"
+      "CACHE_BREAKER": "force-rebuild-2026-11-16-mkn-rootdir"
     }
   },
   "redirects": [
@@ -83,7 +84,31 @@
     },
     {
       "source": "/api/v1/queue-events",
-      "destination": "/api/v1/queue?action=events"
+      "destination": "/api/v1/ops?module=queue&action=events"
+    },
+    {
+      "source": "/api/v1/queue",
+      "destination": "/api/v1/ops?module=queue"
+    },
+    {
+      "source": "/api/v1/dispatch",
+      "destination": "/api/v1/ops?module=dispatch"
+    },
+    {
+      "source": "/api/v1/governance",
+      "destination": "/api/v1/ops?module=governance"
+    },
+    {
+      "source": "/api/v1/procurement",
+      "destination": "/api/v1/ops?module=procurement"
+    },
+    {
+      "source": "/api/v1/erp-reports",
+      "destination": "/api/v1/ops?module=erp-reports"
+    },
+    {
+      "source": "/api/instagram",
+      "destination": "/api/v1/ops?module=instagram"
     },
     {
       "source": "/privacy",
@@ -155,31 +180,35 @@
     },
     {
       "source": "/api/instagram/auth-url",
-      "destination": "/api/instagram?action=auth-url"
+      "destination": "/api/v1/ops?module=instagram&action=auth-url"
     },
     {
       "source": "/api/instagram/callback",
-      "destination": "/api/instagram?action=callback"
+      "destination": "/api/v1/ops?module=instagram&action=callback"
     },
     {
       "source": "/api/instagram/sync",
-      "destination": "/api/instagram?action=sync"
+      "destination": "/api/v1/ops?module=instagram&action=sync"
     },
     {
       "source": "/api/instagram/status",
-      "destination": "/api/instagram?action=status"
+      "destination": "/api/v1/ops?module=instagram&action=status"
     },
     {
       "source": "/api/instagram/disconnect",
-      "destination": "/api/instagram?action=disconnect"
+      "destination": "/api/v1/ops?module=instagram&action=disconnect"
+    },
+    {
+      "source": "/api/v1/checkout",
+      "destination": "/api/v1/ops?module=checkout"
     },
     {
       "source": "/api/v1/checkout/create-session",
-      "destination": "/api/v1/checkout?action=create-session"
+      "destination": "/api/v1/ops?module=checkout&action=create-session"
     },
     {
       "source": "/api/v1/checkout/verify",
-      "destination": "/api/v1/checkout?action=verify"
+      "destination": "/api/v1/ops?module=checkout&action=verify"
     },
     {
       "source": "/api/v1/auth/login-challenge",

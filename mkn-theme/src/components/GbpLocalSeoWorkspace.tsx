@@ -486,7 +486,7 @@ export default function GbpLocalSeoWorkspace() {
               <input
                 value={mapsUrlInput}
                 onChange={(e) => setMapsUrlInput(e.target.value)}
-                placeholder="https://maps.app.goo.gl/… أو place_id"
+                placeholder="https://maps.app.goo.gl/… أو رابط صفحة نشاطك"
                 dir="ltr"
                 className={ADMIN_INPUT}
               />

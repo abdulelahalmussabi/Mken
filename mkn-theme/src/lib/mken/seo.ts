@@ -11,10 +11,10 @@ import type { StorefrontClient } from "@/types/database";
 export const SITE_NAME = "مكّن";
 
 export const SITE_DEFAULT_TITLE =
-  "منصة مكّن | حزمة واجهات المناسبات السعودية وخدمات Local SEO";
+  "منصة مكّن | فوترة زاتكا وواتساب CRM وربط خرائط جوجل";
 
 export const SITE_DEFAULT_DESCRIPTION =
-  "المنصة الأولى المخصصة لأصحاب المحلات والأنشطة التجارية في المملكة العربية السعودية لتحسين الظهور في خرائط Google بحزمة واجهات تفاعلية للمناسبات الوطنية والدينية.";
+  "منصة سعودية متعددة المستأجرين: فواتير إلكترونية متوافقة مع الزكاة، واتساب CRM وحجز مواعيد، وموقع منشأة مربوط بخرائط جوجل — مع معاينة فورية بموافقة المالك.";
 
 export const noIndexRobots: Metadata["robots"] = { index: false, follow: false };
 
@@ -128,6 +128,7 @@ export const SCHEMA_TYPE: Record<StorefrontClient["type"], string> = {
   hotel: "LodgingBusiness",
   restaurant: "Restaurant",
   cafe: "CafeOrCoffeeShop",
+  commerce: "Store",
   other: "LocalBusiness",
 };
 

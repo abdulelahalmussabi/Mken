@@ -288,6 +288,7 @@ export function storefrontClient(client: ClientRecord): StorefrontClient {
     logo: client.logo || "",
     commercialRegistryName: client.commercialRegistryName || "",
     commercialRegistryNumber: client.commercialRegistryNumber || "",
+    taxNumber: client.taxNumber || "",
     demoNotice: client.demoNotice,
     theme: client.theme,
     couponCode: client.couponCode,

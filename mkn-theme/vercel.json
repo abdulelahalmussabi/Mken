@@ -13,14 +13,6 @@
     {
       "path": "/api/cron/ad-insights",
       "schedule": "15 6 * * *"
-    },
-    {
-      "path": "/api/cron/whatsapp",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/instagram-posts",
-      "schedule": "0 10 * * *"
     }
   ],
   "headers": [

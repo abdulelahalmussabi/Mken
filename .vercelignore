@@ -30,3 +30,8 @@ _experimental-api/
 
 # Misc local-only folders
 مجلد جديد/
+
+# When mkn deploys from repo root by mistake, do not ship legacy serverless
+# entrypoints alongside Next (Hobby 12-function limit).
+api/
+_server/

@@ -175,7 +175,26 @@ function BookAppointmentContent() {
     if (!tenantSlug) {
       setTenantName("منصة مكّن");
       setTenantLogo("");
-      setTenantTagline("");
+      setTenantTagline("احجز استشارة تشغيل أو معاينة لموقع منشأتك");
+      const platformServices = [
+        {
+          id: "mken-consult",
+          name: "استشارة تشغيل المنصة",
+          duration: "30 دقيقة",
+          price: "مجاناً",
+          desc: "نراجع باقتك، الفوترة، والواتساب، وموقع منشأتك قبل التفعيل.",
+        },
+        {
+          id: "mken-preview",
+          name: "معاينة موقع المنشأة",
+          duration: "15 دقيقة",
+          price: "مجاناً",
+          desc: "نجهّز معاينة من رابط خرائط جوجل بموافقتك — بدون فهرسة حتى المطالبة.",
+        },
+      ];
+      setCatalogServices(platformServices);
+      setSelectedService(platformServices[0]);
+      setTenantWhatsapp("966543530333");
       return;
     }
 
@@ -349,7 +368,7 @@ function BookAppointmentContent() {
                   </span>
                 </span>
                 <span className="text-xs text-muted truncate">
-                  {tenantTagline || "خدمات الضيافة والإقامة المباشرة"}
+                  {tenantTagline || (tenantSlug ? "احجز موعدك بسهولة" : "استشارة تشغيل ومعاينة للمنشآت")}
                 </span>
               </div>
             </Link>
@@ -412,12 +431,17 @@ function BookAppointmentContent() {
               <span className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center text-xs font-black">
                 1
               </span>
-              اختر الخدمة أو جناح الإقامة المطلوب *
+              {tenantSlug ? "اختر الخدمة المطلوبة *" : "اختر نوع الاستشارة *"}
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {catalogServices.length === 0 ? (
-                <p className="text-sm text-muted">لا توجد خدمات معزولة لهذه المنشأة بعد.</p>
+                <div className="sm:col-span-2 space-y-3 text-sm text-muted">
+                  <p>لم تُضف خدمات للحجز في هذه المنشأة بعد.</p>
+                  <Link href={tenantHome} className="inline-flex text-amber-700 font-bold hover:underline">
+                    العودة إلى موقع المنشأة
+                  </Link>
+                </div>
               ) : (
                 catalogServices.map((srv) => {
                 const isSelected = selectedService?.id === srv.id;

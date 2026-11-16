@@ -1,9 +1,9 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const fieldGeoEngine = require('../_lib/field-geo-engine');
+const sbEnv = require('../../api/_lib/supabase-env');
+const { handleCors } = require('../../api/_lib/cors');
+const fieldGeoEngine = require('../../api/_lib/field-geo-engine');
 
 // ذاكرة تخزين مؤقتة للمحاكاة والاختبارات السريعة
 const inMemoryStore = {

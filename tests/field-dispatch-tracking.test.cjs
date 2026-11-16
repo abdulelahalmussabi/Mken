@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 const fieldGeoEngine = require('../api/_lib/field-geo-engine');
-const dispatchHandler = require('../api/v1/dispatch');
+const dispatchHandler = require('../_server/handlers/dispatch');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة للإسناد الميداني وتتبع الفنيين (E6)');
