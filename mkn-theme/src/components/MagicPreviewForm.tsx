@@ -341,14 +341,14 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
       <label className="block space-y-1.5">
         <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-amber-400" />
-          رابط خرائط جوجل أو place_id
+          رابط نشاطك على خرائط جوجل
         </span>
         <input
           value={mapsUrl}
           onChange={(event) => setMapsUrl(event.target.value)}
           required
           dir="ltr"
-          placeholder="https://maps.app.goo.gl/… أو ChIJ…"
+          placeholder="https://maps.app.goo.gl/… أو رابط صفحة نشاطك"
           className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-amber-500"
         />
       </label>
@@ -377,7 +377,7 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           required
         />
         <span>
-          أؤكد أنني صاحب النشاط وأوافق على معالجة رقم جوالي وplace_id لإنشاء معاينة غير مفهرسة وفق نظام حماية البيانات الشخصية. لن تُحفظ صور أو مراجعات خرائط جوجل.
+          أؤكد أنني صاحب النشاط وأوافق على معالجة رقم جوالي ورابط خرائط جوجل لإنشاء معاينة غير مفهرسة وفق نظام حماية البيانات الشخصية. لن تُحفظ صور أو مراجعات خرائط جوجل.
         </span>
       </label>
 

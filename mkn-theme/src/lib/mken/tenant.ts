@@ -179,6 +179,8 @@ export interface MkenConfig {
   commercialRegistryName?: string;
   /** Official CR number (رقم السجل التجاري) for the public footer. */
   commercialRegistryNumber?: string;
+  /** VAT / tax number (الرقم الضريبي) for the public footer. */
+  taxNumber?: string;
   rating?: string;
   reviewsCount?: string;
   demoNotice?: string;
@@ -408,6 +410,7 @@ export function toClientRecord(row: TenantRow): ClientRecord {
         : seed?.logo || "",
     commercialRegistryName: config.commercialRegistryName || seed?.commercialRegistryName || "",
     commercialRegistryNumber: config.commercialRegistryNumber || seed?.commercialRegistryNumber || "",
+    taxNumber: config.taxNumber || seed?.taxNumber || "",
     demoNotice: config.demoNotice || "",
     claimStatus:
       config.preview?.claimStatus === "unclaimed" || config.preview?.claimStatus === "pending"
@@ -527,6 +530,11 @@ export function mergeIntoConfig(
     const raw = String(updates.commercialRegistryNumber || "").trim();
     const digits = raw.replace(/\D/g, "");
     next.commercialRegistryNumber = digits || raw;
+  }
+  if (updates.taxNumber !== undefined) {
+    const raw = String(updates.taxNumber || "").trim();
+    const digits = raw.replace(/\D/g, "");
+    next.taxNumber = digits || raw;
   }
   if (updates.heroImage !== undefined) next.heroImage = updates.heroImage;
   if (updates.rating !== undefined) next.rating = updates.rating;
