@@ -99,7 +99,7 @@ async function runTests() {
   // Test 3: فحص منع التلاعب بالأسعار في الخادم (Anti-Tamper & Server Pricing)
   // -------------------------------------------------------------------------
   console.log('\n3️⃣ فحص منع هجمات التلاعب بالأسعار (Price Tampering Guard)...');
-  const handler = require('../api/v1/checkout');
+  const handler = require('../api/_lib/handlers/checkout');
 
   // محاكاة طلب خبيث يحاول دفع 0.01 ريال مقابل منتج سعره 500 ريال
   const mockReqTamper = {

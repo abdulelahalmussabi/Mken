@@ -1,11 +1,11 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const gccTaxEngine = require('../_lib/gcc-tax-engine');
-const adaptiveIam = require('../_lib/adaptive-iam');
-const erpEngine = require('../_lib/erp-inventory-engine');
+const sbEnv = require('../supabase-env');
+const { handleCors } = require('../cors');
+const gccTaxEngine = require('../gcc-tax-engine');
+const adaptiveIam = require('../adaptive-iam');
+const erpEngine = require('../erp-inventory-engine');
 
 /**
  * دالة التحقق وتنسيق رقم الجوال السعودي والخليجي المعتمد

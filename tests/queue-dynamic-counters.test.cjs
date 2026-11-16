@@ -3,7 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../api/_lib/handlers/queue.js');
 
 function createMockReq(options = {}) {
   return {

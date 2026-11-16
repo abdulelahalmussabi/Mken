@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../api/_lib/handlers/queue.js');
 
 // محاكي طلبات واستجابات HTTP الصغري
 function mockReqRes(options = {}) {
