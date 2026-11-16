@@ -136,7 +136,7 @@ export type StorefrontKind = "hotel" | "salon" | "commerce" | "generic";
 
 export interface StorefrontCatalogService {
   id: string;
-  activityId: string;
+  activityId?: string;
   name: string;
   badge: string;
   price: string;
@@ -144,7 +144,7 @@ export interface StorefrontCatalogService {
   description: string;
   image: string;
   popular?: boolean;
-  duration: string;
+  duration?: string;
   category?: string;
 }
 

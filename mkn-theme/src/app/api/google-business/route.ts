@@ -140,6 +140,8 @@ export async function POST(request: Request) {
     text?: string;
     topic?: string;
     publishAt?: string;
+    attributes?: Record<string, unknown>;
+    secondaryCategories?: string[];
   } = {};
   try {
     body = await request.json();

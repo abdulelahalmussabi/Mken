@@ -306,6 +306,8 @@ export function StorefrontFrame({
         if (slug === "qasr-najd") {
           setCatalog({
             kind: "generic",
+            featuredActivity: "restaurant",
+            activities: [],
             services: [
               {
                 id: "qn-01",
@@ -356,6 +358,8 @@ export function StorefrontFrame({
         } else if (slug === "arkan-spa") {
           setCatalog({
             kind: "salon",
+            featuredActivity: "salon",
+            activities: [],
             services: [
               {
                 id: "ark-01",
@@ -406,6 +410,8 @@ export function StorefrontFrame({
         } else if (slug === "dar-maysan") {
           setCatalog({
             kind: "commerce",
+            featuredActivity: "commerce",
+            activities: [],
             services: [
               {
                 id: "dm-01",
@@ -549,6 +555,8 @@ export function StorefrontFrame({
       });
       setCatalog({
         kind: "generic",
+        featuredActivity: "other",
+        activities: [],
         services: [
           {
             id: "srv-01",
