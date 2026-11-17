@@ -117,8 +117,10 @@ function matchMount(pathname) {
 function internalPath(publicPath) {
   const route = matchMount(publicPath);
   if (!route) return '';
-  const suffix = publicPath.slice(route.mount.length);
-  return '/api/' + route.group + route.mount.slice('/api'.length) + suffix;
+  // This project's Node builder serves api/<group>/[...mken].js as exactly one
+  // path segment. Nested public paths are packed into that segment with "__".
+  const suffix = publicPath.slice('/api/'.length).split('/').join('__');
+  return '/api/' + route.group + '/' + suffix;
 }
 
 function destinationFor(publicPath, query) {

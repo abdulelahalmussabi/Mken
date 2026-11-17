@@ -19,12 +19,27 @@ function loadHandler(file) {
  * The query string is kept byte-for-byte so webhook signature checks
  * (Twilio signs protocol + host + req.url) still see the public URL.
  */
+function publicPathFrom(group, pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts[0] !== 'api' || !table.GROUPS[group]) return '';
+
+  // Rewrite targets are /api/<group>/<one-segment>. A direct hit uses that shape.
+  if (parts[1] === group && parts.length === 3) {
+    return '/api/' + parts[2].split('__').join('/');
+  }
+
+  // Vercel keeps the visitor's original path on req.url after a rewrite.
+  if (parts[1] !== group) return pathname;
+
+  // Older multi-segment destinations, if a builder ever forwards them.
+  if (parts.length > 3) return '/api/' + parts.slice(2).join('/');
+  return '';
+}
+
 function resolveRoute(group, rawUrl) {
   const split = table.splitUrl(rawUrl);
-  const parts = split.pathname.split('/').filter(Boolean);
-  if (parts.length < 3 || parts[0] !== 'api' || parts[1] !== group) return null;
-  if (!table.GROUPS[group]) return null;
-  const publicPath = '/api/' + parts.slice(2).join('/');
+  const publicPath = publicPathFrom(group, split.pathname);
+  if (!publicPath) return null;
   const route = table.matchMount(publicPath);
   if (!route || route.group !== group) return null;
   return {
@@ -83,8 +98,9 @@ async function dispatch(group, req, res) {
   const resolved = resolveRoute(group, req.url || '/');
   if (!resolved) return notFound(res);
 
-  if (req.query && Object.prototype.hasOwnProperty.call(req.query, 'mken')) {
+  if (req.query) {
     delete req.query.mken;
+    delete req.query['...mken'];
   }
 
   req.url = resolved.publicUrl;

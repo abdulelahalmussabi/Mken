@@ -169,6 +169,15 @@ async function main() {
     assert.strictEqual(resolved.publicPath, rule.source.split('?')[0]);
   }
 
+  // The builder forwards the original public URL, and also the one-segment destination.
+  const originalHook = resolveRoute('crm', '/api/whatsapp-webhook?hub.mode=subscribe&hub.challenge=99&tenant=rewa');
+  assert.strictEqual(originalHook.id, 'whatsapp-webhook');
+  assert.strictEqual(originalHook.rawBody, true);
+  assert.strictEqual(originalHook.publicUrl, '/api/whatsapp-webhook?hub.mode=subscribe&hub.challenge=99&tenant=rewa');
+  const encodedLogin = resolveRoute('auth', '/api/auth/v1__auth__login-verify?type=login&step=verify');
+  assert.strictEqual(encodedLogin.publicPath, '/api/v1/auth/login-verify');
+  assert.strictEqual(encodedLogin.publicUrl, '/api/v1/auth/login-verify?type=login&step=verify');
+
   // Query params on the public URL are preserved alongside rewrite params.
   const login = findRewrite(vercel.rewrites, '/api/v1/auth/login-verify');
   const loginDest = new URL(login.destination, 'http://localhost');
@@ -202,6 +211,15 @@ async function main() {
   assert.strictEqual(liveRes.statusCode, 200);
   assert.strictEqual(liveRes.body.service, 'mken-whatsapp-webhook');
   assert.strictEqual(liveReq.url, '/api/whatsapp-webhook?tenant=default');
+
+  const publicReq = mockReq('/api/whatsapp-webhook?tenant=default', 'GET', { query: { tenant: 'default' } });
+  const publicRes = mockRes();
+  const publicPending = dispatch('crm', publicReq, publicRes);
+  process.nextTick(() => publicReq.emit('end'));
+  await publicPending;
+  assert.strictEqual(publicRes.statusCode, 200);
+  assert.strictEqual(publicRes.body.service, 'mken-whatsapp-webhook');
+  assert.strictEqual(publicReq.url, '/api/whatsapp-webhook?tenant=default');
 
   const proxyReq = mockReq('/api/crm/webhook-proxy', 'POST', {
     headers: { 'content-type': 'application/json', host: 'mken.live' }
