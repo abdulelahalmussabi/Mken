@@ -3,7 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
 const { tenantHeaders } = require('./queue-http.cjs');
 
 function createMockReq(options = {}) {
@@ -122,7 +122,7 @@ async function runZeroPIITests() {
 
   // 5. فحص ملف واجهة شاشة العرض (queue-display.html) وتأكيد خلوه من أي عرض لأسماء الموظفين أو العملاء
   console.log('5️⃣ فحص ملف كود الواجهة المركزية (queue-display.html)...');
-  const displayHtmlPath = path.join(__dirname, '..', 'queue-display.html');
+  const displayHtmlPath = path.join(__dirname, '..', 'mkn-theme', 'public', 'queue-display.html');
   const displayHtmlContent = fs.readFileSync(displayHtmlPath, 'utf8');
 
   // التحقق من عدم وجود نصوص أسماء موظفين في الكروت

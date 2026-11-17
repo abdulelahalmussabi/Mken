@@ -1,8 +1,8 @@
 'use strict';
 
 const assert = require('assert');
-const fieldGeoEngine = require('../api/_lib/field-geo-engine');
-const dispatchHandler = require('../api/_lib/handlers/dispatch');
+const fieldGeoEngine = require('../mkn-theme/src/server/platform/_lib/field-geo-engine');
+const dispatchHandler = require('../mkn-theme/src/server/platform/_lib/handlers/dispatch');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة للإسناد الميداني وتتبع الفنيين (E6)');

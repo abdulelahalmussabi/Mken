@@ -53,7 +53,7 @@ function noteEvent(name, payload) {
 
 function migrationSql() {
   return fs.readFileSync(
-    path.join(__dirname, '../../db/migrations/2026-11-17-queue-postgres-runtime.sql'),
+    path.join(__dirname, '../../../../../db/migrations/2026-11-17-queue-postgres-runtime.sql'),
     'utf8'
   );
 }

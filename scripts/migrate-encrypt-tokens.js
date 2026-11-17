@@ -6,8 +6,8 @@
  * الامتثال: ضوابط الهيئة الوطنية للأمن السيبراني (NCA) ونظام حماية البيانات الشخصية (PDPL)
  */
 
-const { getSupabaseAdmin } = require('../api/_lib/google-auth-helper');
-const { encryptToken, isEncrypted } = require('../api/_lib/token-crypto');
+const { getSupabaseAdmin } = require('../mkn-theme/src/server/platform/_lib/google-auth-helper');
+const { encryptToken, isEncrypted } = require('../mkn-theme/src/server/platform/_lib/token-crypto');
 
 async function migrateTokens() {
   console.log('--- بدء فحص وترحيل توكنات Google OAuth إلى التشفير المعياري (AES-256-GCM) ---');

@@ -13,7 +13,7 @@
 'use strict';
 
 const assert = require('assert');
-const erpEngine = require('../api/_lib/erp-inventory-engine');
+const erpEngine = require('../mkn-theme/src/server/platform/_lib/erp-inventory-engine');
 
 console.log('================================================================');
 console.log('🚀 بدء الفحص الشامل لحزمة المبيعات والمشتريات والمخزون والتقارير');

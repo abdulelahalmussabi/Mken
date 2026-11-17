@@ -1,6 +1,6 @@
 'use strict';
 
-const { signStaffSession } = require('../api/_lib/queue-guard');
+const { signStaffSession } = require('../mkn-theme/src/server/platform/_lib/queue-guard');
 
 function tenantHeaders(options) {
   const headers = Object.assign({}, (options && options.headers) || {});

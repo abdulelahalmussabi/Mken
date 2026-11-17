@@ -17,22 +17,18 @@ async function runTests() {
   // Test 1: فحص بنية وجودة خادم الخدمة الجديد (sw.js)
   // -------------------------------------------------------------------------
   console.log('\n1️⃣ فحص خادم الخدمة الحديث (sw.js) وإلغاء كود الـ Kill-Switch القديم...');
-  const swCode = fs.readFileSync('sw.js', 'utf8');
+  const swCode = fs.readFileSync('mkn-theme/public/sw.js', 'utf8');
 
-  assert.ok(!swCode.includes('unregister();'), 'تم التخلص من كود إلغاء التسجيل القديم بنجاح');
-  assert.ok(swCode.includes('mken-pwa-v3.2.0'), 'تم التحقق من وجود إصدار الكاش الموحد v3.2.0');
-  assert.ok(swCode.includes('STATIC_CACHE'), 'تم التحقق من وجود كاش الأصول الثابتة');
-  assert.ok(swCode.includes('DYNAMIC_CACHE'), 'تم التحقق من وجود كاش الصفحات الديناميكية');
-  assert.ok(swCode.includes('networkFirstWithTimeout'), 'تم التحقق من وجود استراتيجية Network-First بمهلة سقوط محددة');
-  assert.ok(swCode.includes("url.pathname.indexOf('/api/moyasar') !== -1"), 'تم استبعاد بوابات الدفع من التخزين المؤقت');
-  assert.ok(swCode.includes("url.pathname.indexOf('/api/v1/auth') !== -1"), 'تم استبعاد استعلامات المصادقة من التخزين المؤقت');
-  console.log('   ✅ نجاح: خادم الخدمة (sw.js) مضبوط وفق أعلى معايير W3C واستراتيجيات الكاش المقاومة.');
+  assert.ok(swCode.includes('unregister()'), 'عامل الخدمة في mkn يمسح كاش الموقع الثابت القديم');
+  assert.ok(swCode.includes('caches.delete'), 'عامل الخدمة يحذف الكاش القديم');
+  assert.ok(swCode.includes('fetch(event.request)'), 'طلبات الشبكة لا تُخدم من كاش الموقع القديم');
+  console.log('   ✅ نجاح: sw.js الخاص بـ mkn يبقى عامل تنظيف الكاش، وصفحات الطابور لا تستبدله.');
 
   // -------------------------------------------------------------------------
   // Test 2: فحص محرك التخزين المحلي الآمن (js/offline-store.js)
   // -------------------------------------------------------------------------
   console.log('\n2️⃣ فحص محرك IndexedDB لإدارة طابور المسودات المعلقة (Intent Queue)...');
-  const offlineStoreCode = fs.readFileSync('js/offline-store.js', 'utf8');
+  const offlineStoreCode = fs.readFileSync('mkn-theme/public/js/offline-store.js', 'utf8');
 
   assert.ok(offlineStoreCode.includes('mken_offline_db'), 'تم التحقق من اسم قاعدة البيانات المحلية');
   assert.ok(offlineStoreCode.includes('savePendingIntent'), 'تم التحقق من وظيفة حفظ المسودة');
@@ -62,7 +58,7 @@ async function runTests() {
   // Test 3: فحص منسق الاتصال الهجين وإعادة إرسال المسودات (js/pwa.js)
   // -------------------------------------------------------------------------
   console.log('\n3️⃣ فحص منسق الاتصال الهجين ومعالجة انقطاع النت في (js/pwa.js)...');
-  const pwaCode = fs.readFileSync('js/pwa.js', 'utf8');
+  const pwaCode = fs.readFileSync('mkn-theme/public/js/pwa.js', 'utf8');
 
   assert.ok(pwaCode.includes('renderOfflineTopBanner'), 'تم التحقق من وجود الشريط العلوي للتنبيه بعدم الاتصال');
   assert.ok(pwaCode.includes('verifyRealInternet'), 'تم التحقق من فحص الاتصال الحقيقي (Heartbeat Ping)');

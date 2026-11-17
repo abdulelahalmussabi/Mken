@@ -38,7 +38,7 @@ async function runTests() {
     console.log('1️⃣ اختبار ربط حساب جوجل بيزنس (Google Business OAuth)...');
     
     // محاكاة استدعاء الـ API الخاص بـ Vercel مباشرة
-    const googleAuthHandler = require('../api/_lib/handlers/google-business.js');
+    const googleAuthHandler = require('../mkn-theme/src/server/platform/_lib/handlers/google-business.js');
     
     const mockReq = {
       url: '/api/google-business/auth-url?tenant=almahrusa',

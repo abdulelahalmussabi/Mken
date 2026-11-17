@@ -12,7 +12,7 @@
  */
 
 const assert = require('assert');
-const { extractTenantContext, enforceTenantIsolation } = require('../api/_lib/tenant-context.js');
+const { extractTenantContext, enforceTenantIsolation } = require('../mkn-theme/src/server/platform/_lib/tenant-context.js');
 
 // محاكي قاعدة البيانات مع محرك RLS صارم
 class StrictRlsDatabaseSimulator {

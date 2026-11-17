@@ -1,0 +1,40 @@
+{
+  "brand": {
+    "name": "المحروسة للشقق المفروشة | Mahrousa Apartment",
+    "tagline": "شقق مفروشة راقية بالمدينة المنورة — حجز مباشر",
+    "logo": "/brand/almahrusa.png"
+  },
+  "enabledActivities": ["hotels"],
+  "enabled": ["deluxe-room", "suite-room", "standard-room", "family-suite"],
+  "featuredActivity": "hotels",
+  "featured": "deluxe-room",
+  "heroFocus": "deluxe-room",
+  "theme": "ocean",
+  "phone": "0554453287",
+  "location": "شداد بن عارض، المدينة المنورة 42522",
+  "subtitle": "شقق مفروشة مجهزة بالكامل في المدينة المنورة 42522 — وحدات بإطلالة حديقة وأسرّة ملكية وغرف فردية، مع واي فاي ومطبخ وموقف سيارات.",
+  "rating": "4.7",
+  "reviewsCount": "32 تقييم على Google",
+  "mapsUrl": "https://maps.app.goo.gl/J3yxQx6r4HF6yeYM8",
+  "heroImage": "/almahrusa/hero.web.jpg",
+  "social": {
+    "whatsapp": { "enabled": true, "value": "966554453287" }
+  },
+  "emails": {
+    "inquiries": { "enabled": true, "value": "stayinmedina@gmail.com" }
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "المدينة المنورة",
+    "center": { "lat": 24.3512531, "lng": 39.5107113 },
+    "radiusKm": 15,
+    "coverageNote": "شداد بن عارض، المدينة المنورة 42522 — 9G26+G7",
+    "showAsFullCity": true
+  },
+  "booking": {
+    "enabled": true,
+    "mode": "stay",
+    "workingHours": { "start": "16:00", "end": "23:30" }
+  }
+}

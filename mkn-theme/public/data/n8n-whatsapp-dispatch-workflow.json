@@ -1,0 +1,104 @@
+{
+  "name": "Mken 3PL Pre-Dispatch Driver WhatsApp Relocation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-30min",
+      "name": "Cron Trigger (Every 30 Mins)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM public.calculate_pre_dispatch_demand('{{ $json.tenant_id }}'::uuid, NOW() + INTERVAL '35 minutes') WHERE out_buffer_vehicles > 0;"
+      },
+      "id": "supabase-predictive-query",
+      "name": "Execute Supabase Pre-Dispatch Function",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_CLOUD_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.driver_phone }}"
+            },
+            {
+              "name": "type",
+              "value": "template"
+            },
+            {
+              "name": "template",
+              "value": "={\n  \"name\": \"driver_positioning_alert_ar\",\n  \"language\": {\"code\": \"ar\"},\n  \"components\": [\n    {\n      \"type\": \"body\",\n      \"parameters\": [\n        {\"type\": \"text\", \"text\": \"{{ $json.driver_name }}\"},\n        {\"type\": \"text\", \"text\": \"{{ $json.out_platform }}\"},\n        {\"type\": \"text\", \"text\": \"{{ $json.out_zone_name }}\"},\n        {\"type\": \"text\", \"text\": \"20\"}\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        }
+      },
+      "id": "whatsapp-meta-api-send",
+      "name": "Send Meta WhatsApp Driver Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Cron Trigger (Every 30 Mins)": {
+      "main": [
+        [
+          {
+            "node": "Execute Supabase Pre-Dispatch Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Supabase Pre-Dispatch Function": {
+      "main": [
+        [
+          {
+            "node": "Send Meta WhatsApp Driver Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

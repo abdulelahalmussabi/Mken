@@ -1,9 +1,9 @@
 'use strict';
 
 const assert = require('assert');
-const gccTaxEngine = require('../api/_lib/gcc-tax-engine');
-const zatcaEngine = require('../api/_lib/zatca-engine');
-const checkoutHandler = require('../api/_lib/handlers/checkout');
+const gccTaxEngine = require('../mkn-theme/src/server/platform/_lib/gcc-tax-engine');
+const zatcaEngine = require('../mkn-theme/src/server/platform/_lib/zatca-engine');
+const checkoutHandler = require('../mkn-theme/src/server/platform/_lib/handlers/checkout');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة لمحرك الضرائب والعملات الخليجية (E4.2)');

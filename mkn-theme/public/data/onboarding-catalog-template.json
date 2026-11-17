@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "description": "كتالوج إعداد موحّد — املأ الحقول ثم شغّل prompts Gemini في admin",
+  "fields": {
+    "1_business_name": { "label": "اسم المنشأة", "required": true, "example": "صالون النخبة" },
+    "2_activity_type": {
+      "label": "نوع النشاط",
+      "required": true,
+      "options": ["barber-salon", "commerce", "tech-digital", "healthcare", "restaurant", "consulting", "car-care", "cleaning", "other"]
+    },
+    "3_vat_number": { "label": "الرقم الضريبي (15 رقم)", "required": false, "example": "311234567800003" },
+    "4_phone_whatsapp": { "label": "جوال واتساب", "required": true, "example": "9665XXXXXXXX" },
+    "5_city": { "label": "المدينة", "required": true, "example": "الرياض" },
+    "6_address_short": { "label": "العنوان المختصر", "required": true, "example": "حي النخيل، شارع الملك فهد" },
+    "7_services_top3": { "label": "أهم 3 خدمات", "required": true, "type": "array", "maxItems": 3 },
+    "8_working_hours": { "label": "ساعات العمل", "required": true, "example": "09:00-22:00" },
+    "9_logo_url_or_file": { "label": "الشعار (رابط أو ملف)", "required": false },
+    "10_target_customer": { "label": "من عميلك المثالي؟", "required": true, "example": "رجال 25-45 يبحثون عن حلاقة سريعة" }
+  },
+  "template": {
+    "1_business_name": "",
+    "2_activity_type": "",
+    "3_vat_number": "",
+    "4_phone_whatsapp": "",
+    "5_city": "",
+    "6_address_short": "",
+    "7_services_top3": ["", "", ""],
+    "8_working_hours": "09:00-22:00",
+    "9_logo_url_or_file": "",
+    "10_target_customer": ""
+  },
+  "gemini_prompts": {
+    "seo_keywords": "أنت خبير SEO سعودي. النشاط: {2_activity_type}\nاسم المنشأة: {1_business_name}\nالمدينة: {5_city}\nالخدمات: {7_services_top3}\nالعميل المستهدف: {10_target_customer}\n\nأعطني JSON فقط:\n{\"seo_title\":\"\",\"meta_description\":\"\",\"keywords\":[],\"h2_headings\":[]}",
+    "hero_faq": "اكتب بالعربية الفصحى البسيطة لـ {1_business_name} ({2_activity_type}) في {5_city}:\n- hero_title (سطر)\n- hero_subtitle (سطران)\n- about_paragraph (80 كلمة)\n- faq: 3 أسئلة مع إجابات قصيرة\nأرجع JSON فقط.",
+    "google_business_post": "منشور Google Business (400 حرف max) لـ {1_business_name}.\nالخدمات: {7_services_top3}\nCTA: واتساب {4_phone_whatsapp}\nنبرة محترفة سعودية.",
+    "whatsapp_replies": "5 ردود واتسapp جاهزة لـ {2_activity_type} — {1_business_name}:\n1 ترحيب 2 أسعار 3 ساعات العمل ({8_working_hours}) 4 تأكيد حجز 5 شكر\nقصيرة، عربية، إيموجي خفيف. أرجع JSON مصفوفة."
+  },
+  "activation_checklist": [
+    { "id": "signed_up", "label": "تسجيل الحساب" },
+    { "id": "catalog_filled", "label": "ملء كتالوج الإعداد (10 حقول)" },
+    { "id": "zatca_onboarded", "label": "ربط الزكاة (OTP)" },
+    { "id": "first_invoice", "label": "أول فاتورة معتمدة" },
+    { "id": "whatsapp_live", "label": "أول رد واتساب آلي" },
+    { "id": "gbp_connected", "label": "ربط Google Maps (اختياري)" }
+  ]
+}

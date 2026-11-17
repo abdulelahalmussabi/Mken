@@ -406,7 +406,7 @@ async function handleAdminOperations(req, res) {
       try {
         const fs = require('fs');
         const path = require('path');
-        const tenantFilePath = path.join(__dirname, '..', '..', '..', 'data', 'tenants', `${slugClean}.json`);
+        const tenantFilePath = path.join(__dirname, '..', '..', '..', '..', '..', '..', 'data', 'tenants', `${slugClean}.json`);
         
         console.log(`Local fallback: Saving config to ${tenantFilePath}`);
         

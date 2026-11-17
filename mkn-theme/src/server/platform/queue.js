@@ -1,12 +1,12 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const pushLib = require('../_lib/web-push');
-const { isRateLimited } = require('../_lib/rate-limit');
-const queueGuard = require('../_lib/queue-guard');
-const queuePersist = require('../_lib/queue-persist');
+const sbEnv = require('./_lib/supabase-env');
+const { handleCors } = require('./_lib/cors');
+const pushLib = require('./_lib/web-push');
+const { isRateLimited } = require('./_lib/rate-limit');
+const queueGuard = require('./_lib/queue-guard');
+const queuePersist = require('./_lib/queue-persist');
 
 const MISSING_IP_LIMIT = queuePersist.MISSING_IP_LIMIT;
 const STAFF_ONLY_ACTIONS = new Set([

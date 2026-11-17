@@ -1,6 +1,6 @@
 'use strict';
 
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
 const { staffCookie } = require('./queue-http.cjs');
 
 function mockRes() {

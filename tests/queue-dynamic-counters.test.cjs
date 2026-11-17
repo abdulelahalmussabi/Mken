@@ -3,7 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
 const { tenantHeaders } = require('./queue-http.cjs');
 
 function createMockReq(options = {}) {
@@ -139,7 +139,7 @@ async function runDynamicCountersTests() {
 
   // 6. فحص معايير وضوح الباركود في queue-display.html
   console.log('6️⃣ فحص كود شاشة العرض للتأكد من وجود الباركود العملاق عالي التباين...');
-  const displayHtml = fs.readFileSync(path.join(__dirname, '..', 'queue-display.html'), 'utf8');
+  const displayHtml = fs.readFileSync(path.join(__dirname, '..', 'mkn-theme', 'public', 'queue-display.html'), 'utf8');
   assert.ok(displayHtml.includes('qr-scanner-frame'), 'يجب تضمين إطار المسح qr-scanner-frame');
   assert.ok(displayHtml.includes('250px'), 'يجب أن يكون حجم إطار الباركود 250px على الأقل للمسح من 5 أمتار');
   assert.ok(displayHtml.includes('300x300'), 'يجب طلب حجم الباركود بدقة 300x300 بدلاً من الحجم المجهري');

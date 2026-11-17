@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
 const { tenantHeaders } = require('./queue-http.cjs');
 
 function mockReqRes(options = {}) {

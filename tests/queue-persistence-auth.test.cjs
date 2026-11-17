@@ -5,8 +5,8 @@ const http = require('http');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const queueHandler = require('../api/v1/queue.js');
-const queueGuard = require('../api/_lib/queue-guard');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
+const queueGuard = require('../mkn-theme/src/server/platform/_lib/queue-guard');
 const { tenantHeaders, staffCookie } = require('./queue-http.cjs');
 
 const DATABASE_URL = process.env.QUEUE_DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/queue_test';
