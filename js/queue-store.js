@@ -187,12 +187,20 @@
       return apiCall('get-config', 'GET');
     },
 
+    getStaffConfig: function () {
+      return apiCall('staff-config', 'GET');
+    },
+
     saveConfig: function (configData) {
       return apiCall('save-config', 'POST', configData);
     },
 
     listQueues: function () {
       return apiCall('list-queues', 'GET');
+    },
+
+    listStaffQueues: function () {
+      return apiCall('staff-board', 'GET');
     },
 
     joinQueue: function (payload) {

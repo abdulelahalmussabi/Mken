@@ -254,6 +254,7 @@ async function runProductionTestSuite() {
 
     // موظف كاونتر 1 يحاول تحويل تذكرة كاونتر 2 بصلاحية counter_agent -> يجب 403 Forbidden
     const { req: rHack, res: sHack } = mockReqRes({
+      staff: 'counter',
       query: { tenant, action: 'transfer-ticket' },
       body: {
         ticketId: tkt2.id,

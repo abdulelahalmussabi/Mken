@@ -53,7 +53,7 @@ async function runTest() {
     const { req, res } = mockReqRes({
       method: 'GET',
       staff: true,
-      query: { tenant, action: 'get-config' }
+      query: { tenant, action: 'staff-config' }
     });
     await queueHandler(req, res);
     assert.strictEqual(res._status, 200);

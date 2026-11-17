@@ -119,6 +119,7 @@ async function runTest() {
 
     // كاونتر 2 يحاول تحويل تذكرة كاونتر 1 بصلاحية counter_agent -> يجب أن يُرفض 403
     const { req: reqUnauthorized, res: resUnauthorized } = mockReqRes({
+      staff: 'counter',
       query: { tenant, action: 'transfer-ticket' },
       body: {
         ticketId: activeTicket.id,

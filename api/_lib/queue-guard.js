@@ -45,6 +45,9 @@ function signStaffSession(session) {
     clientSlug: session.clientSlug,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8
   };
+  if (session.queueRole === 'admin' || session.queueRole === 'receptionist' || session.queueRole === 'counter_agent') {
+    payload.queueRole = session.queueRole;
+  }
   const body = b64url(Buffer.from(JSON.stringify(payload), 'utf8'));
   const sig = b64url(crypto.createHmac('sha256', sessionSecret()).update(body).digest());
   return body + '.' + sig;
@@ -71,10 +74,12 @@ function verifyStaffSession(token) {
     if (!payload || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
     if (payload.role !== 'super' && payload.role !== 'client') return null;
     if (!payload.email) return null;
+    const queueRoles = { admin: 1, receptionist: 1, counter_agent: 1 };
     return {
       email: payload.email,
       role: payload.role,
-      clientSlug: payload.clientSlug ? String(payload.clientSlug).toLowerCase() : null
+      clientSlug: payload.clientSlug ? String(payload.clientSlug).toLowerCase() : null,
+      queueRole: queueRoles[payload.queueRole] ? payload.queueRole : null
     };
   } catch (err) {
     return null;
@@ -144,6 +149,16 @@ function tenantSlugFromHost(hostname) {
     if (head === 'www' && parts.length > 1) head = parts[1];
     return validSlug(head);
   }
+  return null;
+}
+
+function queueRoleFromSession(session) {
+  if (!session) return null;
+  if (session.queueRole === 'admin' || session.queueRole === 'receptionist' || session.queueRole === 'counter_agent') {
+    return session.queueRole;
+  }
+  if (session.role === 'super') return 'admin';
+  if (session.role === 'client') return 'receptionist';
   return null;
 }
 
@@ -271,12 +286,83 @@ function shapeConfig(data, staff) {
   return body;
 }
 
+const PUBLIC_EVENT_KEYS = new Set([
+  'customer_name',
+  'customer_phone',
+  'phone_number',
+  'pin_code',
+  'push_subscription',
+  'session_token',
+  'operator_name',
+  'incomingOperatorName',
+  'outgoingOperatorName',
+  'performed_by',
+  'performed_by_name',
+  'full_name',
+  'incoming_name',
+  'email',
+  'transfer_notes',
+  'adminName',
+  'handoverNotes',
+  'handover_notes'
+]);
+
+function redactPublicEvent(value) {
+  return redact(value, PUBLIC_EVENT_KEYS, false);
+}
+
+function publicQueueBoard(data) {
+  if (!data || data.ok !== true) return redactPublicEvent(data);
+  const override = data.override;
+  return {
+    ok: true,
+    queues: (data.queues || []).map(function (queue) {
+      return {
+        id: queue.id,
+        tenant_slug: queue.tenant_slug,
+        name: queue.name,
+        code: queue.code,
+        prefix: queue.prefix,
+        target_service_minutes: queue.target_service_minutes,
+        is_active: queue.is_active,
+        activeCountersCount: queue.activeCountersCount,
+        waitingCount: queue.waitingCount,
+        estimatedWaitMinutes: queue.estimatedWaitMinutes,
+        waitingTickets: (queue.waitingTickets || []).map(function (ticket) {
+          return {
+            ticket_number: ticket.ticket_number,
+            status: ticket.status,
+            counter: ticket.counter || ticket.called_counter_number || null
+          };
+        })
+      };
+    }),
+    settings: data.settings,
+    override: override ? {
+      state_revision: override.state_revision,
+      capacity_override_delta: override.capacity_override_delta,
+      extended_closing_minutes: override.extended_closing_minutes,
+      paused_until: override.paused_until,
+      is_force_locked_today: override.is_force_locked_today,
+      lock_reason: override.lock_reason,
+      pause_reason: override.pause_reason,
+      updated_at: override.updated_at
+    } : override,
+    state_revision: data.state_revision
+  };
+}
+
 function present(data, ctx) {
   const action = ctx && ctx.action;
   const staff = Boolean(ctx && ctx.staff);
   if (!data || typeof data !== 'object') return data;
   if (action === 'intake-status') return data;
-  if (action === 'get-config') return shapeConfig(data, staff);
+  if (action === 'list-queues' || action === 'get-config') {
+    if (action === 'get-config') return shapeConfig(data, false);
+    return publicQueueBoard(data);
+  }
+  if (action === 'staff-config') return shapeConfig(data, staff);
+  if (action === 'staff-board') return staff ? redactSecrets(data) : publicQueueBoard(data);
   const customerStatus = action === 'get-ticket-status' && !(ctx.byTicketId && staff && !ctx.byToken);
   if (staff && !customerStatus) return redactSecrets(data);
   return redactIdentity(data);
@@ -294,11 +380,13 @@ module.exports = {
   signStaffSession: signStaffSession,
   verifyStaffSession: verifyStaffSession,
   readStaffSession: readStaffSession,
+  queueRoleFromSession: queueRoleFromSession,
   resolveQueueTenant: resolveQueueTenant,
   tenantSlugFromHost: tenantSlugFromHost,
   clientIp: clientIp,
   redactIdentity: redactIdentity,
   redactSecrets: redactSecrets,
   present: present,
+  redactPublicEvent: redactPublicEvent,
   minimalTicket: minimalTicket
 };

@@ -52,7 +52,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       query: { tenant, action: 'hot-swap-authenticate' },
-      staff: true,
+      staff: 'super',
       headers: {
         'x-admin-authenticated': '1'
       },
@@ -78,7 +78,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       query: { tenant, action: 'reception-handover' },
-      staff: true,
+      staff: 'super',
       headers: {
         'x-is-super-admin': '1'
       },
@@ -111,7 +111,7 @@ async function runTest() {
     // الأدمن يحول التذكرة حتى لو لم تكن قيد خدمته المباشرة
     const { req: reqTransfer, res: resTransfer } = mockReqRes({
       query: { tenant, action: 'transfer-ticket' },
-      staff: true,
+      staff: 'super',
       headers: {
         'x-admin-authenticated': '1'
       },

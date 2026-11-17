@@ -302,13 +302,13 @@
   // 2. تحديث البيانات المركزية الشاملة
   // -------------------------------------------------------------
   function refresh() {
-    queueStore.getConfig().then(function (res) {
+    queueStore.getStaffConfig().then(function (res) {
       if (!res.ok) return;
       currentQueues = res.queues || [];
       currentCounters = res.counters || [];
       currentSettings = res.settings || {};
 
-      queueStore.listQueues().then(function (qRes) {
+      queueStore.listStaffQueues().then(function (qRes) {
         if (qRes.ok && qRes.queues) {
           currentQueues = qRes.queues;
           if (qRes.override) {
@@ -919,7 +919,7 @@
       }).join('');
     }
 
-    queueStore.getConfig().then(function (res) {
+    queueStore.getStaffConfig().then(function (res) {
       if (res.ok && res.users && overrideOperatorSelect) {
         overrideOperatorSelect.innerHTML = res.users.map(function (u) {
           var isCurrent = u.full_name === cnt.operator_name || u.id === cnt.current_user_id;
