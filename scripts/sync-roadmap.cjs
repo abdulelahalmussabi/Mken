@@ -35,7 +35,7 @@ const MASTER_TASKS = [
     status: "Verified",
     priority: "P0: Critical",
     script: "node scripts/test-tenant-isolation.cjs",
-    files: "db/tenant-isolation-rls.sql, api/_lib/tenant-context.js",
+    files: "db/tenant-isolation-rls.sql, mkn-theme/src/server/platform/_lib/tenant-context.js",
     regulation: ["NCA ECC", "PDPL سدايا"],
     startDate: "2026-11-14",
     endDate: "2026-11-16",

@@ -1,0 +1,343 @@
+{
+  "brand": {
+    "name": "almahrosa",
+    "tagline": "مرحباً بك في موقعنا",
+    "logo": ""
+  },
+  "enabledActivities": [
+    "hotels"
+  ],
+  "enabled": [
+    "standard-room",
+    "deluxe-room",
+    "suite-room"
+  ],
+  "featuredActivity": "hotels",
+  "featured": "standard-room",
+  "heroFocus": "standard-room",
+  "theme": "ocean",
+  "phone": "966543530333",
+  "social": {
+    "whatsapp": {
+      "enabled": true,
+      "value": "966554453287"
+    },
+    "instagram": {
+      "enabled": false,
+      "value": ""
+    },
+    "twitter": {
+      "enabled": false,
+      "value": ""
+    },
+    "facebook": {
+      "enabled": false,
+      "value": ""
+    },
+    "tiktok": {
+      "enabled": false,
+      "value": ""
+    },
+    "snapchat": {
+      "enabled": false,
+      "value": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "value": ""
+    },
+    "youtube": {
+      "enabled": false,
+      "value": ""
+    },
+    "linkedin": {
+      "enabled": false,
+      "value": ""
+    }
+  },
+  "emails": {
+    "inquiries": {
+      "enabled": true,
+      "value": "info@mken.live"
+    },
+    "sales": {
+      "enabled": true,
+      "value": "sales@mken.live"
+    },
+    "support": {
+      "enabled": true,
+      "value": "CS@mken.live"
+    }
+  },
+  "heroImage": "",
+  "activities": {
+    "hotels": {
+      "icon": "🏨",
+      "title": "ضيافة وفنادق",
+      "shortTitle": "فنادق",
+      "tagline": "احجز إقامتك",
+      "description": "غرف فندقية، أجنحة، وشاليهات — حجز مسبق بأسعار تنافسية وخدمة ضيافة مميزة.",
+      "booking": {
+        "ctaLabel": "احجز غرفة"
+      },
+      "content": {
+        "hero": {
+          "titleAccent": "إقامة مميزة",
+          "desc": "في {brand} غرف وأجنحة بمعايير ضيافة عالية — احجز مسبقاً واستمتع بإقامة مريحة.",
+          "badgeSingle": "غرف متاحة",
+          "badgeMulti": "خيارات الإقامة"
+        },
+        "stats": [
+          {
+            "num": "+80",
+            "label": "غرفة"
+          },
+          {
+            "num": "4.8",
+            "label": "تقييم"
+          },
+          {
+            "num": "24/7",
+            "label": "استقبال"
+          },
+          {
+            "num": "15",
+            "label": "دقيقة تسجيل"
+          }
+        ],
+        "features": [
+          {
+            "icon": "🛏️",
+            "text": "غرف مريحة"
+          },
+          {
+            "icon": "🍳",
+            "text": "إفطار"
+          },
+          {
+            "icon": "📶",
+            "text": "WiFi مجاني"
+          },
+          {
+            "icon": "🅿️",
+            "text": "مواقف"
+          }
+        ],
+        "about": {
+          "title": "ضيافة بمعايير عالمية",
+          "paragraphs": [
+            "{brand} — فندق يجمع بين الراحة والموقع المميز في قلب المدينة.",
+            "غرف عائلية، أجنحة VIP، وشاليهات للعطلات — مع خدمة عملاء على مدار الساعة."
+          ],
+          "checks": [
+            "حجز أونلاين",
+            "إلغاء مرن",
+            "إفطار",
+            "غرف عائلية",
+            "شاليهات",
+            "أسعار طويلة"
+          ]
+        },
+        "process": {
+          "title": "من الحجز إلى تسجيل الوصول",
+          "subtitle": "ثلاث خطوات",
+          "steps": [
+            {
+              "num": "١",
+              "title": "اختر نوع الغرفة",
+              "desc": "قياسية، ديلوكس، أو جناح."
+            },
+            {
+              "num": "٢",
+              "title": "حدّد التاريخ والضيوف",
+              "desc": "تاريخ الوصول، الليالي، وعدد الضيوف."
+            },
+            {
+              "num": "٣",
+              "title": "تسجيل الوصول",
+              "desc": "استقبلك فريقنا — إقامة سلسة."
+            }
+          ]
+        },
+        "faq": [
+          {
+            "q": "ما وقت تسجيل الوصول والخروج؟",
+            "a": "تسجيل الوصول من 4 مساءً (16:00) وتسجيل الخروج حتى 12 ظهراً — ويمكن طلب وصول مبكر حسب التوفر."
+          },
+          {
+            "q": "هل الإفطار مشمول؟",
+            "a": "نعم في معظم الغرف — راجع تفاصيل كل نوع عند الحجز."
+          },
+          {
+            "q": "هل يمكن إلغاء الحجز؟",
+            "a": "سياسة إلغاء مرنة — تواصل معنا قبل 24 ساعة."
+          }
+        ],
+        "contact": {
+          "title": "احجز إقامتك",
+          "desc": "فريق {brand} جاهز لاستقبالك."
+        },
+        "seo": {
+          "titleSuffix": "حجز فندق — جدة",
+          "defaultKeywords": [
+            "فندق جدة",
+            "حجز غرفة جدة",
+            "شاليه جدة"
+          ]
+        }
+      }
+    }
+  },
+  "services": {
+    "standard-room": {
+      "icon": "🛏️",
+      "title": "غرفة قياسية",
+      "shortTitle": "قياسية",
+      "description": "غرفة مزدوجة مريحة — إفطار، WiFi، وخدمة الغرف.",
+      "category": "غرف",
+      "roomCount": 8,
+      "features": [
+        "سرير مزدوج",
+        "إفطار",
+        "WiFi"
+      ]
+    },
+    "deluxe-room": {
+      "icon": "✨",
+      "title": "غرفة ديلوكس",
+      "shortTitle": "ديلوكس",
+      "description": "مساحة أوسع وإطلالة — مناسبة للأزواج والعائلات الصغيرة.",
+      "category": "غرف",
+      "roomCount": 4,
+      "features": [
+        "إطلالة",
+        "minibar",
+        "حمام فاخر"
+      ]
+    },
+    "suite-room": {
+      "icon": "🏛️",
+      "title": "جناح فندقي",
+      "shortTitle": "جناح",
+      "description": "جناح بغرفة معيشة — للإقامات الفاخرة والضيوف VIP.",
+      "category": "أجنحة",
+      "roomCount": 2,
+      "features": [
+        "غرفة معيشة",
+        "VIP",
+        "خدمة خاصة"
+      ]
+    },
+    "family-suite": {
+      "icon": "👨‍👩‍👧‍👦",
+      "title": "جناح عائلي",
+      "shortTitle": "عائلي",
+      "description": "جناح واسع لـ 4–6 أشخاص — مطبخ صغير وغرف نوم متعددة.",
+      "category": "أجنحة",
+      "roomCount": 3,
+      "features": [
+        "4–6 أشخاص",
+        "مطبخ",
+        "غرفتان"
+      ]
+    },
+    "chalet-stay": {
+      "icon": "🏡",
+      "title": "شاليه",
+      "shortTitle": "شاليه",
+      "description": "شاليه خاص بحديقة أو مسبح — مثالي للعطلات.",
+      "category": "شاليهات",
+      "roomCount": 2,
+      "features": [
+        "خصوصية",
+        "حديقة",
+        "مسبح"
+      ]
+    },
+    "long-stay-hotel": {
+      "icon": "📅",
+      "title": "إقامة طويلة",
+      "shortTitle": "طويلة",
+      "description": "أسعار خاصة للإقامات الشهرية — موظفين وعائلات.",
+      "category": "طويلة",
+      "roomCount": 2,
+      "features": [
+        "أسعار أسبوعية",
+        "خصم",
+        "مرونة"
+      ]
+    }
+  },
+  "booking": {
+    "enabled": true,
+    "slotDuration": 30,
+    "advanceDays": 14,
+    "workingDays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "workingHours": {
+      "start": "09:00",
+      "end": "22:00"
+    },
+    "maxPerSlot": 3,
+    "reminders": {
+      "enabled": true,
+      "hoursBefore": [
+        24,
+        2
+      ],
+      "windowMinutes": 60
+    }
+  },
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "جدة",
+    "center": {
+      "lat": 21.485811,
+      "lng": 39.192505
+    },
+    "radiusKm": 25,
+    "coverageNote": "نصل إلى جميع أحياء جدة خلال ساعتين",
+    "showAsFullCity": true
+  },
+  "push": {
+    "enabled": false,
+    "vapidPublicKey": ""
+  },
+  "supabase": {
+    "enabled": false,
+    "url": "",
+    "key": ""
+  },
+  "saas": {
+    "baseDomain": "mken.live",
+    "useSubdomains": true
+  },
+  "whatsappApi": {
+    "enabled": false,
+    "provider": "none",
+    "url": "",
+    "instanceId": "",
+    "token": "",
+    "accountSid": "",
+    "fromNumber": "",
+    "sendConfirmation": true,
+    "sendReminder": true
+  },
+  "payment": {
+    "enabled": false,
+    "provider": "moyasar",
+    "publishableKey": "",
+    "requirePayment": false,
+    "sandbox": true,
+    "currency": "SAR"
+  },
+  "updatedAt": "2026-06-25T04:57:50.687Z"
+}

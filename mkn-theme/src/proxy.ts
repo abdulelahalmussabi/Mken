@@ -52,6 +52,7 @@ function lockBoundTenant(url: URL, pathname: string, tenant: string): NextRespon
       return NextResponse.redirect(url);
     }
   }
+  if (pathname.toLowerCase().endsWith(".html")) return null;
   const alias = pathname.replace(/^\//, "").toLowerCase().replace(/\.html$/, "");
   if (!isReservedSlug(alias) && isValidTenantSlugPattern(alias) && alias !== tenant) {
     url.pathname = `/subscriber/${tenant}`;
@@ -140,6 +141,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname === "/admin.html") {
+    if (url.searchParams.get("tab") === "queue") return NextResponse.next();
     url.pathname = url.searchParams.has("google_connect")
       ? "/admin/ads/local-seo"
       : tenant
@@ -219,6 +221,10 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/book.html") {
     url.pathname = "/book";
     return NextResponse.rewrite(url);
+  }
+
+  if (pathname.toLowerCase().endsWith(".html")) {
+    return NextResponse.next();
   }
 
   // Dynamic Path Multi-Tenant Engine across platform

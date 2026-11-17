@@ -1,12 +1,25 @@
 import type { NextConfig } from "next";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(projectRoot, "..");
+const require = createRequire(import.meta.url);
+const { PAGE_REWRITES, buildApiRewrites } = require("./src/server/platform/public-routes.cjs") as {
+  PAGE_REWRITES: { source: string; destination: string }[];
+  buildApiRewrites: () => { source: string; destination: string }[];
+};
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: repoRoot,
+  outputFileTracingIncludes: {
+    "/api/v1/queue/[[...extra]]": ["../db/migrations/**/*.sql"],
+    "/api/platform/[[...path]]": ["../db/migrations/**/*.sql"],
+  },
+  serverExternalPackages: ["pg", "web-push"],
   turbopack: {
-    root: projectRoot,
+    root: repoRoot,
   },
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   typedRoutes: true,
@@ -78,6 +91,8 @@ const nextConfig: NextConfig = {
         source: "/book.html",
         destination: "/book",
       },
+      ...PAGE_REWRITES,
+      ...buildApiRewrites(),
     ];
   },
 };

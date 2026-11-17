@@ -12,7 +12,7 @@
  *    (الحقل LICENSE_PUBLIC_KEY) ليتم التحقق أوف لاين.
  */
 
-const { generateKeyPair } = require('../api/_lib/license-sign');
+const { generateKeyPair } = require('../mkn-theme/src/server/platform/_lib/license-sign');
 
 const { privateKeyPem, publicKeyPem } = generateKeyPair();
 

@@ -131,6 +131,7 @@ export interface MkenConfig {
       newReviewUrl?: string;
       mapsUri?: string;
       city?: string;
+      placeId?: string;
     }[];
   };
   /** Per-tenant Google Ads customer. OAuth refresh token is a dedicated column, never returned to the browser. */

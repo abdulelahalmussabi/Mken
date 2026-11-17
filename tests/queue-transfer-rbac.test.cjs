@@ -1,7 +1,8 @@
 'use strict';
 
 const assert = require('assert');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 // محاكي طلبات واستجابات HTTP الصغري
 function mockReqRes(options = {}) {
@@ -9,7 +10,7 @@ function mockReqRes(options = {}) {
     method: options.method || 'POST',
     query: options.query || {},
     body: options.body || {},
-    headers: options.headers || {}
+    headers: tenantHeaders(options)
   };
 
   let statusCode = 200;
@@ -51,6 +52,7 @@ async function runTest() {
   console.log('1️⃣ اختبار إصدار تذكرة يدوية عبر موظف الاستقبال...');
   {
     const { req, res } = mockReqRes({
+      staff: true,
       query: { tenant, action: 'manual-ticket' },
       body: {
         queueId: `q-cs-${tenant}`,
@@ -75,6 +77,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       method: 'GET',
+      staff: true,
       query: { tenant, action: 'search-tickets', q: 'سليمان' }
     });
 
@@ -116,6 +119,7 @@ async function runTest() {
 
     // كاونتر 2 يحاول تحويل تذكرة كاونتر 1 بصلاحية counter_agent -> يجب أن يُرفض 403
     const { req: reqUnauthorized, res: resUnauthorized } = mockReqRes({
+      staff: 'counter',
       query: { tenant, action: 'transfer-ticket' },
       body: {
         ticketId: activeTicket.id,
@@ -177,6 +181,7 @@ async function runTest() {
 
     // تذكرة 2: محولة بالأولوية الفورية Immediate Next
     const { req: reqJ2, res: resJ2 } = mockReqRes({
+      staff: true,
       query: { tenant, action: 'manual-ticket' },
       body: { queueId: `q-cs-${tenant}`, customerName: 'عميل طارئ', customerPhone: '0502222222' }
     });

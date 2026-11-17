@@ -6,9 +6,9 @@
  */
 
 const assert = require('assert');
-const adaptiveIam = require('../api/_lib/adaptive-iam');
-const tenantContext = require('../api/_lib/tenant-context');
-const checkoutHandler = require('../api/_lib/handlers/checkout');
+const adaptiveIam = require('../mkn-theme/src/server/platform/_lib/adaptive-iam');
+const tenantContext = require('../mkn-theme/src/server/platform/_lib/tenant-context');
+const checkoutHandler = require('../mkn-theme/src/server/platform/_lib/handlers/checkout');
 
 async function runTests() {
   console.log('='.repeat(80));

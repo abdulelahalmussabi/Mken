@@ -1,14 +1,15 @@
 'use strict';
 
 const assert = require('assert');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function mockReqRes(options = {}) {
   const req = {
     method: options.method || 'POST',
     query: options.query || {},
     body: options.body || {},
-    headers: options.headers || {}
+    headers: tenantHeaders(options)
   };
 
   let statusCode = 200;

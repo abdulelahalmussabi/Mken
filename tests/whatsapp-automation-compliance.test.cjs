@@ -1,8 +1,8 @@
 'use strict';
 
 const assert = require('assert');
-const cstGuard = require('../api/_lib/cst-time-guard');
-const webhookHandler = require('../api/_lib/handlers/whatsapp-webhook');
+const cstGuard = require('../mkn-theme/src/server/platform/_lib/cst-time-guard');
+const webhookHandler = require('../mkn-theme/src/server/platform/_lib/handlers/whatsapp-webhook');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة لأتمتة الواتساب والإشعارات السحابية (E5)');

@@ -38,13 +38,13 @@ async function runTests() {
     console.log('1️⃣ اختبار ربط حساب جوجل بيزنس (Google Business OAuth)...');
 
     // إعداد موك لـ getValidAccessToken قبل تحميل google-business.js لتفادي مشاكل الـ destructuring
-    const googleAuthHelper = require('../api/_lib/google-auth-helper.js');
+    const googleAuthHelper = require('../mkn-theme/src/server/platform/_lib/google-auth-helper.js');
     googleAuthHelper.getValidAccessToken = async function (tenant) {
       return 'mock-access-token';
     };
     
     // محاكاة استدعاء الـ API الخاص بـ Vercel مباشرة
-    const googleAuthHandler = require('../api/_lib/handlers/google-business.js');
+    const googleAuthHandler = require('../mkn-theme/src/server/platform/_lib/handlers/google-business.js');
     
     const mockReq = {
       method: 'GET',
@@ -260,7 +260,7 @@ async function runTests() {
     };
 
     try {
-      const syncHandler = require('../api/_lib/handlers/google-business.js');
+      const syncHandler = require('../mkn-theme/src/server/platform/_lib/handlers/google-business.js');
       const mockSyncReq = {
         method: 'POST',
         url: '/api/google-business/sync-services',

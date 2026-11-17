@@ -24,6 +24,7 @@ export const PLATFORM_SYSTEM_SLUGS = new Set([
   "track",
   "queue",
   "queue-display",
+  "display",
   "pricing",
   "themes",
   "marketing",

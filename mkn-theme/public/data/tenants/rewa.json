@@ -1,0 +1,48 @@
+{
+  "brand": {
+    "name": "منتجع رواء الاستشفاء الرقمي",
+    "tagline": "رواء.. توازن واسترخاء",
+    "logo": "/brand/rewa.png"
+  },
+  "enabledActivities": ["healthcare", "fitness", "events", "hotels", "restaurant", "commerce"],
+  "featuredActivity": "healthcare",
+  "featured": "rewa-hijama",
+  "theme": "ocean",
+  "phone": "0148462524",
+  "social": {
+    "whatsapp": { "enabled": true, "value": "966549462524" },
+    "instagram": { "enabled": true, "value": "rewa.100000" },
+    "twitter": { "enabled": false, "value": "" },
+    "facebook": { "enabled": false, "value": "" },
+    "tiktok": { "enabled": true, "value": "rewa.1000" },
+    "snapchat": { "enabled": true, "value": "rewa.1000" },
+    "telegram": { "enabled": false, "value": "" },
+    "youtube": { "enabled": false, "value": "" },
+    "linkedin": { "enabled": false, "value": "" }
+  },
+  "emails": {
+    "inquiries": { "enabled": true, "value": "rewa@mken.live" },
+    "sales": { "enabled": true, "value": "rewa@mken.live" },
+    "support": { "enabled": true, "value": "rewa@mken.live" }
+  },
+  "heroImage": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=1200&q=80",
+  "serviceArea": {
+    "enabled": true,
+    "displayOnHomepage": true,
+    "city": "المدينة المنورة",
+    "center": { "lat": 24.46624, "lng": 39.550085 },
+    "radiusKm": 20,
+    "coverageNote": "منتجع رواء الاستشفاء الرقمي — المدينة المنورة",
+    "showAsFullCity": true
+  },
+  "mapsUrl": "https://maps.app.goo.gl/LMtjeaD2SKHfdMYV8",
+  "location": "الحماوات، المدينة المنورة، المملكة العربية السعودية",
+  "saas": { "baseDomain": "mken.live", "useSubdomains": true },
+  "subscription": {
+    "tier": "growth",
+    "status": "active",
+    "tenantSlug": "rewa",
+    "businessName": "منتجع رواء الاستشفاء الرقمي"
+  },
+  "updatedAt": "2026-08-31T08:00:00.000Z"
+}

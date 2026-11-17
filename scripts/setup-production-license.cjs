@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
-const sign = require('../api/_lib/license-sign');
+const sign = require('../mkn-theme/src/server/platform/_lib/license-sign');
 
 // 1. Generate key pair
 console.log('Generating ECDSA P-256 key pair...');

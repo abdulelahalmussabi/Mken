@@ -128,6 +128,7 @@ export const SCHEMA_TYPE: Record<StorefrontClient["type"], string> = {
   hotel: "LodgingBusiness",
   restaurant: "Restaurant",
   cafe: "CafeOrCoffeeShop",
+  commerce: "Store",
   other: "LocalBusiness",
 };
 

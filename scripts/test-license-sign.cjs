@@ -3,7 +3,7 @@
 
 /** اختبار دورة التوقيع/التحقق للتراخيص (ECDSA P-256 / IEEE P-1363). */
 
-const sign = require('../api/_lib/license-sign');
+const sign = require('../mkn-theme/src/server/platform/_lib/license-sign');
 
 let pass = 0, fail = 0;
 function ok(cond, msg) { if (cond) { pass++; console.log('PASS', msg); } else { fail++; console.log('FAIL', msg); } }

@@ -3,7 +3,8 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const queueHandler = require('../api/v1/queue.js');
+const queueHandler = require('../mkn-theme/src/server/platform/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function createMockReq(options = {}) {
   return {
@@ -11,7 +12,7 @@ function createMockReq(options = {}) {
     url: options.url || '/api/v1/queue',
     query: options.query || {},
     body: options.body || {},
-    headers: Object.assign({ origin: 'http://localhost', host: 'localhost' }, options.headers || {})
+    headers: tenantHeaders(options)
   };
 }
 
@@ -102,7 +103,7 @@ async function runDynamicCountersTests() {
   // 4. اختبار حماية الكاونتر من الحذف أثناء وجود مراجع قيد الخدمة
   console.log('4️⃣ اختبار حظر حذف الكاونتر أثناء وجود تذكرة مستدعاة أو قيد الخدمة...');
   // محاكاة وضع تذكرة على الكاونتر
-  res.body.counter.current_ticket_id = 'tkt_mock_active';
+  queueHandler._memory.counters[testTenant].find(function (c) { return c.id === newCounterId; }).current_ticket_id = 'tkt_mock_active';
   req = createMockReq({
     method: 'POST',
     query: { action: 'delete-counter', tenant: testTenant },
@@ -120,7 +121,7 @@ async function runDynamicCountersTests() {
   let cfgReq = createMockReq({ query: { action: 'get-config', tenant: testTenant } });
   let cfgRes = createMockRes();
   await queueHandler(cfgReq, cfgRes);
-  const targetCnt = cfgRes.body.counters.find(c => c.id === newCounterId);
+  const targetCnt = queueHandler._memory.counters[testTenant].find(c => c.id === newCounterId);
   targetCnt.current_ticket_id = null;
 
   req = createMockReq({
@@ -138,7 +139,7 @@ async function runDynamicCountersTests() {
 
   // 6. فحص معايير وضوح الباركود في queue-display.html
   console.log('6️⃣ فحص كود شاشة العرض للتأكد من وجود الباركود العملاق عالي التباين...');
-  const displayHtml = fs.readFileSync(path.join(__dirname, '..', 'queue-display.html'), 'utf8');
+  const displayHtml = fs.readFileSync(path.join(__dirname, '..', 'mkn-theme', 'public', 'queue-display.html'), 'utf8');
   assert.ok(displayHtml.includes('qr-scanner-frame'), 'يجب تضمين إطار المسح qr-scanner-frame');
   assert.ok(displayHtml.includes('250px'), 'يجب أن يكون حجم إطار الباركود 250px على الأقل للمسح من 5 أمتار');
   assert.ok(displayHtml.includes('300x300'), 'يجب طلب حجم الباركود بدقة 300x300 بدلاً من الحجم المجهري');
