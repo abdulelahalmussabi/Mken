@@ -439,6 +439,20 @@ function sortEligibleTickets(ticketsList) {
   });
 }
 
+function optionalCustomerName(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  const name = String(value).trim();
+  if (!name || name === 'undefined' || name === 'null') return '';
+  return name.slice(0, 120);
+}
+
+function optionalCustomerPhone(value) {
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  const raw = String(value).trim();
+  if (!raw || raw === 'undefined' || raw === 'null') return '';
+  return raw.replace(/\D/g, '');
+}
+
 function isCustomerInServiceElsewhere(slug, customerPhone, sessionToken, excludeQueueId) {
   const tickets = MEMORY_DB.tickets[slug] || [];
   return tickets.find(t => 
@@ -850,8 +864,8 @@ module.exports = async function handler(req, res) {
       }
       const body = req.body || {};
       const queueIds = Array.isArray(body.queueIds) ? body.queueIds : (body.queueId ? [body.queueId] : []);
-      const customerName = (body.customerName || 'عميل مَكَن').trim();
-      const customerPhone = (body.customerPhone || '').replace(/\D/g, '');
+      const customerName = optionalCustomerName(body.customerName);
+      const customerPhone = optionalCustomerPhone(body.customerPhone);
       const pushSubscription = body.pushSubscription || null;
 
       if (!queueIds.length) {
@@ -963,8 +977,8 @@ module.exports = async function handler(req, res) {
     if (action === 'manual-ticket') {
       const body = req.body || {};
       const queueId = body.queueId;
-      const customerName = (body.customerName || 'مراجع صالة').trim();
-      const customerPhone = (body.customerPhone || '').replace(/\D/g, '');
+      const customerName = optionalCustomerName(body.customerName);
+      const customerPhone = optionalCustomerPhone(body.customerPhone);
       const notes = body.notes || 'تذكرة يدوية صادرة من الاستقبال';
 
       const queues = MEMORY_DB.queues[tenantSlug];
@@ -1545,11 +1559,13 @@ module.exports = async function handler(req, res) {
         promotedTicket.priority_level = 'immediate_next';
         promotedTicket.notes = 'قفز آلي لرأس الطابور بعد إنجاز الخدمة الأولى.';
 
+        const promotedName = optionalCustomerName(promotedTicket.customer_name);
         notifyCustomer(
           tenantSlug,
           promotedTicket,
           '🚀 حان موعدك في المسار الثاني!',
-          `أهلاً ${promotedTicket.customer_name}، لقد تم نقلك مباشرة إلى رأس طابور (${promotedTicket.queue_name})؛ تفضل بالاستعداد للنداء.`
+          (promotedName ? `أهلاً ${promotedName}، ` : '') +
+          `لقد تم نقلك مباشرة إلى رأس طابور (${promotedTicket.queue_name})؛ تفضل بالاستعداد للنداء.`
         );
       }
 

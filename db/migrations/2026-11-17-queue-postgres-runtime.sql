@@ -310,3 +310,24 @@ BEGIN
   END LOOP;
 END
 $backfill$;
+
+-- الاسم والجوال اختياريان في تذكرة الانضمام. القيمة الفارغة أو NULL لا تُرفض.
+DO $optional_ticket_identity$
+BEGIN
+  IF to_regclass('public.tickets') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'tickets' AND column_name = 'customer_name'
+     ) THEN
+    EXECUTE 'ALTER TABLE public.tickets ALTER COLUMN customer_name DROP NOT NULL';
+    EXECUTE 'ALTER TABLE public.tickets ALTER COLUMN customer_name DROP DEFAULT';
+  END IF;
+  IF to_regclass('public.tickets') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'tickets' AND column_name = 'phone_number'
+     ) THEN
+    EXECUTE 'ALTER TABLE public.tickets ALTER COLUMN phone_number DROP NOT NULL';
+  END IF;
+END
+$optional_ticket_identity$;

@@ -131,8 +131,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     -- بيانات التذكرة والتعريف الفريد
     ticket_number VARCHAR(30) NOT NULL,   -- مثال: A-105
     session_token UUID NOT NULL DEFAULT uuid_generate_v4(), -- رابط العميل الحي الفريد (State Recovery)
-    customer_name VARCHAR(120) NOT NULL DEFAULT 'عميل مَكَن',
-    phone_number VARCHAR(20),             -- للتنبيهات وإشعارات الواتساب
+    customer_name VARCHAR(120),
+    phone_number VARCHAR(20),             -- اختياري للتنبيهات وإشعارات الواتساب
     
     -- حالة الخدمة والأولوية
     status ticket_status NOT NULL DEFAULT 'waiting',
