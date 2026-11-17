@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const trialSub = require('../_lib/trial-subscription');
+const sbEnv = require('../supabase-env');
+const { handleCors } = require('../cors');
+const trialSub = require('../trial-subscription');
 
 // Helper to determine step for login/register
 function getStep(req) {
@@ -367,7 +367,7 @@ async function handleAdminOperations(req, res) {
     return crypto.timingSafeEqual(aHash, bHash);
   };
 
-  const { isRateLimited } = require('../_lib/rate-limit');
+  const { isRateLimited } = require('../rate-limit');
   const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
   const rateLimitKey = 'admin_login_failed:' + ip;
 
@@ -406,7 +406,7 @@ async function handleAdminOperations(req, res) {
       try {
         const fs = require('fs');
         const path = require('path');
-        const tenantFilePath = path.join(__dirname, '..', '..', 'data', 'tenants', `${slugClean}.json`);
+        const tenantFilePath = path.join(__dirname, '..', '..', '..', 'data', 'tenants', `${slugClean}.json`);
         
         console.log(`Local fallback: Saving config to ${tenantFilePath}`);
         
@@ -608,7 +608,7 @@ async function handleAdminOperations(req, res) {
       return res.status(400).json({ error: 'Missing tenantSlug, pin, or coachingType' });
     }
 
-    const { isRateLimited } = require('../_lib/rate-limit');
+    const { isRateLimited } = require('../rate-limit');
     const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
     const rateLimitKey = 'coach_login_failed:' + ip;
 

@@ -18,7 +18,7 @@
  * Results are sorted by current_chat_load ascending (least busy first).
  */
 
-const sbEnv = require('./_lib/supabase-env');
+const sbEnv = require('../supabase-env');
 
 // Staff is considered online if they heartbeated within this window.
 const ONLINE_WINDOW_MINUTES = 5;

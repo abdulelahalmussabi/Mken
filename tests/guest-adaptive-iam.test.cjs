@@ -8,7 +8,7 @@
 const assert = require('assert');
 const adaptiveIam = require('../api/_lib/adaptive-iam');
 const tenantContext = require('../api/_lib/tenant-context');
-const checkoutHandler = require('../api/v1/checkout');
+const checkoutHandler = require('../api/_lib/handlers/checkout');
 
 async function runTests() {
   console.log('='.repeat(80));

@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const zatcaEngine = require('../_lib/zatca-engine');
+const sbEnv = require('../supabase-env');
+const { handleCors } = require('../cors');
+const zatcaEngine = require('../zatca-engine');
 
 function getEncryptionKey() {
   const secret = process.env.ZATCA_ENCRYPTION_KEY;

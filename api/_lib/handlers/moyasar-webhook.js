@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const licenseIssue = require('./_lib/license-issue');
-const erpEngine = require('./_lib/erp-inventory-engine');
+const sbEnv = require('../supabase-env');
+const licenseIssue = require('../license-issue');
+const erpEngine = require('../erp-inventory-engine');
 
 /**
  * محرك تشفير ZATCA Fatoora Phase 2 وفق معيار TLV Base64

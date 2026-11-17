@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const cstGuard = require('./_lib/cst-time-guard');
+const sbEnv = require('../supabase-env');
+const cstGuard = require('../cst-time-guard');
 
 module.exports = async function handler(req, res) {
   // Optional security: verify authorization header

@@ -1,12 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const aiAgent = require('./_lib/whatsapp-ai-agent');
-const cannedReplies = require('./_lib/whatsapp-canned-replies');
-const activityRouter = require('./_lib/activity-router');
-const handoffEngine = require('./_lib/handoff-engine');
-const reviewFunnel = require('./_lib/review-funnel');
-const bookingTools = require('./_lib/whatsapp-booking-tools');
-const cstGuard = require('./_lib/cst-time-guard');
+const sbEnv = require('../supabase-env');
+const aiAgent = require('../whatsapp-ai-agent');
+const cannedReplies = require('../whatsapp-canned-replies');
+const activityRouter = require('../activity-router');
+const handoffEngine = require('../handoff-engine');
+const reviewFunnel = require('../review-funnel');
+const bookingTools = require('../whatsapp-booking-tools');
+const cstGuard = require('../cst-time-guard');
 
 function getSupabase() {
   const supabaseUrl = sbEnv.getSupabaseUrl();
