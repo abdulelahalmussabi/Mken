@@ -550,14 +550,14 @@
 
         <!-- Customer Name -->
         <div class="q-field">
-          <label for="customerNameInput">الاسم الكريم:</label>
-          <input type="text" id="customerNameInput" class="q-input" placeholder="مثال: عبدالله محمد" required>
+          <label for="customerNameInput">الاسم الكريم (اختياري):</label>
+          <input type="text" id="customerNameInput" class="q-input" placeholder="مثال: عبدالله محمد" autocomplete="name">
         </div>
 
         <!-- Customer Phone -->
         <div class="q-field">
-          <label for="customerPhoneInput">رقم الجوال (واتساب للتنبيهات):</label>
-          <input type="tel" id="customerPhoneInput" class="q-input" dir="ltr" placeholder="05XXXXXXXX" required>
+          <label for="customerPhoneInput">رقم الجوال (واتساب للتنبيهات) (اختياري):</label>
+          <input type="tel" id="customerPhoneInput" class="q-input" dir="ltr" placeholder="05XXXXXXXX" inputmode="tel" autocomplete="tel">
           <small style="color: var(--q-text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
             ستصلك تذكرتك وتنبيه اقتراب دورك تلقائياً عبر WhatsApp Cloud API
           </small>

@@ -161,11 +161,8 @@
 
       var name = customerNameInput ? customerNameInput.value.trim() : '';
       var phone = customerPhoneInput ? customerPhoneInput.value.trim() : '';
-
-      if (!name || !phone) {
-        alert('يرجى إدخال الاسم ورقم الجوال.');
-        return;
-      }
+      if (name === 'undefined' || name === 'null') name = '';
+      if (phone === 'undefined' || phone === 'null') phone = '';
 
       if (submitJoinBtn) {
         submitJoinBtn.disabled = true;
@@ -195,7 +192,7 @@
           });
 
           // مزامنة الملف التعريفي في الجلسة الموحدة (SSO Continuity)
-          if (window.MkenSession && typeof window.MkenSession.updateCustomerProfile === 'function') {
+          if (window.MkenSession && typeof window.MkenSession.updateCustomerProfile === 'function' && (name || phone)) {
             window.MkenSession.updateCustomerProfile({
               name: name,
               phone: phone

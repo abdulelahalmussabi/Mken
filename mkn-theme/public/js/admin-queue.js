@@ -50,6 +50,7 @@
   var counterCallNextBigBtn = document.getElementById('counterCallNextBigBtn');
   var counterServingBox = document.getElementById('counterServingBox');
   var counterActiveTicketNum = document.getElementById('counterActiveTicketNum');
+  var counterActiveCustomerLine = document.getElementById('counterActiveCustomerLine');
   var counterActiveCustomerName = document.getElementById('counterActiveCustomerName');
   var counterActiveCustomerPhone = document.getElementById('counterActiveCustomerPhone');
   var counterLiveStopwatch = document.getElementById('counterLiveStopwatch');
@@ -113,6 +114,13 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  function cleanCustomerName(value) {
+    if (value == null) return '';
+    var text = String(value).trim();
+    if (!text || text === 'undefined' || text === 'null') return '';
+    return text;
   }
 
   // -------------------------------------------------------------
@@ -503,6 +511,7 @@
             priorityBadge = '<span style="background:#dcfce7; color:#15803d; font-size:0.68rem; font-weight:700; padding:1px 6px; border-radius:4px;">⚖️ FIFO</span>';
           }
 
+          var customerLabel = cleanCustomerName(t.customer_name);
           return (
             '<div class="dispatcher-ticket-drag-item" draggable="true" data-ticket-id="' + t.id + '" style="background:#fff; border:1px solid var(--color-border); border-radius:6px; padding:8px 10px; margin-bottom:6px; cursor:grab; box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
               '<div style="display:flex; justify-content:space-between; align-items:center;">' +
@@ -510,7 +519,9 @@
                 '<div>' + priorityBadge + '</div>' +
               '</div>' +
               '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">' +
-                '<span style="font-size:0.8rem; color:var(--color-text);">' + escHtml(t.customer_name) + '</span>' +
+                (customerLabel
+                  ? '<span style="font-size:0.8rem; color:var(--color-text);">' + escHtml(customerLabel) + '</span>'
+                  : '<span></span>') +
                 '<button type="button" class="btn btn--sm btn-row-transfer" data-ticket-id="' + t.id + '" style="padding:2px 6px; font-size:0.7rem; border-radius:4px;" title="تحويل التذكرة">' +
                   '🔀' +
                 '</button>' +
@@ -656,9 +667,16 @@
       queueStore.getTicketStatus(counter.current_ticket_id, true).then(function (res) {
         if (res.ok && res.tickets && res.tickets.length) {
           var ticket = res.tickets[0];
-          if (counterActiveTicketNum) counterActiveTicketNum.textContent = ticket.ticket_number;
-          if (counterActiveCustomerName) counterActiveCustomerName.textContent = ticket.customer_name;
-          if (counterActiveCustomerPhone) counterActiveCustomerPhone.textContent = ticket.customer_phone || 'بدون هاتف';
+          var shownName = cleanCustomerName(ticket.customer_name);
+          var shownPhone = cleanCustomerName(ticket.customer_phone);
+          if (counterActiveTicketNum) counterActiveTicketNum.textContent = ticket.ticket_number || '';
+          if (counterActiveCustomerName) {
+            counterActiveCustomerName.textContent = shownName ? ('العميل: ' + shownName) : '';
+          }
+          if (counterActiveCustomerPhone) {
+            counterActiveCustomerPhone.textContent = shownPhone || (shownName ? 'بدون هاتف' : '');
+          }
+          if (counterActiveCustomerLine) counterActiveCustomerLine.hidden = !shownName && !shownPhone;
 
           // سياق التحويل وملاحظة الموظف السابق (Context Handover)
           if (ticket.last_service_name && counterContextBadge) {
@@ -697,13 +715,16 @@
     var nextThree = queueTickets.slice(0, 3);
     var html = nextThree.map(function (t, idx) {
       var isNext = idx === 0 ? ' style="border-right:3px solid #2563eb; background:#eff6ff;"' : ' style="background:#f8fafc;"';
+      var customerLabel = cleanCustomerName(t.customer_name);
       return (
         '<div class="counter-side-ticket" ' + isNext + ' style="border:1px solid var(--color-border); border-radius:6px; padding:10px; font-size:0.85rem;">' +
           '<div style="display:flex; justify-content:space-between; align-items:center;">' +
             '<strong style="color:#1e3a8a;">' + (idx === 0 ? '▶️ التالي: ' : '• ') + escHtml(t.ticket_number) + '</strong>' +
             '<span style="font-size:0.78rem; color:var(--color-text-muted);">متوقع: ~' + (t.etw_minutes || 5) + ' د</span>' +
           '</div>' +
-          '<div style="font-size:0.8rem; color:var(--color-text); margin-top:2px;">' + escHtml(t.customer_name) + '</div>' +
+          (customerLabel
+            ? '<div style="font-size:0.8rem; color:var(--color-text); margin-top:2px;">' + escHtml(customerLabel) + '</div>'
+            : '') +
         '</div>'
       );
     }).join('');
@@ -1170,11 +1191,12 @@
           }
 
           var html = res.tickets.map(function (t) {
+            var customerLabel = cleanCustomerName(t.customer_name);
             return (
               '<div style="padding:8px 12px; border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:center;">' +
                 '<div>' +
-                  '<strong style="color:#1e3a8a;">#' + escHtml(t.ticket_number) + '</strong> - ' +
-                  '<span style="font-size:0.82rem;">' + escHtml(t.customer_name) + '</span>' +
+                  '<strong style="color:#1e3a8a;">#' + escHtml(t.ticket_number) + '</strong>' +
+                  (customerLabel ? ' - <span style="font-size:0.82rem;">' + escHtml(customerLabel) + '</span>' : '') +
                   '<div style="font-size:0.75rem; color:var(--color-text-muted);">' + escHtml(t.queue_name) + ' (' + escHtml(t.status) + ')</div>' +
                 '</div>' +
                 '<button type="button" class="btn btn--sm btn-search-transfer" data-ticket-id="' + t.id + '" style="font-size:0.75rem; padding:3px 8px;">تحويل 🔀</button>' +
@@ -1615,7 +1637,7 @@
       manualTicketForm.addEventListener('submit', function (e) {
         e.preventDefault();
         var qId = manualTicketQueueSelect ? manualTicketQueueSelect.value : null;
-        var name = manualCustomerNameInput ? manualCustomerNameInput.value.trim() : 'مراجع صالة';
+        var name = manualCustomerNameInput ? manualCustomerNameInput.value.trim() : '';
         var phone = manualCustomerPhoneInput ? manualCustomerPhoneInput.value.trim() : '';
         var notes = manualTicketNotesInput ? manualTicketNotesInput.value.trim() : '';
 
