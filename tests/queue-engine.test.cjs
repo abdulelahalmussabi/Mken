@@ -1,5 +1,6 @@
 const assert = require('assert');
 const queueHandler = require('../api/v1/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 // Mock HTTP Request / Response Helpers
 function createMockReq(options = {}) {
@@ -8,7 +9,7 @@ function createMockReq(options = {}) {
     url: options.url || '/api/v1/queue',
     query: options.query || {},
     body: options.body || {},
-    headers: Object.assign({ origin: 'http://localhost', host: 'localhost' }, options.headers || {})
+    headers: tenantHeaders(options)
   };
 }
 
@@ -95,7 +96,9 @@ async function runTests() {
 
   assert.strictEqual(res.statusCode, 200);
   assert.strictEqual(res.body.tickets.length, 2);
-  assert.strictEqual(res.body.tickets[0].customer_name, 'فيصل القحطاني');
+  assert.strictEqual(res.body.tickets[0].customer_name, undefined);
+  assert.strictEqual(res.body.tickets[0].customer_phone, undefined);
+  assert.ok(res.body.tickets[0].ticket_number);
   assert.ok(res.body.tickets[0].liveETW > 0, 'يجب حساب ETW الديناميكي');
   console.log(`   ✅ نجح: استرجاع الحالة فوري، والوقت المتوقع ETW محسوب بهامش الأمان: ~${res.body.tickets[0].liveETW} دقيقة.\n`);
 

@@ -82,8 +82,32 @@
       "destination": "/queue-display.html"
     },
     {
+      "source": "/display",
+      "destination": "/queue-display.html"
+    },
+    {
+      "source": "/display/",
+      "destination": "/queue-display.html"
+    },
+    {
+      "source": "/queue/scan",
+      "destination": "/queue.html"
+    },
+    {
+      "source": "/queue/scan/",
+      "destination": "/queue.html"
+    },
+    {
       "source": "/api/v1/queue-events",
       "destination": "/api/v1/queue?action=events"
+    },
+    {
+      "source": "/api/queue/tickets",
+      "destination": "/api/v1/queue?action=list-tickets"
+    },
+    {
+      "source": "/api/queue/intake/status",
+      "destination": "/api/v1/queue?action=intake-status"
     },
     {
       "source": "/privacy",

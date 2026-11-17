@@ -2,13 +2,14 @@
 
 const assert = require('assert');
 const queueHandler = require('../api/v1/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function mockReqRes(options = {}) {
   const req = {
     method: options.method || 'POST',
     query: options.query || {},
     body: options.body || {},
-    headers: options.headers || {}
+    headers: tenantHeaders(options)
   };
 
   let statusCode = 200;
@@ -51,6 +52,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       method: 'GET',
+      staff: true,
       query: { tenant, action: 'get-config' }
     });
     await queueHandler(req, res);
@@ -129,6 +131,7 @@ async function runTest() {
     // هـ. التأكد من حفظ سياق المعاملة للعميل الحالي
     const { req: reqStatus, res: resStatus } = mockReqRes({
       method: 'GET',
+      staff: true,
       query: { tenant, action: 'get-ticket-status', ticket_id: clientTicket.id }
     });
     await queueHandler(reqStatus, resStatus);

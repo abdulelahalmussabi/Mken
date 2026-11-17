@@ -4,6 +4,8 @@ const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('../_lib/supabase-env');
 const { handleCors } = require('../_lib/cors');
 const pushLib = require('../_lib/web-push');
+const { isRateLimited } = require('../_lib/rate-limit');
+const queueGuard = require('../_lib/queue-guard');
 
 /**
  * الذاكرة التشغيلية المعزولة لكل مستأجر (In-Memory High-Performance Failover Store)
@@ -26,7 +28,10 @@ const MEMORY_DB = {
 };
 
 function getOrCreateMemoryTenant(tenantSlug) {
-  const slug = (tenantSlug || 'default').toLowerCase();
+  const slug = String(tenantSlug || '').trim().toLowerCase();
+  if (!slug) {
+    throw new Error('tenant slug required');
+  }
   if (!MEMORY_DB.queues[slug]) {
     MEMORY_DB.queues[slug] = [
       {
@@ -227,15 +232,18 @@ function getOrCreateMemoryTenant(tenantSlug) {
 }
 
 function broadcastSSE(tenantSlug, event, data) {
-  const slug = (tenantSlug || 'default').toLowerCase();
+  const slug = String(tenantSlug || '').trim().toLowerCase();
+  if (!slug) return;
   const clients = MEMORY_DB.sseClients[slug] || [];
   if (!clients.length) return;
-  if (data && typeof data === 'object') {
-    if (!data.state_revision && MEMORY_DB.overrides && MEMORY_DB.overrides[slug]) {
-      data.state_revision = MEMORY_DB.overrides[slug].state_revision;
+  let body = data && typeof data === 'object' ? Object.assign({}, data) : data;
+  if (body && typeof body === 'object') {
+    if (!body.state_revision && MEMORY_DB.overrides && MEMORY_DB.overrides[slug]) {
+      body.state_revision = MEMORY_DB.overrides[slug].state_revision;
     }
+    body = queueGuard.redactIdentity(body);
   }
-  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  const payload = `event: ${event}\ndata: ${JSON.stringify(body)}\n\n`;
   for (let i = clients.length - 1; i >= 0; i--) {
     try {
       clients[i].write(payload);
@@ -428,16 +436,64 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const action = req.query.action || (req.body && req.body.action) || 'list-queues';
-  const tenantSlug = getOrCreateMemoryTenant(req.query.tenant || (req.body && req.body.tenantSlug) || 'default');
-  const reqHeaders = req.headers || {};
-  const isAdminAuthenticated = Boolean(
-    reqHeaders['x-admin-authenticated'] === '1' ||
-    reqHeaders['x-is-super-admin'] === '1' ||
-    (reqHeaders['x-admin-pin'] && reqHeaders['x-admin-pin'] === (process.env.ADMIN_PIN || '1234'))
+  const urlPath = String(req.url || '').split('?')[0];
+  let action = (req.query && req.query.action) || (req.body && req.body.action) || '';
+  if (!action) {
+    if (urlPath.endsWith('/api/queue/tickets')) {
+      action = req.method === 'POST' ? 'manual-ticket' : 'list-tickets';
+    } else if (urlPath.endsWith('/api/queue/intake/status')) {
+      action = 'intake-status';
+    } else {
+      action = 'list-queues';
+    }
+  }
+
+  // Host or verified session only. ?tenant= and body.tenantSlug are not a source of truth.
+  const resolved = queueGuard.resolveQueueTenant(req);
+  if (resolved.error) {
+    return res.status(resolved.status).json({
+      ok: false,
+      error: resolved.error,
+      code: resolved.code
+    });
+  }
+  const tenantSlug = getOrCreateMemoryTenant(resolved.slug);
+  const staff = resolved.staff;
+  const isAdminAuthenticated = staff;
+  const byTicketId = Boolean((req.query && req.query.ticket_id) || (req.body && req.body.ticket_id));
+  const byToken = Boolean(
+    (req.query && (req.query.session_token || req.query.token)) ||
+    (req.body && (req.body.session_token || req.body.token))
   );
 
+  if (typeof res.json === 'function') {
+    const origJson = res.json.bind(res);
+    res.json = function presentJson(data) {
+      return origJson(queueGuard.present(data, {
+        action: action,
+        staff: staff,
+        byTicketId: byTicketId,
+        byToken: byToken
+      }));
+    };
+  }
+
   try {
+    if ((action === 'search-tickets' || action === 'list-tickets' || action === 'manual-ticket') && !staff) {
+      return res.status(401).json({
+        ok: false,
+        error: 'يلزم تسجيل دخول موظف هذه المنشأة.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+    if (action === 'get-ticket-status' && byTicketId && !byToken && !staff) {
+      return res.status(401).json({
+        ok: false,
+        error: 'استعلام التذكرة بالمعرّف متاح لموظفي المنشأة فقط.',
+        code: 'AUTH_REQUIRED'
+      });
+    }
+
     // ---------------------------------------------------------------
     // 1. بث الأحداث اللحظية عبر Server-Sent Events (SSE)
     // ---------------------------------------------------------------
@@ -686,7 +742,10 @@ module.exports = async function handler(req, res) {
             ticket_number: t.ticket_number,
             status: t.status,
             priority_level: t.priority_level,
-            first_arrived_at: t.first_arrived_at
+            first_arrived_at: t.first_arrived_at,
+            called_counter_number: t.called_counter_number || null,
+            customer_name: t.customer_name,
+            customer_phone: t.customer_phone
           }))
         };
       });
@@ -704,6 +763,18 @@ module.exports = async function handler(req, res) {
     // 5. حجز تذكرة خالية من الاحتكاك (Zero-Friction Access)
     // ---------------------------------------------------------------
     if (action === 'join-queue') {
+      const ip = queueGuard.clientIp(req);
+      const limit = ip ? 8 : 400;
+      const rate = isRateLimited('queue-join:' + tenantSlug + ':' + (ip || 'local'), limit, 60 * 1000, true);
+      if (rate.limited) {
+        res.setHeader('Retry-After', String(rate.retryAfterSec));
+        return res.status(429).json({
+          ok: false,
+          error: 'طلبات كثيرة لإصدار التذاكر. حاول بعد قليل.',
+          code: 'RATE_LIMITED',
+          retryAfterSec: rate.retryAfterSec
+        });
+      }
       const body = req.body || {};
       const queueIds = Array.isArray(body.queueIds) ? body.queueIds : (body.queueId ? [body.queueId] : []);
       const customerName = (body.customerName || 'عميل مَكَن').trim();
@@ -905,6 +976,49 @@ module.exports = async function handler(req, res) {
       );
 
       return res.status(200).json({ ok: true, tickets: results.slice(0, 15) });
+    }
+
+    if (action === 'list-tickets') {
+      const tickets = MEMORY_DB.tickets[tenantSlug] || [];
+      return res.status(200).json({
+        ok: true,
+        tenant: tenantSlug,
+        tickets: tickets
+      });
+    }
+
+    if (action === 'intake-status') {
+      const ip = queueGuard.clientIp(req);
+      const rate = isRateLimited('queue-status:' + tenantSlug + ':' + (ip || 'local'), ip ? 40 : 400, 60 * 1000, true);
+      if (rate.limited) {
+        res.setHeader('Retry-After', String(rate.retryAfterSec));
+        return res.status(429).json({
+          ok: false,
+          error: 'طلبات كثيرة. حاول بعد قليل.',
+          code: 'RATE_LIMITED',
+          retryAfterSec: rate.retryAfterSec
+        });
+      }
+      const token = (req.query && (req.query.session_token || req.query.token)) || (req.body && (req.body.session_token || req.body.token));
+      const number = String((req.query && (req.query.ticket_number || req.query.ticket)) || (req.body && req.body.ticket_number) || '').trim();
+      const tickets = MEMORY_DB.tickets[tenantSlug] || [];
+      let matches = [];
+      if (token) {
+        matches = tickets.filter(function (ticket) { return ticket.session_token === token; });
+      } else if (number) {
+        matches = tickets.filter(function (ticket) {
+          return String(ticket.ticket_number).toLowerCase() === number.toLowerCase();
+        });
+      } else {
+        return res.status(400).json({ ok: false, error: 'يلزم رمز الجلسة أو رقم التذكرة.' });
+      }
+      if (!matches.length) {
+        return res.status(404).json({ ok: false, error: 'لم يتم العثور على تذكرة نشطة.' });
+      }
+      return res.status(200).json({
+        ok: true,
+        tickets: matches.map(queueGuard.minimalTicket)
+      });
     }
 
     // ---------------------------------------------------------------
@@ -1131,7 +1245,7 @@ module.exports = async function handler(req, res) {
       const currentCounter = counterId ? counters.find(c => c.id === counterId) : null;
 
       // قيود الصلاحية: موظف الكاونتر محصور فقط بالعميل الحالي الجالس أمامه
-      if (userRole === 'counter_agent' && !isAdminAuthenticated && body.isAdmin !== true) {
+      if (userRole === 'counter_agent' && !isAdminAuthenticated) {
         if (!currentCounter || currentCounter.current_ticket_id !== ticket.id) {
           return res.status(403).json({ error: 'صلاحيتك مقيدة: يحق لك فقط تحويل العميل الحالي الجالس أمامك.' });
         }
@@ -1498,7 +1612,7 @@ module.exports = async function handler(req, res) {
 
       const users = MEMORY_DB.users[tenantSlug] || [];
       let incomingUser = null;
-      if (body.isAdmin === true || isAdminAuthenticated || (incomingPin && incomingPin === (process.env.ADMIN_PIN || '1234'))) {
+      if (isAdminAuthenticated || (process.env.ADMIN_PIN && incomingPin && incomingPin === process.env.ADMIN_PIN)) {
         incomingUser = {
           id: 'usr-admin-' + tenantSlug,
           full_name: body.adminName || 'مدير النظام (Admin)',
@@ -1759,7 +1873,7 @@ module.exports = async function handler(req, res) {
 
       const users = MEMORY_DB.users[tenantSlug] || [];
       let incomingUser = null;
-      if (body.isAdmin === true || isAdminAuthenticated || (incomingPin && incomingPin === (process.env.ADMIN_PIN || '1234'))) {
+      if (isAdminAuthenticated || (process.env.ADMIN_PIN && incomingPin && incomingPin === process.env.ADMIN_PIN)) {
         incomingUser = {
           id: 'usr-admin-' + tenantSlug,
           full_name: body.adminName || 'مدير النظام (Admin)',
@@ -2031,3 +2145,5 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: error.message || 'خطأ داخلي في محرك الطوابير.' });
   }
 };
+
+module.exports._memory = MEMORY_DB;

@@ -37,6 +37,12 @@ const SUITE = [
     args: ['tests/queue-zero-pii-display.test.cjs']
   },
   {
+    code: 'E2-QUEUE-TENANT',
+    name: 'عزل طابور المنشأة وحجب الأسماء وأرقام الجوال عن العرض العام',
+    command: 'node',
+    args: ['tests/queue-tenant-isolation.test.cjs']
+  },
+  {
     code: 'E2-CNT-03',
     name: 'إدارة وتحرير عدد وأسماء الكاونترات والباركود العملاق (Dynamic Counters & Hero QR)',
     command: 'node',
