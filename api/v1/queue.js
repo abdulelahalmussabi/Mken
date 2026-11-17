@@ -6,10 +6,48 @@ const { handleCors } = require('../_lib/cors');
 const pushLib = require('../_lib/web-push');
 const { isRateLimited } = require('../_lib/rate-limit');
 const queueGuard = require('../_lib/queue-guard');
+const queuePersist = require('../_lib/queue-persist');
+
+const MISSING_IP_LIMIT = queuePersist.MISSING_IP_LIMIT;
+const STAFF_ONLY_ACTIONS = new Set([
+  'save-config',
+  'staff-config',
+  'staff-board',
+  'add-counter',
+  'update-counter',
+  'delete-counter',
+  'save-onboarding-compliance',
+  'manual-ticket',
+  'search-tickets',
+  'list-tickets',
+  'call-next',
+  'dispatch-call',
+  'transfer-ticket',
+  'hold-ticket',
+  'recall-ticket',
+  'start-service',
+  'complete-service',
+  'snooze-no-show',
+  'counter-status',
+  'broadcast-notice',
+  'check-long-transactions',
+  'check-labor-compliance',
+  'hot-swap-authenticate',
+  'start-break',
+  'end-break',
+  'supervisor-force-signout',
+  'supervisor-reassign-counter',
+  'reception-shift-summary',
+  'reception-handover',
+  'cleanup-ghost-counters',
+  'manual-override',
+  'get-override-state'
+]);
 
 /**
- * الذاكرة التشغيلية المعزولة لكل مستأجر (In-Memory High-Performance Failover Store)
- * تضمن الاستمرارية التشغيلية 100% حتى في حال تعذر الاتصال بقاعدة البيانات الخارجية.
+ * ذاكرة احتياطية صريحة للتطوير والاختبار المحلي فقط.
+ * عندما تُضبط SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY (أو QUEUE_DATABASE_URL)
+ * تصبح Postgres مصدر الحقيقة. بدونها تُطبع تحذير ويبقى هذا المخزن داخل العملية.
  */
 const MEMORY_DB = {
   queues: {},              // tenantSlug -> [queueObj]
@@ -241,7 +279,8 @@ function broadcastSSE(tenantSlug, event, data) {
     if (!body.state_revision && MEMORY_DB.overrides && MEMORY_DB.overrides[slug]) {
       body.state_revision = MEMORY_DB.overrides[slug].state_revision;
     }
-    body = queueGuard.redactIdentity(body);
+    body = queueGuard.redactPublicEvent(body);
+    queuePersist.noteEvent(event, body);
   }
   const payload = `event: ${event}\ndata: ${JSON.stringify(body)}\n\n`;
   for (let i = clients.length - 1; i >= 0; i--) {
@@ -431,10 +470,9 @@ async function notifyCustomer(slug, ticket, title, message, url) {
 // معالج الطلبات الرئيسي (Vercel Serverless Function)
 // ====================================================================
 module.exports = async function handler(req, res) {
-  handleCors(req, res);
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  const corsDone = await handleCors(req, res);
+  if (corsDone) return;
+  queuePersist.bindRequest();
 
   const urlPath = String(req.url || '').split('?')[0];
   let action = (req.query && req.query.action) || (req.body && req.body.action) || '';
@@ -458,8 +496,10 @@ module.exports = async function handler(req, res) {
     });
   }
   const tenantSlug = getOrCreateMemoryTenant(resolved.slug);
+  await queuePersist.prepare(tenantSlug, MEMORY_DB);
+  const memoryFp = queuePersist.fingerprint(tenantSlug, MEMORY_DB);
   const staff = resolved.staff;
-  const isAdminAuthenticated = staff;
+  const queueRole = queueGuard.queueRoleFromSession(resolved.session);
   const byTicketId = Boolean((req.query && req.query.ticket_id) || (req.body && req.body.ticket_id));
   const byToken = Boolean(
     (req.query && (req.query.session_token || req.query.token)) ||
@@ -469,17 +509,23 @@ module.exports = async function handler(req, res) {
   if (typeof res.json === 'function') {
     const origJson = res.json.bind(res);
     res.json = function presentJson(data) {
-      return origJson(queueGuard.present(data, {
-        action: action,
-        staff: staff,
-        byTicketId: byTicketId,
-        byToken: byToken
-      }));
+      return Promise.resolve()
+        .then(function () {
+          return queuePersist.finish(tenantSlug, MEMORY_DB, memoryFp);
+        })
+        .then(function () {
+          return origJson(queueGuard.present(data, {
+            action: action,
+            staff: staff,
+            byTicketId: byTicketId,
+            byToken: byToken
+          }));
+        });
     };
   }
 
   try {
-    if ((action === 'search-tickets' || action === 'list-tickets' || action === 'manual-ticket') && !staff) {
+    if (STAFF_ONLY_ACTIONS.has(action) && !staff) {
       return res.status(401).json({
         ok: false,
         error: 'يلزم تسجيل دخول موظف هذه المنشأة.',
@@ -506,17 +552,44 @@ module.exports = async function handler(req, res) {
       res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', tenant: tenantSlug })}\n\n`);
       MEMORY_DB.sseClients[tenantSlug].push(res);
 
+      let closed = false;
       req.on('close', () => {
+        closed = true;
         const idx = MEMORY_DB.sseClients[tenantSlug].indexOf(res);
         if (idx !== -1) MEMORY_DB.sseClients[tenantSlug].splice(idx, 1);
       });
+
+      if (queuePersist.mode() !== 'memory') {
+        let after = await queuePersist.latestEventId(tenantSlug);
+        const timer = setInterval(function () {
+          if (closed) {
+            clearInterval(timer);
+            return;
+          }
+          queuePersist.pollEvents(tenantSlug, after).then(function (rows) {
+            rows.forEach(function (row) {
+              after = Number(row.id);
+              const safe = queueGuard.redactPublicEvent(row.payload);
+              try {
+                res.write('event: ' + row.event_name + '\ndata: ' + JSON.stringify(safe) + '\n\n');
+              } catch (err) {
+                closed = true;
+                clearInterval(timer);
+              }
+            });
+          }).catch(function (err) {
+            console.warn('[Queue SSE poll]', err.message);
+          });
+        }, 1000);
+        if (typeof timer.unref === 'function') timer.unref();
+      }
       return;
     }
 
     // ---------------------------------------------------------------
     // 2. جلب الإعدادات والمسارات والكاونترات الحالية
     // ---------------------------------------------------------------
-    if (action === 'get-config') {
+    if (action === 'get-config' || action === 'staff-config') {
       const settings = MEMORY_DB.settings[tenantSlug];
       const queues = MEMORY_DB.queues[tenantSlug].filter(q => q.is_active);
       const counters = MEMORY_DB.counters[tenantSlug];
@@ -712,7 +785,7 @@ module.exports = async function handler(req, res) {
     // ---------------------------------------------------------------
     // 4. عرض المسارات المتاحة مع الإحصائيات الفورية وقوائم الانتظار
     // ---------------------------------------------------------------
-    if (action === 'list-queues') {
+    if (action === 'list-queues' || action === 'staff-board') {
       const queues = MEMORY_DB.queues[tenantSlug].filter(q => q.is_active);
       const counters = MEMORY_DB.counters[tenantSlug];
       const tickets = MEMORY_DB.tickets[tenantSlug];
@@ -764,8 +837,8 @@ module.exports = async function handler(req, res) {
     // ---------------------------------------------------------------
     if (action === 'join-queue') {
       const ip = queueGuard.clientIp(req);
-      const limit = ip ? 8 : 400;
-      const rate = isRateLimited('queue-join:' + tenantSlug + ':' + (ip || 'local'), limit, 60 * 1000, true);
+      const limit = ip ? 8 : MISSING_IP_LIMIT;
+      const rate = isRateLimited('queue-join:' + tenantSlug + ':' + (ip || 'no-ip'), limit, 60 * 1000, true);
       if (rate.limited) {
         res.setHeader('Retry-After', String(rate.retryAfterSec));
         return res.status(429).json({
@@ -830,10 +903,9 @@ module.exports = async function handler(req, res) {
         const q = est.queue;
         const prefix = q ? q.prefix : 'A';
 
-        const todayTickets = tickets.filter(t => t.queue_id === est.queueId);
-        q.sequence_counter = (q.sequence_counter !== undefined ? q.sequence_counter : todayTickets.length) + 1;
-        const seq = q.sequence_counter;
-        const ticketNumber = `${prefix}-${seq < 10 ? '0' + seq : seq}`;
+        const allocated = await queuePersist.allocate(tenantSlug, est.queueId, prefix, MEMORY_DB);
+        const seq = allocated.sequence;
+        const ticketNumber = allocated.ticket_number;
         const initialStatus = i === 0 ? 'waiting' : 'sync_watch';
 
         const newTicket = {
@@ -903,10 +975,9 @@ module.exports = async function handler(req, res) {
       const q = queues.find(item => item.id === queueId) || queues[0];
       if (!q) return res.status(404).json({ error: 'القسم غير موجود.' });
 
-      const todayTickets = tickets.filter(t => t.queue_id === q.id);
-      q.sequence_counter = (q.sequence_counter !== undefined ? q.sequence_counter : todayTickets.length) + 1;
-      const seq = q.sequence_counter;
-      const ticketNumber = `${q.prefix}-${seq < 10 ? '0' + seq : seq}`;
+      const allocated = await queuePersist.allocate(tenantSlug, q.id, q.prefix || 'A', MEMORY_DB);
+      const seq = allocated.sequence;
+      const ticketNumber = allocated.ticket_number;
       const sessionToken = 'mkn_tok_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
       const arrivalNow = new Date().toISOString();
 
@@ -989,7 +1060,7 @@ module.exports = async function handler(req, res) {
 
     if (action === 'intake-status') {
       const ip = queueGuard.clientIp(req);
-      const rate = isRateLimited('queue-status:' + tenantSlug + ':' + (ip || 'local'), ip ? 40 : 400, 60 * 1000, true);
+      const rate = isRateLimited('queue-status:' + tenantSlug + ':' + (ip || 'no-ip'), ip ? 40 : MISSING_IP_LIMIT, 60 * 1000, true);
       if (rate.limited) {
         res.setHeader('Retry-After', String(rate.retryAfterSec));
         return res.status(429).json({
@@ -1228,7 +1299,7 @@ module.exports = async function handler(req, res) {
       const toQueueId = body.toQueueId;
       const priorityLevel = body.priorityLevel || 'standard'; // 'immediate_next', 'fair_fifo', 'standard'
       const transferNotes = (body.transferNotes || '').trim();
-      const userRole = body.userRole || 'counter_agent'; // 'receptionist', 'admin', 'counter_agent'
+      const userRole = queueRole || 'counter_agent';
       const counterId = body.counterId;
 
       const tickets = MEMORY_DB.tickets[tenantSlug];
@@ -1245,7 +1316,7 @@ module.exports = async function handler(req, res) {
       const currentCounter = counterId ? counters.find(c => c.id === counterId) : null;
 
       // قيود الصلاحية: موظف الكاونتر محصور فقط بالعميل الحالي الجالس أمامه
-      if (userRole === 'counter_agent' && !isAdminAuthenticated) {
+      if (userRole === 'counter_agent') {
         if (!currentCounter || currentCounter.current_ticket_id !== ticket.id) {
           return res.status(403).json({ error: 'صلاحيتك مقيدة: يحق لك فقط تحويل العميل الحالي الجالس أمامك.' });
         }
@@ -1612,10 +1683,10 @@ module.exports = async function handler(req, res) {
 
       const users = MEMORY_DB.users[tenantSlug] || [];
       let incomingUser = null;
-      if (isAdminAuthenticated || (process.env.ADMIN_PIN && incomingPin && incomingPin === process.env.ADMIN_PIN)) {
+      if (queueRole === 'admin') {
         incomingUser = {
           id: 'usr-admin-' + tenantSlug,
-          full_name: body.adminName || 'مدير النظام (Admin)',
+          full_name: (body.adminName || '').trim() || (resolved.session && resolved.session.email) || 'مدير النظام (Admin)',
           role: 'admin',
           is_active: true
         };
@@ -1873,10 +1944,10 @@ module.exports = async function handler(req, res) {
 
       const users = MEMORY_DB.users[tenantSlug] || [];
       let incomingUser = null;
-      if (isAdminAuthenticated || (process.env.ADMIN_PIN && incomingPin && incomingPin === process.env.ADMIN_PIN)) {
+      if (queueRole === 'admin') {
         incomingUser = {
           id: 'usr-admin-' + tenantSlug,
-          full_name: body.adminName || 'مدير النظام (Admin)',
+          full_name: (body.adminName || '').trim() || (resolved.session && resolved.session.email) || 'مدير النظام (Admin)',
           role: 'admin',
           is_active: true
         };
