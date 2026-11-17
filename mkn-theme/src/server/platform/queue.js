@@ -49,21 +49,93 @@ const STAFF_ONLY_ACTIONS = new Set([
  * عندما تُضبط SUPABASE_URL و SUPABASE_SERVICE_ROLE_KEY (أو QUEUE_DATABASE_URL)
  * تصبح Postgres مصدر الحقيقة. بدونها تُطبع تحذير ويبقى هذا المخزن داخل العملية.
  */
-const MEMORY_DB = {
+const RAW_DB = {
   queues: {},              // tenantSlug -> [queueObj]
   counters: {},            // tenantSlug -> [counterObj]
   tickets: {},             // tenantSlug -> [ticketObj]
   serviceLogs: {},         // tenantSlug -> [logObj]
   users: {},               // tenantSlug -> [userObj]
   settings: {},            // tenantSlug -> settingsObj
-  sseClients: {},          // tenantSlug -> [res]
+  sseClients: {},          // tenantSlug -> [res]  (process-local, not persisted)
   counterSessions: {},     // tenantSlug -> [sessionObj]
   agentBreaks: {},         // tenantSlug -> [breakObj]
   receptionHandovers: {},  // tenantSlug -> [handoverObj]
   overrides: {},           // tenantSlug -> overrideObj (Revision & Operational Overrides)
   auditLogs: {},           // tenantSlug -> [logEntry] (NCA/PDPL Immutable Audit Trail)
-  idempotencyKeys: {}      // tenantSlug -> { idempotencyKey: { revision, override } }
+  idempotencyKeys: {},     // tenantSlug -> { idempotencyKey: { revision, override } }
+  dailyCounters: {}
 };
+
+const TENANT_COLLECTIONS = [
+  'queues', 'counters', 'tickets', 'serviceLogs', 'users', 'settings',
+  'counterSessions', 'agentBreaks', 'receptionHandovers', 'overrides',
+  'auditLogs', 'idempotencyKeys'
+];
+
+function requestBucket(key) {
+  const store = queuePersist.currentStore();
+  if (!store) return null;
+  if (!store.slice) store.slice = {};
+  if (!store.slice[key]) store.slice[key] = {};
+  return store.slice[key];
+}
+
+function collectionView(key) {
+  return new Proxy(RAW_DB[key], {
+    get: function (target, prop) {
+      if (typeof prop !== 'string') return target[prop];
+      // Memory mode keeps one shared object so staff tools and tests see the same rows.
+      // Postgres gives each request its own clone so concurrent joins cannot detach arrays.
+      if (queuePersist.mode() === 'memory') return target[prop];
+      const bucket = requestBucket(key);
+      if (!bucket) return target[prop];
+      if (!Object.prototype.hasOwnProperty.call(bucket, prop)) {
+        if (!Object.prototype.hasOwnProperty.call(target, prop)) return undefined;
+        bucket[prop] = structuredClone(target[prop]);
+      }
+      return bucket[prop];
+    },
+    set: function (target, prop, value) {
+      if (typeof prop !== 'string') return false;
+      if (queuePersist.mode() === 'memory') {
+        target[prop] = value;
+        return true;
+      }
+      const bucket = requestBucket(key);
+      if (!bucket) {
+        target[prop] = value;
+        return true;
+      }
+      bucket[prop] = value;
+      return true;
+    }
+  });
+}
+
+const collectionProxies = {};
+TENANT_COLLECTIONS.forEach(function (key) {
+  collectionProxies[key] = collectionView(key);
+});
+
+const MEMORY_DB = new Proxy(RAW_DB, {
+  get: function (target, prop, receiver) {
+    if (typeof prop === 'string' && collectionProxies[prop]) return collectionProxies[prop];
+    return Reflect.get(target, prop, receiver);
+  }
+});
+
+function mergeRequestSlice(slug) {
+  const store = queuePersist.currentStore();
+  if (!store || !store.slice || !slug) return;
+  TENANT_COLLECTIONS.forEach(function (key) {
+    const bucket = store.slice[key];
+    if (!bucket || !Object.prototype.hasOwnProperty.call(bucket, slug)) return;
+    RAW_DB[key][slug] = bucket[slug];
+  });
+  if (store.dailyCounters) RAW_DB.dailyCounters = store.dailyCounters;
+}
+
+queuePersist.setMemoryCommitHook(mergeRequestSlice);
 
 function getOrCreateMemoryTenant(tenantSlug) {
   const slug = String(tenantSlug || '').trim().toLowerCase();
@@ -483,7 +555,7 @@ async function notifyCustomer(slug, ticket, title, message, url) {
 // ====================================================================
 // معالج الطلبات الرئيسي (Vercel Serverless Function)
 // ====================================================================
-module.exports = async function handler(req, res) {
+async function queueHandler(req, res) {
   const corsDone = await handleCors(req, res);
   if (corsDone) return;
   queuePersist.bindRequest();
@@ -536,6 +608,76 @@ module.exports = async function handler(req, res) {
           }));
         });
     };
+  }
+
+  async function commitMutation(mutate) {
+    if (queuePersist.mode() === 'memory') {
+      const outcome = mutate();
+      if (outcome && outcome.afterCommit) outcome.afterCommit();
+      return outcome;
+    }
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const outcome = mutate();
+      if (!outcome || !outcome.persist) {
+        if (outcome && outcome.afterCommit) outcome.afterCommit();
+        return outcome;
+      }
+      try {
+        await queuePersist.finish(tenantSlug, MEMORY_DB, memoryFp);
+        if (outcome.afterCommit) outcome.afterCommit();
+        return outcome;
+      } catch (err) {
+        queuePersist.clearEvents();
+        if (!queuePersist.isConflict(err) || attempt === 5) throw err;
+        await queuePersist.reload(tenantSlug, MEMORY_DB);
+      }
+    }
+    throw new Error('queue_version_conflict');
+  }
+
+  function respond(outcome) {
+    return res.status(outcome.status).json(outcome.body);
+  }
+
+  async function claimAndRespond(counterId, ticketId, statuses, messages) {
+    const claimed = await queuePersist.callNext(tenantSlug, counterId, ticketId, statuses);
+    if (!claimed || claimed.code === 'counter_missing') {
+      return res.status(404).json({ error: messages.missingCounter });
+    }
+    if (claimed.code === 'on_break') {
+      return res.status(400).json({ error: messages.onBreak });
+    }
+    if (claimed.code === 'empty' || claimed.code === 'missing' || claimed.code === 'taken') {
+      return res.status(200).json({ ok: true, message: messages.empty, ticket: null });
+    }
+    queuePersist.adoptClaim(tenantSlug, MEMORY_DB, claimed);
+    (claimed.bumped || []).forEach(function (bumped) {
+      notifyCustomer(
+        tenantSlug,
+        bumped,
+        '🛡️ تم تأمين موقعك في الطابور',
+        'تم تأمين موقعك في طابور (' + (bumped.queue_name || '') + ')؛ سيتم طلبك فور فراغك من المعاملة الحالية دون فقدان دورك.'
+      );
+    });
+    if (claimed.code === 'bumped_only') {
+      return res.status(200).json({
+        ok: true,
+        message: 'العميل الحالي قيد الخدمة في مسار آخر وتم تأمين موقعه (+1 Bump). لا يوجد عملاء آخرين تالين حالياً.',
+        ticket: null,
+        bumpedTicket: (claimed.bumped && claimed.bumped[claimed.bumped.length - 1]) || null
+      });
+    }
+    notifyCustomer(
+      tenantSlug,
+      claimed.ticket,
+      messages.title,
+      messages.detail(claimed.ticket, claimed.counter)
+    );
+    broadcastSSE(tenantSlug, 'ticket_called', Object.assign({
+      ticket: claimed.ticket,
+      counter: claimed.counter
+    }, messages.extra || {}));
+    return res.status(200).json({ ok: true, ticket: claimed.ticket, counter: claimed.counter });
   }
 
   try {
@@ -1173,6 +1315,17 @@ module.exports = async function handler(req, res) {
     // ---------------------------------------------------------------
     if (action === 'call-next') {
       const counterId = req.body?.counterId;
+      if (queuePersist.mode() !== 'memory') {
+        return claimAndRespond(counterId, null, null, {
+          missingCounter: 'الكاونتر غير موجود.',
+          onBreak: 'الكاونتر في وضع استراحة حالياً. يرجى تفعيل الحالة أولاً.',
+          empty: 'لا يوجد عملاء منتظرين في هذا المسار حالياً.',
+          title: '🔔 حان دورك الآن!',
+          detail: function (ticket, counter) {
+            return 'تذكرة رقم ' + ticket.ticket_number + ': تفضل إلى ' + (counter.name || '') + '.';
+          }
+        });
+      }
       const counter = MEMORY_DB.counters[tenantSlug].find(c => c.id === counterId);
       if (!counter) {
         return res.status(404).json({ error: 'الكاونتر غير موجود.' });
@@ -1263,6 +1416,23 @@ module.exports = async function handler(req, res) {
     if (action === 'dispatch-call') {
       const counterId = req.body?.counterId;
       const targetTicketId = req.body?.ticketId;
+      if (queuePersist.mode() !== 'memory') {
+        return claimAndRespond(
+          counterId,
+          targetTicketId || null,
+          ['waiting', 'bumped', 'sync_watch', 'on_hold'],
+          {
+            missingCounter: 'الكاونتر المحدد غير موجود.',
+            onBreak: 'الكاونتر في استراحة حالياً.',
+            empty: 'لا توجد تذاكر متاحة للنداء.',
+            title: '🔔 حان دورك الآن!',
+            extra: { dispatchedBy: 'reception' },
+            detail: function (ticket, counter) {
+              return 'تذكرة رقم ' + ticket.ticket_number + ': تفضل فوراً إلى ' + (counter.name || '') + '.';
+            }
+          }
+        );
+      }
       const counter = MEMORY_DB.counters[tenantSlug].find(c => c.id === counterId);
 
       if (!counter) return res.status(404).json({ error: 'الكاونتر المحدد غير موجود.' });
@@ -1308,6 +1478,7 @@ module.exports = async function handler(req, res) {
     // 11. محرك التحويل الذكي بين الطوابير (Smart Transfer Routing)
     // ---------------------------------------------------------------
     if (action === 'transfer-ticket') {
+      const outcome = await commitMutation(function () {
       const body = req.body || {};
       const ticketId = body.ticketId;
       const toQueueId = body.toQueueId;
@@ -1322,17 +1493,17 @@ module.exports = async function handler(req, res) {
       const logs = MEMORY_DB.serviceLogs[tenantSlug];
 
       const ticket = tickets.find(t => t.id === ticketId);
-      if (!ticket) return res.status(404).json({ error: 'التذكرة غير موجودة.' });
+      if (!ticket) return { persist: false, status: 404, body: { error: 'التذكرة غير موجودة.' } };
 
       const targetQueue = queues.find(q => q.id === toQueueId);
-      if (!targetQueue) return res.status(404).json({ error: 'القسم المستهدف غير موجود.' });
+      if (!targetQueue) return { persist: false, status: 404, body: { error: 'القسم المستهدف غير موجود.' } };
 
       const currentCounter = counterId ? counters.find(c => c.id === counterId) : null;
 
       // قيود الصلاحية: موظف الكاونتر محصور فقط بالعميل الحالي الجالس أمامه
       if (userRole === 'counter_agent') {
         if (!currentCounter || currentCounter.current_ticket_id !== ticket.id) {
-          return res.status(403).json({ error: 'صلاحيتك مقيدة: يحق لك فقط تحويل العميل الحالي الجالس أمامك.' });
+          return { persist: false, status: 403, body: { error: 'صلاحيتك مقيدة: يحق لك فقط تحويل العميل الحالي الجالس أمامك.' } };
         }
       }
 
@@ -1386,30 +1557,35 @@ module.exports = async function handler(req, res) {
       const targetThroughput = calculateQueueThroughput(activeTargetCounters, targetQueue.target_service_minutes || 10);
       const newEtw = calculateETW(waitingInTarget.length, targetThroughput, MEMORY_DB.settings[tenantSlug].safety_multiplier);
 
-      // إشعار فوري للعميل برحلته الجديدة
-      notifyCustomer(
-        tenantSlug,
-        ticket,
-        '🔄 تم توجيهك إلى قسم جديد',
-        `✓ تم الانتهاء من: ${ticket.last_service_name} | الوجهة الحالية: ${ticket.queue_name} (رقمك: ${ticket.ticket_number}) - الوقت التقديري: ~${newEtw} دقائق.`
-      );
-
-      broadcastSSE(tenantSlug, 'ticket_transferred', {
-        ticket,
-        previousServiceName: ticket.last_service_name,
-        targetServiceName: ticket.queue_name,
-        priorityLevel: priorityLevel,
-        transferNotes: transferNotes,
-        estimatedWaitMinutes: newEtw,
-        currentCounter
+      return {
+        persist: true,
+        status: 200,
+        body: {
+          ok: true,
+          ticket: ticket,
+          message: 'تم تحويل التذكرة بنجاح إلى (' + targetQueue.name + ') بمستوى أولوية [' + priorityLevel + '].',
+          estimatedWaitMinutes: newEtw
+        },
+        afterCommit: function () {
+          notifyCustomer(
+            tenantSlug,
+            ticket,
+            '🔄 تم توجيهك إلى قسم جديد',
+            '✓ تم الانتهاء من: ' + ticket.last_service_name + ' | الوجهة الحالية: ' + ticket.queue_name + ' (رقمك: ' + ticket.ticket_number + ') - الوقت التقديري: ~' + newEtw + ' دقائق.'
+          );
+          broadcastSSE(tenantSlug, 'ticket_transferred', {
+            ticket: ticket,
+            previousServiceName: ticket.last_service_name,
+            targetServiceName: ticket.queue_name,
+            priorityLevel: priorityLevel,
+            transferNotes: transferNotes,
+            estimatedWaitMinutes: newEtw,
+            currentCounter: currentCounter
+          });
+        }
+      };
       });
-
-      return res.status(200).json({
-        ok: true,
-        ticket,
-        message: `تم تحويل التذكرة بنجاح إلى (${targetQueue.name}) بمستوى أولوية [${priorityLevel}].`,
-        estimatedWaitMinutes: newEtw
-      });
+      return respond(outcome);
     }
 
     // ---------------------------------------------------------------
@@ -1487,16 +1663,17 @@ module.exports = async function handler(req, res) {
     // 15. إنهاء المعاملة وحساب EWMA وترقية الطوابير المتزامنة
     // ---------------------------------------------------------------
     if (action === 'complete-service') {
+      const outcome = await commitMutation(function () {
       const counterId = req.body?.counterId;
       const counter = MEMORY_DB.counters[tenantSlug].find(c => c.id === counterId);
       if (!counter || !counter.current_ticket_id) {
-        return res.status(400).json({ error: 'لا توجد جلسة نشطة لإنهائها.' });
+        return { persist: false, status: 400, body: { error: 'لا توجد جلسة نشطة لإنهائها.' } };
       }
 
       const ticket = MEMORY_DB.tickets[tenantSlug].find(t => t.id === counter.current_ticket_id);
       if (!ticket) {
         counter.current_ticket_id = null;
-        return res.status(404).json({ error: 'التذكرة غير موجودة.' });
+        return { persist: true, status: 404, body: { error: 'التذكرة غير موجودة.' } };
       }
 
       const finishTime = new Date();
@@ -1559,65 +1736,81 @@ module.exports = async function handler(req, res) {
         promotedTicket.priority_level = 'immediate_next';
         promotedTicket.notes = 'قفز آلي لرأس الطابور بعد إنجاز الخدمة الأولى.';
 
-        const promotedName = optionalCustomerName(promotedTicket.customer_name);
-        notifyCustomer(
-          tenantSlug,
-          promotedTicket,
-          '🚀 حان موعدك في المسار الثاني!',
-          (promotedName ? `أهلاً ${promotedName}، ` : '') +
-          `لقد تم نقلك مباشرة إلى رأس طابور (${promotedTicket.queue_name})؛ تفضل بالاستعداد للنداء.`
-        );
       }
 
-      broadcastSSE(tenantSlug, 'service_completed', { 
-        completedTicket: ticket, 
-        counter, 
-        promotedTicket,
-        metrics: { ewma: counter.ewma_service_seconds, isOutlier, isLongException } 
+      return {
+        persist: true,
+        status: 200,
+        body: {
+          ok: true,
+          completedTicket: ticket,
+          counter: counter,
+          promotedTicket: promotedTicket,
+          isOutlier: isOutlier,
+          isLongException: isLongException
+        },
+        afterCommit: function () {
+          if (promotedTicket) {
+            const promotedName = optionalCustomerName(promotedTicket.customer_name);
+            notifyCustomer(
+              tenantSlug,
+              promotedTicket,
+              '🚀 حان موعدك في المسار الثاني!',
+              (promotedName ? 'أهلاً ' + promotedName + '، ' : '') +
+              'لقد تم نقلك مباشرة إلى رأس طابور (' + promotedTicket.queue_name + ')؛ تفضل بالاستعداد للنداء.'
+            );
+          }
+          broadcastSSE(tenantSlug, 'service_completed', {
+            completedTicket: ticket,
+            counter: counter,
+            promotedTicket: promotedTicket,
+            metrics: { ewma: counter.ewma_service_seconds, isOutlier: isOutlier, isLongException: isLongException }
+          });
+        }
+      };
       });
-
-      return res.status(200).json({ 
-        ok: true, 
-        completedTicket: ticket, 
-        counter, 
-        promotedTicket, 
-        isOutlier, 
-        isLongException 
-      });
+      return respond(outcome);
     }
 
     // ---------------------------------------------------------------
     // 16. غياب العميل عند النداء (No-Show Snooze 5 Minutes)
     // ---------------------------------------------------------------
     if (action === 'snooze-no-show') {
+      const outcome = await commitMutation(function () {
       const counterId = req.body?.counterId;
       const counter = MEMORY_DB.counters[tenantSlug].find(c => c.id === counterId);
       if (!counter || !counter.current_ticket_id) {
-        return res.status(400).json({ error: 'لا توجد تذكرة مستدعاة لمعالجتها كغياب.' });
+        return { persist: false, status: 400, body: { error: 'لا توجد تذكرة مستدعاة لمعالجتها كغياب.' } };
       }
 
       const ticket = MEMORY_DB.tickets[tenantSlug].find(t => t.id === counter.current_ticket_id);
-      if (ticket) {
-        const snoozeMinutes = MEMORY_DB.settings[tenantSlug]?.snooze_minutes || 5;
-        ticket.status = 'snoozed';
-        ticket.snoozed_until = new Date(Date.now() + (snoozeMinutes * 60 * 1000)).toISOString();
-        ticket.notes = `تم تسجيل غياب العميل وتأجيله لمدة ${snoozeMinutes} دقائق، ثم يُلغى آلياً.`;
+      if (!ticket) return { persist: false, status: 404, body: { error: 'التذكرة غير موجودة.' } };
 
-        counter.current_ticket_id = null;
-        counter.current_ticket_number = null;
-        counter.current_session_started_at = null;
+      const snoozeMinutes = MEMORY_DB.settings[tenantSlug]?.snooze_minutes || 5;
+      ticket.status = 'snoozed';
+      ticket.snoozed_until = new Date(Date.now() + (snoozeMinutes * 60 * 1000)).toISOString();
+      ticket.notes = 'تم تسجيل غياب العميل وتأجيله لمدة ' + snoozeMinutes + ' دقائق، ثم يُلغى آلياً.';
 
-        notifyCustomer(
-          tenantSlug,
-          ticket,
-          '⏳ تم تأجيل دورك لعدم الحضور',
-          `تذكرة ${ticket.ticket_number}: لم يتم الرد عند النداء. أمامك مهلة ${snoozeMinutes} دقائق للمراجعة قبل إلغاء التذكرة تلقائياً.`
-        );
+      counter.current_ticket_id = null;
+      counter.current_ticket_number = null;
+      counter.current_session_started_at = null;
 
-        broadcastSSE(tenantSlug, 'ticket_snoozed', { ticket, counter });
-        return res.status(200).json({ ok: true, ticket, counter, message: 'تم نقل التذكرة للتأجيل واستدعاء التالي متاح.' });
-      }
-      return res.status(404).json({ error: 'التذكرة غير موجودة.' });
+      return {
+        persist: true,
+        status: 200,
+        body: { ok: true, ticket: ticket, counter: counter, message: 'تم نقل التذكرة للتأجيل واستدعاء التالي متاح.' },
+        afterCommit: function () {
+          notifyCustomer(
+            tenantSlug,
+            ticket,
+            '⏳ تم تأجيل دورك لعدم الحضور',
+            'تذكرة ' + ticket.ticket_number + ': لم يتم الرد عند النداء. أمامك مهلة ' + snoozeMinutes + ' دقائق للمراجعة قبل إلغاء التذكرة تلقائياً.'
+          );
+          broadcastSSE(tenantSlug, 'ticket_snoozed', { ticket: ticket, counter: counter });
+        }
+      };
+      });
+      return respond(outcome);
     }
 
     // ---------------------------------------------------------------
@@ -2233,4 +2426,11 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports._memory = MEMORY_DB;
+function wrappedQueueHandler(req, res) {
+  return queuePersist.runRequest(function () {
+    return queueHandler(req, res);
+  });
+}
+
+wrappedQueueHandler._memory = MEMORY_DB;
+module.exports = wrappedQueueHandler;

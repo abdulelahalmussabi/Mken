@@ -6,7 +6,7 @@
     "test": "node scripts/verify-master-gate.cjs",
     "test:gate": "node scripts/verify-master-gate.cjs",
     "test:routes": "node scripts/verify-api-routes.cjs",
-    "test:queue": "node tests/queue-engine.test.cjs && node tests/queue-shifts-hotswap.test.cjs && node tests/queue-transfer-rbac.test.cjs && node tests/queue-production-chaos.test.cjs && node tests/queue-admin-auth.test.cjs && node tests/queue-manual-override.test.cjs && node tests/queue-zero-pii-display.test.cjs && node tests/queue-dynamic-counters.test.cjs && node tests/queue-prayer-onboarding.test.cjs && node tests/queue-tenant-isolation.test.cjs && node tests/queue-persistence-auth.test.cjs && node tests/queue-optional-identity.test.cjs",
+    "test:queue": "node tests/queue-engine.test.cjs && node tests/queue-shifts-hotswap.test.cjs && node tests/queue-transfer-rbac.test.cjs && node tests/queue-production-chaos.test.cjs && node tests/queue-admin-auth.test.cjs && node tests/queue-manual-override.test.cjs && node tests/queue-zero-pii-display.test.cjs && node tests/queue-dynamic-counters.test.cjs && node tests/queue-prayer-onboarding.test.cjs && node tests/queue-tenant-isolation.test.cjs && node tests/queue-persistence-auth.test.cjs && node tests/queue-optional-identity.test.cjs && node tests/queue-concurrency.test.cjs",
     "test:queue:e2e": "node tests/queue-mkn-e2e.cjs",
     "test:all": "npm run test:gate && npm run test:queue && npm run test:routes"
   },
