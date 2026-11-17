@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const pushLib = require('../_lib/web-push');
-const { handleCors } = require('../_lib/cors');
+const sbEnv = require('../supabase-env');
+const pushLib = require('../web-push');
+const { handleCors } = require('../cors');
 
 function getAction(req) {
   var url = req.url || '';

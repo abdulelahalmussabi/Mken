@@ -18,11 +18,11 @@
 
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const { handleCors } = require('./_lib/cors');
-const { isRateLimited } = require('./_lib/rate-limit');
-const sign = require('./_lib/license-sign');
-const licenseIssue = require('./_lib/license-issue');
+const sbEnv = require('../supabase-env');
+const { handleCors } = require('../cors');
+const { isRateLimited } = require('../rate-limit');
+const sign = require('../license-sign');
+const licenseIssue = require('../license-issue');
 
 function getClientIp(req) {
   const xf = req.headers['x-forwarded-for'];

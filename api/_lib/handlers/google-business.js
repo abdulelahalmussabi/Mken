@@ -1,8 +1,8 @@
-const { getValidAccessToken, ensureTenantClient, getSupabaseAdmin } = require('./_lib/google-auth-helper');
-const { authorizeGbpAiRequest } = require('./_lib/gbp-ai-guard');
-const { buildNapAuditReport, planNapSync } = require('./_lib/nap-audit');
-const { encryptToken } = require('./_lib/token-crypto');
-const { generateOAuthState, verifyOAuthState, recordGbpAuditLog } = require('./_lib/gbp-audit');
+const { getValidAccessToken, ensureTenantClient, getSupabaseAdmin } = require('../google-auth-helper');
+const { authorizeGbpAiRequest } = require('../gbp-ai-guard');
+const { buildNapAuditReport, planNapSync } = require('../nap-audit');
+const { encryptToken } = require('../token-crypto');
+const { generateOAuthState, verifyOAuthState, recordGbpAuditLog } = require('../gbp-audit');
 
 const GBP_POST_MAX_CHARS = 1500;
 const GBP_LOCATION_READ_MASK = 'title,phoneNumbers,websiteUri,storefrontAddress,regularHours,primaryCategory';
@@ -67,7 +67,7 @@ async function handleGoogleResponseError(res, defaultMessage) {
 }
 
 async function corsGet(req, res) {
-  const { getSafeCorsOrigin } = require('./_lib/cors');
+  const { getSafeCorsOrigin } = require('../cors');
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', await getSafeCorsOrigin(req));
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -78,7 +78,7 @@ async function corsGet(req, res) {
 }
 
 async function corsPost(req, res) {
-  const { getSafeCorsOrigin } = require('./_lib/cors');
+  const { getSafeCorsOrigin } = require('../cors');
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', await getSafeCorsOrigin(req));
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');

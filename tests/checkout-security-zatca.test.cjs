@@ -99,7 +99,7 @@ async function runTests() {
   // Test 3: فحص منع التلاعب بالأسعار في الخادم (Anti-Tamper & Server Pricing)
   // -------------------------------------------------------------------------
   console.log('\n3️⃣ فحص منع هجمات التلاعب بالأسعار (Price Tampering Guard)...');
-  const handler = require('../api/v1/checkout');
+  const handler = require('../api/_lib/handlers/checkout');
 
   // محاكاة طلب خبيث يحاول دفع 0.01 ريال مقابل منتج سعره 500 ريال
   const mockReqTamper = {
@@ -150,7 +150,7 @@ async function runTests() {
   
   // التحقق من أن الكود المكتوب في api/moyasar-webhook.js يحتوي على ZATCA TLV والحتمية
   const fs = require('fs');
-  const webhookCode = fs.readFileSync('api/moyasar-webhook.js', 'utf8');
+  const webhookCode = fs.readFileSync('api/_lib/handlers/moyasar-webhook.js', 'utf8');
   assert.ok(webhookCode.includes('generateZatcaTLV'), 'يجب أن يحتوي الـ Webhook على دالة توليد ZATCA TLV');
   assert.ok(webhookCode.includes('mken_checkout_sessions'), 'يجب أن يدعم الـ Webhook جلسات الشراء الموحدة');
   assert.ok(webhookCode.includes('Math.abs(paymentAmount - expectedAmount) > 0.01'), 'يجب فحص تطابق المبلغ بالهللة');

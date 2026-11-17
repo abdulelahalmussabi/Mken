@@ -44,7 +44,7 @@ async function runTests() {
     };
     
     // محاكاة استدعاء الـ API الخاص بـ Vercel مباشرة
-    const googleAuthHandler = require('../api/google-business.js');
+    const googleAuthHandler = require('../api/_lib/handlers/google-business.js');
     
     const mockReq = {
       method: 'GET',
@@ -260,7 +260,7 @@ async function runTests() {
     };
 
     try {
-      const syncHandler = require('../api/google-business.js');
+      const syncHandler = require('../api/_lib/handlers/google-business.js');
       const mockSyncReq = {
         method: 'POST',
         url: '/api/google-business/sync-services',

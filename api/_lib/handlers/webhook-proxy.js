@@ -1,8 +1,8 @@
 const dns = require('dns').promises;
 const { URL } = require('url');
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('./_lib/supabase-env');
-const { getSafeCorsOrigin } = require('./_lib/cors');
+const sbEnv = require('../supabase-env');
+const { getSafeCorsOrigin } = require('../cors');
 
 module.exports = async function handler(req, res) {
   // 1. Set CORS headers dynamically
