@@ -47,7 +47,7 @@ export async function GET(
     // 2. Google Place ID -> direct write review URL
     let placeId =
       config.preview?.placeId?.trim() ||
-      gbpLocations.find((loc) => (loc as unknown as { placeId?: string }).placeId)?.placeId?.trim() ||
+      gbpLocations.find((loc) => loc.placeId)?.placeId?.trim() ||
       "";
 
     if (!placeId) {

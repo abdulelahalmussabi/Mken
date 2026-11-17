@@ -52,9 +52,8 @@ export default function LocalReviewRequestsPage() {
     return generateQrSvg(reviewShortUrl, {
       size: 190,
       margin: 2,
-      foreground: "#0f172a",
-      background: "#ffffff",
-      title: `تقييم ${tenant} على خرائط جوجل`,
+      darkColor: "#0f172a",
+      lightColor: "#ffffff",
     });
   }, [tenant, reviewShortUrl]);
 

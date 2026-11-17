@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Route } from "next";
 import {
   CalendarCheck,
   CheckCircle2,
@@ -107,8 +108,7 @@ export default async function SmartServiceDetailPage({ params }: Props) {
   if (!service) notFound();
 
   const client = storefront.client;
-  const appearance = storefront.appearance;
-  const accentColor = appearance?.accentColor || "#f59e0b";
+  const accentColor = "#f59e0b";
 
   let canonicalBase = "";
   try {
@@ -201,11 +201,11 @@ export default async function SmartServiceDetailPage({ params }: Props) {
         <div className="border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between text-xs text-slate-400">
             <nav className="flex items-center gap-2">
-              <Link href={canonicalBase} className="hover:text-amber-400 transition">
+              <Link href={canonicalBase as Route} className="hover:text-amber-400 transition">
                 {client.name}
               </Link>
               <ChevronRight className="w-3.5 h-3.5 rotate-180 text-slate-600" />
-              <Link href={`${canonicalBase}/services`} className="hover:text-amber-400 transition">
+              <Link href={`${canonicalBase}/services` as Route} className="hover:text-amber-400 transition">
                 الخدمات
               </Link>
               <ChevronRight className="w-3.5 h-3.5 rotate-180 text-slate-600" />
@@ -354,7 +354,7 @@ export default async function SmartServiceDetailPage({ params }: Props) {
 
             <div className="flex items-center gap-3">
               <Link
-                href={`${canonicalBase}/services`}
+                href={`${canonicalBase}/services` as Route}
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition"
               >
                 عرض كافة الخدمات

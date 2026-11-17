@@ -299,9 +299,13 @@ export function StorefrontFrame({
         if (slug === "qasr-najd") {
           setCatalog({
             kind: "generic",
+            featuredActivity: "restaurant",
+            activities: [],
             services: [
               {
                 id: "qn-01",
+                activityId: "restaurant",
+                duration: "",
                 name: "كبسة حاشي بلدي طازج",
                 badge: "الأكثر طلباً",
                 price: "75 ر.س",
@@ -313,6 +317,8 @@ export function StorefrontFrame({
               },
               {
                 id: "qn-02",
+                activityId: "restaurant",
+                duration: "",
                 name: "جريش نجدي بالمسمنة والسمن البري",
                 badge: "طبق تراثي",
                 price: "35 ر.س",
@@ -324,6 +330,8 @@ export function StorefrontFrame({
               },
               {
                 id: "qn-03",
+                activityId: "restaurant",
+                duration: "",
                 name: "قرصان نجد باللحم البلدي والخضار",
                 badge: "مميز",
                 price: "30 ر.س",
@@ -335,6 +343,8 @@ export function StorefrontFrame({
               },
               {
                 id: "qn-04",
+                activityId: "restaurant",
+                duration: "",
                 name: "دلة قهوة سعودية مع خلاص القصيم الفاخر",
                 badge: "ضيافة ملكية",
                 price: "45 ر.س",
@@ -349,9 +359,13 @@ export function StorefrontFrame({
         } else if (slug === "arkan-spa") {
           setCatalog({
             kind: "salon",
+            featuredActivity: "spa-wellness",
+            activities: [],
             services: [
               {
                 id: "ark-01",
+                activityId: "spa-wellness",
+                duration: "",
                 name: "باقة العريس الملكية المتكاملة VIP",
                 badge: "باقة النخبة",
                 price: "650 ر.س",
@@ -363,6 +377,8 @@ export function StorefrontFrame({
               },
               {
                 id: "ark-02",
+                activityId: "spa-wellness",
+                duration: "",
                 name: "حلاقة ملكية وتحديد اللحية بالموس الإيطالي",
                 badge: "الأكثر طلباً",
                 price: "85 ر.س",
@@ -374,6 +390,8 @@ export function StorefrontFrame({
               },
               {
                 id: "ark-03",
+                activityId: "spa-wellness",
+                duration: "",
                 name: "جلسة تنظيف بشرة هيدرافاشيل عميق",
                 badge: "عناية طبية",
                 price: "220 ر.س",
@@ -385,6 +403,8 @@ export function StorefrontFrame({
               },
               {
                 id: "ark-04",
+                activityId: "spa-wellness",
+                duration: "",
                 name: "مساج الأحجار البركانية الساخنة (Hot Stone)",
                 badge: "استرخاء عميق",
                 price: "280 ر.س",
@@ -399,9 +419,13 @@ export function StorefrontFrame({
         } else if (slug === "dar-maysan") {
           setCatalog({
             kind: "commerce",
+            featuredActivity: "commerce",
+            activities: [],
             services: [
               {
                 id: "dm-01",
+                activityId: "commerce",
+                duration: "",
                 name: "دهن عود براشين ملكي قديم (ربع تولة)",
                 badge: "نادر ومميز",
                 price: "420 ر.س",
@@ -413,6 +437,8 @@ export function StorefrontFrame({
               },
               {
                 id: "dm-02",
+                activityId: "commerce",
+                duration: "",
                 name: "بخور مروكي دبل سوبر محسن فاخر (أوقية)",
                 badge: "الأكثر مبيعاً",
                 price: "290 ر.س",
@@ -424,6 +450,8 @@ export function StorefrontFrame({
               },
               {
                 id: "dm-03",
+                activityId: "commerce",
+                duration: "",
                 name: "عطر ميسان رويال نيش (Extrait de Parfum 100ml)",
                 badge: "إصدار حصري",
                 price: "380 ر.س",
@@ -435,6 +463,8 @@ export function StorefrontFrame({
               },
               {
                 id: "dm-04",
+                activityId: "commerce",
+                duration: "",
                 name: "صندوق الإهداء التذكاري دار ميسان VIP",
                 badge: "هدايا فاخرة",
                 price: "850 ر.س",
@@ -542,9 +572,13 @@ export function StorefrontFrame({
       });
       setCatalog({
         kind: "generic",
+        featuredActivity: "storefront",
+        activities: [],
         services: [
           {
             id: "srv-01",
+            activityId: "storefront",
+            duration: "",
             name: "الخدمة التجريبية الأولى",
             badge: "الأكثر طلباً",
             price: "150 ر.س",
@@ -556,6 +590,8 @@ export function StorefrontFrame({
           },
           {
             id: "srv-02",
+            activityId: "storefront",
+            duration: "",
             name: "الخدمة التجريبية الثانية",
             badge: "عرض خاص",
             price: "95 ر.س",
