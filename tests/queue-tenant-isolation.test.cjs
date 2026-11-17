@@ -2,8 +2,6 @@
 
 const assert = require('assert');
 const queueHandler = require('../api/v1/queue.js');
-const ticketsRoute = require('../api/queue/tickets.js');
-const intakeRoute = require('../api/queue/intake/status.js');
 const { staffCookie } = require('./queue-http.cjs');
 
 function mock(options) {
@@ -48,16 +46,18 @@ async function run() {
 
   const listed = mock({
     url: '/api/queue/tickets',
+    query: { action: 'list-tickets' },
     headers: { host: 'rewa.mken.live', 'x-admin-authenticated': '1' }
   });
-  await ticketsRoute(listed.req, listed.res);
+  await queueHandler(listed.req, listed.res);
   assert.strictEqual(listed.res.statusCode, 401, 'قائمة التذاكر بلا جلسة يجب أن تُرفض');
 
   const staffList = mock({
     url: '/api/queue/tickets',
+    query: { action: 'list-tickets' },
     headers: { host: 'rewa.mken.live', cookie: staffCookie('rewa') }
   });
-  await ticketsRoute(staffList.req, staffList.res);
+  await queueHandler(staffList.req, staffList.res);
   assert.strictEqual(staffList.res.statusCode, 200);
   const staffTicket = staffList.res.body.tickets.find(function (t) { return t.ticket_number === ticketNumber; });
   assert.ok(staffTicket);
@@ -67,10 +67,10 @@ async function run() {
 
   const otherHost = mock({
     url: '/api/queue/tickets',
-    query: { tenant: 'rewa' },
+    query: { action: 'list-tickets', tenant: 'rewa' },
     headers: { host: 'saj.mken.live', cookie: staffCookie('saj') }
   });
-  await ticketsRoute(otherHost.req, otherHost.res);
+  await queueHandler(otherHost.req, otherHost.res);
   assert.strictEqual(otherHost.res.statusCode, 200);
   assert.ok(!(otherHost.res.body.tickets || []).some(function (t) { return t.ticket_number === ticketNumber && t.customer_phone === phone; }));
 
@@ -96,20 +96,20 @@ async function run() {
 
   const apexStaff = mock({
     url: '/api/queue/tickets',
-    query: { tenant: 'saj' },
+    query: { action: 'list-tickets', tenant: 'saj' },
     headers: { host: 'mken.live', cookie: staffCookie('rewa') }
   });
-  await ticketsRoute(apexStaff.req, apexStaff.res);
+  await queueHandler(apexStaff.req, apexStaff.res);
   assert.strictEqual(apexStaff.res.statusCode, 200);
   assert.strictEqual(apexStaff.res.body.tenant, 'rewa');
   assert.ok(apexStaff.res.body.tickets.some(function (t) { return t.customer_phone === phone; }));
 
   const intake = mock({
     url: '/api/queue/intake/status',
-    query: { session_token: sessionToken, tenant: 'default' },
+    query: { action: 'intake-status', session_token: sessionToken, tenant: 'default' },
     headers: { host: 'rewa.mken.live' }
   });
-  await intakeRoute(intake.req, intake.res);
+  await queueHandler(intake.req, intake.res);
   assert.strictEqual(intake.res.statusCode, 200);
   assert.deepStrictEqual(Object.keys(intake.res.body.tickets[0]).sort(), ['counter', 'status', 'ticket_number']);
   assert.strictEqual(intake.res.body.tickets[0].ticket_number, ticketNumber);

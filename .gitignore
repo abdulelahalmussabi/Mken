@@ -13,7 +13,6 @@ config_private.json
 .parcel-cache/
 dist/
 build/
-/public/
 *.log
 .next/
 .backup-stash/
