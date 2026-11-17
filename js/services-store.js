@@ -1005,11 +1005,13 @@
   function init() {
     if (_ready) return _ready;
     
-    // Extract tenant parameter from URL or Subdomain
+    // Subdomain wins. ?tenant=default on a tenant host must not override it.
     var urlParams = new URLSearchParams(window.location.search);
-    var tenantSlug = urlParams.get('tenant') || urlParams.get('client');
-    if (!tenantSlug) {
-      tenantSlug = detectTenantFromHostname();
+    var fromHost = detectTenantFromHostname();
+    var fromQuery = urlParams.get('tenant') || urlParams.get('client');
+    var tenantSlug = fromHost;
+    if (!tenantSlug && fromQuery && String(fromQuery).toLowerCase() !== 'default') {
+      tenantSlug = fromQuery;
     }
     _currentTenantSlug = tenantSlug || null;
     if (_currentTenantSlug) {

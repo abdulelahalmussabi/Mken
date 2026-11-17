@@ -351,8 +351,8 @@
         }
       }
 
-      // QR Code pointing to queue.html?tenant=slug (High-resolution for 5-meter scan distance)
-      var queueUrl = window.location.origin + '/queue.html?tenant=' + encodeURIComponent(currentTenant);
+      // QR stays on this host so the server resolves the tenant. No ?tenant=default.
+      var queueUrl = window.location.origin + '/queue/scan';
       if (qrDisplayImg) {
         qrDisplayImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=2&data=' + encodeURIComponent(queueUrl);
       }

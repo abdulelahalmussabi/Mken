@@ -7,12 +7,31 @@
 
   var store = window.MkenServicesStore;
 
-  function getTenantSlug() {
-    if (store && typeof store.getCurrentTenantSlug === 'function') {
-      return store.getCurrentTenantSlug() || 'default';
+  function slugFromLocation() {
+    if (typeof window === 'undefined' || !window.location) return '';
+    var host = String(window.location.hostname || '').toLowerCase();
+    var skip = { www: 1, admin: 1, mken: 1, license: 1, licenses: 1, api: 1 };
+    if (host === 'rewa.care' || host === 'www.rewa.care') return 'rewa';
+    if (host.endsWith('.mken.live')) {
+      var parts = host.slice(0, -'.mken.live'.length).split('.');
+      var head = parts[0] === 'www' ? parts[1] : parts[0];
+      if (head && !skip[head]) return head;
     }
-    var params = new URLSearchParams(window.location.search);
-    return params.get('tenant') || 'default';
+    if (host.endsWith('.localhost')) {
+      var localHead = host.split('.')[0];
+      if (localHead && localHead !== 'www') return localHead;
+    }
+    return '';
+  }
+
+  function getTenantSlug() {
+    var fromHost = slugFromLocation();
+    if (fromHost) return fromHost;
+    if (store && typeof store.getCurrentTenantSlug === 'function') {
+      var slug = store.getCurrentTenantSlug();
+      if (slug && slug !== 'default') return slug;
+    }
+    return '';
   }
 
   function getSessionStorageKey(slug) {
@@ -43,8 +62,7 @@
   }
 
   function apiCall(action, method, body, extraParams) {
-    var slug = getTenantSlug();
-    var query = '?action=' + encodeURIComponent(action) + '&tenant=' + encodeURIComponent(slug);
+    var query = '?action=' + encodeURIComponent(action);
     if (extraParams) {
       Object.keys(extraParams).forEach(function (k) {
         query += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(extraParams[k]);
@@ -57,7 +75,7 @@
     };
     try {
       if (window.MkenSession && typeof window.MkenSession.getAuthHeaders === 'function') {
-        var authH = window.MkenSession.getAuthHeaders(slug);
+        var authH = window.MkenSession.getAuthHeaders(getTenantSlug());
         Object.assign(headers, authH);
       }
       var adminPin = sessionStorage.getItem('mken_admin_pin') || localStorage.getItem('mken_admin_pin');
@@ -74,7 +92,8 @@
 
     var options = {
       method: method || 'GET',
-      headers: headers
+      headers: headers,
+      credentials: 'same-origin'
     };
     if (body) {
       options.body = JSON.stringify(body);
@@ -100,8 +119,7 @@
       try { activeEventSource.close(); } catch (e) {}
     }
 
-    var slug = getTenantSlug();
-    var url = '/api/v1/queue?action=events&tenant=' + encodeURIComponent(slug);
+    var url = '/api/v1/queue?action=events';
 
     if (typeof EventSource === 'undefined') {
       console.warn('[SSE] EventSource is not supported in this browser; fallback to polling');

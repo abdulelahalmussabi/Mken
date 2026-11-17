@@ -2,13 +2,14 @@
 
 const assert = require('assert');
 const queueHandler = require('../api/v1/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function mockReqRes(options = {}) {
   const req = {
     method: options.method || 'POST',
     query: options.query || {},
     body: options.body || {},
-    headers: options.headers || {}
+    headers: tenantHeaders(options)
   };
 
   let statusCode = 200;
@@ -51,6 +52,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       query: { tenant, action: 'hot-swap-authenticate' },
+      staff: true,
       headers: {
         'x-admin-authenticated': '1'
       },
@@ -76,6 +78,7 @@ async function runTest() {
   {
     const { req, res } = mockReqRes({
       query: { tenant, action: 'reception-handover' },
+      staff: true,
       headers: {
         'x-is-super-admin': '1'
       },
@@ -108,6 +111,7 @@ async function runTest() {
     // الأدمن يحول التذكرة حتى لو لم تكن قيد خدمته المباشرة
     const { req: reqTransfer, res: resTransfer } = mockReqRes({
       query: { tenant, action: 'transfer-ticket' },
+      staff: true,
       headers: {
         'x-admin-authenticated': '1'
       },

@@ -2,13 +2,14 @@
 
 const assert = require('assert');
 const queueHandler = require('../api/v1/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function mockReqRes(options = {}) {
   const req = {
     method: options.method || 'POST',
     query: options.query || {},
     body: options.body || {},
-    headers: options.headers || {}
+    headers: tenantHeaders(options)
   };
 
   let statusCode = 200;
@@ -99,7 +100,7 @@ async function runProductionTestSuite() {
       body: { queueId: `q-cs-${tenant}`, customerName: 'عميل نسي أوراقه' }
     });
     await queueHandler(rJOut, sJOut);
-    const outTicket = sJOut._data.tickets[0];
+    const outTicket = queueHandler._memory.tickets[tenant].find(function (t) { return t.id === sJOut._data.tickets[0].id; });
 
     const { req: rCOut, res: sCOut } = mockReqRes({
       query: { tenant, action: 'call-next' },
@@ -198,7 +199,8 @@ async function runProductionTestSuite() {
       body: { counterId: `cnt-1-${tenant}` }
     });
     await queueHandler(rCall1, sCall1);
-    assert.strictEqual(sCall1._data.ticket.customer_name, 'فيصل المطيري');
+    const csTicket = sDouble._data.tickets.find(function (t) { return t.queue_id === `q-cs-${tenant}`; });
+    assert.strictEqual(sCall1._data.ticket.id, csTicket.id);
     assert.strictEqual(sCall1._data.ticket.status, 'called');
 
     // في ذات اللحظة تماماً، كاونتر 2 يطلب التالي في قسم العقود
@@ -386,7 +388,7 @@ async function runProductionTestSuite() {
     // محاكاة كاونتر متروك بلا عمل لأكثر من 120 دقيقة
     const { req: rCfg, res: sCfg } = mockReqRes({ method: 'GET', query: { tenant, action: 'get-config' } });
     await queueHandler(rCfg, sCfg);
-    const c2 = sCfg._data.counters.find(c => c.id === `cnt-2-${tenant}`);
+    const c2 = queueHandler._memory.counters[tenant].find(c => c.id === `cnt-2-${tenant}`);
     c2.last_status_change = new Date(Date.now() - 130 * 60 * 1000).toISOString();
     c2.current_ticket_id = null;
 

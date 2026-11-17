@@ -4,6 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const queueHandler = require('../api/v1/queue.js');
+const { tenantHeaders } = require('./queue-http.cjs');
 
 function createMockReq(options = {}) {
   return {
@@ -11,7 +12,7 @@ function createMockReq(options = {}) {
     url: options.url || '/api/v1/queue',
     query: options.query || {},
     body: options.body || {},
-    headers: Object.assign({ origin: 'http://localhost', host: 'localhost' }, options.headers || {})
+    headers: tenantHeaders(options)
   };
 }
 
