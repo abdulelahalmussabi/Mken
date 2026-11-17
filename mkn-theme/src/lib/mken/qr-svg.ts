@@ -20,7 +20,7 @@ function gfMul(x: number, y: number): number {
   return GF_EXP[(GF_LOG[x] + GF_LOG[y]) % 255];
 }
 
-function polyMul(p1: Uint8Array, p2: Uint8Array): Uint8Array {
+function polyMul(p1: Uint8Array, p2: Uint8Array): Uint8Array<ArrayBuffer> {
   const result = new Uint8Array(p1.length + p2.length - 1);
   for (let i = 0; i < p1.length; i++) {
     for (let j = 0; j < p2.length; j++) {
@@ -30,7 +30,7 @@ function polyMul(p1: Uint8Array, p2: Uint8Array): Uint8Array {
   return result;
 }
 
-function rsGenPoly(n: number): Uint8Array {
+function rsGenPoly(n: number): Uint8Array<ArrayBuffer> {
   let g = new Uint8Array([1]);
   for (let i = 0; i < n; i++) {
     g = polyMul(g, new Uint8Array([1, GF_EXP[i]]));
