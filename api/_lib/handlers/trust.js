@@ -12,8 +12,8 @@
  *   POST /api/v1/trust/fallback   → action=fallback
  */
 
-const { handleCors } = require('../_lib/cors');
-const trustBff = require('../_lib/trust-bff');
+const { handleCors } = require('../cors');
+const trustBff = require('../trust-bff');
 
 module.exports = async function handler(req, res) {
   // Allow Turnstile / trust headers on preflight

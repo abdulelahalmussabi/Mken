@@ -1,9 +1,9 @@
 'use strict';
 
 const { createClient } = require('@supabase/supabase-js');
-const sbEnv = require('../_lib/supabase-env');
-const { handleCors } = require('../_lib/cors');
-const auditEngine = require('../_lib/audit-governance-engine');
+const sbEnv = require('../supabase-env');
+const { handleCors } = require('../cors');
+const auditEngine = require('../audit-governance-engine');
 
 // ذاكرة تخزين مؤقتة للمحاكاة واختبارات البيئة المحلية
 const inMemoryAuditStore = {

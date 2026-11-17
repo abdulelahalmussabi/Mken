@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "public",
   "crons": [
     {
       "path": "/api/cron-whatsapp",
@@ -103,163 +104,235 @@
     },
     {
       "source": "/api/v1/push-subscribe",
-      "destination": "/api/v1/push?action=subscribe"
+      "destination": "/api/tenant/v1__push-subscribe?action=subscribe"
     },
     {
       "source": "/api/v1/push-notify",
-      "destination": "/api/v1/push?action=notify"
+      "destination": "/api/tenant/v1__push-notify?action=notify"
     },
     {
       "source": "/api/v1/push-test",
-      "destination": "/api/v1/push?action=test"
+      "destination": "/api/tenant/v1__push-test?action=test"
     },
     {
       "source": "/api/google-business/auth-url",
-      "destination": "/api/google-business?action=auth-url"
+      "destination": "/api/tenant/google-business__auth-url?action=auth-url"
     },
     {
       "source": "/api/google-business/callback",
-      "destination": "/api/google-business?action=callback"
+      "destination": "/api/tenant/google-business__callback?action=callback"
     },
     {
       "source": "/api/google-business/locations",
-      "destination": "/api/google-business?action=locations"
+      "destination": "/api/tenant/google-business__locations?action=locations"
     },
     {
       "source": "/api/google-business/update-website",
-      "destination": "/api/google-business?action=update-website"
+      "destination": "/api/tenant/google-business__update-website?action=update-website"
     },
     {
       "source": "/api/google-business/sync-services",
-      "destination": "/api/google-business?action=sync-services"
+      "destination": "/api/tenant/google-business__sync-services?action=sync-services"
     },
     {
       "source": "/api/google-business/generate-post",
-      "destination": "/api/google-business?action=generate-post"
+      "destination": "/api/tenant/google-business__generate-post?action=generate-post"
     },
     {
       "source": "/api/google-business/generate-reply",
-      "destination": "/api/google-business?action=generate-reply"
+      "destination": "/api/tenant/google-business__generate-reply?action=generate-reply"
     },
     {
       "source": "/api/google-business/competitors",
-      "destination": "/api/google-business?action=competitors"
+      "destination": "/api/tenant/google-business__competitors?action=competitors"
     },
     {
       "source": "/api/google-business/nap-audit",
-      "destination": "/api/google-business?action=nap-audit"
+      "destination": "/api/tenant/google-business__nap-audit?action=nap-audit"
     },
     {
       "source": "/api/google-business/sync-nap",
-      "destination": "/api/google-business?action=sync-nap"
+      "destination": "/api/tenant/google-business__sync-nap?action=sync-nap"
     },
     {
       "source": "/api/instagram/auth-url",
-      "destination": "/api/instagram?action=auth-url"
+      "destination": "/api/tenant/instagram__auth-url?action=auth-url"
     },
     {
       "source": "/api/instagram/callback",
-      "destination": "/api/instagram?action=callback"
+      "destination": "/api/tenant/instagram__callback?action=callback"
     },
     {
       "source": "/api/instagram/sync",
-      "destination": "/api/instagram?action=sync"
+      "destination": "/api/tenant/instagram__sync?action=sync"
     },
     {
       "source": "/api/instagram/status",
-      "destination": "/api/instagram?action=status"
+      "destination": "/api/tenant/instagram__status?action=status"
     },
     {
       "source": "/api/instagram/disconnect",
-      "destination": "/api/instagram?action=disconnect"
+      "destination": "/api/tenant/instagram__disconnect?action=disconnect"
     },
     {
       "source": "/api/v1/checkout/create-session",
-      "destination": "/api/v1/checkout?action=create-session"
+      "destination": "/api/payments/v1__checkout__create-session?action=create-session"
     },
     {
       "source": "/api/v1/checkout/verify",
-      "destination": "/api/v1/checkout?action=verify"
+      "destination": "/api/payments/v1__checkout__verify?action=verify"
     },
     {
       "source": "/api/v1/auth/login-challenge",
-      "destination": "/api/v1/auth?type=login&step=challenge"
+      "destination": "/api/auth/v1__auth__login-challenge?type=login&step=challenge"
     },
     {
       "source": "/api/v1/auth/login-verify",
-      "destination": "/api/v1/auth?type=login&step=verify"
+      "destination": "/api/auth/v1__auth__login-verify?type=login&step=verify"
     },
     {
       "source": "/api/v1/auth/register-challenge",
-      "destination": "/api/v1/auth?type=register&step=challenge"
+      "destination": "/api/auth/v1__auth__register-challenge?type=register&step=challenge"
     },
     {
       "source": "/api/v1/auth/register-verify",
-      "destination": "/api/v1/auth?type=register&step=verify"
+      "destination": "/api/auth/v1__auth__register-verify?type=register&step=verify"
     },
     {
       "source": "/api/v1/auth/register-trial",
-      "destination": "/api/v1/auth?type=register-trial"
+      "destination": "/api/auth/v1__auth__register-trial?type=register-trial"
     },
     {
       "source": "/api/v1/auth/admin-login",
-      "destination": "/api/v1/auth?type=admin-login"
+      "destination": "/api/auth/v1__auth__admin-login?type=admin-login"
     },
     {
       "source": "/api/v1/auth/supabase-config",
-      "destination": "/api/v1/auth?type=supabase-config"
+      "destination": "/api/auth/v1__auth__supabase-config?type=supabase-config"
     },
     {
       "source": "/api/v1/trust/challenge",
-      "destination": "/api/v1/trust?action=challenge"
+      "destination": "/api/auth/v1__trust__challenge?action=challenge"
     },
     {
       "source": "/api/v1/trust/verify",
-      "destination": "/api/v1/trust?action=verify"
+      "destination": "/api/auth/v1__trust__verify?action=verify"
     },
     {
       "source": "/api/v1/trust/fallback",
-      "destination": "/api/v1/trust?action=fallback"
+      "destination": "/api/auth/v1__trust__fallback?action=fallback"
     },
     {
       "source": "/api/license/activate",
-      "destination": "/api/license?action=activate"
+      "destination": "/api/auth/license__activate?action=activate"
     },
     {
       "source": "/api/license/verify",
-      "destination": "/api/license?action=verify"
+      "destination": "/api/auth/license__verify?action=verify"
     },
     {
       "source": "/api/license/deactivate",
-      "destination": "/api/license?action=deactivate"
+      "destination": "/api/auth/license__deactivate?action=deactivate"
     },
     {
       "source": "/api/license/issue",
-      "destination": "/api/license?action=issue"
+      "destination": "/api/auth/license__issue?action=issue"
     },
     {
       "source": "/api/license/list",
-      "destination": "/api/license?action=list"
+      "destination": "/api/auth/license__list?action=list"
     },
     {
       "source": "/api/license/revoke",
-      "destination": "/api/license?action=revoke"
+      "destination": "/api/auth/license__revoke?action=revoke"
     },
     {
       "source": "/api/license/suspend",
-      "destination": "/api/license?action=suspend"
+      "destination": "/api/auth/license__suspend?action=suspend"
     },
     {
       "source": "/api/license/resume",
-      "destination": "/api/license?action=resume"
+      "destination": "/api/auth/license__resume?action=resume"
     },
     {
       "source": "/api/license-checkout/config",
-      "destination": "/api/license?action=checkout-config"
+      "destination": "/api/auth/license-checkout__config?action=checkout-config"
     },
     {
       "source": "/api/license-checkout/status",
-      "destination": "/api/license?action=checkout-status"
+      "destination": "/api/auth/license-checkout__status?action=checkout-status"
+    },
+    {
+      "source": "/api/v1/auth",
+      "destination": "/api/auth/v1__auth"
+    },
+    {
+      "source": "/api/v1/trust",
+      "destination": "/api/auth/v1__trust"
+    },
+    {
+      "source": "/api/license",
+      "destination": "/api/auth/license"
+    },
+    {
+      "source": "/api/seed",
+      "destination": "/api/auth/seed"
+    },
+    {
+      "source": "/api/staff-availability",
+      "destination": "/api/booking/staff-availability"
+    },
+    {
+      "source": "/api/v1/dispatch",
+      "destination": "/api/booking/v1__dispatch"
+    },
+    {
+      "source": "/api/cron-whatsapp",
+      "destination": "/api/crm/cron-whatsapp"
+    },
+    {
+      "source": "/api/webhook-proxy",
+      "destination": "/api/crm/webhook-proxy"
+    },
+    {
+      "source": "/api/whatsapp-webhook",
+      "destination": "/api/crm/whatsapp-webhook"
+    },
+    {
+      "source": "/api/moyasar-webhook",
+      "destination": "/api/payments/moyasar-webhook"
+    },
+    {
+      "source": "/api/v1/checkout",
+      "destination": "/api/payments/v1__checkout"
+    },
+    {
+      "source": "/api/v1/zatca",
+      "destination": "/api/invoices/v1__zatca"
+    },
+    {
+      "source": "/api/v1/erp-reports",
+      "destination": "/api/invoices/v1__erp-reports"
+    },
+    {
+      "source": "/api/v1/procurement",
+      "destination": "/api/invoices/v1__procurement"
+    },
+    {
+      "source": "/api/v1/governance",
+      "destination": "/api/invoices/v1__governance"
+    },
+    {
+      "source": "/api/google-business",
+      "destination": "/api/tenant/google-business"
+    },
+    {
+      "source": "/api/instagram",
+      "destination": "/api/tenant/instagram"
+    },
+    {
+      "source": "/api/v1/push",
+      "destination": "/api/tenant/v1__push"
     },
     {
       "source": "/",

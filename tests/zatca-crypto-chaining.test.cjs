@@ -143,7 +143,7 @@ async function runTests() {
     zatcaEngine.signInvoiceHash(testHashHex, null);
   }, /المفتاح الخاص للمنشأة غير متوفر/, 'يجب إلقاء استثناء صريح عند غياب المفتاح');
 
-  const zatcaCode = fs.readFileSync('api/v1/zatca.js', 'utf8');
+  const zatcaCode = fs.readFileSync('api/_lib/handlers/zatca.js', 'utf8');
   assert.ok(!zatcaCode.includes('crypto.randomBytes(64).toString'), 'تم استئصال كود البايتات العشوائية الوهمي نهائياً');
   console.log('   ✅ نجاح: التوقيع الرقمي المشفر يلتزم بمنحنى secp256k1 ويمتنع عن أي تزوير وهمي.');
 

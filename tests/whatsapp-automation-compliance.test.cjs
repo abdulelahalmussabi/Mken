@@ -2,7 +2,7 @@
 
 const assert = require('assert');
 const cstGuard = require('../api/_lib/cst-time-guard');
-const webhookHandler = require('../api/whatsapp-webhook');
+const webhookHandler = require('../api/_lib/handlers/whatsapp-webhook');
 
 console.log('================================================================');
 console.log('🧪 اختبارات التحقق الشاملة لأتمتة الواتساب والإشعارات السحابية (E5)');
