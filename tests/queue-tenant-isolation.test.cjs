@@ -104,6 +104,25 @@ async function run() {
   assert.strictEqual(apexStaff.res.body.tenant, 'rewa');
   assert.ok(apexStaff.res.body.tickets.some(function (t) { return t.customer_phone === phone; }));
 
+  const superPanel = mock({
+    url: '/api/queue/tickets',
+    query: { action: 'list-tickets', client: 'rewa', tenant: 'saj' },
+    headers: { host: 'mken.live', cookie: staffCookie('ignored', 'super') }
+  });
+  await queueHandler(superPanel.req, superPanel.res);
+  assert.strictEqual(superPanel.res.statusCode, 200);
+  assert.strictEqual(superPanel.res.body.tenant, 'rewa');
+  assert.ok(superPanel.res.body.tickets.some(function (t) { return t.customer_phone === phone; }));
+
+  const clientHop = mock({
+    url: '/api/queue/tickets',
+    query: { action: 'list-tickets', client: 'saj' },
+    headers: { host: 'mken.live', cookie: staffCookie('rewa') }
+  });
+  await queueHandler(clientHop.req, clientHop.res);
+  assert.strictEqual(clientHop.res.statusCode, 200);
+  assert.strictEqual(clientHop.res.body.tenant, 'rewa');
+
   const intake = mock({
     url: '/api/queue/intake/status',
     query: { action: 'intake-status', session_token: sessionToken, tenant: 'default' },
