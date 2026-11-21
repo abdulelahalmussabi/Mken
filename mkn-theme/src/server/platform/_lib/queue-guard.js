@@ -16,9 +16,23 @@ const IDENTITY_KEYS = new Set([
   'phone_number',
   'pin_code',
   'push_subscription',
-  'session_token'
+  'session_token',
+  'national_id',
+  'national_id_hash',
+  'device_id',
+  'token_hash',
+  'kiosk_token'
 ]);
-const SECRET_KEYS = new Set(['pin_code', 'push_subscription', 'session_token']);
+const SECRET_KEYS = new Set([
+  'pin_code',
+  'push_subscription',
+  'session_token',
+  'token_hash',
+  'national_id_hash',
+  'device_id',
+  'kiosk_token',
+  'hardware_fingerprint'
+]);
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/;
 
 function sessionSecret() {
@@ -239,6 +253,7 @@ function publicCounter(counter) {
     counter_number: counter.counter_number,
     name: counter.name,
     status: counter.status,
+    zone_id: counter.zone_id || null,
     assigned_queue_ids: counter.assigned_queue_ids,
     current_ticket_id: counter.current_ticket_id,
     current_ticket_number: counter.current_ticket_number || null,
@@ -275,6 +290,8 @@ function shapeConfig(data, staff) {
     }) : sessions.map(publicSession)
   };
   if (data.hallPolicy) body.hallPolicy = data.hallPolicy;
+  if (data.zone) body.zone = data.zone;
+  if (data.zones) body.zones = data.zones;
   if (staff) {
     body.users = (data.users || []).map(function (user) {
       const copy = Object.assign({}, user);
@@ -306,7 +323,12 @@ const PUBLIC_EVENT_KEYS = new Set([
   'transfer_notes',
   'adminName',
   'handoverNotes',
-  'handover_notes'
+  'handover_notes',
+  'national_id',
+  'national_id_hash',
+  'device_id',
+  'token_hash',
+  'kiosk_token'
 ]);
 
 function redactPublicEvent(value) {
@@ -326,6 +348,7 @@ function publicQueueBoard(data) {
         code: queue.code,
         prefix: queue.prefix,
         target_service_minutes: queue.target_service_minutes,
+        zone_id: queue.zone_id || null,
         is_active: queue.is_active,
         activeCountersCount: queue.activeCountersCount,
         waitingCount: queue.waitingCount,
@@ -350,7 +373,9 @@ function publicQueueBoard(data) {
       pause_reason: override.pause_reason,
       updated_at: override.updated_at
     } : override,
-    state_revision: data.state_revision
+    state_revision: data.state_revision,
+    zone: data.zone || null,
+    zones: data.zones || []
   };
 }
 

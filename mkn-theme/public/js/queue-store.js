@@ -86,6 +86,20 @@
       if (staffTok) {
         headers['x-queue-staff-token'] = staffTok;
       }
+      var kioskTok = sessionStorage.getItem('mken_kiosk_token') || localStorage.getItem('mken_kiosk_token');
+      if (kioskTok) {
+        headers['x-kiosk-token'] = kioskTok;
+      }
+      var devId = localStorage.getItem('mken_device_id');
+      if (!devId) {
+        try {
+          devId = 'dev-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
+          localStorage.setItem('mken_device_id', devId);
+        } catch (e) {}
+      }
+      if (devId) {
+        headers['x-device-id'] = devId;
+      }
       if (store && typeof store.isAdminLoggedIn === 'function' && store.isAdminLoggedIn()) {
         headers['x-admin-authenticated'] = '1';
       }
@@ -122,12 +136,17 @@
   // -------------------------------------------------------------
   var activeEventSource = null;
 
-  function listenToEvents(onMessageCallback, onErrorCallback) {
+  function listenToEvents(onMessageCallback, onErrorCallback, options) {
     if (activeEventSource) {
       try { activeEventSource.close(); } catch (e) {}
     }
 
     var url = '/api/v1/queue?action=events';
+    if (options && typeof options === 'object') {
+      if (options.branchId) url += '&branchId=' + encodeURIComponent(options.branchId);
+      if (options.zoneId) url += '&zoneId=' + encodeURIComponent(options.zoneId);
+      if (options.sessionToken) url += '&sessionToken=' + encodeURIComponent(options.sessionToken);
+    }
 
     if (typeof EventSource === 'undefined') {
       console.warn('[SSE] EventSource is not supported in this browser; fallback to polling');
@@ -191,24 +210,36 @@
     saveSession: saveSession,
     clearSession: clearSession,
 
-    getConfig: function () {
-      return apiCall('get-config', 'GET');
+    getConfig: function (extraParams) {
+      return apiCall('get-config', 'GET', null, extraParams);
     },
 
-    getStaffConfig: function () {
-      return apiCall('staff-config', 'GET');
+    getStaffConfig: function (extraParams) {
+      return apiCall('staff-config', 'GET', null, extraParams);
+    },
+
+    listZones: function (params) {
+      return apiCall('list-zones', 'GET', null, params);
+    },
+
+    upsertZone: function (payload) {
+      return apiCall('upsert-zone', 'POST', payload);
+    },
+
+    deleteZone: function (zoneId) {
+      return apiCall('delete-zone', 'POST', { zoneId: zoneId });
     },
 
     saveConfig: function (configData) {
       return apiCall('save-config', 'POST', configData);
     },
 
-    listQueues: function () {
-      return apiCall('list-queues', 'GET');
+    listQueues: function (extraParams) {
+      return apiCall('list-queues', 'GET', null, extraParams);
     },
 
-    listStaffQueues: function () {
-      return apiCall('staff-board', 'GET');
+    listStaffQueues: function (extraParams) {
+      return apiCall('staff-board', 'GET', null, extraParams);
     },
 
     joinQueue: function (payload) {
@@ -354,6 +385,61 @@
 
     staffLogin: function (pin) {
       return apiCall('staff-login', 'POST', { pin: pin });
+    },
+
+    appointmentCheckin: function (payload) {
+      return apiCall('appointment-checkin', 'POST', payload);
+    },
+
+    hisAppointmentSync: function (payload) {
+      return apiCall('his-appointment-sync', 'POST', payload);
+    },
+
+    listKiosks: function (params) {
+      return apiCall('list-kiosks', 'GET', null, params);
+    },
+
+    upsertKiosk: function (payload) {
+      return apiCall('upsert-kiosk', 'POST', payload);
+    },
+
+    rotateKioskToken: function (kioskId) {
+      return apiCall('rotate-kiosk-token', 'POST', { kioskId: kioskId });
+    },
+
+    getBillingSummary: function () {
+      return apiCall('billing-summary', 'GET');
+    },
+
+    purchaseExtraZones: function (quantity) {
+      return apiCall('purchase-extra-zones', 'POST', { quantity: quantity || 1 });
+    },
+
+    enableOnPremiseAddon: function (hardwareFingerprint) {
+      return apiCall('enable-on-premise-addon', 'POST', { hardwareFingerprint: hardwareFingerprint || null });
+    },
+
+    setKioskToken: function (token) {
+      try {
+        if (token) {
+          sessionStorage.setItem('mken_kiosk_token', token);
+        } else {
+          sessionStorage.removeItem('mken_kiosk_token');
+        }
+      } catch (e) {}
+    },
+
+    getDeviceId: function () {
+      try {
+        var devId = localStorage.getItem('mken_device_id');
+        if (!devId) {
+          devId = 'dev-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now();
+          localStorage.setItem('mken_device_id', devId);
+        }
+        return devId;
+      } catch (e) {
+        return null;
+      }
     },
 
     listenToEvents: listenToEvents

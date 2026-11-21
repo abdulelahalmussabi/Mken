@@ -31,7 +31,7 @@
       padding: 0;
       background-color: var(--disp-bg);
       color: var(--disp-text);
-      font-family: 'IBM Plex Sans Arabic', -apple-system, sans-serif;
+      font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, Arial, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -373,19 +373,34 @@
       setInterval(updateClock, 1000);
       updateClock();
 
-      // 2. Setup Brand & QR
-      var currentTenant = queueStore.getTenantSlug();
-      var store = window.MkenServicesStore;
-      if (store && typeof store.loadConfig === 'function') {
-        var cfg = store.loadConfig();
-        if (cfg && cfg.brand) {
-          if (cfg.brand.name && dispTitle) dispTitle.textContent = cfg.brand.name + ' | صالة الخدمة';
-          if (cfg.brand.logo && dispLogo) dispLogo.src = cfg.brand.logo;
-        }
+      // 2. Setup Brand & QR & Multi-Zone Scope
+      var urlParams = new URLSearchParams(window.location.search);
+      var targetBranch = urlParams.get('branch') || 'default';
+      var targetZone = urlParams.get('zone');
+      var targetCountersParam = urlParams.get('counters');
+      var targetCounters = targetCountersParam
+        ? targetCountersParam.split(',').map(function (s) { return s.trim(); }).filter(Boolean)
+        : null;
+
+      // ضبط نطاق النداء الصوتي للشاشة
+      if (window.MkenQueueAnnouncer && typeof window.MkenQueueAnnouncer.setScope === 'function') {
+        window.MkenQueueAnnouncer.setScope({
+          zoneId: targetZone,
+          counters: targetCounters
+        });
       }
 
-      // QR stays on this host so the server resolves the tenant. No ?tenant=default.
-      var queueUrl = window.location.origin + '/queue/scan';
+      var currentTenant = queueStore.getTenantSlug();
+      var store = window.MkenServicesStore;
+      var cfg = (store && typeof store.loadConfig === 'function') ? store.loadConfig() : null;
+      if (cfg && cfg.brand) {
+        if (cfg.brand.name && dispTitle) dispTitle.textContent = cfg.brand.name + ' | صالة الخدمة';
+        if (cfg.brand.logo && dispLogo) dispLogo.src = cfg.brand.logo;
+      }
+
+      // QR Code يوجّه مباشرة لحجز التذكرة لنفس الفرع والمنطقة المحددة
+      var queueUrl = window.location.origin + '/queue.html?branch=' + encodeURIComponent(targetBranch) +
+        (targetZone ? '&zone=' + encodeURIComponent(targetZone) : '');
       if (qrDisplayImg) {
         qrDisplayImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=2&data=' + encodeURIComponent(queueUrl);
       }
@@ -418,12 +433,22 @@
 
       // 4. Fetch & Render Data
       function refreshDisplay() {
-        queueStore.getConfig().then(function (res) {
+        var queryParams = { branchId: targetBranch };
+        if (targetZone) queryParams.zoneId = targetZone;
+
+        queueStore.getConfig(queryParams).then(function (res) {
           if (!res.ok) return;
+          if (res.zone && res.zone.name && dispTitle) {
+            var brandName = (cfg && cfg.brand && cfg.brand.name) ? cfg.brand.name : 'صالة الخدمة';
+            dispTitle.textContent = brandName + ' | ' + res.zone.name + (res.zone.floor_or_building ? ' (' + res.zone.floor_or_building + ')' : '');
+          } else if (targetZone && dispTitle) {
+            var brandName = (cfg && cfg.brand && cfg.brand.name) ? cfg.brand.name : 'صالة الخدمة';
+            dispTitle.textContent = brandName + ' | ' + targetZone;
+          }
           renderCounters(res.counters || [], res.queues || []);
         });
 
-        queueStore.listQueues().then(function (res) {
+        queueStore.listQueues(queryParams).then(function (res) {
           if (!res.ok || !res.queues) return;
           // Render waiting count and anonymous ticket pills (Clean Token Display - PDPL Compliant)
           var totalWaiting = 0;
@@ -449,6 +474,16 @@
 
       function renderCounters(counters, queues) {
         if (!countersContainer) return;
+
+        // فلترة الكاونترات المحددة لشاشات الممرات الخاصة
+        if (targetCounters && targetCounters.length > 0) {
+          counters = counters.filter(function (c) {
+            return targetCounters.indexOf(String(c.counter_number)) !== -1 ||
+                   targetCounters.indexOf(String(c.id)) !== -1 ||
+                   targetCounters.indexOf(String(c.name)) !== -1;
+          });
+        }
+
         if (!counters.length) {
           countersContainer.innerHTML = '<div style="color:var(--disp-text-dim); padding:20px;">لا توجد كاونترات مهيأة حالياً.</div>';
           return;
@@ -471,7 +506,10 @@
             var ticketNumToAnnounce = c.current_ticket_number;
             if (window.MkenQueueAnnouncer && ticketNumToAnnounce) {
               setTimeout(function () {
-                MkenQueueAnnouncer.announceTicket(ticketNumToAnnounce, c.name || c.counter_number);
+                MkenQueueAnnouncer.announceTicket(ticketNumToAnnounce, c.name || c.counter_number, {
+                  counterId: c.id,
+                  zoneId: c.zone_id || (assignedQueue ? assignedQueue.zone_id : null)
+                });
               }, 1200);
             }
           }
@@ -552,10 +590,13 @@
       setInterval(pollGate, 15000);
 
       queueStore.listenToEvents(function (evt) {
-        if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed', 'config_updated'].indexOf(evt) !== -1) {
+        if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed', 'config_updated', 'ticket_transferred'].indexOf(evt) !== -1) {
           refreshDisplay();
           pollGate();
         }
+      }, null, {
+        branchId: targetBranch,
+        zoneId: targetZone
       });
 
     })();

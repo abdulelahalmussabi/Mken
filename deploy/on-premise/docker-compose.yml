@@ -1,0 +1,134 @@
+# =====================================================================
+# منصة مَكَن (Mken Platform) - حزمة التشغيل المحلي المؤسسي المستقل
+# docker-compose.yml: 4 Containers On-Premise Stack
+# 1. mken-app: تطبيق Node.js / Next.js
+# 2. mken-db: قاعدة بيانات PostgreSQL 16
+# 3. mken-pgbouncer: موزع اتصالات عالي الأداء (Transaction Pooling)
+# 4. mken-nginx: بوابة عكسية مع بث لحظي SSE بدون تخزين مؤقت
+# =====================================================================
+
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # 1. خادم التطبيق والواجهات ومحرك الطابور الذكي (Mken Application)
+  # -------------------------------------------------------------
+  mken-app:
+    build:
+      context: ../../
+      dockerfile: deploy/on-premise/Dockerfile
+    image: mken/onprem-app:latest
+    container_name: mken-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DEPLOYMENT_MODE=on_premise
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - QUEUE_DATABASE_URL=postgres://${DB_USER:-mken_admin}:${DB_PASSWORD:-MkenSecurePass2026!}@mken-pgbouncer:6432/${DB_NAME:-mken_onprem}?sslmode=disable
+      - ONPREM_LICENSE_KEY=${ONPREM_LICENSE_KEY}
+      - NATIONAL_ID_HMAC_SECRET=${NATIONAL_ID_HMAC_SECRET:-mken_secret_hmac_2026}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-mken_admin_secret_session}
+      - OFFLINE_PRAYER_CITY=${OFFLINE_PRAYER_CITY:-Madinah}
+      - HOSPITAL_NAME=${HOSPITAL_NAME:-المنشأة الطبية التخصصية}
+      - TENANT_SLUG=${TENANT_SLUG:-hospital-enterprise}
+    depends_on:
+      mken-pgbouncer:
+        condition: service_healthy
+    networks:
+      - mken-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/queue?action=public-gate"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # -------------------------------------------------------------
+  # 2. قاعدة البيانات المحلية المستقلة (PostgreSQL 16 Alpine)
+  # -------------------------------------------------------------
+  mken-db:
+    image: postgres:16-alpine
+    container_name: mken-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-mken_onprem}
+      - POSTGRES_USER=${DB_USER:-mken_admin}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-MkenSecurePass2026!}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - mken_pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - mken-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mken_admin} -d ${DB_NAME:-mken_onprem}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -------------------------------------------------------------
+  # 3. موزع الاتصالات عالي الأداء (PgBouncer Connection Pooler)
+  # لاستيعاب مئات العيادات والكاونترات المتزامنة بوضع Transaction Pooling
+  # -------------------------------------------------------------
+  mken-pgbouncer:
+    image: edoburu/pgbouncer:v1.22.0
+    container_name: mken-pgbouncer
+    restart: unless-stopped
+    environment:
+      - DB_USER=${DB_USER:-mken_admin}
+      - DB_PASSWORD=${DB_PASSWORD:-MkenSecurePass2026!}
+      - DB_HOST=mken-db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-mken_onprem}
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=1200
+      - DEFAULT_POOL_SIZE=60
+      - MIN_POOL_SIZE=10
+      - RESERVE_POOL_SIZE=15
+      - SERVER_RESET_QUERY=DISCARD ALL
+      - AUTH_TYPE=scram-sha-256
+    depends_on:
+      mken-db:
+        condition: service_healthy
+    networks:
+      - mken-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U ${DB_USER:-mken_admin} -d ${DB_NAME:-mken_onprem}"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+
+  # -------------------------------------------------------------
+  # 4. البوابة العكسية مع دعم التشفير و SSE اللحظي (Nginx Reverse Proxy)
+  # -------------------------------------------------------------
+  mken-nginx:
+    image: nginx:1.25-alpine
+    container_name: mken-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      mken-app:
+        condition: service_healthy
+    networks:
+      - mken-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  mken-network:
+    name: mken-internal-net
+    driver: bridge
+
+volumes:
+  mken_pgdata:
+    name: mken_onprem_pgdata

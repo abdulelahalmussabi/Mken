@@ -4,7 +4,6 @@
 
 'use strict';
 
-const { createClient } = require('@supabase/supabase-js');
 const sbEnv = require('./_lib/supabase-env');
 
 // مخزن تدقيق محلي لحفظ سجلات امتثال PDPL في حال انقطاع السحابة
@@ -27,6 +26,7 @@ async function executePdplAnonymization(tenantSlug = 'default', retentionDays = 
 
   if (supabaseUrl && serviceKey) {
     try {
+      const { createClient } = require('@supabase/supabase-js');
       const sb = createClient(supabaseUrl, serviceKey, {
         auth: { persistSession: false, autoRefreshToken: false }
       });
@@ -56,6 +56,46 @@ async function executePdplAnonymization(tenantSlug = 'default', retentionDays = 
       console.warn('[PDPL DB Execution Warning]', dbErr.message);
       result.db_error = dbErr.message;
     }
+  }
+
+  // دعم بيئة الذاكرة المؤقتة والاختبارات (In-Memory Fallback & Test Execution)
+  try {
+    const queueModule = require('./queue');
+    if (queueModule && queueModule._memory) {
+      const tickets = queueModule._memory.tickets?.[tenantSlug] || [];
+      const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+      let memAffected = 0;
+      for (const t of tickets) {
+        const ticketTime = new Date(t.created_at || t.issued_at || 0).getTime();
+        const isExpired = retentionDays <= 0 || ticketTime < cutoffTime;
+        if (isExpired && ['completed', 'cancelled', 'no_show'].includes(t.status)) {
+          t.customer_name = '***';
+          t.phone_number = '***';
+          t.identity_last4 = null;
+          t.device_id = null;
+          t.national_id_hash = null;
+          memAffected++;
+        }
+      }
+      if (memAffected > 0 && result.records_anonymized === 0) {
+        result.records_anonymized = memAffected;
+      }
+      if (!queueModule._memory.auditLogs) queueModule._memory.auditLogs = {};
+      if (!queueModule._memory.auditLogs[tenantSlug]) queueModule._memory.auditLogs[tenantSlug] = [];
+      queueModule._memory.auditLogs[tenantSlug].push({
+        id: 'audit-pdpl-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        tenant_slug: tenantSlug,
+        action: 'pdpl_anonymization',
+        details: {
+          retention_days: retentionDays,
+          anonymized_count: result.records_anonymized,
+          executed_by: 'cron_scheduler'
+        },
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (_memErr) {
+    // تجاهل في حال عدم توفر الموديول
   }
 
   // تسجيل العملية محلياً

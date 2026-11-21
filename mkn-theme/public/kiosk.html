@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>كشك الخدمة الذاتية — نظام الطوابير الذكي | منصة مكّن</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --primary-light: #e0f2fe;
+      --accent: #10b981;
+      --accent-dark: #059669;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 20px 30px -10px rgba(0, 0, 0, 0.1), 0 10px 15px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* KIOSK HEADER */
+    header {
+      background: #ffffff;
+      border-bottom: 2px solid var(--border);
+      padding: 24px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .brand-logo {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 28px;
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .brand-text p {
+      font-size: 16px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .kiosk-meta {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .zone-pill {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 10px 22px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 16px;
+      border: 1px solid rgba(2, 132, 199, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .zone-pill::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .live-clock {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1px;
+    }
+
+    /* CONTAINER & VIEWS */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .kiosk-view {
+      display: none;
+      width: 100%;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .kiosk-view.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* VIEW 1: WELCOME SCREEN */
+    .welcome-title {
+      font-size: 38px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .welcome-subtitle {
+      font-size: 20px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .mode-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 36px;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .mode-card {
+      background: var(--card-bg);
+      border: 3px solid var(--border);
+      border-radius: 28px;
+      padding: 50px 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mode-card:active, .mode-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mode-card.appointment-card:hover {
+      border-color: var(--accent);
+    }
+
+    .card-icon {
+      width: 110px;
+      height: 110px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 52px;
+      margin-bottom: 28px;
+    }
+
+    .appointment-card .card-icon {
+      background: #ecfdf5;
+      color: var(--accent-dark);
+      border: 2px solid #a7f3d0;
+    }
+
+    .walkin-card .card-icon {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: 2px solid #bae6fd;
+    }
+
+    .card-title {
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .card-desc {
+      font-size: 18px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .card-badge {
+      margin-top: 24px;
+      padding: 8px 18px;
+      background: #f1f5f9;
+      border-radius: 9999px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* VIEW 2: CHECK-IN / APPOINTMENT */
+    .checkin-container {
+      width: 100%;
+      max-width: 600px;
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 32px;
+      padding: 40px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .checkin-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .checkin-header h2 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .checkin-header p {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    .id-display-box {
+      width: 100%;
+      background: #f8fafc;
+      border: 3px solid var(--primary);
+      border-radius: 20px;
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .id-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: var(--text);
+      direction: ltr;
+    }
+
+    .id-placeholder {
+      font-size: 20px;
+      color: #94a3b8;
+      letter-spacing: 1px;
+    }
+
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      margin-bottom: 24px;
+    }
+
+    .key-btn {
+      background: #ffffff;
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      height: 76px;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+      transition: all 0.15s ease;
+    }
+
+    .key-btn:active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      transform: scale(0.96);
+    }
+
+    .key-action {
+      background: #f1f5f9;
+      font-size: 20px;
+      color: var(--text-muted);
+    }
+
+    .action-row {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .btn-submit {
+      flex: 2;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: white;
+      border: none;
+      border-radius: 20px;
+      height: 72px;
+      font-size: 22px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.97);
+    }
+
+    .btn-back {
+      flex: 1;
+      background: #e2e8f0;
+      color: #475569;
+      border: none;
+      border-radius: 20px;
+      height: 72px;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* VIEW 3: WALK-IN CLINICS GRID */
+    .clinics-container {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .section-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 30px;
+    }
+
+    .clinics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      width: 100%;
+    }
+
+    .clinic-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 30px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow);
+      min-height: 180px;
+    }
+
+    .clinic-card:active, .clinic-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .clinic-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .clinic-prefix {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 12px;
+      width: fit-content;
+    }
+
+    .clinic-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border);
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    .clinic-meta strong {
+      color: var(--text);
+    }
+
+    /* VIEW 4: TICKET CONFIRMATION & PRINT */
+    .ticket-view-card {
+      background: var(--card-bg);
+      border: 3px solid var(--border);
+      border-radius: 36px;
+      padding: 48px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    .success-badge {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #ecfdf5;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin-bottom: 20px;
+      border: 3px solid #a7f3d0;
+    }
+
+    .ticket-code-banner {
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      padding: 12px 36px;
+      border-radius: 24px;
+      border: 2px dashed var(--primary);
+      margin: 16px 0 24px 0;
+      width: 100%;
+    }
+
+    .ticket-details-box {
+      width: 100%;
+      background: #f8fafc;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 28px;
+      text-align: right;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 17px;
+    }
+
+    .detail-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+    }
+
+    .detail-val {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .reset-progress-container {
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+
+    .reset-progress-bar {
+      height: 100%;
+      background: var(--primary);
+      width: 100%;
+      transition: width 1s linear;
+    }
+
+    .auto-reset-notice {
+      margin-top: 14px;
+      font-size: 16px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* ZERO-PII NOTICE FOOTER */
+    footer {
+      padding: 18px 48px;
+      background: #ffffff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .pdpl-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: #059669;
+    }
+
+    /* TOAST / ALERTS */
+    .toast-banner {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #ffffff;
+      padding: 18px 32px;
+      border-radius: 20px;
+      font-size: 18px;
+      font-weight: 700;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 1000;
+      display: none;
+      animation: slideDown 0.3s ease;
+    }
+
+    .toast-banner.error {
+      background: #dc2626;
+    }
+
+    .toast-banner.warning {
+      background: #d97706;
+    }
+
+    .toast-banner.success {
+      background: #059669;
+    }
+
+    @keyframes slideDown {
+      from { transform: translate(-50%, -20px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- KIOSK HEADER -->
+  <header>
+    <div class="brand-section">
+      <div class="brand-logo" id="brandLogo">مـ</div>
+      <div class="brand-text">
+        <h1 id="tenantTitle">نظام الطابور الذكي</h1>
+        <p id="branchTitle">الفرع الرئيسي</p>
+      </div>
+    </div>
+    <div class="kiosk-meta">
+      <div class="zone-pill" id="zoneBadge">منطقة الاستقبال: الافتراضية</div>
+      <div class="live-clock" id="liveClock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- NOTIFICATION BANNER -->
+  <div class="toast-banner" id="toastBanner"></div>
+
+  <!-- HIDDEN BARCODE INPUT -->
+  <input type="text" id="barcodeScannerInput" style="position: absolute; opacity: 0; pointer-events: none;" autofocus autocomplete="off">
+
+  <!-- MAIN KIOSK SCREENS -->
+  <main>
+
+    <!-- SCREEN 1: WELCOME & SELECTION -->
+    <section class="kiosk-view active" id="viewWelcome">
+      <h2 class="welcome-title">مرحباً بكم</h2>
+      <p class="welcome-subtitle">يرجى اختيار نوع الزيارة لإصدار تذكرتكم والبدء في تقديم الخدمة</p>
+
+      <div class="mode-cards">
+        <!-- CARD A: APPOINTMENT CHECK-IN -->
+        <div class="mode-card appointment-card" id="btnModeAppointment">
+          <div class="card-icon">📅</div>
+          <h3 class="card-title">لدي موعد مسبق</h3>
+          <p class="card-desc">تسجيل الوصول الذاتي الفوري لموعدك المجدول بالهوية الوطنية أو رمز الحجز</p>
+          <div class="card-badge">أولوية الخدمة للمواعيد المؤكدة</div>
+        </div>
+
+        <!-- CARD B: WALK-IN CLINIC -->
+        <div class="mode-card walkin-card" id="btnModeWalkin">
+          <div class="card-icon">👥</div>
+          <h3 class="card-title">زيارة بدون موعد</h3>
+          <p class="card-desc">سحب تذكرة انتظار مباشرة للعيادات والأقسام المتاحة في منطقة الاستقبال</p>
+          <div class="card-badge">طابور عادي وفق التوافر</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: APPOINTMENT CHECK-IN -->
+    <section class="kiosk-view" id="viewCheckin">
+      <div class="checkin-container">
+        <div class="checkin-header">
+          <h2>تسجيل وصول الموعد</h2>
+          <p>أدخل رقم الهوية / الإقامة أو امسح باركود الموعد عبر القارئ</p>
+        </div>
+
+        <div class="id-display-box">
+          <span class="id-value" id="idDisplayValue"></span>
+          <span class="id-placeholder" id="idPlaceholder">رقم الهوية الوطنية / الإقامة (10 أرقام)</span>
+        </div>
+
+        <!-- TOUCH KEYPAD -->
+        <div class="keypad-grid">
+          <button class="key-btn" data-key="1">1</button>
+          <button class="key-btn" data-key="2">2</button>
+          <button class="key-btn" data-key="3">3</button>
+          <button class="key-btn" data-key="4">4</button>
+          <button class="key-btn" data-key="5">5</button>
+          <button class="key-btn" data-key="6">6</button>
+          <button class="key-btn" data-key="7">7</button>
+          <button class="key-btn" data-key="8">8</button>
+          <button class="key-btn" data-key="9">9</button>
+          <button class="key-btn key-action" id="btnClearKey">مسح</button>
+          <button class="key-btn" data-key="0">0</button>
+          <button class="key-btn key-action" id="btnBackspaceKey">⌫</button>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-submit" id="btnSubmitCheckin">تأكيد تسجيل الوصول</button>
+          <button class="btn-back" id="btnBackFromCheckin">رجوع</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: WALK-IN CLINICS -->
+    <section class="kiosk-view" id="viewWalkin">
+      <div class="clinics-container">
+        <div class="section-nav">
+          <div>
+            <h2 style="font-size: 28px; font-weight: 800;">اختر العيادة أو القسم المطلوب</h2>
+            <p style="font-size: 16px; color: var(--text-muted);">انقر على القسم المطلوب لإصدار تذكرتك فوراً</p>
+          </div>
+          <button class="btn-back" id="btnBackFromWalkin" style="height: 56px; padding: 0 28px;">رجوع للرئيسية</button>
+        </div>
+
+        <div class="clinics-grid" id="clinicsGridContainer">
+          <!-- Dynamic Clinic Cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: TICKET CONFIRMATION & PRINT -->
+    <section class="kiosk-view" id="viewTicket">
+      <div class="ticket-view-card">
+        <div class="success-badge">✓</div>
+        <h2 style="font-size: 26px; font-weight: 800; margin-bottom: 4px;">تم إصدار التذكرة بنجاح</h2>
+        <p style="font-size: 16px; color: var(--text-muted);" id="ticketSubtitle">يرجى أخذ التذكرة المطبوعة ومتابعة شاشة النداء</p>
+
+        <div class="ticket-code-banner" id="ticketCodeDisplay">A-000</div>
+
+        <div class="ticket-details-box">
+          <div class="detail-row">
+            <span class="detail-label">العيادة / الخدمة:</span>
+            <span class="detail-val" id="ticketServiceName">--</span>
+          </div>
+          <div class="detail-row" id="ticketAppointmentRow" style="display: none;">
+            <span class="detail-label">وقت الموعد:</span>
+            <span class="detail-val" id="ticketScheduledTime">--</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">نوع التذكرة:</span>
+            <span class="detail-val" id="ticketPriorityType">طابور عادي</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">المنتظرون قبلك:</span>
+            <span class="detail-val" id="ticketWaitingCount">0</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">وقت الانتظار المتوقع:</span>
+            <span class="detail-val" id="ticketEstWait">--</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 14px; width: 100%;">
+          <button class="btn-submit" id="btnPrintManual" style="flex: 1; height: 58px; font-size: 18px;">طباعة التذكرة 🖨️</button>
+          <button class="btn-back" id="btnDoneFinish" style="flex: 1; height: 58px; font-size: 18px;">إنهاء الآن</button>
+        </div>
+
+        <div class="reset-progress-container">
+          <div class="reset-progress-bar" id="resetProgressBar"></div>
+        </div>
+        <div class="auto-reset-notice">
+          العودة التلقائية للشاشة الرئيسية بعد <span id="resetSecondsCount">8</span> ثوانٍ
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- KIOSK FOOTER -->
+  <footer>
+    <div class="pdpl-tag">
+      🛡️ خصوصية وأمان تام (Zero-PII & PDPL Compliant) — لا يتم حفظ أرقام الهوية أو بيانات التواصل الحساسة
+    </div>
+    <div>
+      منصة مكّن لإدارة المنشآت والخدمات الذاتية &copy; <span id="copyrightYear">2026</span>
+    </div>
+  </footer>
+
+  <!-- SCRIPTS -->
+  <script src="/js/esc-pos-printer.js"></script>
+  <script src="/js/queue-store.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // ==========================================
+      // STATE & PARAMS INITIALIZATION
+      // ==========================================
+      var urlParams = new URLSearchParams(window.location.search);
+      var kioskToken = urlParams.get('token') || urlParams.get('kiosk_token') || sessionStorage.getItem('mken_kiosk_token');
+      var zoneParam = urlParams.get('zone') || urlParams.get('zoneId') || urlParams.get('zoneCode') || null;
+      var branchParam = urlParams.get('branch') || urlParams.get('branchId') || null;
+
+      if (kioskToken) {
+        window.MkenQueueStore.setKioskToken(kioskToken);
+      }
+
+      var currentZone = null;
+      var currentConfig = null;
+      var rawNationalIdBuffer = '';
+      var autoResetTimer = null;
+      var autoResetInterval = null;
+      var inactivityTimer = null;
+      var INACTIVITY_LIMIT_SEC = 30;
+      var AUTO_RESET_SEC = 8;
+      var currentIssuedTicket = null;
+
+      // DOM ELEMENTS
+      var views = {
+        welcome: document.getElementById('viewWelcome'),
+        checkin: document.getElementById('viewCheckin'),
+        walkin: document.getElementById('viewWalkin'),
+        ticket: document.getElementById('viewTicket')
+      };
+
+      var dom = {
+        clock: document.getElementById('liveClock'),
+        zoneBadge: document.getElementById('zoneBadge'),
+        tenantTitle: document.getElementById('tenantTitle'),
+        branchTitle: document.getElementById('branchTitle'),
+        brandLogo: document.getElementById('brandLogo'),
+        toast: document.getElementById('toastBanner'),
+        idDisplay: document.getElementById('idDisplayValue'),
+        idPlaceholder: document.getElementById('idPlaceholder'),
+        barcodeInput: document.getElementById('barcodeScannerInput'),
+        clinicsGrid: document.getElementById('clinicsGridContainer'),
+        ticketCode: document.getElementById('ticketCodeDisplay'),
+        ticketService: document.getElementById('ticketServiceName'),
+        ticketAppointmentRow: document.getElementById('ticketAppointmentRow'),
+        ticketScheduledTime: document.getElementById('ticketScheduledTime'),
+        ticketPriority: document.getElementById('ticketPriorityType'),
+        ticketWaiting: document.getElementById('ticketWaitingCount'),
+        ticketEstWait: document.getElementById('ticketEstWait'),
+        resetBar: document.getElementById('resetProgressBar'),
+        resetCount: document.getElementById('resetSecondsCount')
+      };
+
+      // LIVE CLOCK
+      function updateClock() {
+        var now = new Date();
+        dom.clock.textContent = now.toLocaleTimeString('ar-SA', { hour12: false });
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // TOAST NOTIFICATIONS
+      function showToast(message, type, durationMs) {
+        dom.toast.textContent = message;
+        dom.toast.className = 'toast-banner ' + (type || 'info');
+        dom.toast.style.display = 'block';
+        setTimeout(function () {
+          dom.toast.style.display = 'none';
+        }, durationMs || 4000);
+      }
+
+      // VIEW SWITCHER
+      function showView(viewName) {
+        Object.keys(views).forEach(function (k) {
+          views[k].classList.remove('active');
+        });
+        if (views[viewName]) {
+          views[viewName].classList.add('active');
+        }
+
+        // Reset inactivity timer on screen changes
+        resetInactivityTimer();
+
+        if (viewName === 'welcome') {
+          clearCheckinInput();
+          stopAutoReset();
+        } else if (viewName === 'checkin') {
+          dom.barcodeInput.value = '';
+          dom.barcodeInput.focus();
+        } else if (viewName === 'ticket') {
+          startAutoReset();
+        }
+      }
+
+      // INACTIVITY AUTO-RESET (Protection against abandoned screens)
+      function resetInactivityTimer() {
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        // Only active on checkin or walkin views
+        if (views.checkin.classList.contains('active') || views.walkin.classList.contains('active')) {
+          inactivityTimer = setTimeout(function () {
+            showToast('تمت العودة للرئيسية لعدم التفاعل', 'info', 2500);
+            showView('welcome');
+          }, INACTIVITY_LIMIT_SEC * 1000);
+        }
+      }
+
+      document.addEventListener('touchstart', resetInactivityTimer, { passive: true });
+      document.addEventListener('mousedown', resetInactivityTimer);
+
+      // ==========================================
+      // CHECK-IN KEYPAD & ZERO-PII INPUT HANDLING
+      // ==========================================
+      function updateIdDisplay() {
+        if (rawNationalIdBuffer.length > 0) {
+          // Zero-PII Visual Masking: mask all except last 3 or show asterisks with bullet dots
+          var len = rawNationalIdBuffer.length;
+          var masked = '';
+          for (var i = 0; i < len - 3; i++) {
+            masked += '•';
+          }
+          masked += rawNationalIdBuffer.slice(Math.max(0, len - 3));
+          dom.idDisplay.textContent = masked;
+          dom.idDisplay.style.display = 'inline';
+          dom.idPlaceholder.style.display = 'none';
+        } else {
+          dom.idDisplay.textContent = '';
+          dom.idDisplay.style.display = 'none';
+          dom.idPlaceholder.style.display = 'inline';
+        }
+      }
+
+      function clearCheckinInput() {
+        rawNationalIdBuffer = '';
+        updateIdDisplay();
+        dom.barcodeInput.value = '';
+      }
+
+      // Numeric buttons
+      document.querySelectorAll('.key-btn[data-key]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var k = btn.getAttribute('data-key');
+          if (rawNationalIdBuffer.length < 15) {
+            rawNationalIdBuffer += k;
+            updateIdDisplay();
+          }
+        });
+      });
+
+      // Clear & Backspace
+      document.getElementById('btnClearKey').addEventListener('click', function () {
+        clearCheckinInput();
+      });
+
+      document.getElementById('btnBackspaceKey').addEventListener('click', function () {
+        if (rawNationalIdBuffer.length > 0) {
+          rawNationalIdBuffer = rawNationalIdBuffer.slice(0, -1);
+          updateIdDisplay();
+        }
+      });
+
+      // BARCODE SCANNER LISTENER (Captures rapid key sequences ending in Enter)
+      var barcodeBuffer = '';
+      var lastKeyTime = Date.now();
+      document.addEventListener('keydown', function (e) {
+        var now = Date.now();
+        if (now - lastKeyTime > 150) {
+          barcodeBuffer = '';
+        }
+        lastKeyTime = now;
+
+        if (e.key === 'Enter') {
+          if (barcodeBuffer.length >= 4) {
+            handleBarcodeScan(barcodeBuffer);
+            barcodeBuffer = '';
+            e.preventDefault();
+          }
+        } else if (e.key && e.key.length === 1) {
+          barcodeBuffer += e.key;
+        }
+      });
+
+      function handleBarcodeScan(code) {
+        showToast('تم مسح الرمز: ' + code, 'info', 2000);
+        executeCheckin({ barcode: code.trim() });
+      }
+
+      // CONFIRM CHECK-IN ACTION
+      document.getElementById('btnSubmitCheckin').addEventListener('click', function () {
+        var idVal = rawNationalIdBuffer.trim();
+        if (!idVal || idVal.length < 5) {
+          showToast('يرجى إدخال رقم هوية أو إقامة صالح (10 أرقام على الأقل)', 'warning');
+          return;
+        }
+        executeCheckin({ nationalId: idVal });
+      });
+
+      function executeCheckin(payload) {
+        payload.zoneId = zoneParam || (currentZone ? currentZone.id : null);
+        payload.branchId = branchParam || null;
+        payload.source_channel = 'kiosk';
+
+        dom.idDisplay.textContent = 'جارِ التحقق...';
+        window.MkenQueueStore.appointmentCheckin(payload)
+          .then(function (res) {
+            clearCheckinInput();
+            if (res.ok && res.ticket) {
+              if (res.isExisting) {
+                showToast('لديك تذكرة سابقة نشطة بالفعل لموعدك', 'info');
+              } else if (res.warning) {
+                showToast(res.message || 'تم تسجيل الحضور كطابور قياسي', 'warning', 5000);
+              } else {
+                showToast('تم التحقق من الموعد وتأكيد الحضور بنجاح!', 'success');
+              }
+              displayTicket(res.ticket, res.appointment);
+            } else {
+              showToast(res.error || 'فشل التحقق من الموعد', 'error');
+              updateIdDisplay();
+            }
+          })
+          .catch(function (err) {
+            clearCheckinInput();
+            showToast(err.message || 'لم يتم العثور على موعد مطابق لرقم الهوية المدخل', 'error', 4500);
+          });
+      }
+
+      // ==========================================
+      // WALK-IN ACTIONS & CLINICS LIST
+      // ==========================================
+      function renderClinics() {
+        dom.clinicsGrid.innerHTML = '';
+        if (!currentConfig || !Array.isArray(currentConfig.queues) || currentConfig.queues.length === 0) {
+          dom.clinicsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; font-size: 18px; color: var(--text-muted);">لا توجد عيادات مفعلة حالياً في هذه المنطقة</div>';
+          return;
+        }
+
+        var availableQueues = currentConfig.queues.filter(function (q) {
+          return q.is_active !== false;
+        });
+
+        // Filter by zone if kiosk belongs to specific zone
+        if (currentZone && currentZone.id) {
+          var filtered = availableQueues.filter(function (q) {
+            return !q.zone_id || q.zone_id === currentZone.id;
+          });
+          if (filtered.length > 0) availableQueues = filtered;
+        }
+
+        availableQueues.forEach(function (q) {
+          var card = document.createElement('div');
+          card.className = 'clinic-card';
+          var waitMinutes = q.estimatedWaitMinutes || q.avg_wait_minutes || 5;
+          var waitingCount = q.waiting_count || 0;
+
+          card.innerHTML = 
+            '<div>' +
+              '<span class="clinic-prefix">كود: ' + (q.prefix || 'Q') + '</span>' +
+              '<h3 class="clinic-title">' + (q.name || 'عيادة عامة') + '</h3>' +
+              '<p style="font-size: 14px; color: var(--text-muted);">' + (q.description || 'خدمة مباشرة بدون موعد') + '</p>' +
+            '</div>' +
+            '<div class="clinic-meta">' +
+              '<span>في الانتظار: <strong>' + waitingCount + '</strong></span>' +
+              '<span>الوقت المتوقع: <strong>' + waitMinutes + ' دقيقة</strong></span>' +
+            '</div>';
+
+          card.addEventListener('click', function () {
+            joinWalkinQueue(q.id);
+          });
+
+          dom.clinicsGrid.appendChild(card);
+        });
+      }
+
+      function joinWalkinQueue(queueId) {
+        var payload = {
+          queueId: queueId,
+          source_channel: 'kiosk',
+          branchId: branchParam || null,
+          zoneId: zoneParam || (currentZone ? currentZone.id : null)
+        };
+
+        window.MkenQueueStore.joinQueue(payload)
+          .then(function (res) {
+            if (res.ok && res.ticket) {
+              showToast('تم إصدار تذكرة الانتظار بنجاح', 'success');
+              displayTicket(res.ticket, null);
+            } else if (res.ok && Array.isArray(res.tickets) && res.tickets[0]) {
+              showToast('تم إصدار تذكرة الانتظار بنجاح', 'success');
+              displayTicket(res.tickets[0], null);
+            } else {
+              showToast(res.error || 'تعذر إصدار التذكرة حالياً', 'error');
+            }
+          })
+          .catch(function (err) {
+            showToast(err.message || 'حدث خطأ أثناء إصدار التذكرة', 'error');
+          });
+      }
+
+      // ==========================================
+      // TICKET DISPLAY & ESC/POS PRINTING
+      // ==========================================
+      function displayTicket(ticket, appointment) {
+        currentIssuedTicket = ticket;
+        dom.ticketCode.textContent = ticket.ticket_number || ticket.ticketNumber || ticket.code || 'A-001';
+        dom.ticketService.textContent = ticket.service_name || ticket.queue_name || 'الاستقبال العام';
+        dom.ticketWaiting.textContent = ticket.waiting_count || ticket.position || 0;
+        dom.ticketEstWait.textContent = (ticket.estimated_wait_minutes || ticket.waitMinutes || 5) + ' دقيقة';
+
+        if (ticket.priority_level === 'scheduled_appointment' || ticket.appointment_id) {
+          dom.ticketAppointmentRow.style.display = 'flex';
+          var sched = ticket.scheduled_time || (appointment ? appointment.scheduled_time : null);
+          dom.ticketScheduledTime.textContent = sched ? new Date(sched).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : 'مؤكد اليوم';
+          dom.ticketPriority.textContent = 'موعد مسبق (أولوية مجدولة)';
+          dom.ticketPriority.style.color = 'var(--accent-dark)';
+        } else {
+          dom.ticketAppointmentRow.style.display = 'none';
+          dom.ticketPriority.textContent = 'زيارة عادية (FIFO)';
+          dom.ticketPriority.style.color = 'var(--text)';
+        }
+
+        showView('ticket');
+
+        // Silent Thermal Print Trigger (ESC/POS if supported, else silent window.print or virtual)
+        triggerSilentPrint(ticket);
+      }
+
+      function triggerSilentPrint(ticket) {
+        try {
+          if (window.MkenEscPosPrinter && typeof window.MkenEscPosPrinter.printTicket === 'function') {
+            window.MkenEscPosPrinter.printTicket({
+              ticketNumber: ticket.ticket_number,
+              serviceName: ticket.service_name || 'الاستقبال',
+              waitingCount: ticket.waiting_count || 0,
+              tenantTitle: dom.tenantTitle.textContent,
+              branchTitle: dom.branchTitle.textContent,
+              zoneName: dom.zoneBadge.textContent
+            }).catch(function (e) {
+              console.warn('[ESC/POS Printer Fallback]', e);
+            });
+          }
+        } catch (e) {
+          console.warn('[Print Error]', e);
+        }
+      }
+
+      // Manual Print Button
+      document.getElementById('btnPrintManual').addEventListener('click', function () {
+        if (currentIssuedTicket) {
+          triggerSilentPrint(currentIssuedTicket);
+          window.print();
+        }
+      });
+
+      // Done / Finish Early Button
+      document.getElementById('btnDoneFinish').addEventListener('click', function () {
+        showView('welcome');
+      });
+
+      // ==========================================
+      // AUTO-RESET PROGRESS & COUNTDOWN (8 SEC)
+      // ==========================================
+      function startAutoReset() {
+        stopAutoReset();
+        var timeLeft = AUTO_RESET_SEC;
+        dom.resetCount.textContent = timeLeft;
+        dom.resetBar.style.width = '100%';
+
+        autoResetInterval = setInterval(function () {
+          timeLeft--;
+          dom.resetCount.textContent = timeLeft;
+          dom.resetBar.style.width = ((timeLeft / AUTO_RESET_SEC) * 100) + '%';
+
+          if (timeLeft <= 0) {
+            stopAutoReset();
+            showView('welcome');
+          }
+        }, 1000);
+      }
+
+      function stopAutoReset() {
+        if (autoResetInterval) {
+          clearInterval(autoResetInterval);
+          autoResetInterval = null;
+        }
+        if (autoResetTimer) {
+          clearTimeout(autoResetTimer);
+          autoResetTimer = null;
+        }
+      }
+
+      // ==========================================
+      // NAVIGATION BUTTON HANDLERS
+      // ==========================================
+      document.getElementById('btnModeAppointment').addEventListener('click', function () {
+        showView('checkin');
+      });
+
+      document.getElementById('btnModeWalkin').addEventListener('click', function () {
+        renderClinics();
+        showView('walkin');
+      });
+
+      document.getElementById('btnBackFromCheckin').addEventListener('click', function () {
+        showView('welcome');
+      });
+
+      document.getElementById('btnBackFromWalkin').addEventListener('click', function () {
+        showView('welcome');
+      });
+
+      // ==========================================
+      // CONFIG INITIALIZATION & ZONE RESOLUTION
+      // ==========================================
+      function initKioskConfig() {
+        var queryParams = {};
+        if (zoneParam) queryParams.zoneId = zoneParam;
+        if (branchParam) queryParams.branchId = branchParam;
+
+        window.MkenQueueStore.getConfig(queryParams)
+          .then(function (res) {
+            currentConfig = res;
+            if (res.tenant) {
+              dom.tenantTitle.textContent = res.tenant.name || res.tenant.slug || 'المنشأة الذكية';
+              if (res.tenant.logo) dom.brandLogo.innerHTML = '<img src="' + res.tenant.logo + '" style="width:100%;height:100%;border-radius:14px;object-fit:cover;">';
+            }
+            if (res.branch) {
+              dom.branchTitle.textContent = res.branch.name || 'الفرع الرئيسي';
+            }
+            if (res.zone) {
+              currentZone = res.zone;
+              dom.zoneBadge.textContent = 'منطقة: ' + (res.zone.name || res.zone.code || 'المخصصة');
+            } else if (zoneParam) {
+              dom.zoneBadge.textContent = 'منطقة: ' + zoneParam;
+            } else {
+              dom.zoneBadge.textContent = 'جميع مناطق الاستقبال';
+            }
+          })
+          .catch(function (err) {
+            console.warn('[Kiosk Config Warning]', err);
+          });
+      }
+
+      initKioskConfig();
+
+    })();
+  </script>
+</body>
+</html>

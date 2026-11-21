@@ -88,7 +88,10 @@ function migrationSql() {
   const dir = path.join(__dirname, '../../../../../db/migrations');
   return [
     '2026-11-17-queue-postgres-runtime.sql',
-    '2026-11-17-queue-delta-commit.sql'
+    '2026-11-17-queue-delta-commit.sql',
+    '2026-11-22-queue-multi-zone.sql',
+    '2026-11-23-queue-appointments-kiosk.sql',
+    '2026-11-24-enterprise-licensing-zones.sql'
   ].map(function (name) {
     return fs.readFileSync(path.join(dir, name), 'utf8');
   }).join('\n');
@@ -109,7 +112,7 @@ function stableStringify(value) {
 
 function getPool() {
   if (!pool) {
-    const { Pool } = require('pg');
+    const { Pool } = eval("require")('pg');
     pool = new Pool({
       connectionString: process.env.QUEUE_DATABASE_URL,
       max: 24,
@@ -176,11 +179,16 @@ function serialize(slug, db) {
   (db.counters[slug] || []).forEach(function (row) { push('counter', row.id, row); });
   (db.tickets[slug] || []).forEach(function (row) { push('ticket', row.id, row); });
   (db.users[slug] || []).forEach(function (row) { push('user', row.id, row); });
+  (db.zones && db.zones[slug] || []).forEach(function (row) { push('zone', row.id, row); });
+  (db.kiosks && db.kiosks[slug] || []).forEach(function (row) { push('kiosk', row.id, row); });
+  (db.appointments && db.appointments[slug] || []).forEach(function (row) { push('appointment', row.id, row); });
   (db.counterSessions[slug] || []).forEach(function (row) { push('session', row.id, row); });
   (db.agentBreaks[slug] || []).forEach(function (row) { push('break', row.id, row); });
   (db.receptionHandovers[slug] || []).forEach(function (row) { push('handover', row.id, row); });
   (db.serviceLogs[slug] || []).forEach(function (row) { push('log', row.id, row); });
   (db.auditLogs[slug] || []).forEach(function (row) { push('audit', row.id, row); });
+  if (db.entitlements && db.entitlements[slug]) push('entitlement', 'singleton', db.entitlements[slug]);
+  (db.addonInvoices && db.addonInvoices[slug] || []).forEach(function (row) { push('invoice', row.id, row); });
   if (db.settings[slug]) push('settings', 'singleton', db.settings[slug]);
   if (db.overrides[slug]) push('override', 'singleton', db.overrides[slug]);
   push('idempotency', 'singleton', db.idempotencyKeys[slug] || {});
@@ -204,11 +212,16 @@ function applyRows(slug, db, rows) {
   db.counters[slug] = list('counter');
   db.tickets[slug] = list('ticket');
   db.users[slug] = list('user');
+  if (db.zones) db.zones[slug] = list('zone');
+  if (db.kiosks) db.kiosks[slug] = list('kiosk');
+  if (db.appointments) db.appointments[slug] = list('appointment');
   db.counterSessions[slug] = list('session');
   db.agentBreaks[slug] = list('break');
   db.receptionHandovers[slug] = list('handover');
   db.serviceLogs[slug] = list('log');
   db.auditLogs[slug] = list('audit');
+  if (db.entitlements && byKind.entitlement && byKind.entitlement[0]) db.entitlements[slug] = byKind.entitlement[0].payload;
+  if (db.addonInvoices) db.addonInvoices[slug] = list('invoice');
   if (byKind.settings && byKind.settings[0]) db.settings[slug] = byKind.settings[0].payload;
   if (byKind.override && byKind.override[0]) db.overrides[slug] = byKind.override[0].payload;
   db.idempotencyKeys[slug] = byKind.idempotency && byKind.idempotency[0]

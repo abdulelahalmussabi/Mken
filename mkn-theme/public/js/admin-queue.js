@@ -21,6 +21,9 @@
   var pendingTransferTicketId = null;
   var sessionTimer = null;
   var sessionSeconds = 0;
+  var currentZones = [];
+  var selectedBranchId = 'default';
+  var selectedZoneId = 'all';
 
   // DOM Elements - Navigation & Modes
   var viewButtons = document.querySelectorAll('.queue-view-btn');
@@ -307,16 +310,314 @@
   })();
 
   // -------------------------------------------------------------
+  // 1.8 إدارة وتصفية المناطق (Multi-Zone / Multi-Reception Toolbar & Modal)
+  // -------------------------------------------------------------
+  function ensureZoneSelectorBar() {
+    var topBar = barWaitingTotal ? (barWaitingTotal.closest('.queue-top-bar') || barWaitingTotal.parentElement) : null;
+    var existing = document.getElementById('queueZoneFilterContainer');
+    if (existing || !topBar) return;
+
+    var container = document.createElement('div');
+    container.id = 'queueZoneFilterContainer';
+    container.style.cssText = 'display:inline-flex; align-items:center; gap:8px; margin:0 12px; font-size:0.85rem;';
+    container.innerHTML = 
+      '<label for="queueBranchSelect" style="color:#94a3b8; font-weight:600;">الفرع:</label>' +
+      '<select id="queueBranchSelect" style="background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; padding:3px 8px;">' +
+        '<option value="default">الفرع الرئيسي</option>' +
+      '</select>' +
+      '<label for="queueZoneSelect" style="color:#94a3b8; font-weight:600; margin-right:6px;">المنطقة / الاستقبال:</label>' +
+      '<select id="queueZoneSelect" style="background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; padding:3px 8px;">' +
+        '<option value="all">جميع المناطق (شامل)</option>' +
+      '</select>' +
+      '<button id="queueManageZonesBtn" type="button" style="background:#334155; color:#f8fafc; border:none; padding:3px 10px; font-size:0.8rem; border-radius:6px; cursor:pointer;" title="إدارة مناطق الاستقبال">⚙️ المناطق</button>';
+
+    topBar.appendChild(container);
+
+    var zoneSelect = document.getElementById('queueZoneSelect');
+    var branchSelect = document.getElementById('queueBranchSelect');
+    var manageBtn = document.getElementById('queueManageZonesBtn');
+
+    if (zoneSelect) {
+      zoneSelect.addEventListener('change', function () {
+        selectedZoneId = zoneSelect.value;
+        setupSSE();
+        refresh();
+      });
+    }
+
+    if (branchSelect) {
+      branchSelect.addEventListener('change', function () {
+        selectedBranchId = branchSelect.value;
+        loadZonesList();
+        setupSSE();
+        refresh();
+      });
+    }
+
+    if (manageBtn) {
+      manageBtn.addEventListener('click', openZoneManagementModal);
+    }
+
+    loadZonesList();
+  }
+
+  function loadZonesList() {
+    queueStore.listZones({ branchId: selectedBranchId }).then(function (res) {
+      if (!res.ok || !res.zones) return;
+      currentZones = res.zones;
+      var zoneSelect = document.getElementById('queueZoneSelect');
+      if (!zoneSelect) return;
+
+      var currentVal = zoneSelect.value;
+      var html = '<option value="all">جميع المناطق (شامل)</option>';
+      currentZones.forEach(function (z) {
+        var optName = z.name + (z.code ? ' [' + z.code + ']' : '') + (z.floor_or_building ? ' - ' + z.floor_or_building : '');
+        html += '<option value="' + escHtml(z.id) + '">' + escHtml(optName) + '</option>';
+      });
+      zoneSelect.innerHTML = html;
+      if (currentVal && (currentVal === 'all' || currentZones.some(function (z) { return z.id === currentVal; }))) {
+        zoneSelect.value = currentVal;
+      } else if (selectedZoneId && selectedZoneId !== 'all') {
+        zoneSelect.value = selectedZoneId;
+      }
+    });
+  }
+
+  function checkUserAssignedZone(users, currentUserId) {
+    if (!users || !currentUserId || selectedZoneId !== 'all') return;
+    var u = users.find(function (usr) { return usr.id === currentUserId; });
+    if (u && u.zone_id) {
+      selectedZoneId = u.zone_id;
+      var zoneSelect = document.getElementById('queueZoneSelect');
+      if (zoneSelect) zoneSelect.value = selectedZoneId;
+    }
+  }
+
+  function openZoneManagementModal() {
+    var modal = document.getElementById('queueZoneManagementModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'queueZoneManagementModal';
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px;';
+      modal.innerHTML = 
+        '<div style="background:#1e293b; color:#f8fafc; border-radius:16px; border:1px solid #334155; width:100%; max-width:680px; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.6);">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; margin-bottom:16px;">' +
+            '<h3 style="margin:0; font-size:1.15rem; font-weight:700;">🏢 إدارة مناطق ومكاتب الاستقبال (Enterprise Zones)</h3>' +
+            '<button id="closeZoneModalBtn" type="button" style="background:transparent; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer;">&times;</button>' +
+          '</div>' +
+          '<div id="zoneModalContent"></div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      document.getElementById('closeZoneModalBtn').addEventListener('click', function () {
+        modal.style.display = 'none';
+      });
+    }
+    modal.style.display = 'flex';
+    renderZoneModalContent();
+  }
+
+  function renderZoneModalContent() {
+    var container = document.getElementById('zoneModalContent');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center; padding:24px; color:#94a3b8;"><span style="display:inline-block; animation:spin 1s linear infinite;">⏳</span> جاري تحميل تفاصيل الاشتراك ومناطق الاستقبال...</div>';
+
+    queueStore.getBillingSummary().then(function (res) {
+      if (!res || !res.ok) {
+        container.innerHTML = '<div style="color:#ef4444; padding:16px;">فشل تحميل بيانات الاشتراك: ' + escHtml(res && res.error ? res.error : 'خطأ غير معروف') + '</div>';
+        return;
+      }
+
+      var ent = res.entitlement || {};
+      var activeCount = typeof ent.active_zones_count === 'number' ? ent.active_zones_count : currentZones.filter(function (z) { return z.is_active !== false; }).length;
+      var maxAllowed = ent.max_allowed_zones || 1;
+      var isQuotaFull = activeCount >= maxAllowed;
+      var isNearLimit = activeCount === maxAllowed - 1;
+      var quotaPercent = Math.min(100, Math.round((activeCount / maxAllowed) * 100));
+
+      var listHtml = currentZones.map(function (z) {
+        return (
+          '<div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:10px 14px; border-radius:8px; margin-bottom:8px; border:1px solid #334155;">' +
+            '<div>' +
+              '<strong>' + escHtml(z.name) + '</strong> ' +
+              '<span style="background:#3b82f6; color:#fff; font-size:0.75rem; padding:2px 6px; border-radius:4px; margin:0 4px;">' + escHtml(z.code) + '</span>' +
+              '<span style="color:#94a3b8; font-size:0.8rem;">' + (z.floor_or_building ? escHtml(z.floor_or_building) : '') + '</span>' +
+            '</div>' +
+            '<div>' +
+              '<button type="button" onclick="window.MkenAdminQueue.deleteZone(\'' + escHtml(z.id) + '\')" style="background:#ef4444; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.8rem; cursor:pointer;">تعطيل</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      var onpremCardHtml = '';
+      if (ent.on_premise_addon_enabled && ent.on_premise_license_key) {
+        var graceWarning = '';
+        if (ent.license_status && ent.license_status.in_grace_period) {
+          graceWarning = 
+            '<div style="background:#854d0e; color:#fef08a; padding:8px 12px; border-radius:6px; margin-top:8px; font-size:0.85rem;">' +
+              '⚠️ تنبيه: انتهت صلاحية الترخيص الرسمية ولكن النظام يعمل ضمن فترة السماح (Grace Period - 14 يوماً) لضمان استمرارية خدمة المرضى.' +
+            '</div>';
+        }
+
+        onpremCardHtml = 
+          '<div style="background:#0f172a; border:1px solid #10b981; border-radius:10px; padding:16px; margin-top:20px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<h4 style="margin:0; font-size:1rem; color:#34d399;">🐳 رخصة التشغيل المحلي (On-Premise Docker) مفعلة</h4>' +
+              '<span style="background:#065f46; color:#a7f3d0; font-size:0.75rem; padding:3px 8px; border-radius:12px; font-weight:600;">نشط ومرخص</span>' +
+            '</div>' +
+            '<p style="margin:0 0 10px 0; font-size:0.82rem; color:#94a3b8;">خادم المنشأة المحلي مؤهل لتشغيل حزمة <code>deploy/on-premise</code> بشكل معزول تماماً عن الإنترنت (Air-Gapped).</p>' +
+            '<div style="margin-bottom:10px;">' +
+              '<label style="display:block; font-size:0.8rem; color:#cbd5e1; margin-bottom:4px;">مفتاح الترخيص الرقمي (Ed25519 Key):</label>' +
+              '<div style="display:flex; gap:8px;">' +
+                '<input type="text" readonly id="onpremLicenseKeyInput" value="' + escHtml(ent.on_premise_license_key) + '" style="flex:1; background:#1e293b; border:1px solid #334155; color:#38bdf8; font-family:monospace; font-size:0.78rem; padding:6px 8px; border-radius:6px;">' +
+                '<button type="button" onclick="window.MkenAdminQueue.copyLicenseKey()" style="background:#3b82f6; color:#fff; border:none; padding:6px 14px; border-radius:6px; font-size:0.8rem; cursor:pointer; font-weight:600;">نسخ 📋</button>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between;">' +
+              '<span>صلاحية الترخيص: <strong>' + (ent.license_expires_at ? new Date(ent.license_expires_at).toLocaleDateString('ar-SA') : 'مستمر') + '</strong></span>' +
+              '<span>فترة السماح: <strong>14 يوماً بعد الانتهاء</strong></span>' +
+            '</div>' +
+            graceWarning +
+            '<div style="margin-top:12px; background:#1e293b; padding:10px; border-radius:6px; font-size:0.78rem; color:#cbd5e1;">' +
+              '💡 <strong>تعليمات التشغيل:</strong> انسخ المفتاح أعلاه وضعه في ملف <code>deploy/on-premise/.env.onprem</code> كقيمة لـ <code>ONPREM_LICENSE_KEY</code>، ثم شغل: <code>docker compose up -d</code>' +
+            '</div>' +
+          '</div>';
+      } else {
+        onpremCardHtml = 
+          '<div style="background:#0f172a; border:1px solid #334155; border-radius:10px; padding:16px; margin-top:20px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+              '<h4 style="margin:0; font-size:1rem; color:#f8fafc;">🐳 حزمة التشغيل المحلي المؤسسي المستقل (On-Premise Docker)</h4>' +
+              '<span style="background:#334155; color:#94a3b8; font-size:0.75rem; padding:3px 8px; border-radius:12px;">إضافة مدفوعة</span>' +
+            '</div>' +
+            '<p style="margin:0 0 10px 0; font-size:0.82rem; color:#94a3b8;">تشغيل النظام بالكامل داخل البنية التحتية للمستشفى/المنشأة دون أي اتصال خارجي بالإنترنت (Air-Gapped)، مع موزع اتصالات PgBouncer يدعم 600+ كاونتر وبث لحظي SSE عبر Nginx.</p>' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:10px 14px; border-radius:8px;">' +
+              '<div>' +
+                '<span style="font-size:1.1rem; font-weight:700; color:#10b981;">4,999 ر.س</span> ' +
+                '<span style="font-size:0.8rem; color:#94a3b8;">/ سنوياً (شامل التحديثات ورخصة Ed25519)</span>' +
+              '</div>' +
+              '<button type="button" onclick="window.MkenAdminQueue.enableOnPremise()" style="background:#10b981; color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:600; cursor:pointer;">طلب وتفعيل الحزمة 🚀</button>' +
+            '</div>' +
+          '</div>';
+      }
+
+      container.innerHTML = 
+        // بطاقة ملخص الباقة والرسوم
+        '<div style="background:#0f172a; border:1px solid #334155; border-radius:10px; padding:16px; margin-bottom:20px;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">' +
+            '<div>' +
+              '<span style="font-size:0.8rem; color:#94a3b8; text-transform:uppercase;">باقة المنشأة الحالية:</span> ' +
+              '<strong style="color:#38bdf8; font-size:0.95rem; text-transform:capitalize;">' + escHtml(ent.plan_tier || 'starter') + '</strong>' +
+            '</div>' +
+            '<div style="font-size:0.85rem;">' +
+              'المكاتب المتاحة: <strong style="color:' + (isQuotaFull ? '#ef4444' : '#10b981') + ';">' + activeCount + ' / ' + maxAllowed + '</strong>' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#1e293b; border-radius:6px; height:8px; overflow:hidden; margin-bottom:12px;">' +
+            '<div style="background:' + (isQuotaFull ? '#ef4444' : '#3b82f6') + '; width:' + quotaPercent + '%; height:100%;"></div>' +
+          '</div>' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:#94a3b8;">' +
+            '<span>مشمول في الباقة: ' + (ent.included_zones_quota || 1) + ' | إضافي مفعل: ' + (ent.extra_zones_purchased || 0) + '</span>' +
+            '<button type="button" onclick="window.MkenAdminQueue.purchaseExtraZone()" style="background:#3b82f6; color:#fff; border:none; padding:6px 14px; border-radius:6px; font-size:0.82rem; font-weight:600; cursor:pointer;">+ إضافة مكتب استقبال (149 ر.س/شهرياً)</button>' +
+          '</div>' +
+        '</div>' +
+
+        // قائمة المناطق الحالية
+        '<div style="margin-bottom:20px;">' +
+          '<h4 style="margin:0 0 10px 0; font-size:0.95rem; color:#94a3b8;">مكاتب ومناطق الاستقبال الحالية (' + currentZones.length + '):</h4>' +
+          (listHtml || '<div style="color:#64748b; padding:10px;">لا توجد مناطق مخصصة بعد. النظام يعمل بالوضع الشامل.</div>') +
+        '</div>' +
+
+        // نموذج إضافة منطقة جديدة
+        '<form id="newZoneForm" style="border-top:1px solid #334155; padding-top:16px;">' +
+          '<h4 style="margin:0 0 12px 0; font-size:0.95rem; color:#38bdf8;">+ إضافة مكتب / منطقة استقبال جديدة:</h4>' +
+          (isQuotaFull ? 
+            '<div style="background:#451a03; border:1px solid #b45309; color:#fde68a; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:0.85rem;">' +
+              '⚠️ تم استهلاك كامل سعة مكاتب الاستقبال في باقتك (' + activeCount + ' من ' + maxAllowed + '). يرجى الضغط على زر <strong>إضافة مكتب استقبال</strong> أعلاه لترقية السعة قبل إضافة منطقة جديدة.' +
+            '</div>' : '') +
+          '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">' +
+            '<div>' +
+              '<label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">اسم المنطقة / الاستقبال:</label>' +
+              '<input type="text" id="newZoneName" required placeholder="مثال: استقبال العيادات الباطنية" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px; padding:6px 10px;">' +
+            '</div>' +
+            '<div>' +
+              '<label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">رمز المنطقة (الكود):</label>' +
+              '<input type="text" id="newZoneCode" required placeholder="مثال: REC-01 أو CLINIC-A" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px; padding:6px 10px;">' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-bottom:12px;">' +
+            '<label style="display:block; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">الدور أو المبنى (اختياري):</label>' +
+            '<input type="text" id="newZoneFloor" placeholder="مثال: البرج الطبي - الدور الثاني" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:6px; padding:6px 10px;">' +
+          '</div>' +
+          '<div style="text-align:left;">' +
+            '<button type="submit" style="background:#10b981; color:#fff; border:none; padding:8px 18px; border-radius:8px; font-weight:600; cursor:pointer;">حفظ المنطقة</button>' +
+          '</div>' +
+        '</form>' +
+
+        // قسم التشغيل المحلي Docker
+        onpremCardHtml;
+
+      var form = document.getElementById('newZoneForm');
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var nameInput = document.getElementById('newZoneName');
+          var codeInput = document.getElementById('newZoneCode');
+          var floorInput = document.getElementById('newZoneFloor');
+
+          var payload = {
+            branch_id: selectedBranchId,
+            name: nameInput.value.trim(),
+            code: codeInput.value.trim().toUpperCase(),
+            floor_or_building: floorInput ? floorInput.value.trim() : null
+          };
+
+          queueStore.upsertZone(payload).then(function (res) {
+            if (res.ok) {
+              toast('تمت إضافة المنطقة بنجاح', 'success');
+              loadZonesList();
+              setTimeout(renderZoneModalContent, 300);
+              refresh();
+            } else {
+              if (res.code === 'ZONE_QUOTA_EXCEEDED' || res.upgrade_required) {
+                var buyMore = confirm('⚠️ تم بلوغ الحد الأقصى لمناطق الاستقبال المشمولة في باقتك!\n\n' + (res.error || '') + '\n\nهل ترغب بشراء مكتب استقبال إضافي الآن مقابل 149 ر.س/شهرياً (+15% ضريبة)؟');
+                if (buyMore) {
+                  window.MkenAdminQueue.purchaseExtraZone();
+                }
+              } else {
+                toast(res.error || 'فشل حفظ المنطقة', 'error');
+              }
+            }
+          }).catch(function (err) { toast(err.message, 'error'); });
+        });
+      }
+    }).catch(function (err) {
+      container.innerHTML = '<div style="color:#ef4444; padding:16px;">خطأ في الاتصال: ' + escHtml(err.message) + '</div>';
+    });
+  }
+
+  // -------------------------------------------------------------
   // 2. تحديث البيانات المركزية الشاملة
   // -------------------------------------------------------------
   function refresh() {
-    queueStore.getStaffConfig().then(function (res) {
+    ensureZoneSelectorBar();
+    var extraParams = { branchId: selectedBranchId };
+    if (selectedZoneId && selectedZoneId !== 'all') {
+      extraParams.zoneId = selectedZoneId;
+    }
+
+    queueStore.getStaffConfig(extraParams).then(function (res) {
       if (!res.ok) return;
       currentQueues = res.queues || [];
       currentCounters = res.counters || [];
       currentSettings = res.settings || {};
+      if (res.zones) currentZones = res.zones;
 
-      queueStore.listStaffQueues().then(function (qRes) {
+      if (res.currentUser) {
+        checkUserAssignedZone(res.users, res.currentUser.id);
+      }
+
+      queueStore.listStaffQueues(extraParams).then(function (qRes) {
         if (qRes.ok && qRes.queues) {
           currentQueues = qRes.queues;
           if (qRes.override) {
@@ -1834,6 +2135,11 @@
   // 8. الاستماع لأحداث SSE الحية مع حظر الاسترجاع المتقادم
   // -------------------------------------------------------------
   function setupSSE() {
+    var sseOpts = { branchId: selectedBranchId };
+    if (selectedZoneId && selectedZoneId !== 'all') {
+      sseOpts.zoneId = selectedZoneId;
+    }
+
     queueStore.listenToEvents(function (evt, data) {
       if (evt === 'override_applied' && data) {
         QueueOverrideController.handleRealtime(data);
@@ -1843,15 +2149,72 @@
         console.warn('[SSE Guard] Ignored stale event revision:', data.state_revision, 'current:', QueueOverrideController.getActiveRevision());
         return;
       }
-      if (['ticket_created', 'ticket_called', 'ticket_in_service', 'service_completed', 'ticket_transferred', 'ticket_held', 'ticket_snoozed', 'counter_status_changed', 'counter_swapped', 'reception_handover'].indexOf(evt) !== -1) {
+      if (['ticket_created', 'ticket_called', 'ticket_in_service', 'service_completed', 'ticket_transferred', 'ticket_held', 'ticket_snoozed', 'counter_status_changed', 'counter_swapped', 'reception_handover', 'config_updated'].indexOf(evt) !== -1) {
         refresh();
       }
-    });
+    }, null, sseOpts);
   }
 
   // واجهة الوحدة
   window.MkenAdminQueue = {
     refresh: refresh,
+    deleteZone: function (zoneId) {
+      if (!confirm('هل أنت متأكد من تعطيل هذه المنطقة؟')) return;
+      queueStore.deleteZone(zoneId).then(function (res) {
+        if (res.ok) {
+          toast('تم تعطيل المنطقة بنجاح', 'success');
+          loadZonesList();
+          setTimeout(renderZoneModalContent, 300);
+          refresh();
+        } else {
+          toast(res.error || 'فشل تعطيل المنطقة', 'error');
+        }
+      }).catch(function (err) { toast(err.message, 'error'); });
+    },
+    purchaseExtraZone: function () {
+      var confirmed = confirm('💳 تأكيد ترقية سعة مكاتب الاستقبال:\n\n- عدد المكاتب الإضافية: 1 مكتب استقبال\n- السعر الشهري: 149.00 ر.س\n- ضريبة القيمة المضافة (15%): 22.35 ر.س\n- الإجمالي المستحق: 171.35 ر.س\n\nهل ترغب في تأكيد الترقية وإصدار الفاتورة الفورية؟');
+      if (!confirmed) return;
+      queueStore.purchaseExtraZones(1).then(function (res) {
+        if (res && res.ok) {
+          toast('تمت الترقية بنجاح! سعتك الحالية: ' + res.max_allowed_zones + ' مكاتب.', 'success');
+          renderZoneModalContent();
+          loadZonesList();
+          refresh();
+        } else {
+          toast(res && res.error ? res.error : 'فشل إتمام الترقية', 'error');
+        }
+      }).catch(function (err) { toast(err.message, 'error'); });
+    },
+    enableOnPremise: function () {
+      var confirmed = confirm('🐳 تأكيد طلب حزمة التشغيل المحلي المؤسسي (On-Premise Docker):\n\n- التكلفة السنوية: 4,999.00 ر.س (+15% ضريبة)\n- المزايا: عمل كامل بدون إنترنت (Air-Gapped)، دعم 600+ عيادة عبر PgBouncer، رخصة مشفرة رقمياً Ed25519.\n\nهل تؤكد تفعيل رخصة التشغيل المحلي؟');
+      if (!confirmed) return;
+      queueStore.enableOnPremiseAddon().then(function (res) {
+        if (res && res.ok) {
+          toast('تم تفعيل رخصة التشغيل المحلي بنجاح!', 'success');
+          renderZoneModalContent();
+        } else {
+          toast(res && res.error ? res.error : 'فشل تفعيل رخصة التشغيل المحلي', 'error');
+        }
+      }).catch(function (err) { toast(err.message, 'error'); });
+    },
+    copyLicenseKey: function () {
+      var input = document.getElementById('onpremLicenseKeyInput');
+      if (!input) return;
+      var text = input.value;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          toast('تم نسخ مفتاح الترخيص بنجاح 📋', 'success');
+        }).catch(function () {
+          input.select();
+          document.execCommand('copy');
+          toast('تم نسخ مفتاح الترخيص 📋', 'success');
+        });
+      } else {
+        input.select();
+        document.execCommand('copy');
+        toast('تم نسخ مفتاح الترخيص 📋', 'success');
+      }
+    },
     init: function () {
       bindEvents();
       switchWorkspaceView('dispatcher');

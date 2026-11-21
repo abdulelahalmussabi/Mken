@@ -1,7 +1,12 @@
 'use strict';
 
-const webpush = require('web-push');
 const sbEnv = require('./supabase-env');
+
+let _webpush = null;
+function getWebPush() {
+  if (!_webpush) _webpush = require('web-push');
+  return _webpush;
+}
 
 function getVapidConfig() {
   return {
@@ -68,6 +73,7 @@ async function sendPushToTenant(supabase, tenantSlug, title, body, url) {
   }
 
   const vapid = getVapidConfig();
+  const webpush = getWebPush();
   webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
   const payload = JSON.stringify({
     title: title || 'مكِّن',

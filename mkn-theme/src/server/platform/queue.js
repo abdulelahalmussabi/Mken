@@ -1,6 +1,11 @@
 'use strict';
 
-const { createClient } = require('@supabase/supabase-js');
+function getCreateClient() {
+  return require('@supabase/supabase-js').createClient;
+}
+function createClient(...args) {
+  return getCreateClient()(...args);
+}
 const sbEnv = require('./_lib/supabase-env');
 const { handleCors } = require('./_lib/cors');
 const pushLib = require('./_lib/web-push');
@@ -8,11 +13,18 @@ const { isRateLimited } = require('./_lib/rate-limit');
 const queueGuard = require('./_lib/queue-guard');
 const queuePersist = require('./_lib/queue-persist');
 const queueGate = require('./_lib/queue-gate');
+const onpremLicense = require('./_lib/onprem-license');
 const crypto = require('crypto');
 
 const MISSING_IP_LIMIT = queuePersist.MISSING_IP_LIMIT;
 const STAFF_ONLY_ACTIONS = new Set([
   'save-config',
+  'billing-summary',
+  'purchase-extra-zones',
+  'enable-on-premise-addon',
+  'list-kiosks',
+  'upsert-kiosk',
+  'rotate-kiosk-token',
   'create-queue',
   'update-queue',
   'delete-queue',
@@ -68,15 +80,21 @@ const RAW_DB = {
   overrides: {},           // tenantSlug -> overrideObj (Revision & Operational Overrides)
   auditLogs: {},           // tenantSlug -> [logEntry] (NCA/PDPL Immutable Audit Trail)
   idempotencyKeys: {},     // tenantSlug -> { idempotencyKey: { revision, override } }
+  zones: {},
+  kiosks: {},              // tenantSlug -> [kioskObj] (Self-service Kiosks)
+  appointments: {},        // tenantSlug -> [appointmentObj] (HIS / EMR Appointments)
   dailyCounters: {},
   hallPolicies: {},
-  displayPreviews: {}
+  displayPreviews: {},
+  entitlements: {},        // tenantSlug -> entitlementObj (Quotas & On-Premise Lic)
+  addonInvoices: {}        // tenantSlug -> [invoiceObj] (Add-on Billing Invoices)
 };
 
 const TENANT_COLLECTIONS = [
   'queues', 'counters', 'tickets', 'serviceLogs', 'users', 'settings',
   'counterSessions', 'agentBreaks', 'receptionHandovers', 'overrides',
-  'auditLogs', 'idempotencyKeys', 'hallPolicies'
+  'auditLogs', 'idempotencyKeys', 'hallPolicies', 'zones', 'kiosks', 'appointments',
+  'entitlements', 'addonInvoices'
 ];
 
 function requestBucket(key) {
@@ -345,6 +363,24 @@ function getOrCreateMemoryTenant(tenantSlug) {
     };
   }
   if (!MEMORY_DB.sseClients[slug]) MEMORY_DB.sseClients[slug] = [];
+  if (!MEMORY_DB.zones[slug]) MEMORY_DB.zones[slug] = [];
+  if (!MEMORY_DB.kiosks[slug]) MEMORY_DB.kiosks[slug] = [];
+  if (!MEMORY_DB.appointments[slug]) MEMORY_DB.appointments[slug] = [];
+  if (!MEMORY_DB.entitlements[slug]) {
+    MEMORY_DB.entitlements[slug] = {
+      tenant_slug: slug,
+      plan_tier: 'starter',
+      included_zones_quota: 1,
+      extra_zones_purchased: 0,
+      extra_zone_unit_price_sar: 149.00,
+      on_premise_addon_enabled: false,
+      on_premise_license_key: null,
+      license_expires_at: null,
+      hardware_fingerprint: null,
+      updated_at: new Date().toISOString()
+    };
+  }
+  if (!MEMORY_DB.addonInvoices[slug]) MEMORY_DB.addonInvoices[slug] = [];
   if (!MEMORY_DB.hallPolicies[slug]) {
     MEMORY_DB.hallPolicies[slug] = queueGate.defaultHallPolicy({
       city: (MEMORY_DB.settings[slug] && MEMORY_DB.settings[slug].city) || 'Riyadh'
@@ -432,7 +468,7 @@ function gateRejectBody(gate) {
   };
 }
 
-async function hydrateHallPolicy(slug) {
+async function hydrateHallPolicy(slug, branchId) {
   const current = MEMORY_DB.hallPolicies[slug];
   if (current && current._persistedLoaded) return;
   try {
@@ -447,7 +483,7 @@ async function hydrateHallPolicy(slug) {
       .from('branch_queue_policies')
       .select('*')
       .eq('tenant_slug', slug)
-      .eq('branch_id', 'default')
+      .eq('branch_id', branchId || 'default')
       .maybeSingle();
     if (data) {
       MEMORY_DB.hallPolicies[slug] = queueGate.policyFromDbRow(data);
@@ -456,14 +492,14 @@ async function hydrateHallPolicy(slug) {
   if (MEMORY_DB.hallPolicies[slug]) MEMORY_DB.hallPolicies[slug]._persistedLoaded = true;
 }
 
-async function persistHallPolicy(slug, policy, supervisorId) {
+async function persistHallPolicy(slug, policy, supervisorId, branchId) {
   try {
     const supabaseUrl = sbEnv.getSupabaseUrl();
     const supabaseKey = sbEnv.getSupabaseServiceKey();
     if (!supabaseUrl || !supabaseKey) return;
     const supabase = createClient(supabaseUrl, supabaseKey);
     await supabase.from('branch_queue_policies').upsert(
-      queueGate.policyToDbRow(slug, policy, supervisorId),
+      queueGate.policyToDbRow(slug, policy, supervisorId, branchId || 'default'),
       { onConflict: 'tenant_slug,branch_id' }
     );
   } catch (e) {}
@@ -487,7 +523,14 @@ async function updatePosLinkStatus(slug, ticketId, linkStatus, extra = {}) {
   } catch (e) {}
 }
 
-function broadcastSSE(tenantSlug, event, data) {
+function resolveZone(slug, zoneIdOrCode) {
+  if (!zoneIdOrCode) return null;
+  const zones = MEMORY_DB.zones[slug] || [];
+  const found = zones.find(z => z.id === zoneIdOrCode || (z.code && z.code.toLowerCase() === String(zoneIdOrCode).toLowerCase()));
+  return found || null;
+}
+
+function broadcastSSE(tenantSlug, event, data, filterOpts) {
   const slug = String(tenantSlug || '').trim().toLowerCase();
   if (!slug) return;
   const clients = MEMORY_DB.sseClients[slug] || [];
@@ -501,9 +544,62 @@ function broadcastSSE(tenantSlug, event, data) {
     queuePersist.noteEvent(event, body);
   }
   const payload = `event: ${event}\ndata: ${JSON.stringify(body)}\n\n`;
+
+  // استخراج معايير التصفية للقنوات المحددة النطاق (Scoped Channels)
+  const targetZoneId = (filterOpts && filterOpts.zoneId) ||
+    (data && data.ticket && data.ticket.zone_id) ||
+    (data && data.counter && data.counter.zone_id) ||
+    null;
+  const oldZoneId = (filterOpts && filterOpts.oldZoneId) || null;
+  const targetSessionToken = (filterOpts && filterOpts.sessionToken) ||
+    (data && data.ticket && data.ticket.session_token) ||
+    (data && data.sessionToken) ||
+    null;
+  const targetBranchId = (filterOpts && filterOpts.branchId) ||
+    (data && data.ticket && data.ticket.branch_id) ||
+    (data && data.counter && data.counter.branch_id) ||
+    null;
+
+  const isGlobalEvent = ['config_updated', 'override_applied', 'system_notice', 'reception_handover'].includes(event);
+
   for (let i = clients.length - 1; i >= 0; i--) {
+    const client = clients[i];
     try {
-      clients[i].write(payload);
+      const meta = client._meta || {};
+
+      // 1. عزل الفروع: إذا حدد كلاهما فرعاً وكان مختلفاً، لا يُرسل
+      if (targetBranchId && meta.branchId && meta.branchId !== 'default' && targetBranchId !== 'default' && meta.branchId !== targetBranchId) {
+        continue;
+      }
+
+      let shouldSend = false;
+
+      // 2. قناة التذكرة الفردية للمريض (${tenantSlug}:ticket:${sessionToken})
+      if (meta.sessionToken) {
+        if (targetSessionToken && meta.sessionToken === targetSessionToken) {
+          shouldSend = true;
+        }
+      }
+      // 3. قناة شاشة/استقبال المنطقة (${tenantSlug}:branch:${branchId}:zone:${zoneId})
+      else if (meta.zoneId) {
+        if (isGlobalEvent) {
+          shouldSend = true;
+        } else if (targetZoneId && meta.zoneId === targetZoneId) {
+          shouldSend = true;
+        } else if (oldZoneId && meta.zoneId === oldZoneId) {
+          shouldSend = true;
+        } else if (!targetZoneId && !oldZoneId) {
+          shouldSend = true;
+        }
+      }
+      // 4. قناة المشرف العام والاشتراك الشامل (${tenantSlug}:branch:${branchId}:all)
+      else {
+        shouldSend = true;
+      }
+
+      if (shouldSend) {
+        client.write(payload);
+      }
     } catch (e) {
       clients.splice(i, 1);
     }
@@ -629,32 +725,114 @@ function checkPrayerStatus(cityName, minuteOfDay, isFriday = false) {
  * 2. Fair FIFO (أسبقية زمنية عادلة): تعتمد وقت الوصول الأصلي للمنشأة (first_arrived_at).
  * 3. Standard (ذيل الطابور): تعتمد وقت الوصول أو التحويل للقسم الحالي (transferred_at || booked_at).
  */
-function sortEligibleTickets(ticketsList) {
-  return ticketsList.sort((a, b) => {
-    // 1. الأولوية الفورية تأتي أولاً على الإطلاق
-    const aImmediate = a.priority_level === 'immediate_next' || a.is_immediate_next || a.is_bumped;
-    const bImmediate = b.priority_level === 'immediate_next' || b.is_immediate_next || b.is_bumped;
-    if (aImmediate && !bImmediate) return -1;
-    if (!aImmediate && bImmediate) return 1;
+function hashNationalId(raw) {
+  const clean = String(raw || '').trim().replace(/\D/g, '');
+  if (!clean) return null;
+  const secret = process.env.NATIONAL_ID_HMAC_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'mken-national-id-pdpl-hmac-2026';
+  return crypto.createHmac('sha256', secret).update(clean).digest('hex');
+}
 
-    // 2. إذا كان كلاهما فوري، الأقدم تحويلاً يسبق
-    if (aImmediate && bImmediate) {
-      const aTime = new Date(a.transferred_at || a.called_at || a.booked_at).getTime();
-      const bTime = new Date(b.transferred_at || b.called_at || b.booked_at).getTime();
-      return aTime - bTime;
+function hashKioskToken(raw) {
+  return crypto.createHash('sha256').update(String(raw || '').trim()).digest('hex');
+}
+
+/**
+ * خوارزمية فرز وترتيب الطوابير الذكية وفق 4 مستويات للأولوية مع منع التجويع (Starvation Prevention):
+ * 1. Immediate Next (أولوية فورية): الحالات الطارئة والمحولة فوراً على رأس الطابور.
+ * 2. Scheduled Appointment (المواعيد المجدولة المؤكدة): مرتبة تصاعدياً حسب scheduled_time.
+ * 3. Fair FIFO (أسبقية عادلة): المحولون بين الأقسام لحفظ وقت وصولهم الأصلي first_arrived_at.
+ * 4. Standard (الحضور المباشر): بحسب وقت الوصول booked_at.
+ * - يتم تطبيق appointment_interleave_ratio (افتراضياً 3 مواعيد ثم 1 انتظار مباشر) لمنع تجويع المرضى بدون موعد.
+ */
+function sortEligibleTickets(ticketsList, hallPolicy, counterState) {
+  if (!ticketsList || !ticketsList.length) return [];
+
+  const immediateTickets = [];
+  const appointmentTickets = [];
+  const walkinTickets = [];
+
+  for (let i = 0; i < ticketsList.length; i++) {
+    const t = ticketsList[i];
+    const isImm = t.priority_level === 'immediate_next' || t.is_immediate_next || t.is_bumped;
+    if (isImm) {
+      immediateTickets.push(t);
+    } else if (t.priority_level === 'scheduled_appointment') {
+      appointmentTickets.push(t);
+    } else {
+      walkinTickets.push(t);
     }
+  }
 
-    // 3. الأسبقية العادلة Fair FIFO: تعتمد وقت الدخول الأول للمنشأة (first_arrived_at)
-    const aEffectiveDate = (a.priority_level === 'fair_fifo' && a.first_arrived_at) 
-      ? new Date(a.first_arrived_at).getTime() 
+  // فرز الفوري: الأقدم استدعاءً أو تحويلاً
+  immediateTickets.sort((a, b) => {
+    const aTime = new Date(a.transferred_at || a.called_at || a.booked_at).getTime();
+    const bTime = new Date(b.transferred_at || b.called_at || b.booked_at).getTime();
+    return aTime - bTime;
+  });
+
+  // فرز المواعيد: تصاعدياً حسب الوقت المجدول (scheduled_time)
+  appointmentTickets.sort((a, b) => {
+    const aSched = a.scheduled_time ? new Date(a.scheduled_time).getTime() : new Date(a.first_arrived_at || a.booked_at).getTime();
+    const bSched = b.scheduled_time ? new Date(b.scheduled_time).getTime() : new Date(b.first_arrived_at || b.booked_at).getTime();
+    if (aSched !== bSched) return aSched - bSched;
+    const aArr = new Date(a.first_arrived_at || a.booked_at).getTime();
+    const bArr = new Date(b.first_arrived_at || b.booked_at).getTime();
+    return aArr - bArr;
+  });
+
+  // فرز الحضور المباشر والمحولين (fair_fifo أولاً ثم standard)
+  walkinTickets.sort((a, b) => {
+    const aFair = a.priority_level === 'fair_fifo';
+    const bFair = b.priority_level === 'fair_fifo';
+    if (aFair && !bFair) return -1;
+    if (!aFair && bFair) return 1;
+
+    const aEffectiveDate = (aFair && a.first_arrived_at)
+      ? new Date(a.first_arrived_at).getTime()
       : new Date(a.transferred_at || a.booked_at).getTime();
-
-    const bEffectiveDate = (b.priority_level === 'fair_fifo' && b.first_arrived_at) 
-      ? new Date(b.first_arrived_at).getTime() 
+    const bEffectiveDate = (bFair && b.first_arrived_at)
+      ? new Date(b.first_arrived_at).getTime()
       : new Date(b.transferred_at || b.booked_at).getTime();
-
     return aEffectiveDate - bEffectiveDate;
   });
+
+  // نسبة التمرير التبادلي لمنع التجويع
+  const ratio = (hallPolicy && typeof hallPolicy.appointment_interleave_ratio === 'number')
+    ? hallPolicy.appointment_interleave_ratio
+    : 3;
+
+  if (appointmentTickets.length === 0) {
+    return immediateTickets.concat(walkinTickets);
+  }
+  if (walkinTickets.length === 0 || ratio <= 0) {
+    return immediateTickets.concat(appointmentTickets, walkinTickets);
+  }
+
+  // إذا وصل الكاونتر إلى الحد الأقصى للمواعيد المتتالية، يُمنح الدور لمراجع الحضور المباشر
+  const consecutiveServed = (counterState && typeof counterState.consecutive_appointments_served === 'number')
+    ? counterState.consecutive_appointments_served
+    : 0;
+
+  if (consecutiveServed >= ratio && walkinTickets.length > 0) {
+    const priorityWalkin = walkinTickets[0];
+    const restWalkin = walkinTickets.slice(1);
+    return immediateTickets.concat([priorityWalkin], appointmentTickets, restWalkin);
+  }
+
+  const merged = [];
+  let aIdx = 0;
+  let wIdx = 0;
+
+  while (aIdx < appointmentTickets.length || wIdx < walkinTickets.length) {
+    for (let r = 0; r < ratio && aIdx < appointmentTickets.length; r++) {
+      merged.push(appointmentTickets[aIdx++]);
+    }
+    if (wIdx < walkinTickets.length) {
+      merged.push(walkinTickets[wIdx++]);
+    }
+  }
+
+  return immediateTickets.concat(merged);
 }
 
 function optionalCustomerName(value) {
@@ -733,6 +911,30 @@ async function queueHandler(req, res) {
   const staffToken = readStaffToken(req);
   const staff = resolved.staff || Boolean(staffToken && (!staffToken.tenant_slug || staffToken.tenant_slug === resolved.slug));
   const queueRole = queueGuard.queueRoleFromSession(resolved.session);
+
+  const kioskTokenHeader = req.headers['x-kiosk-token'] || (req.query && req.query.kioskToken) || (req.body && req.body.kioskToken) || null;
+  let kioskContext = null;
+  let isKiosk = false;
+
+  if (kioskTokenHeader) {
+    const rawTok = String(kioskTokenHeader).trim();
+    const tokHash = hashKioskToken(rawTok);
+    const kiosks = MEMORY_DB.kiosks[tenantSlug] || [];
+    kioskContext = kiosks.find(k => (k.token_hash === tokHash || k.token === rawTok) && k.is_active !== false) || null;
+    if (kioskContext) {
+      isKiosk = true;
+      kioskContext.last_heartbeat_at = new Date().toISOString();
+    }
+  }
+  let reqBranchId = (req.query && (req.query.branchId || req.query.branch_id)) ||
+    (req.body && (req.body.branchId || req.body.branch_id)) ||
+    (resolved.session && (resolved.session.branchId || resolved.session.branch_id)) ||
+    (kioskContext && kioskContext.branch_id) ||
+    'default';
+  let reqZoneId = (req.query && (req.query.zoneId || req.query.zone_id || req.query.zone)) ||
+    (req.body && (req.body.zoneId || req.body.zone_id || req.body.zone)) ||
+    (kioskContext && kioskContext.zone_id) ||
+    null;
   const byTicketId = Boolean((req.query && req.query.ticket_id) || (req.body && req.body.ticket_id));
   const byToken = Boolean(
     (req.query && (req.query.session_token || req.query.token)) ||
@@ -852,7 +1054,27 @@ async function queueHandler(req, res) {
       res.setHeader('Connection', 'keep-alive');
       res.flushHeaders?.();
 
-      res.write(`event: connected\ndata: ${JSON.stringify({ status: 'connected', tenant: tenantSlug })}\n\n`);
+      const branchId = reqBranchId;
+      const matchedZone = resolveZone(tenantSlug, reqZoneId);
+      const zoneId = matchedZone ? matchedZone.id : (reqZoneId ? String(reqZoneId) : null);
+      const sessionToken = (req.query && (req.query.sessionToken || req.query.session_token)) ||
+        (req.body && (req.body.sessionToken || req.body.session_token)) ||
+        null;
+
+      res._meta = {
+        tenantSlug,
+        branchId,
+        zoneId,
+        sessionToken: sessionToken ? String(sessionToken) : null
+      };
+
+      res.write(`event: connected\ndata: ${JSON.stringify({
+        status: 'connected',
+        tenant: tenantSlug,
+        branchId,
+        zoneId,
+        sessionToken
+      })}\n\n`);
       MEMORY_DB.sseClients[tenantSlug].push(res);
 
       let closed = false;
@@ -890,17 +1112,688 @@ async function queueHandler(req, res) {
     }
 
     // ---------------------------------------------------------------
+    // 1.5 إدارة مناطق ومكاتب الاستقبال (Multi-Zone / Multi-Reception)
+    // ---------------------------------------------------------------
+    if (action === 'list-zones') {
+      const branchId = reqBranchId;
+      const zones = MEMORY_DB.zones[tenantSlug] || [];
+      const filtered = zones.filter(z => {
+        if (req.query?.all === 'true' || req.query?.include_inactive === 'true') {
+          return !branchId || branchId === 'default' || z.branch_id === branchId;
+        }
+        return z.is_active !== false && (!branchId || branchId === 'default' || z.branch_id === branchId);
+      });
+      return res.status(200).json({ ok: true, zones: filtered });
+    }
+
+    if (action === 'upsert-zone') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف أو موظف الاستقبال.', code: 'AUTH_REQUIRED' });
+      }
+      const body = req.body || {};
+      const zones = MEMORY_DB.zones[tenantSlug] || (MEMORY_DB.zones[tenantSlug] = []);
+      const zoneId = body.id || body.zoneId || ('zone_' + Math.random().toString(36).substring(2, 9));
+      const code = String(body.code || '').trim().toUpperCase();
+      const name = String(body.name || '').trim();
+
+      if (!code || !name) {
+        return res.status(400).json({ ok: false, error: 'الاسم والرمز حقلان إلزاميان لمنطقة الاستقبال.' });
+      }
+
+      let existing = zones.find(z => z.id === zoneId || (z.code && z.code.toUpperCase() === code));
+
+      const isActivating = !existing || (existing.is_active === false && body.is_active !== false);
+      if (isActivating) {
+        const activeZonesCount = zones.filter(z => z.is_active !== false).length;
+        let maxAllowed = 1;
+        let unitPrice = 149.00;
+
+        if (onpremLicense.isDeploymentOnPremise()) {
+          const onpremKey = process.env.ONPREM_LICENSE_KEY || (MEMORY_DB.entitlements[tenantSlug] && MEMORY_DB.entitlements[tenantSlug].on_premise_license_key);
+          const check = onpremLicense.verifyLicenseKey(onpremKey, null, tenantSlug);
+          if (!check.valid) {
+            return res.status(403).json({
+              ok: false,
+              error: 'ONPREM_LICENSE_INVALID',
+              code: check.error || 'LICENSE_INVALID',
+              message: check.message || 'ترخيص التشغيل المحلي غير صالح.'
+            });
+          }
+          maxAllowed = check.payload?.max_zones || 1;
+        } else {
+          const entitlement = MEMORY_DB.entitlements[tenantSlug] || { included_zones_quota: 1, extra_zones_purchased: 0, extra_zone_unit_price_sar: 149.00 };
+          maxAllowed = (parseInt(entitlement.included_zones_quota, 10) || 1) + (parseInt(entitlement.extra_zones_purchased, 10) || 0);
+          unitPrice = parseFloat(entitlement.extra_zone_unit_price_sar) || 149.00;
+        }
+
+        if (activeZonesCount >= maxAllowed) {
+          return res.status(402).json({
+            ok: false,
+            error: 'ZONE_QUOTA_EXCEEDED',
+            code: 'ZONE_QUOTA_EXCEEDED',
+            message: `تم تجاوز الحد المسموح به لمكاتب الاستقبال في باقتك الحالية (${maxAllowed} مكتب/مكاتب). يرجى شراء مكتب استقبال إضافي (+${unitPrice} ر.س/شهرياً).`,
+            current_zones: activeZonesCount,
+            max_allowed: maxAllowed,
+            extra_zone_price_sar: unitPrice,
+            upgrade_required: true
+          });
+        }
+      }
+
+      if (existing) {
+        existing.code = code;
+        existing.name = name;
+        if (body.floor_or_building !== undefined) existing.floor_or_building = body.floor_or_building;
+        if (body.branch_id !== undefined) existing.branch_id = body.branch_id;
+        if (body.settings !== undefined) existing.settings = body.settings;
+        if (body.is_active !== undefined) existing.is_active = !!body.is_active;
+        existing.updated_at = new Date().toISOString();
+      } else {
+        existing = {
+          id: zoneId,
+          tenant_slug: tenantSlug,
+          branch_id: body.branch_id || reqBranchId || 'default',
+          code: code,
+          name: name,
+          floor_or_building: body.floor_or_building || null,
+          settings: body.settings || {},
+          is_active: body.is_active !== false,
+          created_at: new Date().toISOString()
+        };
+        zones.push(existing);
+      }
+
+      broadcastSSE(tenantSlug, 'config_updated', { zones, settings: MEMORY_DB.settings[tenantSlug] });
+      return res.status(200).json({ ok: true, zone: existing, zones });
+    }
+
+    if (action === 'delete-zone') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const zoneId = (req.body && (req.body.zoneId || req.body.id)) || (req.query && (req.query.zoneId || req.query.id));
+      const zones = MEMORY_DB.zones[tenantSlug] || [];
+      const zone = zones.find(z => z.id === zoneId);
+      if (!zone) {
+        return res.status(404).json({ ok: false, error: 'منطقة الاستقبال غير موجودة.' });
+      }
+      zone.is_active = false;
+      zone.updated_at = new Date().toISOString();
+      broadcastSSE(tenantSlug, 'config_updated', { zones, settings: MEMORY_DB.settings[tenantSlug] });
+      return res.status(200).json({ ok: true, message: 'تم تعطيل منطقة الاستقبال بنجاح.', zone });
+    }
+
+    // ---------------------------------------------------------------
+    // 1.5 إدارة التراخيص ومكاتب الاستقبال الإضافية والتشغيل المحلي
+    // (Billing Summary, Extra Zones Purchase & On-Premise Add-on)
+    // ---------------------------------------------------------------
+    if (action === 'billing-summary') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const entitlement = MEMORY_DB.entitlements[tenantSlug] || {
+        tenant_slug: tenantSlug,
+        plan_tier: 'starter',
+        included_zones_quota: 1,
+        extra_zones_purchased: 0,
+        extra_zone_unit_price_sar: 149.00,
+        on_premise_addon_enabled: false,
+        on_premise_license_key: null,
+        license_expires_at: null,
+        hardware_fingerprint: null
+      };
+
+      const zones = MEMORY_DB.zones[tenantSlug] || [];
+      const activeZonesCount = zones.filter(z => z.is_active !== false).length;
+      let maxAllowed = (parseInt(entitlement.included_zones_quota, 10) || 1) + (parseInt(entitlement.extra_zones_purchased, 10) || 0);
+
+      let onpremStatus = null;
+      let onpremKey = entitlement.on_premise_license_key;
+      if (process.env.DEPLOYMENT_MODE === 'on_premise' && process.env.ONPREM_LICENSE_KEY) {
+        onpremKey = process.env.ONPREM_LICENSE_KEY;
+      }
+
+      if (onpremKey) {
+        onpremStatus = onpremLicense.verifyLicenseKey(onpremKey, null, tenantSlug);
+        if (onpremStatus && onpremStatus.valid && onpremStatus.payload && onpremStatus.payload.max_zones) {
+          maxAllowed = onpremStatus.payload.max_zones;
+        }
+      }
+
+      const unitPrice = parseFloat(entitlement.extra_zone_unit_price_sar) || 149.00;
+      const extraCount = parseInt(entitlement.extra_zones_purchased, 10) || 0;
+      const monthlyExtraSubtotal = Math.round(extraCount * unitPrice * 100) / 100;
+      const monthlyExtraVat = Math.round(monthlyExtraSubtotal * 0.15 * 100) / 100;
+      const monthlyExtraTotal = Math.round((monthlyExtraSubtotal + monthlyExtraVat) * 100) / 100;
+
+      return res.status(200).json({
+        ok: true,
+        entitlement: {
+          tenant_slug: tenantSlug,
+          plan_tier: entitlement.plan_tier || 'starter',
+          included_zones_quota: entitlement.included_zones_quota || 1,
+          extra_zones_purchased: extraCount,
+          max_allowed_zones: maxAllowed,
+          active_zones_count: activeZonesCount,
+          available_zones_remaining: Math.max(0, maxAllowed - activeZonesCount),
+          extra_zone_unit_price_sar: unitPrice,
+          monthly_extra_subtotal_sar: monthlyExtraSubtotal,
+          monthly_extra_vat_sar: monthlyExtraVat,
+          monthly_extra_total_sar: monthlyExtraTotal,
+          on_premise_addon_enabled: !!(entitlement.on_premise_addon_enabled || (process.env.DEPLOYMENT_MODE === 'on_premise')),
+          on_premise_license_key: onpremKey || entitlement.on_premise_license_key,
+          license_expires_at: (onpremStatus && onpremStatus.payload && onpremStatus.payload.expires_at) || entitlement.license_expires_at,
+          license_status: onpremStatus
+        },
+        invoices: (MEMORY_DB.addonInvoices[tenantSlug] || []).slice(-15)
+      });
+    }
+
+    if (action === 'purchase-extra-zones') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const body = req.body || {};
+      const quantity = Math.max(1, parseInt(body.quantity, 10) || 1);
+      const entitlement = MEMORY_DB.entitlements[tenantSlug] || (MEMORY_DB.entitlements[tenantSlug] = {
+        tenant_slug: tenantSlug,
+        plan_tier: 'starter',
+        included_zones_quota: 1,
+        extra_zones_purchased: 0,
+        extra_zone_unit_price_sar: 149.00,
+        on_premise_addon_enabled: false,
+        on_premise_license_key: null,
+        license_expires_at: null,
+        hardware_fingerprint: null
+      });
+
+      const unitPrice = parseFloat(entitlement.extra_zone_unit_price_sar) || 149.00;
+      const subtotal = Math.round(quantity * unitPrice * 100) / 100;
+      const vat = Math.round(subtotal * 0.15 * 100) / 100;
+      const total = Math.round((subtotal + vat) * 100) / 100;
+
+      const invoice = {
+        id: 'inv_' + Math.random().toString(36).substring(2, 10),
+        tenant_slug: tenantSlug,
+        invoice_number: 'INV-ZONE-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1000),
+        addon_type: 'extra_zone',
+        description: `ترقية سعة مكاتب الاستقبال (+${quantity} مكتب إضافي)`,
+        quantity: quantity,
+        unit_price_sar: unitPrice,
+        subtotal_sar: subtotal,
+        tax_rate: 0.15,
+        tax_sar: vat,
+        total_sar: total,
+        status: 'paid',
+        zatca_tax_rate: 0.15,
+        zatca_qr_payload: 'ZATCA-QR-SIMULATED-' + Date.now(),
+        created_at: new Date().toISOString()
+      };
+
+      if (!MEMORY_DB.addonInvoices[tenantSlug]) MEMORY_DB.addonInvoices[tenantSlug] = [];
+      MEMORY_DB.addonInvoices[tenantSlug].push(invoice);
+
+      entitlement.extra_zones_purchased = (parseInt(entitlement.extra_zones_purchased, 10) || 0) + quantity;
+      entitlement.updated_at = new Date().toISOString();
+
+      const newMaxAllowed = (parseInt(entitlement.included_zones_quota, 10) || 1) + entitlement.extra_zones_purchased;
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        message: `تم شراء وتفعيل ${quantity} مكتب استقبال إضافي بنجاح. سعتك الحالية أصبحت ${newMaxAllowed} مكاتب استقبال.`,
+        purchased_quantity: quantity,
+        max_allowed_zones: newMaxAllowed,
+        invoice: invoice
+      });
+    }
+
+    if (action === 'enable-on-premise-addon') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const body = req.body || {};
+      const entitlement = MEMORY_DB.entitlements[tenantSlug] || (MEMORY_DB.entitlements[tenantSlug] = {
+        tenant_slug: tenantSlug,
+        plan_tier: 'starter',
+        included_zones_quota: 1,
+        extra_zones_purchased: 0,
+        extra_zone_unit_price_sar: 149.00,
+        on_premise_addon_enabled: false,
+        on_premise_license_key: null,
+        license_expires_at: null,
+        hardware_fingerprint: null
+      });
+
+      const maxZones = (parseInt(entitlement.included_zones_quota, 10) || 1) + (parseInt(entitlement.extra_zones_purchased, 10) || 0);
+      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+      const licenseKey = onpremLicense.generateLicenseKey({
+        tenant_slug: tenantSlug,
+        plan_tier: entitlement.plan_tier || 'enterprise',
+        max_zones: maxZones,
+        max_counters: 100,
+        expires_at: expiresAt,
+        hardware_fingerprint: body.hardwareFingerprint || null
+      });
+
+      entitlement.on_premise_addon_enabled = true;
+      entitlement.on_premise_license_key = licenseKey;
+      entitlement.license_expires_at = expiresAt;
+      if (body.hardwareFingerprint) entitlement.hardware_fingerprint = body.hardwareFingerprint;
+      entitlement.updated_at = new Date().toISOString();
+
+      const packagePrice = 4999.00;
+      const vat = Math.round(packagePrice * 0.15 * 100) / 100;
+      const total = Math.round((packagePrice + vat) * 100) / 100;
+
+      const invoice = {
+        id: 'inv_' + Math.random().toString(36).substring(2, 10),
+        tenant_slug: tenantSlug,
+        invoice_number: 'INV-ONPREM-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1000),
+        addon_type: 'on_premise_package',
+        description: 'حزمة التشغيل المحلي المستقل (Mken On-Premise Docker Enterprise License)',
+        quantity: 1,
+        unit_price_sar: packagePrice,
+        subtotal_sar: packagePrice,
+        tax_rate: 0.15,
+        tax_sar: vat,
+        total_sar: total,
+        status: 'paid',
+        zatca_tax_rate: 0.15,
+        zatca_qr_payload: 'ZATCA-QR-ONPREM-' + Date.now(),
+        created_at: new Date().toISOString()
+      };
+
+      if (!MEMORY_DB.addonInvoices[tenantSlug]) MEMORY_DB.addonInvoices[tenantSlug] = [];
+      MEMORY_DB.addonInvoices[tenantSlug].push(invoice);
+
+      return res.status(200).json({
+        ok: true,
+        success: true,
+        message: 'تم تفعيل حزمة التشغيل المحلي وتوليد مفتاح الترخيص الرقمي بنجاح.',
+        license_key: licenseKey,
+        on_premise_license_key: licenseKey,
+        license_expires_at: expiresAt,
+        max_zones: maxZones,
+        invoice: invoice
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // 1.6 إدارة أجهزة الخدمة الذاتية (Self-Service Kiosks)
+    // ---------------------------------------------------------------
+    if (action === 'list-kiosks') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const kiosks = (MEMORY_DB.kiosks[tenantSlug] || []).map(k => {
+        const copy = Object.assign({}, k);
+        delete copy.token_hash;
+        return copy;
+      });
+      return res.status(200).json({ ok: true, kiosks });
+    }
+
+    if (action === 'upsert-kiosk') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const body = req.body || {};
+      const kioskCode = String(body.kiosk_code || body.code || '').trim().toUpperCase();
+      const name = String(body.name || '').trim();
+      if (!kioskCode || !name) {
+        return res.status(400).json({ ok: false, error: 'رمز واسم الكشك حقلان إلزاميان.' });
+      }
+
+      const kiosks = MEMORY_DB.kiosks[tenantSlug] || (MEMORY_DB.kiosks[tenantSlug] = []);
+      const kioskId = body.id || ('kiosk_' + Math.random().toString(36).substring(2, 9));
+      let existing = kiosks.find(k => k.id === kioskId || k.kiosk_code === kioskCode);
+      let rawToken = null;
+
+      if (existing) {
+        existing.name = name;
+        existing.kiosk_code = kioskCode;
+        if (body.zone_id !== undefined) existing.zone_id = body.zone_id;
+        if (body.branch_id !== undefined) existing.branch_id = body.branch_id;
+        if (body.allowed_service_ids !== undefined) existing.allowed_service_ids = body.allowed_service_ids;
+        if (body.is_active !== undefined) existing.is_active = !!body.is_active;
+        existing.updated_at = new Date().toISOString();
+      } else {
+        rawToken = 'msk_' + crypto.randomBytes(16).toString('hex');
+        existing = {
+          id: kioskId,
+          tenant_slug: tenantSlug,
+          branch_id: body.branch_id || reqBranchId || 'default',
+          zone_id: body.zone_id || null,
+          kiosk_code: kioskCode,
+          name: name,
+          token_hash: hashKioskToken(rawToken),
+          allowed_service_ids: Array.isArray(body.allowed_service_ids) ? body.allowed_service_ids : [],
+          is_active: body.is_active !== false,
+          last_heartbeat_at: null,
+          created_at: new Date().toISOString()
+        };
+        kiosks.push(existing);
+      }
+
+      return res.status(200).json({
+        ok: true,
+        kiosk: {
+          id: existing.id,
+          kiosk_code: existing.kiosk_code,
+          name: existing.name,
+          zone_id: existing.zone_id,
+          branch_id: existing.branch_id,
+          allowed_service_ids: existing.allowed_service_ids,
+          is_active: existing.is_active
+        },
+        token: rawToken,
+        rawToken: rawToken
+      });
+    }
+
+    if (action === 'rotate-kiosk-token') {
+      if (!staff) {
+        return res.status(401).json({ ok: false, error: 'يتطلب صلاحيات المشرف.', code: 'AUTH_REQUIRED' });
+      }
+      const kioskId = req.body?.kioskId || req.body?.id || req.query?.kioskId;
+      const kiosks = MEMORY_DB.kiosks[tenantSlug] || [];
+      const kiosk = kiosks.find(k => k.id === kioskId || k.kiosk_code === kioskId);
+      if (!kiosk) {
+        return res.status(404).json({ ok: false, error: 'الكشك غير موجود.' });
+      }
+
+      const rawToken = 'msk_' + crypto.randomBytes(16).toString('hex');
+      kiosk.token_hash = hashKioskToken(rawToken);
+      kiosk.updated_at = new Date().toISOString();
+
+      return res.status(200).json({
+        ok: true,
+        kiosk: { id: kiosk.id, kiosk_code: kiosk.kiosk_code, name: kiosk.name },
+        token: rawToken,
+        rawToken: rawToken
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // 1.7 تسجيل وصول المواعيد (Appointment Self Check-in & HIS Webhook)
+    // ---------------------------------------------------------------
+    if (action === 'appointment-checkin') {
+      const body = req.body || {};
+      const appointmentCode = body.appointmentCode || body.barcode || body.appointment_id || body.code;
+      const rawNationalId = body.nationalId || body.national_id || body.iqama;
+      const rawPhone = body.phone || body.customerPhone || body.patient_phone;
+      const deviceId = req.headers['x-device-id'] || body.deviceId || null;
+
+      const nationalIdClean = rawNationalId ? String(rawNationalId).trim().replace(/\D/g, '') : null;
+      const identityLast4 = nationalIdClean ? nationalIdClean.slice(-4) : null;
+      const nationalIdHash = nationalIdClean ? hashNationalId(nationalIdClean) : null;
+      const phoneClean = rawPhone ? String(rawPhone).trim().replace(/\D/g, '') : null;
+
+      if (!appointmentCode && !nationalIdHash && !phoneClean) {
+        return res.status(400).json({
+          ok: false,
+          error: 'يرجى إدخال رقم الهوية/الإقامة أو مسح باركود الموعد أو رقم الجوال.',
+          code: 'CHECKIN_PARAMS_REQUIRED'
+        });
+      }
+
+      const appointments = MEMORY_DB.appointments[tenantSlug] || [];
+      const app = appointments.find(a => {
+        if (appointmentCode && (a.code === appointmentCode || a.barcode === appointmentCode || a.id === appointmentCode)) {
+          return true;
+        }
+        if (nationalIdHash && (a.national_id_hash === nationalIdHash || (a.national_id && hashNationalId(a.national_id) === nationalIdHash))) {
+          return true;
+        }
+        if (phoneClean && a.patient_phone && a.patient_phone.replace(/\D/g, '') === phoneClean) {
+          return true;
+        }
+        return false;
+      });
+
+      if (!app) {
+        return res.status(404).json({
+          ok: false,
+          error: 'لم يتم العثور على موعد مجدول مطابق لبيانات التحقق المدخلة.',
+          code: 'APPOINTMENT_NOT_FOUND'
+        });
+      }
+
+      if (app.checkin_status === 'checked_in' && app.ticket_id) {
+        const existingTicket = (MEMORY_DB.tickets[tenantSlug] || []).find(t => t.id === app.ticket_id);
+        if (existingTicket && ['waiting', 'called', 'in_service', 'bumped'].includes(existingTicket.status)) {
+          return res.status(200).json({
+            ok: true,
+            isExisting: true,
+            ticket: existingTicket,
+            message: 'تم تسجيل الوصول لهذا الموعد مسبقاً وتذكرتك فعالة.'
+          });
+        }
+      }
+
+      // التحقق من نافذة الحضور (Check-in Window)
+      const scheduledTime = new Date(app.scheduled_time || Date.now());
+      const hallPolicy = MEMORY_DB.hallPolicies[tenantSlug] || {};
+      const beforeMins = hallPolicy.appointment_window_before_minutes != null ? hallPolicy.appointment_window_before_minutes : 45;
+      const afterMins = hallPolicy.appointment_window_after_minutes != null ? hallPolicy.appointment_window_after_minutes : 15;
+      const windowStart = new Date(scheduledTime.getTime() - beforeMins * 60000);
+      const windowEnd = new Date(scheduledTime.getTime() + afterMins * 60000);
+      const now = new Date();
+
+      let assignedPriority = 'scheduled_appointment';
+      let checkinNote = 'تأكيد حضور موعد مجدول في وقته';
+
+      if (now < windowStart) {
+        const timeStr = scheduledTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        const openStr = windowStart.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        return res.status(400).json({
+          ok: false,
+          code: 'CHECKIN_TOO_EARLY',
+          error: 'تسجيل الوصول يفتح قبل الموعد بـ ' + beforeMins + ' دقيقة (الساعة ' + openStr + '). موعدك مجدول الساعة ' + timeStr + '.',
+          scheduledTime: app.scheduled_time,
+          checkinOpensAt: windowStart.toISOString()
+        });
+      } else if (now > windowEnd) {
+        const lateAction = hallPolicy.late_appointment_action || 'convert_to_standard';
+        if (lateAction === 'require_reception') {
+          return res.status(400).json({
+            ok: false,
+            code: 'CHECKIN_EXPIRED',
+            error: 'انتهت نافذة تسجيل الوصول التلقائي للموعد المجدول. يرجى مراجعة موظف الاستقبال لتجديد دورك.',
+            scheduledTime: app.scheduled_time
+          });
+        }
+        assignedPriority = 'standard';
+        checkinNote = 'حضور متأخر عن نافذة الموعد - تم التحويل لطابور الانتظار العام';
+      }
+
+      const queues = MEMORY_DB.queues[tenantSlug] || [];
+      const targetQueue = queues.find(q => q.id === app.queue_id || q.id === app.service_id) || queues[0];
+      const prefix = targetQueue ? (targetQueue.prefix || targetQueue.code || 'A') : 'A';
+
+      const allocated = await queuePersist.allocate(tenantSlug, targetQueue ? targetQueue.id : 'q-default', prefix, MEMORY_DB);
+      const seq = allocated.sequence;
+      const ticketNumber = allocated.ticket_number;
+      const sessionToken = 'mkn_tok_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      const arrivalNow = new Date().toISOString();
+
+      const newTicket = {
+        id: 'tkt_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+        tenant_slug: tenantSlug,
+        branch_id: app.branch_id || (targetQueue && targetQueue.branch_id) || reqBranchId || 'default',
+        zone_id: app.zone_id || (targetQueue && targetQueue.zone_id) || (resolveZone(tenantSlug, reqZoneId)?.id) || null,
+        queue_id: targetQueue ? targetQueue.id : 'q-default',
+        queue_name: targetQueue ? targetQueue.name : 'العيادة',
+        ticket_number: ticketNumber,
+        daily_sequence: seq,
+        customer_name: optionalCustomerName(app.patient_name || body.customerName || 'مراجع بموعد'),
+        customer_phone: optionalCustomerPhone(app.patient_phone || rawPhone),
+        session_token: sessionToken,
+        status: 'waiting',
+        priority_level: assignedPriority,
+        scheduled_time: app.scheduled_time || null,
+        appointment_id: String(app.id || app.code || appointmentCode),
+        national_id_hash: nationalIdHash,
+        identity_last4: identityLast4,
+        device_id: deviceId || null,
+        source_channel: isKiosk ? 'kiosk' : (staff ? 'reception' : 'web'),
+        first_arrived_at: arrivalNow,
+        transferred_at: null,
+        transfer_notes: checkinNote,
+        last_service_name: null,
+        position: 1,
+        etw_minutes: targetQueue?.target_service_minutes || 10,
+        counter_id: null,
+        called_counter_number: null,
+        booked_at: arrivalNow,
+        notes: checkinNote
+      };
+
+      (MEMORY_DB.tickets[tenantSlug] || (MEMORY_DB.tickets[tenantSlug] = [])).push(newTicket);
+      app.checkin_status = 'checked_in';
+      app.ticket_id = newTicket.id;
+      app.checked_in_at = arrivalNow;
+
+      broadcastSSE(tenantSlug, 'ticket_created', { ticket: newTicket, tickets: [newTicket] }, {
+        zoneId: newTicket.zone_id,
+        sessionToken: newTicket.session_token,
+        branchId: newTicket.branch_id
+      });
+
+      return res.status(200).json({
+        ok: true,
+        warning: assignedPriority === 'standard',
+        message: checkinNote,
+        ticket: newTicket,
+        appointment: {
+          id: app.id,
+          code: app.code,
+          scheduled_time: app.scheduled_time,
+          patient_name: app.patient_name
+        },
+        printPayload: {
+          brand: tenantSlug,
+          ticketNumber: newTicket.ticket_number,
+          serviceName: newTicket.queue_name,
+          issuedAt: arrivalNow,
+          scheduledTime: app.scheduled_time,
+          priorityLevel: newTicket.priority_level,
+          identityLast4: identityLast4,
+          channel: newTicket.source_channel
+        }
+      });
+    }
+
+    if (action === 'his-appointment-sync') {
+      const apiKey = req.headers['x-his-api-key'] || req.headers['x-api-key'] || req.query?.apiKey;
+      const expectedKey = process.env.HIS_WEBHOOK_API_KEY || 'mken-his-webhook-sync-key';
+      if (!staff && apiKey !== expectedKey) {
+        return res.status(401).json({ ok: false, error: 'غير مصرح: مفتاح API غير صالح لمزامنة المواعيد.', code: 'AUTH_REQUIRED' });
+      }
+
+      const body = req.body || {};
+      const incomingList = Array.isArray(body.appointments) ? body.appointments : (body.appointment ? [body.appointment] : []);
+      const appointments = MEMORY_DB.appointments[tenantSlug] || (MEMORY_DB.appointments[tenantSlug] = []);
+      const synced = [];
+
+      for (const item of incomingList) {
+        const code = String(item.code || item.appointmentCode || item.appointment_id || item.id || '').trim();
+        if (!code) continue;
+
+        const rawNatId = item.nationalId || item.national_id || item.iqama;
+        const cleanNat = rawNatId ? String(rawNatId).replace(/\D/g, '') : null;
+        const natHash = cleanNat ? hashNationalId(cleanNat) : (item.national_id_hash || null);
+        const last4 = cleanNat ? cleanNat.slice(-4) : (item.identity_last4 || null);
+
+        let existing = appointments.find(a => a.id === item.id || a.id === item.appointment_id || a.code === code);
+        if (existing) {
+          Object.assign(existing, {
+            patient_name: item.patient_name || item.patientName || existing.patient_name,
+            patient_phone: item.patient_phone || item.phone || existing.patient_phone,
+            scheduled_time: item.scheduled_time || item.scheduledTime || existing.scheduled_time,
+            service_id: item.service_id || item.queue_id || existing.service_id,
+            queue_id: item.queue_id || item.service_id || existing.queue_id,
+            doctor_name: item.doctor_name || existing.doctor_name,
+            clinic_name: item.clinic_name || existing.clinic_name,
+            national_id_hash: natHash || existing.national_id_hash,
+            identity_last4: last4 || existing.identity_last4,
+            updated_at: new Date().toISOString()
+          });
+          synced.push(existing);
+        } else {
+          const newApp = {
+            id: item.appointment_id || item.id || ('app_' + Math.random().toString(36).substring(2, 9)),
+            tenant_slug: tenantSlug,
+            branch_id: item.branch_id || reqBranchId || 'default',
+            zone_id: item.zone_id || null,
+            code: code,
+            barcode: item.barcode || code,
+            patient_name: item.patient_name || item.patientName || 'مريض',
+            patient_phone: item.patient_phone || item.phone || null,
+            national_id_hash: natHash,
+            identity_last4: last4,
+            scheduled_time: item.scheduled_time || item.scheduledTime || new Date().toISOString(),
+            service_id: item.service_id || item.queue_id || (MEMORY_DB.queues[tenantSlug]?.[0]?.id),
+            queue_id: item.queue_id || item.service_id || (MEMORY_DB.queues[tenantSlug]?.[0]?.id),
+            doctor_name: item.doctor_name || null,
+            clinic_name: item.clinic_name || null,
+            checkin_status: 'scheduled',
+            created_at: new Date().toISOString()
+          };
+          appointments.push(newApp);
+          synced.push(newApp);
+        }
+      }
+
+      return res.status(200).json({ ok: true, count: synced.length, syncedCount: synced.length, appointments: synced });
+    }
+
+    // ---------------------------------------------------------------
     // 2. جلب الإعدادات والمسارات والكاونترات الحالية
     // ---------------------------------------------------------------
     if (action === 'get-config' || action === 'staff-config') {
       const settings = MEMORY_DB.settings[tenantSlug];
-      const queues = MEMORY_DB.queues[tenantSlug].filter(q => q.is_active);
-      const counters = MEMORY_DB.counters[tenantSlug];
-      const users = MEMORY_DB.users[tenantSlug];
+      const allQueues = (MEMORY_DB.queues[tenantSlug] || []).filter(q => q.is_active);
+      const allCounters = MEMORY_DB.counters[tenantSlug] || [];
+      const allUsers = MEMORY_DB.users[tenantSlug] || [];
+      const allZones = (MEMORY_DB.zones[tenantSlug] || []).filter(z => z.is_active !== false);
+
+      const targetZone = resolveZone(tenantSlug, reqZoneId);
+      const activeZoneId = targetZone ? targetZone.id : reqZoneId;
+
+      let queues = allQueues;
+      let counters = allCounters;
+
+      if (activeZoneId) {
+        queues = allQueues.filter(q => !q.zone_id || q.zone_id === activeZoneId);
+        const queueIds = new Set(queues.map(q => q.id));
+        counters = allCounters.filter(c => {
+          if (c.zone_id) return c.zone_id === activeZoneId;
+          if (Array.isArray(c.assigned_queue_ids)) {
+            return c.assigned_queue_ids.some(qid => queueIds.has(qid));
+          }
+          return true;
+        });
+      }
+
       const counterSessions = MEMORY_DB.counterSessions[tenantSlug] || [];
       const agentBreaks = MEMORY_DB.agentBreaks[tenantSlug] || [];
       const receptionHandovers = MEMORY_DB.receptionHandovers[tenantSlug] || [];
-      return res.status(200).json({ ok: true, settings, queues, counters, users, counterSessions, agentBreaks, receptionHandovers, hallPolicy: MEMORY_DB.hallPolicies[tenantSlug] });
+      return res.status(200).json({
+        ok: true,
+        settings,
+        queues,
+        counters,
+        users: allUsers,
+        zones: allZones,
+        zone: targetZone || null,
+        counterSessions,
+        agentBreaks,
+        receptionHandovers,
+        hallPolicy: MEMORY_DB.hallPolicies[tenantSlug]
+      });
     }
 
     // ---------------------------------------------------------------
@@ -927,7 +1820,9 @@ async function queueHandler(req, res) {
     if (action === 'add-counter') {
       const body = req.body || {};
       const name = (body.name || '').trim();
-      const assignedQueueIds = Array.isArray(body.assignedQueueIds) ? body.assignedQueueIds : [];
+      const assignedQueueIds = Array.isArray(body.assignedQueueIds) 
+        ? body.assignedQueueIds 
+        : (Array.isArray(body.service_ids) ? body.service_ids : (Array.isArray(body.serviceIds) ? body.serviceIds : []));
       const counters = MEMORY_DB.counters[tenantSlug] || [];
       const counterNumber = parseInt(body.counterNumber, 10) || (counters.length + 1);
 
@@ -935,9 +1830,14 @@ async function queueHandler(req, res) {
         return res.status(400).json({ error: 'الرجاء إدخال اسم الكاونتر بشكل صحيح.' });
       }
 
+      const matchedZone = resolveZone(tenantSlug, body.zoneId || body.zone_id);
+      const assignedZoneId = matchedZone ? matchedZone.id : (body.zoneId || body.zone_id || null);
+
       const newCounter = {
-        id: 'cnt-' + Math.random().toString(36).substring(2, 9) + '-' + tenantSlug,
+        id: body.id || ('cnt-' + Math.random().toString(36).substring(2, 9) + '-' + tenantSlug),
         tenant_slug: tenantSlug,
+        branch_id: body.branchId || body.branch_id || reqBranchId || 'default',
+        zone_id: assignedZoneId,
         counter_number: counterNumber,
         name: name,
         operator_name: body.operatorName || 'موظف متاح',
@@ -979,6 +1879,13 @@ async function queueHandler(req, res) {
       if (body.operatorName) counter.operator_name = body.operatorName;
       if (body.userId) counter.current_user_id = body.userId;
       if (body.status && ['active', 'on_break', 'offline'].includes(body.status)) counter.status = body.status;
+      if (body.zoneId !== undefined || body.zone_id !== undefined) {
+        const mz = resolveZone(tenantSlug, body.zoneId || body.zone_id);
+        counter.zone_id = mz ? mz.id : (body.zoneId || body.zone_id || null);
+      }
+      if (body.branchId || body.branch_id) {
+        counter.branch_id = body.branchId || body.branch_id;
+      }
 
       counter.last_status_change = new Date().toISOString();
       broadcastSSE(tenantSlug, 'config_updated', { counters, settings: MEMORY_DB.settings[tenantSlug] });
@@ -1024,9 +1931,14 @@ async function queueHandler(req, res) {
         return res.status(400).json({ error: 'الرجاء إدخال اسم الطابور / القسم بشكل صحيح.' });
       }
 
+      const qMatchedZone = resolveZone(tenantSlug, body.zoneId || body.zone_id);
+      const qAssignedZoneId = qMatchedZone ? qMatchedZone.id : (body.zoneId || body.zone_id || null);
+
       const newQueue = {
         id: 'q-' + codeStr.toLowerCase() + '-' + Math.random().toString(36).substring(2, 6) + '-' + tenantSlug,
         tenant_slug: tenantSlug,
+        branch_id: body.branchId || body.branch_id || reqBranchId || 'default',
+        zone_id: qAssignedZoneId,
         name: name,
         code: codeStr,
         prefix: codeStr,
@@ -1058,6 +1970,13 @@ async function queueHandler(req, res) {
       if (body.targetServiceMinutes !== undefined) queue.target_service_minutes = parseInt(body.targetServiceMinutes, 10);
       if (body.maxDailyCapacity !== undefined) queue.max_daily_capacity = parseInt(body.maxDailyCapacity, 10);
       if (body.isActive !== undefined) queue.is_active = Boolean(body.isActive);
+      if (body.zoneId !== undefined || body.zone_id !== undefined) {
+        const qz = resolveZone(tenantSlug, body.zoneId || body.zone_id);
+        queue.zone_id = qz ? qz.id : (body.zoneId || body.zone_id || null);
+      }
+      if (body.branchId || body.branch_id) {
+        queue.branch_id = body.branchId || body.branch_id;
+      }
 
       broadcastSSE(tenantSlug, 'config_updated', { queues, settings: MEMORY_DB.settings[tenantSlug] });
       return res.status(200).json({ ok: true, queue, queues, message: 'تم تحديث بيانات الطابور بنجاح.' });
@@ -1345,7 +2264,10 @@ async function queueHandler(req, res) {
     // 4. عرض المسارات المتاحة مع الإحصائيات الفورية وقوائم الانتظار
     // ---------------------------------------------------------------
     if (action === 'list-queues' || action === 'staff-board') {
-      const queues = MEMORY_DB.queues[tenantSlug].filter(q => q.is_active);
+      const allQueues = (MEMORY_DB.queues[tenantSlug] || []).filter(q => q.is_active);
+      const targetZone = resolveZone(tenantSlug, reqZoneId);
+      const activeZoneId = targetZone ? targetZone.id : reqZoneId;
+      const queues = activeZoneId ? allQueues.filter(q => !q.zone_id || q.zone_id === activeZoneId) : allQueues;
       const counters = MEMORY_DB.counters[tenantSlug];
       const tickets = MEMORY_DB.tickets[tenantSlug];
       const settings = MEMORY_DB.settings[tenantSlug];
@@ -1397,16 +2319,44 @@ async function queueHandler(req, res) {
     // ---------------------------------------------------------------
     if (action === 'join-queue') {
       const ip = queueGuard.clientIp(req);
-      const limit = ip ? 8 : MISSING_IP_LIMIT;
-      const rate = isRateLimited('queue-join:' + tenantSlug + ':' + (ip || 'no-ip'), limit, 60 * 1000, true);
-      if (rate.limited) {
-        res.setHeader('Retry-After', String(rate.retryAfterSec));
-        return res.status(429).json({
-          ok: false,
-          error: 'طلبات كثيرة لإصدار التذاكر. حاول بعد قليل.',
-          code: 'RATE_LIMITED',
-          retryAfterSec: rate.retryAfterSec
-        });
+      const deviceId = req.headers['x-device-id'] || (req.body && req.body.deviceId) || (req.query && req.query.deviceId) || null;
+      const ua = req.headers['user-agent'] || '';
+      const uaHash = crypto.createHash('md5').update(ua).digest('hex').slice(0, 8);
+
+      if (!isKiosk && !staff) {
+        const rateKey = 'queue-join:' + tenantSlug + ':' + (ip || 'no-ip') + ':' + (deviceId || uaHash);
+        const limit = ip ? 8 : MISSING_IP_LIMIT;
+        const rate = isRateLimited(rateKey, limit, 60 * 1000, true);
+        if (rate.limited) {
+          res.setHeader('Retry-After', String(rate.retryAfterSec));
+          return res.status(429).json({
+            ok: false,
+            error: 'تم تجاوز الحد المسموح به لإصدار التذاكر مؤقتاً. يرجى الانتظار دقيقة واحدة.',
+            code: 'RATE_LIMITED',
+            retryAfterSec: rate.retryAfterSec
+          });
+        }
+
+        // منع التذاكر المكررة لنفس الجهاز والمراجع النشط
+        if (deviceId) {
+          const reqQueueIds = Array.isArray(req.body?.queueIds) ? req.body.queueIds : (req.body?.queueId ? [req.body.queueId] : []);
+          const existingActive = (MEMORY_DB.tickets[tenantSlug] || []).find(t =>
+            t.device_id &&
+            t.device_id === deviceId &&
+            reqQueueIds.includes(t.queue_id) &&
+            ['waiting', 'called', 'in_service', 'bumped'].includes(t.status)
+          );
+          if (existingActive) {
+            return res.status(200).json({
+              ok: true,
+              isExisting: true,
+              sessionToken: existingActive.session_token,
+              tickets: [existingActive],
+              ticket: existingActive,
+              message: 'لديك تذكرة نشطة بالفعل لنفس الخدمة.'
+            });
+          }
+        }
       }
       const body = req.body || {};
       const queueIds = Array.isArray(body.queueIds) ? body.queueIds : (body.queueId ? [body.queueId] : []);
@@ -1476,7 +2426,15 @@ async function queueHandler(req, res) {
         const newTicket = {
           id: 'tkt_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
           tenant_slug: tenantSlug,
+          branch_id: q?.branch_id || body.branchId || reqBranchId || 'default',
+          zone_id: q?.zone_id || (resolveZone(tenantSlug, body.zoneId || reqZoneId)?.id) || null,
           queue_id: est.queueId,
+          device_id: deviceId || null,
+          source_channel: isKiosk ? 'kiosk' : (staff ? 'reception' : 'web'),
+          appointment_id: null,
+          scheduled_time: null,
+          national_id_hash: null,
+          identity_last4: null,
           queue_name: q?.name || 'خدمة',
           ticket_number: ticketNumber,
           daily_sequence: seq,
@@ -1512,12 +2470,13 @@ async function queueHandler(req, res) {
         t.concurrent_ticket_ids = ticketIds.filter(id => id !== t.id);
       });
 
-      broadcastSSE(tenantSlug, 'ticket_created', { tickets: createdTickets });
+      broadcastSSE(tenantSlug, 'ticket_created', { tickets: createdTickets, ticket: createdTickets[0] }, { zoneId: createdTickets[0]?.zone_id, sessionToken: sessionToken, branchId: createdTickets[0]?.branch_id });
 
       return res.status(200).json({
         ok: true,
         sessionToken,
         tickets: createdTickets,
+        ticket: createdTickets[0] || null,
         message: 'تم حجز دورك بنجاح في نظام الطوابير الذكي.'
       });
     }
@@ -1558,6 +2517,8 @@ async function queueHandler(req, res) {
       const manualTicket = {
         id: 'tkt_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
         tenant_slug: tenantSlug,
+        branch_id: q?.branch_id || body.branchId || reqBranchId || 'default',
+        zone_id: q?.zone_id || (resolveZone(tenantSlug, body.zoneId || reqZoneId)?.id) || null,
         queue_id: q.id,
         queue_name: q.name,
         ticket_number: ticketNumber,
@@ -1581,7 +2542,11 @@ async function queueHandler(req, res) {
       };
 
       tickets.push(manualTicket);
-      broadcastSSE(tenantSlug, 'ticket_created', { tickets: [manualTicket] });
+      broadcastSSE(tenantSlug, 'ticket_created', { ticket: manualTicket, tickets: [manualTicket] }, {
+        zoneId: manualTicket.zone_id,
+        sessionToken: manualTicket.session_token,
+        branchId: manualTicket.branch_id
+      });
 
       return res.status(200).json({
         ok: true,
@@ -1619,7 +2584,12 @@ async function queueHandler(req, res) {
     }
 
     if (action === 'list-tickets') {
-      const tickets = MEMORY_DB.tickets[tenantSlug] || [];
+      let tickets = MEMORY_DB.tickets[tenantSlug] || [];
+      const targetZone = resolveZone(tenantSlug, reqZoneId);
+      const activeZoneId = targetZone ? targetZone.id : reqZoneId;
+      if (activeZoneId) {
+        tickets = tickets.filter(t => t.zone_id === activeZoneId);
+      }
       return res.status(200).json({
         ok: true,
         tenant: tenantSlug,
@@ -1761,8 +2731,9 @@ async function queueHandler(req, res) {
         ['waiting', 'bumped', 'sync_watch'].includes(t.status)
       );
 
-      // فرز التذاكر وفق مصفوفة الأولوية الهرمية
-      const eligibleTickets = sortEligibleTickets(eligibleTicketsRaw);
+      // فرز التذاكر وفق مصفوفة الأولوية الهرمية مع منع التجويع
+      const hallPolicy = MEMORY_DB.hallPolicies[tenantSlug] || {};
+      const eligibleTickets = sortEligibleTickets(eligibleTicketsRaw, hallPolicy, counter);
 
       if (!eligibleTickets.length) {
         return res.status(200).json({ ok: true, message: 'لا يوجد عملاء منتظرين في هذا المسار حالياً.', ticket: null });
@@ -1812,6 +2783,13 @@ async function queueHandler(req, res) {
         counter.current_ticket_id = selectedTicket.id;
         counter.current_ticket_number = selectedTicket.ticket_number;
         counter.current_session_started_at = null;
+
+        // تحديث عداد منع التجويع للمواعيد المتتالية
+        if (selectedTicket.priority_level === 'scheduled_appointment') {
+          counter.consecutive_appointments_served = (counter.consecutive_appointments_served || 0) + 1;
+        } else if (selectedTicket.priority_level !== 'immediate_next') {
+          counter.consecutive_appointments_served = 0;
+        }
 
         notifyCustomer(
           tenantSlug,
@@ -1955,10 +2933,20 @@ async function queueHandler(req, res) {
       // 2. تحديث التذكرة وسياق العميل (Context Handover & Identity Persistence)
       const previousQueue = queues.find(q => q.id === ticket.queue_id);
       const transferTimestamp = new Date().toISOString();
+      const oldZoneId = ticket.zone_id || null;
 
       ticket.last_service_name = previousQueue?.name || 'القسم السابق';
       ticket.queue_id = targetQueue.id;
       ticket.queue_name = targetQueue.name;
+      if (targetQueue.zone_id !== undefined) {
+        ticket.zone_id = targetQueue.zone_id;
+      } else if (body.toZoneId || body.to_zone_id) {
+        const tz = resolveZone(tenantSlug, body.toZoneId || body.to_zone_id);
+        ticket.zone_id = tz ? tz.id : (body.toZoneId || body.to_zone_id);
+      }
+      if (targetQueue.branch_id) {
+        ticket.branch_id = targetQueue.branch_id;
+      }
       ticket.status = 'waiting';
       ticket.priority_level = priorityLevel;
       ticket.transferred_at = transferTimestamp;
@@ -1998,6 +2986,11 @@ async function queueHandler(req, res) {
             transferNotes: transferNotes,
             estimatedWaitMinutes: newEtw,
             currentCounter: currentCounter
+          }, {
+            zoneId: ticket.zone_id,
+            oldZoneId: oldZoneId,
+            sessionToken: ticket.session_token,
+            branchId: ticket.branch_id
           });
         }
       };

@@ -267,10 +267,10 @@ function policyFromDbRow(row) {
   });
 }
 
-function policyToDbRow(slug, policy, supervisorId) {
+function policyToDbRow(slug, policy, supervisorId, branchId) {
   return {
     tenant_slug: slug,
-    branch_id: 'default',
+    branch_id: branchId || (policy && policy.branch_id) || 'default',
     timezone: policy.timezone || 'Asia/Riyadh',
     city: policy.city || 'Riyadh',
     weekly_hours: policy.weekly_hours || defaultWeeklyHours(),

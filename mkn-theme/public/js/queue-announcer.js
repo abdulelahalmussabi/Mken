@@ -17,6 +17,37 @@
   var speechQueue = [];
   var isSpeaking = false;
   var arabicVoice = null;
+  var currentScope = {
+    zoneId: null,
+    counters: null
+  };
+
+  function setScope(scope) {
+    if (!scope) {
+      currentScope.zoneId = null;
+      currentScope.counters = null;
+      return;
+    }
+    if (scope.zoneId !== undefined) {
+      currentScope.zoneId = scope.zoneId ? String(scope.zoneId) : null;
+    }
+    if (scope.counters !== undefined) {
+      if (Array.isArray(scope.counters)) {
+        currentScope.counters = scope.counters.map(function (c) { return String(c).trim(); });
+      } else if (typeof scope.counters === 'string') {
+        currentScope.counters = scope.counters.split(',').map(function (c) { return c.trim(); });
+      } else {
+        currentScope.counters = null;
+      }
+    }
+  }
+
+  function getScope() {
+    return {
+      zoneId: currentScope.zoneId,
+      counters: currentScope.counters ? currentScope.counters.slice() : null
+    };
+  }
 
   function loadArabicVoice() {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -69,6 +100,31 @@
     }
 
     options = options || {};
+
+    // فحص عزل شاشات المناطق والكاونترات المخصصة
+    if (currentScope.counters && currentScope.counters.length > 0) {
+      var checkCounterId = options.counterId != null ? String(options.counterId) : null;
+      var checkCounterNum = typeof counterNameOrNum === 'number' || /^\d+$/.test(counterNameOrNum)
+        ? String(counterNameOrNum)
+        : null;
+      var matchedCounter = false;
+      for (var ci = 0; ci < currentScope.counters.length; ci++) {
+        var allow = currentScope.counters[ci];
+        if (checkCounterId && allow === checkCounterId) { matchedCounter = true; break; }
+        if (checkCounterNum && allow === checkCounterNum) { matchedCounter = true; break; }
+        if (String(counterNameOrNum || '').indexOf(allow) !== -1) { matchedCounter = true; break; }
+      }
+      if (!matchedCounter) {
+        return Promise.resolve({ spoken: false, skipped: true, reason: 'counter_filtered' });
+      }
+    }
+
+    if (currentScope.zoneId && options.zoneId) {
+      if (String(currentScope.zoneId) !== String(options.zoneId)) {
+        return Promise.resolve({ spoken: false, skipped: true, reason: 'zone_filtered' });
+      }
+    }
+
     var spokenNumber = formatSpokenTicket(ticketNumber);
     var counterText = typeof counterNameOrNum === 'number' || /^\d+$/.test(counterNameOrNum)
       ? 'كاونتر ' + counterNameOrNum
@@ -124,6 +180,8 @@
   return {
     announceTicket: announceTicket,
     formatSpokenTicket: formatSpokenTicket,
+    setScope: setScope,
+    getScope: getScope,
     isVoiceSupported: function () {
       return typeof window !== 'undefined' && !!window.speechSynthesis;
     }
