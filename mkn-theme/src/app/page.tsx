@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import Navbar from "@/components/Navbar";
@@ -9,10 +9,11 @@ import ServiceDetailModal from "@/components/ServiceDetailModal";
 import MagicPreviewForm from "@/components/MagicPreviewForm";
 import { ServiceItem } from "@/types/database";
 import { useApp } from "@/context/AppContext";
-import { useOccasion } from "@/context/OccasionContext";
+import { useOccasion, OccasionId } from "@/context/OccasionContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin,
   Search,
@@ -35,14 +36,111 @@ import {
   Check,
 } from "lucide-react";
 
+// Animated Counter component with 60fps GPU easing
+function AnimatedCounter({
+  target,
+  duration = 1800,
+  decimals = 0,
+  prefix = "",
+  suffix = "",
+  className = "",
+}: {
+  target: number;
+  duration?: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  className?: string;
+}) {
+  const [val, setVal] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [hasStarted, setHasStarted] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasStarted) {
+          setHasStarted(true);
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasStarted]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+    let startTimestamp: number | null = null;
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      // easeOutCubic
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      setVal(easeProgress * target);
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setVal(target);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [hasStarted, target, duration]);
+
+  return (
+    <span ref={ref} className={className}>
+      {prefix}
+      {decimals > 0 ? val.toFixed(decimals) : Math.round(val)}
+      {suffix}
+    </span>
+  );
+}
+
+// OnePlus-style flagship motion animation presets
+const heroStaggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.08,
+    },
+  },
+};
+
+const heroRiseItem = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const seasonalTabs: { id: OccasionId; name: string; icon: string }[] = [
+  { id: "none", name: "القياسي", icon: "✨" },
+  { id: "founding_day", name: "يوم التأسيس", icon: "🐎" },
+  { id: "national_day", name: "اليوم الوطني", icon: "🇸🇦" },
+  { id: "ramadan", name: "رمضان والأعياد", icon: "🌙" },
+];
+
 // Services Data
 const SERVICES_DATA: ServiceItem[] = [
   {
     id: "srv-1",
     title: "تحسين وتأكيد خرائط Google",
-    shortDesc: "تصدر حزمة الخرائط الثلاثية (Local Pack) واجعل محلك أول ما يراه الزبون القريب.",
+    shortDesc: "تصدر حزمة الخرائط الثلاثية (Local Pack) واجعل نشاطك التجاري في مقدمة ما يراه الزبون القريب.",
     fullDesc:
-      "نقوم بتحسين وترتيب نشاطك التجاري على خرائط قوقل بدقة عالية. يشمل ذلك اختيار الفئات الدقيقة، إضافة الكلمات المفتاحية الوصفية، رفع صور عالية الجودة وتأكيد الموقع الجغرافي لضمان الظهور في الترتيب الأول في محيطك.",
+      "نقوم بتحسين وترتيب نشاطك التجاري على خرائط قوقل بدقة عالية. يشمل ذلك اختيار الفئات الدقيقة، إضافة الكلمات المفتاحية الوصفية، رفع صور عالية الجودة وتأكيد الموقع الجغرافي لضمان الظهور في الترتيب المتقدم في محيطك.",
     features: [
       "تهيئة بيانات النشاط (NAP Consistency)",
       "تحسين الصور الجغرافية (Geo-tagged Photos)",
@@ -57,11 +155,11 @@ const SERVICES_DATA: ServiceItem[] = [
     title: "تهيئة الكلمات المفتاحية المحلية",
     shortDesc: "استهداف العبارات والجمل الأكثر بحثاً من قبل سكان منطقتك ومدينتك.",
     fullDesc:
-      "ندرس سلوك البحث المحلي للزبائن في مدينتك (مثل: 'أفضل كافيه بالرياض'، 'أقرب سباك بجدة') ونقوم بتهيئة محرك البحث لمحلك التجاري ليتصدر هذه الجمل المفتاحية بدقة.",
+      "ندرس سلوك البحث المحلي للزبائن في مدينتك (مثل: 'أفضل كافيه بالرياض'، 'أقرب سباك بجدة') ونقوم بتهيئة محرك البحث لنشاطك التجاري ليتصدر هذه الجمل المفتاحية بدقة.",
     features: [
       "تحليل كلمات البحث المحلية الأكثر ربحية",
-      "تحسين النص الوصفي للمحل والخدمات",
-      "ربط المحل بالمناطق والأحياء المجاورة",
+      "تحسين النص الوصفي للنشاط التجاري والخدمات",
+      "ربط النشاط التجاري بالمناطق والأحياء المجاورة",
       "تقارير تحليلية شهرية لعمليات البحث",
     ],
     iconName: "Search",
@@ -98,7 +196,15 @@ export default function HomePage() {
   const [submittingContact, setSubmittingContact] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const { addContactMessage } = useApp();
-  const { activeOccasion, occasionDetails, openModal, copyCoupon } = useOccasion();
+  const { activeOccasion, occasionDetails, openModal, copyCoupon, setOccasion } = useOccasion();
+
+  const heroCardRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroCardRef,
+    offset: ["start end", "end start"],
+  });
+  const heroCardScale = useTransform(scrollYProgress, [0, 0.6], [0.96, 1.02]);
+  const heroCardY = useTransform(scrollYProgress, [0, 0.6], [20, -10]);
 
   const {
     register,
@@ -128,7 +234,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent text-foreground font-sans transition-colors duration-500">
+    <div dir="rtl" className="min-h-screen flex flex-col bg-transparent text-foreground font-sans transition-colors duration-500">
       <Navbar />
 
       {/* Hero Section — transparent so festive particles show through */}
@@ -150,20 +256,64 @@ export default function HomePage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Right Hero Content */}
-            <div className="lg:col-span-7 space-y-6 text-right">
-              {/* Occasion Active Pill Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold shadow-lg">
-                <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: "8s" }} />
-                <span>
-                  {activeOccasion === "none"
-                    ? "المنصة الأولى المخصصة للسوق السعودي 🇸🇦"
-                    : `${occasionDetails.name} — ${occasionDetails.slogan}`}
-                </span>
-              </div>
+            {/* Right Hero Content with OnePlus Staggered Entrance */}
+            <motion.div
+              variants={heroStaggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="lg:col-span-7 space-y-6 text-right"
+            >
+              {/* Saudi Seasonal Themes Switcher & Pill Badge */}
+              <motion.div variants={heroRiseItem} className="space-y-3">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold shadow-lg">
+                  <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: "8s" }} />
+                  <span>
+                    {activeOccasion === "none"
+                      ? "المنصة المتخصصة للسوق السعودي 🇸🇦"
+                      : `${occasionDetails.name} — ${occasionDetails.slogan}`}
+                  </span>
+                </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground luxury-gradient-text leading-tight tracking-tight">
-                اجعل محلك{" "}
+                {/* Interactive Saudi Seasonal Themes Gliding Switcher */}
+                <div className="pt-1 flex items-center justify-start overflow-x-auto no-scrollbar">
+                  <div className="inline-flex items-center gap-1.5 p-1.5 bg-surface/90 border border-line rounded-2xl shadow-xl backdrop-blur-xl">
+                    {seasonalTabs.map((tab) => {
+                      const isActive =
+                        activeOccasion === tab.id ||
+                        (tab.id === "ramadan" &&
+                          (activeOccasion === "ramadan" || activeOccasion === "eid_fitr" || activeOccasion === "eid_adha"));
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setOccasion(tab.id)}
+                          className={`relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer select-none flex items-center gap-1.5 shrink-0 ${
+                            isActive ? "text-white" : "text-muted hover:text-foreground"
+                          }`}
+                        >
+                          {isActive && (
+                            <motion.span
+                              layoutId="activeSeasonalLandingPill"
+                              className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl shadow-md shadow-emerald-500/20"
+                              transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                            />
+                          )}
+                          <span className="relative z-10 flex items-center gap-1.5">
+                            <span>{tab.icon}</span>
+                            <span>{tab.name}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.h1
+                variants={heroRiseItem}
+                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground luxury-gradient-text leading-tight tracking-tight"
+              >
+                اجعل نشاطك التجاري{" "}
                 <span
                   className="bg-clip-text text-transparent underline underline-offset-8 decoration-wavy transition-colors duration-500"
                   style={{
@@ -173,18 +323,22 @@ export default function HomePage() {
                     textDecorationColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor,
                   }}
                 >
-                  الخيار الأول
+                  الخيار الأبرز
                 </span>{" "}
                 في منطقتك
-              </h1>
+              </motion.h1>
 
-              <p className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl">
-                نساعد أصحاب المحلات والمتاجر في المملكة العربية السعودية على تصدر خرائط Google ونتائج البحث المحلية، لجلب المزيد من اتصالات العملاء والزيارات المباشرة لفرعك يومياً.
-              </p>
+              <motion.p
+                variants={heroRiseItem}
+                className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl"
+              >
+                نساعد أصحاب الأنشطة التجارية والمتاجر في المملكة العربية السعودية على تصدر خرائط Google ونتائج البحث المحلية، لجلب المزيد من اتصالات العملاء والزيارات المباشرة لفرعك يومياً.
+              </motion.p>
 
               {/* Occasion Coupon Highlight Box */}
               {activeOccasion !== "none" && (
-                <div
+                <motion.div
+                  variants={heroRiseItem}
                   className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg ${
                     activeOccasion === "national_day"
                       ? "bg-[#043d28]/90 border-emerald-600/40 text-emerald-50"
@@ -229,11 +383,14 @@ export default function HomePage() {
                       )}
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* CTAs */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              <motion.div
+                variants={heroRiseItem}
+                className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+              >
                 <Link
                   href={"/preview" as Route}
                   className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-white rounded-2xl shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 text-center"
@@ -245,15 +402,18 @@ export default function HomePage() {
 
                 <button
                   onClick={openModal}
-                  className="flex items-center justify-center gap-2 px-6 py-4 bg-surface hover:bg-surface-2 border border-line rounded-2xl text-foreground text-sm font-bold transition-all"
+                  className="flex items-center justify-center gap-2 px-6 py-4 bg-surface hover:bg-surface-2 border border-line rounded-2xl text-foreground text-sm font-bold transition-all cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-emerald-400" />
                   <span>دراسة واجهات المناسبات 🇸🇦</span>
                 </button>
-              </div>
+              </motion.div>
 
               {/* Trust Indicators */}
-              <div className="pt-4 flex items-center gap-6 text-xs text-muted">
+              <motion.div
+                variants={heroRiseItem}
+                className="pt-4 flex items-center gap-6 text-xs text-muted"
+              >
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>حلول موثوقة وعالية الجودة</span>
@@ -266,12 +426,16 @@ export default function HomePage() {
                   <Users className="w-4 h-4 text-sky-400" />
                   <span>خدمة مخصصة للأعمال</span>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
-            {/* Left Hero Interactive Card */}
+            {/* Left Hero Interactive Card with Parallax Depth */}
             <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md bg-surface/90 border border-line rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4">
+              <motion.div
+                ref={heroCardRef}
+                style={{ scale: heroCardScale, y: heroCardY }}
+                className="relative mx-auto max-w-md bg-surface/90 border border-line rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4"
+              >
                 <div className="flex items-center justify-between pb-3 border-b border-line">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
@@ -287,7 +451,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <MagicPreviewForm compact />
-              </div>
+              </motion.div>
             </div>
           </div>
         </div>
@@ -301,49 +465,64 @@ export default function HomePage() {
               <Sparkles className="w-4 h-4" />
               <span>خدماتنا المتخصصة</span>
             </h2>
-            <h3 className="text-3xl sm:text-4xl font-extrabold text-foreground">
-              كل ما يحتاجه محلك لتصدر نتائج البحث والخرائط
+            <h3 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white">
+              كل ما يحتاجه نشاطك التجاري لتصدر نتائج البحث والخرائط
             </h3>
-            <p className="text-muted text-sm leading-relaxed">
+            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
               نقدم حلولاً متكاملة ومصممة خصيصاً للتوافق مع خوارزميات Google المحلية والجمهور السعودي.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {SERVICES_DATA.map((service) => (
-              <div
+            {SERVICES_DATA.map((service, index) => (
+              <motion.div
                 key={service.id}
-                className="bg-surface border border-slate-200 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 rounded-3xl p-6 shadow-sm transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{
+                  duration: 0.7,
+                  delay: index * 0.12,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                whileHover={{
+                  y: -6,
+                  transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
+                }}
+                className="relative bg-surface border border-slate-200 dark:border-slate-800 hover:border-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/15 rounded-3xl p-6 shadow-sm transition-colors duration-300 flex flex-col justify-between space-y-6 group overflow-hidden"
               >
-                <div className="space-y-4">
+                {/* Internal ambient spotlight illumination */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                <div className="space-y-4 relative z-10">
                   <div className="flex items-center justify-between">
                     <div
-                      className="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-lg"
+                      className="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-lg transition-transform duration-300 group-hover:scale-110"
                       style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
                     >
                       {service.iconName === "MapPin" && <MapPin className="w-6 h-6" />}
                       {service.iconName === "Search" && <Search className="w-6 h-6" />}
                       {service.iconName === "Star" && <Star className="w-6 h-6" />}
                     </div>
-                    <span className="px-3 py-1 bg-surface-2 text-muted rounded-full text-xs font-semibold border border-line">
+                    <span className="px-3 py-1 bg-slate-100 dark:bg-surface-2 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold border border-slate-200 dark:border-line">
                       {service.badge}
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold text-foreground group-hover:text-emerald-600 transition-colors">
+                  <h4 className="text-xl font-bold text-[#09090B] dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
                     {service.title}
                   </h4>
-                  <p className="text-muted text-sm leading-relaxed">{service.shortDesc}</p>
+                  <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{service.shortDesc}</p>
                 </div>
 
                 <button
                   onClick={() => setSelectedService(service)}
-                  className="w-full py-3 bg-surface-2 hover:bg-emerald-500 hover:text-white text-foreground font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                  className="relative z-10 w-full py-3 bg-slate-100 hover:bg-emerald-600 dark:bg-surface-2 dark:hover:bg-emerald-500 text-slate-900 hover:text-white dark:text-foreground dark:hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
                 >
                   <span>عرض تفاصيل الخدمة</span>
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -354,67 +533,109 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-right">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground luxury-gradient-text leading-tight">
-                لماذا تختار منصة &quot;مكّن&quot; لإدارة محلك على الخريطة؟
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white luxury-gradient-text leading-tight">
+                لماذا تختار منصة &quot;مكّن&quot; لإدارة نشاطك التجاري على الخريطة؟
               </h2>
-              <p className="text-muted text-sm leading-relaxed">
+              <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
                 نجمع بين الخبرة التقنية العميقة في SEO المحلي وفهم سلوك العميل في المملكة لتقديم نتائج سريعة وملموسة.
               </p>
 
               <div className="space-y-4 pt-2">
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
-                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                >
+                  <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-foreground">متوافق 100% مع السياسات المحلية والسعودية</h3>
-                    <p className="text-xs text-muted mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
+                    <h3 className="font-bold text-sm text-[#09090B] dark:text-white">متوافق 100% مع السياسات المحلية والسعودية</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
                   </div>
-                </div>
+                </motion.div>
 
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
-                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                >
+                  <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-foreground">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
-                    <p className="text-xs text-muted mt-1">إمكانية تفعيل واجهات احتفالية لم المحل في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
+                    <h3 className="font-bold text-sm text-[#09090B] dark:text-white">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">إمكانية تفعيل واجهات احتفالية لنشاطك التجاري في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
                   </div>
-                </div>
+                </motion.div>
 
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
-                  <div className="p-2 bg-sky-500/20 text-sky-400 rounded-xl shrink-0">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                >
+                  <div className="p-2 bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl shrink-0">
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-foreground">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
-                    <p className="text-xs text-muted mt-1">نظام تواصل متكامل يربط صاحب المحل بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
+                    <h3 className="font-bold text-sm text-[#09090B] dark:text-white">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">نظام تواصل متكامل يربط صاحب النشاط التجاري بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
 
-            {/* Feature Image / Graphic */}
-            <div className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl">
+            {/* Feature Image / Graphic with Animated Counters */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl relative overflow-hidden"
+            >
               <div className="flex items-center justify-between pb-4 border-b border-line">
-                <h3 className="font-bold text-base text-foreground">إحصائيات التأثير المحقق</h3>
-                <span className="text-xs text-emerald-400 font-bold">تقرير النمو 2026</span>
+                <h3 className="font-bold text-base text-[#09090B] dark:text-white">إحصائيات التأثير المحقق</h3>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                  تقرير النمو 2026
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-emerald-400 tabular-nums">+350%</div>
-                  <div className="text-xs text-muted">زيادة الاتصالات المباشرة</div>
+                <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                  <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    <AnimatedCounter target={350} prefix="+" suffix="%" />
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">زيادة الاتصالات المباشرة</div>
+                  <div className="absolute -inset-1 rounded-2xl bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
-                <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold luxury-gradient-text tabular-nums">4.9 / 5</div>
-                  <div className="text-xs text-muted">متوسط رضا أصحاب المحلات</div>
+                <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                  <div className="text-3xl font-extrabold text-[#09090B] dark:text-white tabular-nums">
+                    <AnimatedCounter target={4.9} decimals={1} suffix=" / 5" />
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">متوسط رضا أصحاب الأنشطة التجارية</div>
+                  <div className="absolute -inset-1 rounded-2xl bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
               </div>
-              <div className="p-4 bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
-                <span className="text-muted">سرعة بدء تنفيذ الطلب:</span>
-                <span className="text-[#D4AF37] font-bold">خلال 24 ساعة من التقديم</span>
+              <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
+                <span className="text-slate-700 dark:text-slate-300">سرعة بدء تنفيذ الطلب:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                  <span>خلال</span>
+                  <AnimatedCounter target={24} suffix=" ساعة" className="font-extrabold tabular-nums" />
+                  <span>من التقديم</span>
+                </span>
               </div>
-            </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
           </div>
         </div>
       </section>
@@ -423,42 +644,42 @@ export default function HomePage() {
       <section id="contact" data-section="light" className="relative z-10 py-20 bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-3">
-            <h2 className="text-3xl font-extrabold text-foreground">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
-            <p className="text-muted text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
+            <h2 className="text-3xl font-extrabold text-[#09090B] dark:text-white">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
+            <p className="text-slate-700 dark:text-slate-300 text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-muted">الاسم الكامل</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الاسم الكامل</label>
                 <input
                   {...register("name")}
                   type="text"
                   placeholder="عبدالرحمن الشمري"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
                 />
                 {errors.name && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-muted">البريد الإلكتروني</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">البريد الإلكتروني</label>
                 <input
                   {...register("email")}
                   type="email"
                   placeholder="name@company.sa"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
                 />
                 {errors.email && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-muted">تفاصيل المحل أو الاستفسار</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">تفاصيل النشاط التجاري أو الاستفسار</label>
               <textarea
                 {...register("message")}
                 rows={4}
-                placeholder="أذكر اسم محلك ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                placeholder="أذكر اسم نشاطك التجاري ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
+                className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
               />
               {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
             </div>

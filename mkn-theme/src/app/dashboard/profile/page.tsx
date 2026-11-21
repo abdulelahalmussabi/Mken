@@ -94,36 +94,36 @@ export default function ProfilePage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-1">
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-400 bg-orange-950/40 px-3 py-1 rounded-full border border-orange-800/40">
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-xl space-y-1">
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-950/40 px-3 py-1 rounded-full border border-orange-500/30 dark:border-orange-800/40">
             <User className="w-3.5 h-3.5" />
             إعدادات الملف الشخصي
           </div>
-          <h1 className="text-2xl font-extrabold text-white">إدارة الحساب والأمان</h1>
-          <p className="text-slate-400 text-xs">
+          <h1 className="text-2xl font-extrabold text-foreground">إدارة الحساب والأمان</h1>
+          <p className="text-muted text-xs">
             تحديث بياناتك الشخصية وتغيير كلمة المرور الخاصة بحسابك في منصة مكّن.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* PROFILE EDIT FORM */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-4">
-              <User className="w-5 h-5 text-orange-400" />
-              <h2 className="font-extrabold text-slate-100 text-base">البيانات الشخصية</h2>
+          <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-xl space-y-6">
+            <div className="flex items-center gap-2 border-b border-line pb-4">
+              <User className="w-5 h-5 text-orange-500" />
+              <h2 className="font-extrabold text-foreground text-base">البيانات الشخصية</h2>
             </div>
 
             {profileSuccess && (
-              <div className="p-3.5 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{profileSuccess}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmitProfile(onUpdateProfile)} className="space-y-4">
               <div>
-                <label htmlFor="full_name" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-orange-400" />
+                <label htmlFor="full_name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-orange-500" />
                   الاسم الكامل
                 </label>
                 <input
@@ -131,10 +131,10 @@ export default function ProfilePage() {
                   type="text"
                   {...registerProfile("full_name")}
                   disabled={isSubmittingProfile}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 {profileErrors.full_name && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+                  <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {profileErrors.full_name.message}
                   </p>
@@ -142,8 +142,8 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-orange-400" />
+                <label htmlFor="phone" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-orange-500" />
                   رقم الجوال
                 </label>
                 <input
@@ -152,10 +152,10 @@ export default function ProfilePage() {
                   dir="ltr"
                   {...registerProfile("phone")}
                   disabled={isSubmittingProfile}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm dir-ltr text-right focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm dir-ltr text-right focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 {profileErrors.phone && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+                  <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {profileErrors.phone.message}
                   </p>
@@ -183,23 +183,23 @@ export default function ProfilePage() {
           </div>
 
           {/* CHANGE PASSWORD FORM */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-4">
-              <KeyRound className="w-5 h-5 text-orange-400" />
-              <h2 className="font-extrabold text-slate-100 text-base">تغيير كلمة المرور</h2>
+          <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-xl space-y-6">
+            <div className="flex items-center gap-2 border-b border-line pb-4">
+              <KeyRound className="w-5 h-5 text-orange-500" />
+              <h2 className="font-extrabold text-foreground text-base">تغيير كلمة المرور</h2>
             </div>
 
             {passwordSuccess && (
-              <div className="p-3.5 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{passwordSuccess}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmitPassword(onChangePassword)} className="space-y-4">
               <div>
-                <label htmlFor="current_password" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-orange-400" />
+                <label htmlFor="current_password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-orange-500" />
                   كلمة المرور الحالية
                 </label>
                 <input
@@ -208,10 +208,10 @@ export default function ProfilePage() {
                   placeholder="••••••••"
                   {...registerPassword("current_password")}
                   disabled={isSubmittingPassword}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
                 />
                 {passwordErrors.current_password && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+                  <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {passwordErrors.current_password.message}
                   </p>
@@ -219,8 +219,8 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="new_password" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-orange-400" />
+                <label htmlFor="new_password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-orange-500" />
                   كلمة المرور الجديدة
                 </label>
                 <input
@@ -229,10 +229,10 @@ export default function ProfilePage() {
                   placeholder="••••••••"
                   {...registerPassword("new_password")}
                   disabled={isSubmittingPassword}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
                 />
                 {passwordErrors.new_password && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+                  <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {passwordErrors.new_password.message}
                   </p>
@@ -240,8 +240,8 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="confirm_password" className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-orange-400" />
+                <label htmlFor="confirm_password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-orange-500" />
                   تأكيد كلمة المرور الجديدة
                 </label>
                 <input
@@ -250,10 +250,10 @@ export default function ProfilePage() {
                   placeholder="••••••••"
                   {...registerPassword("confirm_password")}
                   disabled={isSubmittingPassword}
-                  className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
+                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 dir-ltr text-right"
                 />
                 {passwordErrors.confirm_password && (
-                  <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+                  <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5" />
                     {passwordErrors.confirm_password.message}
                   </p>
@@ -263,7 +263,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={isSubmittingPassword}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl disabled:opacity-50 cursor-pointer transition-all border border-slate-700"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl disabled:opacity-50 cursor-pointer transition-all border border-slate-300 dark:border-slate-700"
               >
                 {isSubmittingPassword ? (
                   <>

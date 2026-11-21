@@ -66,7 +66,7 @@ export default function DashboardOverviewPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Occasion Welcome Banner */}
-        <div className={`p-6 sm:p-8 rounded-3xl border ${activeOccasion !== "none" ? occasionDetails.badgeBg : "bg-slate-900/80 border-slate-800"} shadow-xl space-y-3 relative overflow-hidden`}>
+        <div className={`p-6 sm:p-8 rounded-3xl border ${activeOccasion !== "none" ? occasionDetails.badgeBg : "bg-surface border-line"} shadow-xl space-y-3 relative overflow-hidden`}>
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full bg-slate-900/80 text-amber-300 border border-amber-500/30">
               <Sparkles className="w-3.5 h-3.5" />
@@ -82,10 +82,10 @@ export default function DashboardOverviewPage() {
             </button>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
             {occasionDetails.greetingTemplate(user.full_name)}
           </h1>
-          <p className="text-slate-200 text-xs sm:text-sm">
+          <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">
             {occasionDetails.slogan} — تابع حالات طلبات تحسين الخرائط لمؤسستك واستمتع بخصومات المناسبات.
           </p>
 
@@ -106,53 +106,53 @@ export default function DashboardOverviewPage() {
 
         {/* Summary Metric Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-5 rounded-2xl bg-surface border border-line space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs">
               <span>إجمالي الطلبات</span>
               <Store className="w-4 h-4" style={{ color: occasionDetails.accentColor }} />
             </div>
-            <div className="text-2xl font-black text-white">{totalOrders}</div>
-            <p className="text-[10px] text-slate-500">طلبات المحلات المقدمة</p>
+            <div className="text-2xl font-black text-foreground">{totalOrders}</div>
+            <p className="text-[10px] text-slate-500">طلبات الأنشطة التجارية المقدمة</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-5 rounded-2xl bg-surface border border-line space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs">
               <span>قيد التنفيذ</span>
-              <Clock className="w-4 h-4 text-sky-400" />
+              <Clock className="w-4 h-4 text-sky-500" />
             </div>
-            <div className="text-2xl font-black text-sky-400">{inProgressCount}</div>
+            <div className="text-2xl font-black text-sky-500">{inProgressCount}</div>
             <p className="text-[10px] text-slate-500">جاري العمل عليها الآن</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-5 rounded-2xl bg-surface border border-line space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs">
               <span>طلبات مكتملة</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
-            <div className="text-2xl font-black text-emerald-400">{completedCount}</div>
+            <div className="text-2xl font-black text-emerald-500">{completedCount}</div>
             <p className="text-[10px] text-slate-500">تم التفعيل والتأكيد</p>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400 text-xs">
+          <div className="p-5 rounded-2xl bg-surface border border-line space-y-2">
+            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-xs">
               <span>الرسائل والردود</span>
-              <MessageSquare className="w-4 h-4 text-amber-400" />
+              <MessageSquare className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-black text-amber-400">{totalMessagesCount}</div>
+            <div className="text-2xl font-black text-amber-500">{totalMessagesCount}</div>
             <p className="text-[10px] text-slate-500">سجل محادثات الطلبات</p>
           </div>
         </div>
 
         {/* Recent Orders Overview */}
-        <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="p-6 rounded-3xl bg-surface border border-line shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-line pb-4">
             <div>
-              <h2 className="font-extrabold text-slate-100 text-base">أحدث الطلبات المقدمة</h2>
-              <p className="text-xs text-slate-400">قائمة بأحدث طلبات تحسين الخرائط الخاصة بمحلاتك</p>
+              <h2 className="font-extrabold text-foreground text-base">أحدث الطلبات المقدمة</h2>
+              <p className="text-xs text-muted">قائمة بأحدث طلبات تحسين الخرائط الخاصة بأنشطتك التجارية</p>
             </div>
             <Link
               href="/dashboard/requests"
-              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1"
+              className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
             >
               عرض الجميع ({totalOrders})
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -160,11 +160,11 @@ export default function DashboardOverviewPage() {
           </div>
 
           {orders.length === 0 ? (
-            <div className="text-center py-8 space-y-2 text-slate-400 text-xs">
+            <div className="text-center py-8 space-y-2 text-muted text-xs">
               <p>لا توجد طلبات بعد.</p>
               <Link
                 href="/dashboard/requests"
-                className="inline-block text-amber-400 font-bold hover:underline"
+                className="inline-block text-amber-600 dark:text-amber-400 font-bold hover:underline"
               >
                 انقر لتقديم طلب جديد
               </Link>
@@ -174,21 +174,21 @@ export default function DashboardOverviewPage() {
               {orders.slice(0, 3).map((order) => (
                 <div
                   key={order.id}
-                  className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                  className="p-4 rounded-2xl bg-surface-2 border border-line hover:border-orange-500/50 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-100 text-sm">{order.store_name}</span>
+                      <span className="font-bold text-foreground text-sm">{order.store_name}</span>
                       {getStatusBadge(order.status)}
                     </div>
-                    <p className="text-xs text-slate-400 font-mono dir-ltr text-right">
+                    <p className="text-xs text-muted font-mono dir-ltr text-right">
                       {order.maps_url}
                     </p>
                   </div>
 
                   <Link
                     href={`/orders/${order.id}`}
-                    className="flex items-center gap-1 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-slate-700 transition-all shrink-0"
+                    className="flex items-center gap-1 px-3.5 py-1.5 bg-surface hover:bg-surface-2 text-foreground font-bold text-xs rounded-xl border border-line transition-all shrink-0"
                   >
                     <span>المحادثة والتفاصيل</span>
                     <ChevronLeft className="w-3.5 h-3.5" />

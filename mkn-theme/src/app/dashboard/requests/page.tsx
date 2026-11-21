@@ -73,15 +73,15 @@ export default function RequestsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-xl">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-400 bg-orange-950/40 px-3 py-1 rounded-full border border-orange-800/40">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-950/40 px-3 py-1 rounded-full border border-orange-500/30 dark:border-orange-800/40">
               <Store className="w-3.5 h-3.5" />
               إدارة الطلبات
             </div>
-            <h1 className="text-2xl font-extrabold text-white">طلبات تحسين المحلات التجاري</h1>
-            <p className="text-slate-400 text-xs">
-              استعرض طلبات المحلات الخاصة بك وتابع الحالات بشكل مباشر.
+            <h1 className="text-2xl font-extrabold text-foreground">طلبات تحسين الأنشطة التجارية</h1>
+            <p className="text-muted text-xs">
+              استعرض طلبات الأنشطة التجارية الخاصة بك وتابع الحالات بشكل مباشر.
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export default function RequestsPage() {
                 className={`px-4 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                   statusFilter === tab.id
                     ? "bg-orange-500 text-white font-bold shadow-md shadow-orange-500/20"
-                    : "bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200"
+                    : "bg-surface text-slate-600 dark:text-slate-400 border border-line hover:text-foreground"
                 }`}
               >
                 {tab.label}
@@ -118,22 +118,22 @@ export default function RequestsPage() {
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-500 absolute top-3.5 right-3.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute top-3.5 right-3.5" />
             <input
               type="text"
-              placeholder="البحث باسم المحل..."
+              placeholder="البحث باسم النشاط التجاري..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-10 pl-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full pr-10 pl-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
         </div>
 
         {/* Requests List */}
         {filteredOrders.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 max-w-md mx-auto">
-            <Store className="w-10 h-10 text-orange-400 mx-auto" />
-            <p className="text-sm font-bold text-slate-200">لا توجد طلبات في هذه القائمة</p>
+          <div className="p-12 text-center rounded-3xl bg-surface border border-line space-y-4 max-w-md mx-auto">
+            <Store className="w-10 h-10 text-orange-500 mx-auto" />
+            <p className="text-sm font-bold text-foreground">لا توجد طلبات في هذه القائمة</p>
             <button
               onClick={() => setIsModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-orange-500/20"
@@ -147,34 +147,34 @@ export default function RequestsPage() {
             {filteredOrders.map((order) => (
               <div
                 key={order.id}
-                className="group p-6 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-orange-500/50 transition-all shadow-xl flex flex-col justify-between space-y-4"
+                className="group p-6 rounded-3xl bg-surface border border-line hover:border-orange-500/50 transition-all shadow-xl flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-slate-500 dir-ltr bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                    <span className="text-[11px] font-mono text-muted dir-ltr bg-surface-2 px-2 py-0.5 rounded border border-line">
                       #{order.id}
                     </span>
                     {getStatusBadge(order.status)}
                   </div>
 
-                  <h3 className="font-extrabold text-slate-100 text-base leading-snug group-hover:text-orange-400 transition-colors">
+                  <h3 className="font-extrabold text-foreground text-base leading-snug group-hover:text-orange-500 transition-colors">
                     {order.store_name}
                   </h3>
 
-                  <div className="flex items-center gap-2 text-xs text-slate-400 dir-ltr justify-end truncate">
+                  <div className="flex items-center gap-2 text-xs text-muted dir-ltr justify-end truncate">
                     <span className="truncate text-right dir-rtl">{order.maps_url}</span>
-                    <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                    <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">
+                <div className="pt-4 border-t border-line flex items-center justify-between">
+                  <span className="text-[11px] text-muted">
                     {new Date(order.created_at).toLocaleDateString("ar-SA")}
                   </span>
 
                   <Link
                     href={`/orders/${order.id}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 hover:bg-orange-500 hover:text-white text-orange-400 font-bold text-xs rounded-xl border border-orange-500/30 transition-all"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 hover:bg-orange-500 hover:text-white text-orange-600 dark:text-orange-400 font-bold text-xs rounded-xl border border-orange-500/30 transition-all"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>التفاصيل والمحادثة</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
@@ -18,15 +18,26 @@ import {
   ArrowLeft,
   ChevronDown,
   Sparkles,
+  UsersRound,
 } from "lucide-react";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout } = useApp();
   const { isAdmin } = useAdmin();
   const { activeOccasion, occasionDetails } = useOccasion();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const navLinks: { name: string; href: Route }[] = [
     { name: "الرئيسية", href: "/" },
@@ -36,7 +47,13 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#09090B]/80 backdrop-blur-xl border-b border-white/8 transition-all">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isScrolled
+          ? "bg-[#09090B]/85 backdrop-blur-xl border-b border-emerald-500/15 shadow-2xl shadow-black/50"
+          : "bg-transparent border-b border-transparent shadow-none"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
@@ -84,7 +101,7 @@ export default function Navbar() {
                 className={`px-4 py-2 text-sm font-medium rounded-full transition-all ${
                   isActive
                     ? "bg-surface-2 text-foreground shadow-md border border-line font-bold"
-                    : "text-muted hover:text-foreground hover:bg-surface-2/60"
+                    : "text-slate-600 dark:text-muted hover:text-foreground hover:bg-surface-2/60"
                 }`}
               >
                 {link.name}
@@ -129,6 +146,14 @@ export default function Navbar() {
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       لوحة التحكم والطلبات
+                    </Link>
+                    <Link
+                      href={"/queue" as Route}
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-muted hover:text-emerald-400 hover:bg-surface-2 rounded-xl transition-all"
+                    >
+                      <UsersRound className="w-4 h-4 text-emerald-400" />
+                      الطابور والكاونترات
                     </Link>
                     <button
                       onClick={() => {
@@ -192,7 +217,7 @@ export default function Navbar() {
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-base font-medium rounded-xl text-muted hover:bg-surface hover:text-emerald-400 transition-colors"
+                className="block px-4 py-3 text-base font-medium rounded-xl text-slate-700 dark:text-muted hover:bg-surface hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
               >
                 {link.name}
               </Link>
@@ -200,7 +225,7 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-muted">مظهر الصفحة</span>
+            <span className="text-xs font-bold text-slate-700 dark:text-muted">مظهر الصفحة</span>
             <ColorSchemeToggle />
           </div>
 
@@ -218,6 +243,14 @@ export default function Navbar() {
                   <LayoutDashboard className="w-4 h-4" />
                   لوحة تحكم العميل
                 </Link>
+                <Link
+                  href={"/queue" as Route}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-surface border border-line text-foreground hover:text-emerald-400 font-bold rounded-xl transition-colors"
+                >
+                  <UsersRound className="w-4 h-4 text-emerald-400" />
+                  الطابور والكاونترات
+                </Link>
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
@@ -233,7 +266,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 text-center text-sm font-bold text-muted bg-surface border border-line rounded-xl"
+                  className="py-3 text-center text-sm font-bold text-slate-700 dark:text-muted bg-surface border border-line rounded-xl hover:text-foreground"
                 >
                   تسجيل الدخول
                 </Link>

@@ -247,7 +247,7 @@ export default function SubscriberStorefrontPage() {
                       {storeInfo.location}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">{storeInfo.name} - خيارك الأول</h3>
+                  <h3 className="text-lg font-bold text-foreground">{storeInfo.name} - خيارك الأبرز</h3>
                   <p className="text-xs text-muted leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
                 </div>
               </div>

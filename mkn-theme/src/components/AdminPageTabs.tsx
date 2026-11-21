@@ -11,7 +11,7 @@ import { canonicalTenantSlug } from "@/lib/mken/tenant-slug";
 import type { AppearancePublic, AppearanceUpdate } from "@/lib/mken/appearance";
 
 export const ADMIN_INPUT =
-  "w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-amber-500";
+  "w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-emerald-500";
 
 export interface AdminTab {
   href: Route;
@@ -116,7 +116,7 @@ export function AdminPageTabs({ tabs, query }: { tabs: AdminTab[]; query: string
             href={withClient(tab.href, query)}
             className={`shrink-0 px-4 py-2.5 text-xs font-bold rounded-t-xl border-b-2 transition-colors ${
               active
-                ? "text-amber-300 border-amber-400 bg-amber-500/10"
+                ? "text-emerald-300 border-emerald-400 bg-emerald-500/10"
                 : "text-slate-400 border-transparent hover:text-white hover:bg-slate-800/50"
             }`}
           >

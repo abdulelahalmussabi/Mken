@@ -7,15 +7,15 @@
 html[data-scheme="light"] {
   color-scheme: light;
   --background: #F8FAFC;
-  --foreground: #0F172A;
-  --primary-accent: #10B981;
+  --foreground: #09090B;
+  --primary-accent: #059669;
   --surface: #FFFFFF;
   --surface-2: #F1F5F9;
-  --muted: #64748B;
-  --card-bg: rgba(255, 255, 255, 0.90);
-  --border-color: rgba(0, 0, 0, 0.08);
+  --muted: #475569;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --border-color: rgba(0, 0, 0, 0.12);
   --badge-glow: rgba(16, 185, 129, 0.20);
-  --nav-bg: rgba(248, 250, 252, 0.88);
+  --nav-bg: rgba(248, 250, 252, 0.92);
   --shadow-rgb: 15, 23, 42;
   --scrollbar-thumb: #CBD5E1;
 }
@@ -147,15 +147,16 @@ html[data-scheme="dark"][data-occasion] {
 }
 
 /* Light section architectural override — always wins over dark & occasion backgrounds within [data-section="light"] */
+[data-section="light"],
 html[data-scheme="dark"] [data-section="light"],
 html[data-scheme="dark"][data-occasion] [data-section="light"] {
   --background: #F8FAFC;
-  --foreground: #0F172A;
+  --foreground: #09090B;
   --surface: #FFFFFF;
   --surface-2: #F1F5F9;
-  --muted: #64748B;
-  --card-bg: rgba(255, 255, 255, 0.90);
-  --border-color: rgba(0, 0, 0, 0.08);
+  --muted: #475569;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --border-color: rgba(0, 0, 0, 0.12);
 }
 
 @theme inline {
@@ -280,11 +281,35 @@ html[data-scheme="dark"] .brand-cutout {
   contain: strict;
 }
 
+/* Flagship OnePlus-style motion transitions */
+.transition-oneplus {
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transition-magnetic {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .luxury-gradient-text {
+  background: linear-gradient(to bottom, #09090B 0%, #334155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+html[data-scheme="dark"] .luxury-gradient-text {
   background: linear-gradient(to bottom, #FFFFFF 0%, #A1A1AA 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+[data-section="light"] .luxury-gradient-text,
+html[data-scheme="dark"] [data-section="light"] .luxury-gradient-text {
+  background: linear-gradient(to bottom, #09090B 0%, #334155 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
 }
 
 /* Occasion Traditional Pattern Overlays */

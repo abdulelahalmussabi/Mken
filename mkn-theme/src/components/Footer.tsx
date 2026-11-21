@@ -35,8 +35,8 @@ export default function Footer() {
               />
               <span className="font-extrabold text-2xl text-foreground">مكّن</span>
             </Link>
-            <p className="text-muted text-sm leading-relaxed">
-              المنصة السعودية الأولى والمتخصصة في تمكين المحلات والمتاجر المحلية من التصدر في نتائج البحث الموقعي وخرائط Google.
+            <p className="text-slate-600 dark:text-muted text-sm leading-relaxed">
+              المنصة السعودية المتخصصة في تمكين الأنشطة التجارية والمتاجر المحلية من التصدر في نتائج البحث الموقعي وخرائط Google.
             </p>
             <div className={`flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full w-fit border ${occasionDetails.badgeBg}`}>
               <Sparkles className="w-3.5 h-3.5" />
@@ -49,13 +49,13 @@ export default function Footer() {
             <h4 className="text-foreground font-bold text-base">روابط سريعة</h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/" className="hover:text-emerald-400 transition-colors">
+                <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   الرئيسية
                 </Link>
               </li>
               <li>
-                <Link href="/#services" className="hover:text-emerald-400 transition-colors">
-                  خدمات تحسين المحلات
+                <Link href="/#services" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  خدمات تحسين الأنشطة التجارية
                 </Link>
               </li>
               <li>

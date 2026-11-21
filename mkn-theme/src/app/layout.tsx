@@ -45,7 +45,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "مكّن",
       "Local SEO",
       "خرائط Google",
-      "محلات السعودية",
+      "الأنشطة التجارية في السعودية",
       "ظهور محلي",
       "مناسبات سعودية",
     ],

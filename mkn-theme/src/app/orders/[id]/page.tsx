@@ -61,14 +61,14 @@ export default function OrderDetailsPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+      <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans">
         <Navbar />
         <main className="flex-1 max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
-          <h1 className="text-2xl font-bold text-slate-200">الطلب غير موجود</h1>
-          <p className="text-slate-400 text-sm">لم نتمكن من العثور على الطلب برقم #{orderId}.</p>
+          <h1 className="text-2xl font-bold text-foreground">الطلب غير موجود</h1>
+          <p className="text-muted text-sm">لم نتمكن من العثور على الطلب برقم #{orderId}.</p>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-slate-200 font-bold text-sm rounded-xl"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-surface text-foreground border border-line font-bold text-sm rounded-xl"
           >
             <ArrowRight className="w-4 h-4" />
             العودة للوحة التحكم
@@ -129,62 +129,62 @@ export default function OrderDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Back Link */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-500 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
           العودة لقائمة الطلبات في لوحة التحكم
         </Link>
 
         {/* Order Info Summary Header */}
-        <div className={`p-6 sm:p-8 rounded-3xl ${activeOccasion !== "none" ? occasionDetails.badgeBg : "bg-slate-900/90 border-slate-800"} border shadow-xl space-y-6`}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <div className={`p-6 sm:p-8 rounded-3xl ${activeOccasion !== "none" ? occasionDetails.badgeBg : "bg-surface border-line"} border shadow-xl space-y-6`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-line pb-6">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-slate-300 dir-ltr bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                <span className="text-xs font-mono text-slate-600 dark:text-slate-300 dir-ltr bg-slate-100 dark:bg-slate-950 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                   #{order.id}
                 </span>
                 {getStatusBadge(order.status)}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{order.store_name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">{order.store_name}</h1>
             </div>
 
             <a
               href={order.maps_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-950 border border-slate-800 hover:border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl transition-all dir-ltr"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/40 text-amber-600 dark:text-amber-300 text-xs font-bold rounded-xl transition-all dir-ltr"
             >
               <ExternalLink className="w-4 h-4" />
-              <span>فتح خريطة المحل</span>
+              <span>فتح خريطة النشاط التجاري</span>
             </a>
           </div>
 
           {/* Details Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-              <span className="text-slate-400 font-medium">رابط الخريطة المعتمد:</span>
-              <p className="text-slate-300 font-mono text-[11px] truncate dir-ltr text-right">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 space-y-1">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">رابط الخريطة المعتمد:</span>
+              <p className="text-slate-700 dark:text-slate-300 font-mono text-[11px] truncate dir-ltr text-right">
                 {order.maps_url}
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-              <span className="text-slate-400 font-medium">تاريخ تقديم الطلب:</span>
-              <p className="text-slate-200 font-bold">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 space-y-1">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">تاريخ تقديم الطلب:</span>
+              <p className="text-slate-800 dark:text-slate-200 font-bold">
                 {new Date(order.created_at).toLocaleString("ar-SA")}
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-              <span className="text-slate-400 font-medium">حالة المعالجة والتحديث:</span>
-              <p className="text-emerald-400 font-bold flex items-center gap-1">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 space-y-1">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">حالة المعالجة والتحديث:</span>
+              <p className="text-emerald-500 dark:text-emerald-400 font-bold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 محمي بسياسات RLS Supabase
               </p>
@@ -192,8 +192,8 @@ export default function OrderDetailsPage() {
           </div>
 
           {order.notes && (
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300 space-y-1">
-              <span className="font-bold text-amber-400 flex items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+              <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5" />
                 ملاحظات ومواصفات العميل:
               </span>
@@ -203,22 +203,22 @@ export default function OrderDetailsPage() {
         </div>
 
         {/* MESSAGING CHAT SECTION */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-6 flex flex-col h-[560px]">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-line shadow-xl space-y-6 flex flex-col h-[560px]">
+          <div className="flex items-center justify-between border-b border-line pb-4">
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-amber-400" />
-              <h2 className="font-extrabold text-slate-100 text-lg">المحادثة والمراسلة المباشرة</h2>
+              <MessageSquare className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+              <h2 className="font-extrabold text-foreground text-lg">المحادثة والمراسلة المباشرة</h2>
             </div>
-            <span className="text-xs text-slate-400">مرتبطة بالطلب #{order.id}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">مرتبطة بالطلب #{order.id}</span>
           </div>
 
           {/* Messages Scrollable Container */}
           <div className="flex-1 overflow-y-auto space-y-4 px-2 py-1 dir-rtl">
             {orderMessages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-2 text-slate-500">
-                <MessageSquare className="w-10 h-10 text-slate-700" />
-                <p className="text-sm font-bold text-slate-400">لا توجد رسائل سابقة</p>
-                <p className="text-xs max-w-xs">يمكنك كتابة استفسارك أدناه للبدء في المراسلة مع فريق التحسين والدعم.</p>
+                <MessageSquare className="w-10 h-10 text-slate-400 dark:text-slate-700" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">لا توجد رسائل سابقة</p>
+                <p className="text-xs max-w-xs text-slate-500 dark:text-slate-400">يمكنك كتابة استفسارك أدناه للبدء في المراسلة مع فريق التحسين والدعم.</p>
               </div>
             ) : (
               orderMessages.map((msg) => {
@@ -228,8 +228,8 @@ export default function OrderDetailsPage() {
                     key={msg.id}
                     className={`flex flex-col ${isMe ? "items-start" : "items-end"} space-y-1`}
                   >
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 px-1">
-                      <span className="font-bold text-slate-300">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
                         {isMe ? "أنت (العميل)" : msg.sender_name || "فريق مكّن"}
                       </span>
                       <span>•</span>
@@ -245,7 +245,7 @@ export default function OrderDetailsPage() {
                       className={`max-w-md p-4 rounded-2xl text-sm leading-relaxed shadow-md ${
                         isMe
                           ? "bg-amber-500 text-slate-950 font-medium rounded-tr-none"
-                          : "bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none"
+                          : "bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none"
                       }`}
                     >
                       {msg.content}
@@ -259,8 +259,8 @@ export default function OrderDetailsPage() {
 
           {/* Festive Quick Reaction Stickers Bar */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-            <span className="text-slate-400 font-bold text-[11px] shrink-0 flex items-center gap-1">
-              <Smile className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px] shrink-0 flex items-center gap-1">
+              <Smile className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
               <span>ملصقات {occasionDetails.shortName}:</span>
             </span>
             {occasionDetails.stickers.map((sticker, idx) => (
@@ -268,7 +268,7 @@ export default function OrderDetailsPage() {
                 key={idx}
                 type="button"
                 onClick={() => handleSend(undefined, sticker)}
-                className="px-2.5 py-1 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-lg text-amber-300 font-semibold text-xs transition-all shrink-0 hover:scale-105"
+                className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 rounded-lg text-amber-600 dark:text-amber-300 font-semibold text-xs transition-all shrink-0 hover:scale-105"
               >
                 {sticker}
               </button>
@@ -276,14 +276,14 @@ export default function OrderDetailsPage() {
           </div>
 
           {/* Send Input Box */}
-          <form onSubmit={(e) => handleSend(e)} className="pt-2 border-t border-slate-800 flex gap-3">
+          <form onSubmit={(e) => handleSend(e)} className="pt-2 border-t border-line flex gap-3">
             <input
               type="text"
               placeholder="اكتب استفسارك أو رسالتك للطلب..."
               value={newMsg}
               onChange={(e) => setNewMsg(e.target.value)}
               disabled={sending}
-              className="flex-1 px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+              className="flex-1 px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
             />
             <button
               type="submit"

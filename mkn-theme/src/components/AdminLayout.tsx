@@ -71,6 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const operationsLinks = [
     { name: "المواعيد والتقويم", href: "/admin/appointments" as Route, icon: CalendarDays },
+    { name: "الطابور", href: "/queue" as Route, icon: UsersRound },
     { name: "الطلبات الواردة", href: "/admin/orders" as Route, icon: Inbox },
     { name: "الخدمات والكتالوج", href: "/admin/services" as Route, icon: LayoutGrid },
     { name: "الرسائل والواتساب", href: "/admin/messages" as Route, icon: MessageCircle, feature: "whatsapp" as const },
@@ -145,7 +146,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans">
       {/* Admin Top Bar */}
-      <div className="sticky top-0 z-50 bg-slate-950/95 border-b border-amber-500/20 backdrop-blur-xl">
+      <div className="sticky top-0 z-50 bg-slate-950/95 border-b border-emerald-500/20 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           {/* Logo + Admin Badge */}
           <div className="flex items-center gap-3">
@@ -159,21 +160,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <PlatformMark
                 className="w-9 h-9"
                 fallback={
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-black text-slate-950 text-lg shadow-lg">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center font-black text-white text-lg shadow-lg">
                     م
                   </div>
                 }
               />
               <div>
                 <span className="font-extrabold text-lg text-white">مكّن</span>
-                <span className="text-xs text-amber-400 font-bold mr-1.5">/ Admin</span>
+                <span className="text-xs text-emerald-400 font-bold mr-1.5">/ Admin</span>
               </div>
             </Link>
           </div>
 
           {/* Admin Mode Badge */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold
-            bg-amber-500/10 border-amber-500/30 text-amber-300">
+            bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
             {isSuperAdmin ? (
               <><ShieldCheck className="w-3.5 h-3.5" /> سوبر أدمن</>
             ) : (
@@ -205,11 +206,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-2 sticky top-24">
               {/* Admin Info */}
               <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center font-extrabold text-slate-950 text-lg shadow-md">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-extrabold text-white text-lg shadow-md shadow-emerald-500/20">
                   {isSuperAdmin ? "🔐" : "👤"}
                 </div>
                 <div className="flex-1 truncate">
-                  <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+                  <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
                     {isSuperAdmin ? "Super Admin" : `Client Admin`}
                   </p>
                   <p className="text-xs font-bold text-slate-200 truncate">{session.email}</p>
@@ -230,7 +231,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         ? false
                         : path === "/admin"
                           ? pathname === "/admin"
-                          : pathname === path || pathname.startsWith(`${path}/`);
+                          : pathname === path || (path !== "/" && pathname.startsWith(`${path}/`));
                       return (
                         <Link
                           key={item.href}
@@ -238,8 +239,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           onClick={() => setSidebarOpen(false)}
                           className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
                             isActive
-                              ? "bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-lg shadow-amber-500/20"
-                              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
+                              : "text-slate-400 hover:text-emerald-400 hover:bg-slate-800/60"
                           }`}
                         >
                           <div className="flex items-center gap-3">

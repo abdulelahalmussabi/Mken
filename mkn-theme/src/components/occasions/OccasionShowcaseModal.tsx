@@ -6,6 +6,7 @@ import { useOccasion, SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionCont
 import { useAdmin } from "@/context/AdminContext";
 import { isAdminPathname } from "@/lib/mken/admin-path";
 import { X, Sparkles, Check, Copy, Layers, Layout, Palette, Calendar, Gift, History, Lightbulb } from "lucide-react";
+import { motion } from "framer-motion";
 
 export const OccasionShowcaseModal: React.FC = () => {
   const { showModal, closeModal, activeOccasion, setOccasion, copyCoupon, currentSlug } = useOccasion();
@@ -83,17 +84,26 @@ export const OccasionShowcaseModal: React.FC = () => {
                   setSelectedTab(occ.id as OccasionId);
                   setOccasion(occ.id as OccasionId);
                 }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                   isActive
-                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-105"
+                    ? "text-white"
                     : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`}
               >
-                <span
-                  className="w-2.5 h-2.5 rounded-full border border-white/30"
-                  style={{ backgroundColor: occ.accentColor }}
-                />
-                <span>{occ.shortName}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeModalTabIndicator"
+                    className="absolute inset-0 bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-2">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full border border-white/30"
+                    style={{ backgroundColor: occ.accentColor }}
+                  />
+                  <span>{occ.shortName}</span>
+                </span>
               </button>
             );
           })}

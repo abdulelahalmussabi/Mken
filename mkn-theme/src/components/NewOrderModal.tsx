@@ -65,33 +65,33 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
           disabled={submitting}
-          className="absolute top-6 left-6 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+          className="absolute top-6 left-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50"
           aria-label="إغلاق"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-400 bg-orange-950/40 px-3 py-1 rounded-full border border-orange-800/40">
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 dark:bg-orange-950/40 px-3 py-1 rounded-full border border-orange-500/30 dark:border-orange-800/40">
             <Store className="w-3.5 h-3.5" />
             طلب تحسين جديد
           </div>
-          <h3 className="text-2xl font-extrabold text-slate-100">تقديم طلب تحسين محل تجاري</h3>
-          <p className="text-slate-400 text-sm">
-            أدخل بيانات المحل ورابط الخريطة للبدء في رفع ترتيب محلك على خرائط قوقل.
+          <h3 className="text-2xl font-extrabold text-[#09090B] dark:text-slate-100">تقديم طلب تحسين نشاط تجاري</h3>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">
+            أدخل بيانات النشاط التجاري ورابط الخريطة للبدء في رفع ترتيب نشاطك التجاري على خرائط قوقل.
           </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Store Name */}
           <div>
-            <label htmlFor="store_name" className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <Store className="w-4 h-4 text-orange-400" />
-              اسم المحل أو النشاط التجاري <span className="text-orange-500">*</span>
+            <label htmlFor="store_name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <Store className="w-4 h-4 text-orange-500" />
+              اسم النشاط التجاري <span className="text-orange-500">*</span>
             </label>
             <input
               id="store_name"
@@ -99,10 +99,10 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
               placeholder="مثال: مطعم ومحمصة الجود - حي الملك فهد، الرياض"
               {...register("store_name")}
               disabled={submitting}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
+              className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm"
             />
             {errors.store_name && (
-              <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium">
+              <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium">
                 <AlertCircle className="w-3.5 h-3.5" />
                 {errors.store_name.message}
               </p>
@@ -111,9 +111,9 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
 
           {/* Maps URL */}
           <div>
-            <label htmlFor="maps_url" className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-orange-400" />
-              رابط خرائط Google المحل <span className="text-orange-500">*</span>
+            <label htmlFor="maps_url" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-orange-500" />
+              رابط خرائط Google للنشاط التجاري <span className="text-orange-500">*</span>
             </label>
             <input
               id="maps_url"
@@ -122,10 +122,10 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
               placeholder="https://maps.app.goo.gl/..."
               {...register("maps_url")}
               disabled={submitting}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm text-left dir-ltr"
+              className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm text-left dir-ltr"
             />
             {errors.maps_url && (
-              <p className="flex items-center gap-1 text-xs text-rose-400 mt-1 font-medium dir-rtl">
+              <p className="flex items-center gap-1 text-xs text-rose-500 mt-1 font-medium dir-rtl">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 {errors.maps_url.message}
               </p>
@@ -134,8 +134,8 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
 
           {/* Notes */}
           <div>
-            <label htmlFor="notes" className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-orange-400" />
+            <label htmlFor="notes" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-orange-500" />
               ملاحظات أو الكلمات المفتاحية المستهدفة (اختياري)
             </label>
             <textarea
@@ -144,7 +144,7 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
               placeholder="اكتب أي ملاحظات إضافية، الكلمات المفتاحية الرئيسية التي ترغب في التصدر بها..."
               {...register("notes")}
               disabled={submitting}
-              className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm resize-none"
             />
           </div>
 
@@ -153,7 +153,7 @@ export default function NewOrderModal({ isOpen, onClose }: NewOrderModalProps) {
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm rounded-xl cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-semibold text-sm rounded-xl cursor-pointer disabled:opacity-50 transition-colors"
             >
               إلغاء
             </button>

@@ -195,7 +195,7 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="جوال المطالبة"
-            className="px-3 py-2 rounded-lg text-xs bg-white/80 outline-none"
+            className="px-3 py-2 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-500 border border-amber-600/30 outline-none"
             dir="ltr"
           />
           {claimStatus === "pending" ? (
@@ -211,7 +211,7 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
                 value={otp}
                 onChange={(event) => setOtp(event.target.value)}
                 placeholder="رمز OTP"
-                className="px-3 py-2 rounded-lg text-xs bg-white/80 outline-none w-28"
+                className="px-3 py-2 rounded-lg text-xs bg-white text-slate-900 placeholder:text-slate-500 border border-amber-600/30 outline-none w-28"
                 dir="ltr"
               />
               <button
@@ -308,16 +308,16 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
   if (result) {
     return (
       <div className="space-y-4 text-right">
-        <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold">
+        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-bold">
           <CheckCircle2 className="w-4 h-4" />
           <span>المعاينة جاهزة — غير مفهرسة لمدة 7 أيام</span>
         </div>
-        <p className="text-white font-extrabold text-lg">{result.place.name}</p>
-        {result.place.address ? <p className="text-xs text-slate-400">{result.place.address}</p> : null}
+        <p className="text-slate-900 dark:text-white font-extrabold text-lg">{result.place.name}</p>
+        {result.place.address ? <p className="text-xs text-slate-600 dark:text-slate-400">{result.place.address}</p> : null}
         <p className="text-[11px] text-slate-500">المصدر: Google Maps — العرض حي ولم يُحفظ في قاعدة مكّن.</p>
         <a
           href={result.previewUrl}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-white shadow-lg shadow-emerald-500/20"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:brightness-110 active:scale-95"
           style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
         >
           <span>افتح المعاينة</span>
@@ -331,16 +331,16 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
     <form onSubmit={onSubmit} className="space-y-4 text-right">
       {!compact ? (
         <div className="space-y-1">
-          <h3 className="font-bold text-white text-sm">جهّز معاينة موقعك بنفسك</h3>
-          <p className="text-xs text-slate-400">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm">جهّز معاينة موقعك بنفسك</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             الصق رابط خرائط جوجل ورقم جوالك. لا نرسل رسائل باردة ولا ننسخ كتالوج واتساب.
           </p>
         </div>
       ) : null}
 
       <label className="block space-y-1.5">
-        <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           رابط خرائط جوجل أو place_id
         </span>
         <input
@@ -349,13 +349,13 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           required
           dir="ltr"
           placeholder="https://maps.app.goo.gl/… أو ChIJ…"
-          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-emerald-500"
+          className="w-full px-3 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-500 transition-colors"
         />
       </label>
 
       <label className="block space-y-1.5">
-        <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-          <Phone className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           رقم الجوال (سعودي)
         </span>
         <input
@@ -364,11 +364,11 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           required
           dir="ltr"
           placeholder="05xxxxxxxx"
-          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-emerald-500"
+          className="w-full px-3 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-500 transition-colors"
         />
       </label>
 
-      <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+      <label className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
         <input
           type="checkbox"
           checked={consent}
@@ -403,8 +403,8 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
       <button
         type="submit"
         disabled={loading || !consent}
-        className="w-full py-3 rounded-xl font-bold text-slate-950 flex items-center justify-center gap-2 disabled:opacity-60"
-        style={{ backgroundColor: occasionDetails.accentColor }}
+        className="w-full py-3 rounded-xl font-bold text-white shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 disabled:opacity-60 transition-all hover:brightness-110 active:scale-95"
+        style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
         <span>إنشاء المعاينة الآمنة</span>

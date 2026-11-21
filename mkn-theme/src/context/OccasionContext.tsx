@@ -120,7 +120,7 @@ export const SAUDI_OCCASIONS: Record<OccasionId, OccasionDetails> = {
     shortName: "اليوم الوطني 96",
     slogan: "عزّنا بطبعنا",
     couponCode: "KSA96",
-    discountText: "عروض اليوم الوطني: خصم 40% حصري لجميع أصحاب المحلات في المملكة",
+    discountText: "عروض اليوم الوطني: خصم 40% حصري لجميع أصحاب الأنشطة التجارية في المملكة",
     accentColor: "#5aba1c",
     badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
     bgGradient: "from-emerald-950 via-slate-950 to-green-950/40",
