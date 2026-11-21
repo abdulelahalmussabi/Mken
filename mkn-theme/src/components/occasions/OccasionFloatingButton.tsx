@@ -18,7 +18,7 @@ export const OccasionFloatingButton: React.FC = () => {
     <div className="fixed bottom-6 left-6 z-50 animate-bounce" style={{ animationDuration: "3s" }}>
       <button
         onClick={openModal}
-        className="flex items-center gap-2.5 px-4 py-3 bg-slate-900/95 hover:bg-slate-800 border-2 border-amber-500 text-white rounded-2xl shadow-2xl backdrop-blur-xl transition-all hover:scale-110 active:scale-95 group cursor-pointer"
+        className="flex items-center gap-2.5 px-4 py-3 bg-[#09090B]/95 hover:bg-[#141417] border-2 border-emerald-500 text-white rounded-2xl shadow-2xl shadow-emerald-500/20 backdrop-blur-xl transition-all hover:scale-110 active:scale-95 group cursor-pointer"
         title="تغيير واستعراض ثيمات المناسبات السعودية"
       >
         <div className="relative">
@@ -31,13 +31,13 @@ export const OccasionFloatingButton: React.FC = () => {
             style={{ backgroundColor: occasionDetails.accentColor }}
           />
         </div>
-        <Palette className="w-5 h-5 text-amber-400 group-hover:rotate-45 transition-transform" />
+        <Palette className="w-5 h-5 text-emerald-400 group-hover:rotate-45 transition-transform" />
         <div className="text-right hidden sm:block">
           <div className="text-xs font-black text-white flex items-center gap-1">
             <span>تغيير الثيم</span>
-            <Sparkles className="w-3 h-3 text-amber-400" />
+            <Sparkles className="w-3 h-3 text-emerald-400" />
           </div>
-          <div className="text-[10px] text-amber-300 font-semibold">{occasionDetails.shortName}</div>
+          <div className="text-[10px] text-emerald-300 font-semibold">{occasionDetails.shortName}</div>
         </div>
       </button>
     </div>

@@ -78,13 +78,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" data-scheme="light" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans bg-theme-main text-foreground selection:bg-amber-500 selection:text-slate-950 transition-colors duration-500">
+    <html lang="ar" dir="rtl" data-scheme="dark" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans bg-theme-main text-foreground selection:bg-emerald-500 selection:text-white transition-colors duration-500">
         <Script id="mken-kill-legacy-sw" strategy="beforeInteractive">
           {`(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()});});if(window.caches){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}})();`}
         </Script>
         <Script id="mken-color-scheme" strategy="beforeInteractive">
-          {`(function(){try{var s=localStorage.getItem("mken-color-scheme");if(s!=="dark"&&s!=="light")s="light";document.documentElement.setAttribute("data-scheme",s);document.documentElement.style.colorScheme=s;}catch(e){document.documentElement.setAttribute("data-scheme","light");}})();`}
+          {`(function(){try{var s=localStorage.getItem("mken-color-scheme");if(s!=="dark"&&s!=="light")s="dark";document.documentElement.setAttribute("data-scheme",s);document.documentElement.style.colorScheme=s;}catch(e){document.documentElement.setAttribute("data-scheme","dark");}})();`}
         </Script>
         <AdminProvider>
           <AppProvider>

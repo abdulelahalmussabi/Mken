@@ -56,8 +56,8 @@ export const OccasionThemeSelector: React.FC = () => {
         className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-slate-200 hover:text-white transition-all shadow-md active:scale-95"
         title="اختيار ثيم المناسبة السعودية"
       >
-        <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: SAUDI_OCCASIONS[activeOccasion]?.accentColor || "#f97316" }} />
-        <Palette className="w-4 h-4 text-amber-400" />
+        <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: SAUDI_OCCASIONS[activeOccasion]?.accentColor || "#10B981" }} />
+        <Palette className="w-4 h-4 text-emerald-400" />
         <span className="hidden sm:inline font-bold">ثيم المناسبات</span>
         <span className="text-slate-400 text-xs hidden md:inline">({SAUDI_OCCASIONS[activeOccasion]?.shortName})</span>
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -65,10 +65,10 @@ export const OccasionThemeSelector: React.FC = () => {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 mb-1">
+        <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-[#09090B]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/8 mb-1">
             <div className="flex items-center gap-1.5 text-slate-200 font-bold text-xs">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-emerald-400" />
               <span>حزمة المناسبات السعودية 🇸🇦</span>
             </div>
             <button
@@ -76,7 +76,7 @@ export const OccasionThemeSelector: React.FC = () => {
                 setIsOpen(false);
                 openModal();
               }}
-              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold"
+              className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
             >
               <Info className="w-3.5 h-3.5" />
               <span>تفاصيل الدراسة</span>
@@ -95,8 +95,8 @@ export const OccasionThemeSelector: React.FC = () => {
                   }}
                   className={`w-full text-right flex items-center justify-between p-2.5 rounded-xl text-xs transition-all ${
                     isSelected
-                      ? "bg-slate-800/90 border border-amber-500/40 text-white font-bold shadow-sm"
-                      : "hover:bg-slate-800/50 text-slate-300 hover:text-white"
+                      ? "bg-slate-800/90 border border-emerald-500/40 text-white font-bold shadow-sm"
+                      : "hover:bg-white/5 text-slate-300 hover:text-white"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -108,11 +108,11 @@ export const OccasionThemeSelector: React.FC = () => {
                       <div className="font-bold text-slate-100">{occ.name}</div>
                       <div className="text-[11px] text-slate-400 font-normal line-clamp-1">{occ.slogan}</div>
                       {occ.group !== "base" && (
-                        <div className="text-[10px] text-amber-500/80 mt-0.5">{GROUP_LABEL[occ.group]}</div>
+                        <div className="text-[10px] text-emerald-400/80 mt-0.5">{GROUP_LABEL[occ.group]}</div>
                       )}
                     </div>
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" />}
+                  {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
                 </button>
               );
             })}

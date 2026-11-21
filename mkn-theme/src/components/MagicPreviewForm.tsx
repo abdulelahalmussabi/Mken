@@ -242,7 +242,7 @@ export function UnclaimedClaimBanner({ slug, accentColor }: { slug: string; acce
 }
 
 export default function MagicPreviewForm({ compact = false }: { compact?: boolean }) {
-  const { occasionDetails } = useOccasion();
+  const { activeOccasion, occasionDetails } = useOccasion();
   const [mapsUrl, setMapsUrl] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
@@ -317,8 +317,8 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
         <p className="text-[11px] text-slate-500">المصدر: Google Maps — العرض حي ولم يُحفظ في قاعدة مكّن.</p>
         <a
           href={result.previewUrl}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-slate-950"
-          style={{ backgroundColor: occasionDetails.accentColor }}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-white shadow-lg shadow-emerald-500/20"
+          style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
         >
           <span>افتح المعاينة</span>
           <ArrowLeft className="w-4 h-4" />
@@ -340,7 +340,7 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
 
       <label className="block space-y-1.5">
         <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-amber-400" />
+          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
           رابط خرائط جوجل أو place_id
         </span>
         <input
@@ -349,13 +349,13 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           required
           dir="ltr"
           placeholder="https://maps.app.goo.gl/… أو ChIJ…"
-          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-amber-500"
+          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-emerald-500"
         />
       </label>
 
       <label className="block space-y-1.5">
         <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-          <Phone className="w-3.5 h-3.5 text-amber-400" />
+          <Phone className="w-3.5 h-3.5 text-emerald-400" />
           رقم الجوال (سعودي)
         </span>
         <input
@@ -364,7 +364,7 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           required
           dir="ltr"
           placeholder="05xxxxxxxx"
-          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-amber-500"
+          className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 outline-none focus:border-emerald-500"
         />
       </label>
 
@@ -373,7 +373,7 @@ export default function MagicPreviewForm({ compact = false }: { compact?: boolea
           type="checkbox"
           checked={consent}
           onChange={(event) => setConsent(event.target.checked)}
-          className="mt-0.5"
+          className="mt-0.5 accent-emerald-600"
           required
         />
         <span>

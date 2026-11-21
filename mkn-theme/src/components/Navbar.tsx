@@ -36,7 +36,7 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-xl border-b border-line transition-all">
+    <header className="sticky top-0 z-50 bg-[#09090B]/80 backdrop-blur-xl border-b border-white/8 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-2">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
@@ -44,8 +44,8 @@ export default function Navbar() {
             className="w-10 h-10"
             fallback={
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl text-slate-950 shadow-lg transition-transform group-hover:scale-105"
-                style={{ backgroundColor: occasionDetails.accentColor }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-xl text-white shadow-lg transition-transform group-hover:scale-105"
+                style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
               >
                 م
               </div>
@@ -56,7 +56,7 @@ export default function Navbar() {
               مكّن
               <span
                 className="inline-block w-2 h-2 rounded-full animate-pulse"
-                style={{ backgroundColor: occasionDetails.accentColor }}
+                style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
               />
             </span>
             <span className="text-[10px] font-medium text-muted -mt-1 tracking-wide">
@@ -104,11 +104,11 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-surface border border-line hover:border-amber-500/50 rounded-xl text-sm font-medium text-foreground transition-all cursor-pointer focus:outline-none"
+                  className="flex items-center gap-2 px-3.5 py-2 bg-surface border border-line hover:border-emerald-500/50 rounded-xl text-sm font-medium text-foreground transition-all cursor-pointer focus:outline-none"
                 >
                   <div
-                    className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center font-bold text-xs"
-                    style={{ backgroundColor: occasionDetails.accentColor }}
+                    className="w-7 h-7 rounded-lg text-white flex items-center justify-center font-bold text-xs"
+                    style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
                   >
                     {user.full_name.charAt(0)}
                   </div>
@@ -153,7 +153,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href={"/preview" as Route}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-sm rounded-xl shadow-lg transition-all active:scale-95"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
                 >
                   <span>ابدأ الآن</span>
                   <ArrowLeft className="w-4 h-4" />
@@ -167,7 +167,7 @@ export default function Navbar() {
             {user && (
               <Link
                 href="/dashboard"
-                className="p-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1"
+                className="p-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1"
               >
                 <LayoutDashboard className="w-4 h-4" />
               </Link>
@@ -185,14 +185,14 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-line bg-background px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top duration-200">
+        <div className="md:hidden border-b border-line bg-background/95 backdrop-blur-xl px-4 pt-2 pb-6 space-y-4 animate-in slide-in-from-top duration-200">
           <nav className="space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-base font-medium rounded-xl text-muted hover:bg-surface hover:text-amber-700 transition-colors"
+                className="block px-4 py-3 text-base font-medium rounded-xl text-muted hover:bg-surface hover:text-emerald-400 transition-colors"
               >
                 {link.name}
               </Link>
@@ -213,7 +213,7 @@ export default function Navbar() {
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-3 bg-amber-500 text-slate-950 font-bold rounded-xl shadow-lg"
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg"
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   لوحة تحكم العميل
@@ -240,7 +240,7 @@ export default function Navbar() {
                 <Link
                   href={"/preview" as Route}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="py-3 text-center text-sm font-bold text-slate-950 bg-amber-500 rounded-xl shadow-md"
+                  className="py-3 text-center text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-md"
                 >
                   حساب جديد
                 </Link>

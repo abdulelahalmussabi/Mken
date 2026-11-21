@@ -133,16 +133,20 @@ export default function HomePage() {
 
       {/* Hero Section — transparent so festive particles show through */}
       <section
-        className={`relative z-10 overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32 border-b border-line ${
+        className={`relative z-10 overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-32 border-b border-line bg-background ${
           activeOccasion === "national_day" ? "bg-national-pattern bg-sadu-pattern" : ""
         }`}
       >
+        {activeOccasion === "none" && (
+          <div className="ambient-spotlight" aria-hidden="true" />
+        )}
+
         {/* Glowing Background Orbs */}
         <div
           className="absolute top-1/4 right-10 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-30 transition-colors duration-500"
-          style={{ backgroundColor: occasionDetails.accentColor }}
+          style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
         />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -150,7 +154,7 @@ export default function HomePage() {
             <div className="lg:col-span-7 space-y-6 text-right">
               {/* Occasion Active Pill Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold shadow-lg">
-                <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "8s" }} />
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: "8s" }} />
                 <span>
                   {activeOccasion === "none"
                     ? "المنصة الأولى المخصصة للسوق السعودي 🇸🇦"
@@ -158,13 +162,15 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground leading-tight tracking-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-foreground luxury-gradient-text leading-tight tracking-tight">
                 اجعل محلك{" "}
                 <span
                   className="bg-clip-text text-transparent underline underline-offset-8 decoration-wavy transition-colors duration-500"
                   style={{
-                    backgroundImage: `linear-gradient(to right, ${occasionDetails.accentColor}, #fbbf24, ${occasionDetails.accentColor})`,
-                    textDecorationColor: occasionDetails.accentColor,
+                    backgroundImage: activeOccasion === "none"
+                      ? `linear-gradient(to right, #10B981, #D4AF37, #10B981)`
+                      : `linear-gradient(to right, ${occasionDetails.accentColor}, #fbbf24, ${occasionDetails.accentColor})`,
+                    textDecorationColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor,
                   }}
                 >
                   الخيار الأول
@@ -230,8 +236,8 @@ export default function HomePage() {
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <Link
                   href={"/preview" as Route}
-                  className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-slate-950 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 text-center"
-                  style={{ backgroundColor: occasionDetails.accentColor }}
+                  className="flex items-center justify-center gap-2.5 px-7 py-4 font-extrabold text-base text-white rounded-2xl shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 text-center"
+                  style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
                 >
                   <span>جهّز معاينة موقعك الآن</span>
                   <ArrowLeft className="w-5 h-5" />
@@ -241,7 +247,7 @@ export default function HomePage() {
                   onClick={openModal}
                   className="flex items-center justify-center gap-2 px-6 py-4 bg-surface hover:bg-surface-2 border border-line rounded-2xl text-foreground text-sm font-bold transition-all"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
                   <span>دراسة واجهات المناسبات 🇸🇦</span>
                 </button>
               </div>
@@ -253,7 +259,7 @@ export default function HomePage() {
                   <span>حلول موثوقة وعالية الجودة</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-400" />
+                  <Zap className="w-4 h-4 text-emerald-400" />
                   <span>سرعة وسهولة التفعيل</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -288,10 +294,10 @@ export default function HomePage() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="relative z-10 py-20 bg-surface/70 border-b border-line">
+      <section id="services" data-section="light" className="relative z-10 py-20 bg-background border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+            <h2 className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center justify-center gap-1.5">
               <Sparkles className="w-4 h-4" />
               <span>خدماتنا المتخصصة</span>
             </h2>
@@ -307,13 +313,13 @@ export default function HomePage() {
             {SERVICES_DATA.map((service) => (
               <div
                 key={service.id}
-                className="bg-surface/90 border border-line hover:border-amber-500/50 rounded-3xl p-6 shadow-xl transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
+                className="bg-surface border border-slate-200 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 rounded-3xl p-6 shadow-sm transition-all hover:-translate-y-1.5 flex flex-col justify-between space-y-6 group"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div
-                      className="w-12 h-12 rounded-2xl text-slate-950 flex items-center justify-center font-bold shadow-lg"
-                      style={{ backgroundColor: occasionDetails.accentColor }}
+                      className="w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-lg"
+                      style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
                     >
                       {service.iconName === "MapPin" && <MapPin className="w-6 h-6" />}
                       {service.iconName === "Search" && <Search className="w-6 h-6" />}
@@ -324,7 +330,7 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold text-foreground group-hover:text-amber-700 transition-colors">
+                  <h4 className="text-xl font-bold text-foreground group-hover:text-emerald-600 transition-colors">
                     {service.title}
                   </h4>
                   <p className="text-muted text-sm leading-relaxed">{service.shortDesc}</p>
@@ -332,7 +338,7 @@ export default function HomePage() {
 
                 <button
                   onClick={() => setSelectedService(service)}
-                  className="w-full py-3 bg-surface-2 hover:bg-amber-500 hover:text-slate-950 text-foreground font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-surface-2 hover:bg-emerald-500 hover:text-white text-foreground font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2"
                 >
                   <span>عرض تفاصيل الخدمة</span>
                   <ArrowLeft className="w-4 h-4" />
@@ -344,11 +350,11 @@ export default function HomePage() {
       </section>
 
       {/* Why Choose MKN Section */}
-      <section id="features" className="relative z-10 py-20 border-b border-line">
+      <section id="features" className="relative z-10 py-20 border-b border-line bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-right">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground luxury-gradient-text leading-tight">
                 لماذا تختار منصة &quot;مكّن&quot; لإدارة محلك على الخريطة؟
               </h2>
               <p className="text-muted text-sm leading-relaxed">
@@ -356,7 +362,7 @@ export default function HomePage() {
               </p>
 
               <div className="space-y-4 pt-2">
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
                   <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
@@ -366,8 +372,8 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
-                  <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
+                  <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
@@ -376,7 +382,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl">
+                <div className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors">
                   <div className="p-2 bg-sky-500/20 text-sky-400 rounded-xl shrink-0">
                     <MessageSquare className="w-5 h-5" />
                   </div>
@@ -392,21 +398,21 @@ export default function HomePage() {
             <div className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl">
               <div className="flex items-center justify-between pb-4 border-b border-line">
                 <h3 className="font-bold text-base text-foreground">إحصائيات التأثير المحقق</h3>
-                <span className="text-xs text-amber-700 font-bold">تقرير النمو 2026</span>
+                <span className="text-xs text-emerald-400 font-bold">تقرير النمو 2026</span>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-amber-700">+350%</div>
+                  <div className="text-3xl font-extrabold text-emerald-400 tabular-nums">+350%</div>
                   <div className="text-xs text-muted">زيادة الاتصالات المباشرة</div>
                 </div>
                 <div className="p-4 bg-background rounded-2xl border border-line text-center space-y-1">
-                  <div className="text-3xl font-extrabold text-emerald-600">4.9 / 5</div>
+                  <div className="text-3xl font-extrabold luxury-gradient-text tabular-nums">4.9 / 5</div>
                   <div className="text-xs text-muted">متوسط رضا أصحاب المحلات</div>
                 </div>
               </div>
               <div className="p-4 bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
                 <span className="text-muted">سرعة بدء تنفيذ الطلب:</span>
-                <span className="text-emerald-600 font-bold">خلال 24 ساعة من التقديم</span>
+                <span className="text-[#D4AF37] font-bold">خلال 24 ساعة من التقديم</span>
               </div>
             </div>
           </div>
@@ -414,14 +420,14 @@ export default function HomePage() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="relative z-10 py-20 bg-surface/80">
+      <section id="contact" data-section="light" className="relative z-10 py-20 bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-3">
             <h2 className="text-3xl font-extrabold text-foreground">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
             <p className="text-muted text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-line rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl">
+          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-muted">الاسم الكامل</label>
@@ -429,7 +435,7 @@ export default function HomePage() {
                   {...register("name")}
                   type="text"
                   placeholder="عبدالرحمن الشمري"
-                  className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
                 />
                 {errors.name && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name.message}</p>}
               </div>
@@ -440,7 +446,7 @@ export default function HomePage() {
                   {...register("email")}
                   type="email"
                   placeholder="name@company.sa"
-                  className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
                 />
                 {errors.email && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email.message}</p>}
               </div>
@@ -452,7 +458,7 @@ export default function HomePage() {
                 {...register("message")}
                 rows={4}
                 placeholder="أذكر اسم محلك ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
-                className="w-full px-4 py-3 bg-background border border-line focus:border-amber-500 rounded-xl text-foreground text-sm outline-none transition-colors"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl text-foreground text-sm outline-none transition-colors"
               />
               {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
             </div>
@@ -460,8 +466,8 @@ export default function HomePage() {
             <button
               type="submit"
               disabled={submittingContact}
-              className="w-full py-4 font-bold text-slate-950 rounded-xl shadow-xl transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
-              style={{ backgroundColor: occasionDetails.accentColor }}
+              className="w-full py-4 font-bold text-white rounded-xl shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
+              style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
             >
               {submittingContact ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               <span>إرسال الرسالة للفريق</span>

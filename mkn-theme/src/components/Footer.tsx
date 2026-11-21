@@ -14,7 +14,7 @@ export default function Footer() {
       {/* Decorative Top Occasion Accent Bar */}
       <div
         className="absolute top-0 inset-x-0 h-1 transition-colors duration-500"
-        style={{ backgroundColor: occasionDetails.accentColor }}
+        style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -26,8 +26,8 @@ export default function Footer() {
                 className="w-9 h-9"
                 fallback={
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-lg text-slate-950 shadow-md transition-colors"
-                    style={{ backgroundColor: occasionDetails.accentColor }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-lg text-white shadow-md transition-colors"
+                    style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
                   >
                     م
                   </div>
@@ -49,31 +49,31 @@ export default function Footer() {
             <h4 className="text-foreground font-bold text-base">روابط سريعة</h4>
             <ul className="space-y-2.5">
               <li>
-                <Link href="/" className="hover:text-amber-400 transition-colors">
+                <Link href="/" className="hover:text-emerald-400 transition-colors">
                   الرئيسية
                 </Link>
               </li>
               <li>
-                <Link href="/#services" className="hover:text-amber-400 transition-colors">
+                <Link href="/#services" className="hover:text-emerald-400 transition-colors">
                   خدمات تحسين المحلات
                 </Link>
               </li>
               <li>
                 <button
                   onClick={openModal}
-                  className="hover:text-amber-400 transition-colors text-amber-400 font-semibold flex items-center gap-1"
+                  className="hover:text-emerald-400 transition-colors text-emerald-400 font-semibold flex items-center gap-1"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>دراسة حزمة المناسبات السعودية</span>
                 </button>
               </li>
               <li>
-                <Link href="/auth" className="hover:text-amber-400 transition-colors">
+                <Link href="/auth" className="hover:text-emerald-400 transition-colors">
                   تسجيل الدخول / إنشاء حساب
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="hover:text-amber-400 transition-colors">
+                <Link href="/dashboard" className="hover:text-emerald-400 transition-colors">
                   لوحة تحكم الطلبات
                 </Link>
               </li>
@@ -85,20 +85,20 @@ export default function Footer() {
             <h4 className="text-foreground font-bold text-base">خدماتنا في المناسبات</h4>
             <ul className="space-y-2.5 text-xs leading-relaxed text-muted">
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}></span>
                 تحسين وتأكيد نشاطك على خرائط Google
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}></span>
                 حملات العروض الموسمية ({occasionDetails.shortName})
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}></span>
                 إدارة التقييمات وزيادة زيارات الخريطة
               </li>
               <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: occasionDetails.accentColor }}></span>
-                خصومات خاصة بكود الخصم: <code className="font-mono text-amber-700 font-bold ml-1">{occasionDetails.couponCode}</code>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}></span>
+                خصومات خاصة بكود الخصم: <code className="font-mono text-emerald-400 font-bold ml-1">{occasionDetails.couponCode}</code>
               </li>
             </ul>
           </div>
@@ -108,15 +108,15 @@ export default function Footer() {
             <h4 className="text-foreground font-bold text-base">تواصل معنا</h4>
             <div className="space-y-3 text-xs">
               <div className="flex items-center gap-2.5">
-                <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>المملكة العربية السعودية - الرياض / جدة / الخبر</span>
               </div>
               <div className="flex items-center gap-2.5 dir-ltr justify-end">
                 <span>+966 55 123 4567</span>
-                <Phone className="w-4 h-4 text-amber-400 shrink-0" />
+                <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
               </div>
               <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-amber-400 shrink-0" />
+                <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>support@mkn-seo.sa</span>
               </div>
             </div>
@@ -146,15 +146,15 @@ export default function Footer() {
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
           <div className="flex items-center gap-4">
-            <a href="https://mken.live/privacy" className="hover:text-amber-400 transition-colors">
+            <a href="https://mken.live/privacy" className="hover:text-emerald-400 transition-colors">
               سياسة الخصوصية
             </a>
             <span>•</span>
-            <a href="https://mken.live/terms" className="hover:text-amber-400 transition-colors">
+            <a href="https://mken.live/terms" className="hover:text-emerald-400 transition-colors">
               شروط الخدمة
             </a>
             <span>•</span>
-            <span>ثيم المناسبة النشط: <strong className="text-amber-700">{occasionDetails.shortName}</strong></span>
+            <span>ثيم المناسبة النشط: <strong className="text-emerald-400">{occasionDetails.shortName}</strong></span>
             <span>•</span>
             <span>السعودية 🇸🇦</span>
           </div>

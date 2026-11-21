@@ -63,8 +63,8 @@ const BANNER_SURFACE: Partial<
 };
 
 const DEFAULT_SURFACE = {
-  bar: "bg-slate-900 border-b border-slate-700",
-  badge: "bg-slate-700 text-white border-slate-500",
+  bar: "bg-[#09090B] border-b border-white/10",
+  badge: "bg-white/10 text-white border-white/20",
   line: "from-white/10 via-transparent to-transparent",
 };
 
@@ -110,7 +110,7 @@ export const OccasionBanner: React.FC = () => {
           <button
             type="button"
             onClick={() => setAdsOpen(true)}
-            className="relative flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black px-3 py-1 rounded-lg text-xs transition-all shadow-md hover:scale-105 active:scale-95"
+            className="relative flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-black px-3 py-1 rounded-lg text-xs transition-all shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95"
           >
             <Megaphone className="w-3.5 h-3.5" />
             <span>العروض والإعلانات</span>

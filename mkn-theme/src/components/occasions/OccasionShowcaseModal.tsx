@@ -48,12 +48,12 @@ export const OccasionShowcaseModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-slate-900 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#09090B] border border-emerald-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-800 bg-slate-900/90">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/8 bg-[#09090B]/90">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
-              <Sparkles className="w-6 h-6 text-amber-400" />
+            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+              <Sparkles className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
@@ -85,7 +85,7 @@ export const OccasionShowcaseModal: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   isActive
-                    ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-105"
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-105"
                     : "bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`}
               >
@@ -115,7 +115,7 @@ export const OccasionShowcaseModal: React.FC = () => {
                   onClick={handleApplyTheme}
                   className="bg-white text-slate-950 hover:bg-slate-100 font-bold px-4 py-2 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95"
                 >
-                  <Palette className="w-4 h-4 text-amber-600" />
+                  <Palette className="w-4 h-4 text-emerald-600" />
                   <span>تطبيق هذا الثيم الآن</span>
                 </button>
               </div>

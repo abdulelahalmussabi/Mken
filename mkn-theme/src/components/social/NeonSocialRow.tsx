@@ -71,7 +71,7 @@ export default function NeonSocialRow({
         <div className="space-y-1">
           {title && (
             <h4 className="text-xs sm:text-sm font-extrabold text-slate-100 flex items-center gap-2 justify-center sm:justify-start">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <span>{title}</span>
             </h4>
           )}
@@ -95,8 +95,8 @@ export default function NeonSocialRow({
 
   if (showContainer) {
     return (
-      <div className="p-5 sm:p-6 rounded-3xl bg-slate-950/80 border border-slate-800/80 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+      <div className="p-5 sm:p-6 rounded-3xl bg-[#09090B]/90 border border-white/8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
         {content}
       </div>
     );

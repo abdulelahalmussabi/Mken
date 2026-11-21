@@ -2,38 +2,39 @@
 
 @custom-variant dark (&:where([data-scheme="dark"], [data-scheme="dark"] *));
 
-/* Regular (light) theme — matte warm white, stone ink, terracotta accent */
+/* Regular (light) theme — Soft Alabaster, Dark Slate, Emerald accent */
 :root,
 html[data-scheme="light"] {
   color-scheme: light;
-  --background: #f2f0eb;
-  --foreground: #1a1814;
-  --primary-accent: #c2410c;
-  --surface: #fbf9f4;
-  --surface-2: #ebe7df;
-  --muted: #5c574e;
-  --card-bg: #fffdf8;
-  --border-color: rgba(26, 24, 20, 0.1);
-  --badge-glow: rgba(194, 65, 12, 0.18);
-  --nav-bg: rgba(242, 240, 235, 0.88);
-  --shadow-rgb: 26, 24, 20;
-  --scrollbar-thumb: #c4bfb4;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --primary-accent: #10B981;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --muted: #64748B;
+  --card-bg: rgba(255, 255, 255, 0.90);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --badge-glow: rgba(16, 185, 129, 0.20);
+  --nav-bg: rgba(248, 250, 252, 0.88);
+  --shadow-rgb: 15, 23, 42;
+  --scrollbar-thumb: #CBD5E1;
 }
 
+/* Dark theme — Flagship Deep Obsidian & Emerald */
 html[data-scheme="dark"] {
   color-scheme: dark;
-  --background: #090d16;
-  --foreground: #f8fafc;
-  --primary-accent: #f97316;
-  --surface: #111827;
-  --surface-2: #1e293b;
-  --muted: #94a3b8;
-  --card-bg: rgba(15, 23, 42, 0.82);
-  --border-color: rgba(255, 255, 255, 0.1);
-  --badge-glow: rgba(249, 115, 22, 0.3);
-  --nav-bg: rgba(9, 13, 22, 0.9);
-  --shadow-rgb: 2, 6, 23;
-  --scrollbar-thumb: #1e293b;
+  --background: #09090B;
+  --foreground: #F8FAFC;
+  --primary-accent: #10B981;
+  --surface: #141417;
+  --surface-2: #1E1E24;
+  --muted: #A1A1AA;
+  --card-bg: rgba(20, 20, 23, 0.90);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --badge-glow: rgba(16, 185, 129, 0.20);
+  --nav-bg: rgba(9, 9, 11, 0.80);
+  --shadow-rgb: 0, 0, 0;
+  --scrollbar-thumb: #3f3f46;
 }
 
 /* Occasion accents on light — keep the matte-white chrome; festive color only */
@@ -145,6 +146,18 @@ html[data-scheme="dark"][data-occasion] {
   --scrollbar-thumb: rgba(255, 255, 255, 0.2);
 }
 
+/* Light section architectural override — always wins over dark & occasion backgrounds within [data-section="light"] */
+html[data-scheme="dark"] [data-section="light"],
+html[data-scheme="dark"][data-occasion] [data-section="light"] {
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --muted: #64748B;
+  --card-bg: rgba(255, 255, 255, 0.90);
+  --border-color: rgba(0, 0, 0, 0.08);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -249,6 +262,29 @@ html[data-scheme="dark"] .brand-cutout {
   background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
   background-size: 200% 100%;
   animation: shimmer 2.5s infinite;
+}
+
+/* Ambient Spotlight & Luxury Accents */
+@keyframes spotlightPulse {
+  0%, 100% { opacity: 0.12; }
+  50%      { opacity: 0.22; }
+}
+
+.ambient-spotlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 60% 40%, rgba(16, 185, 129, 0.16) 0%, transparent 60%);
+  animation: spotlightPulse 6s ease-in-out infinite;
+  will-change: opacity;
+  contain: strict;
+}
+
+.luxury-gradient-text {
+  background: linear-gradient(to bottom, #FFFFFF 0%, #A1A1AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* Occasion Traditional Pattern Overlays */

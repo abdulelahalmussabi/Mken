@@ -14,7 +14,7 @@ export function ColorSchemeToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={toggleScheme}
-      className={`inline-flex shrink-0 items-center justify-center w-10 h-10 rounded-xl border border-amber-500 bg-amber-500/15 text-amber-800 dark:text-amber-300 hover:bg-amber-500/25 transition-colors ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center w-10 h-10 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors ${className}`}
       aria-label={dark ? "تفعيل الثيم الفاتح" : "تفعيل الثيم الداكن"}
       title={dark ? "الثيم الفاتح" : "الثيم الداكن"}
     >
