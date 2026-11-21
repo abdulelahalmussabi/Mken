@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شاشة إعداد وتجهيز الطلبات (KDS) — منصة مكّن</title>
+  <meta name="theme-color" content="#090d16">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --kds-bg: #090d16;
+      --kds-card: #131b2e;
+      --kds-card-border: #1e293b;
+      --kds-text: #f8fafc;
+      --kds-text-dim: #94a3b8;
+      
+      --kds-normal: #10b981;
+      --kds-normal-bg: rgba(16, 185, 129, 0.12);
+      
+      --kds-warning: #f59e0b;
+      --kds-warning-bg: rgba(245, 158, 11, 0.14);
+      
+      --kds-urgent: #ef4444;
+      --kds-urgent-bg: rgba(239, 68, 68, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--kds-bg);
+      color: var(--kds-text);
+      font-family: 'IBM Plex Sans Arabic', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header.kds-header {
+      background: #0f172a;
+      border-bottom: 2px solid #1e293b;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .kds-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .kds-brand-badge {
+      background: #f97316;
+      color: #fff;
+      font-size: 1.2rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+    }
+
+    .kds-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .kds-stats-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stat-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .stat-pill.active {
+      border-color: #f97316;
+      color: #f97316;
+    }
+
+    .kds-clock {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #38bdf8;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn-sound {
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    /* Filters Bar */
+    .kds-filter-bar {
+      background: #0f172a;
+      padding: 8px 24px;
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .filter-btn {
+      background: transparent;
+      color: var(--kds-text-dim);
+      border: 1px solid #334155;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+      background: #f97316;
+      color: #fff;
+      border-color: #f97316;
+    }
+
+    /* Main Grid */
+    main.kds-grid {
+      flex: 1;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      align-content: start;
+    }
+
+    /* Order Card */
+    .kds-card {
+      background: var(--kds-card);
+      border: 2px solid var(--kds-card-border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      transition: transform 0.15s, border-color 0.2s;
+    }
+
+    .kds-card:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Urgency Styling */
+    .kds-card.normal {
+      border-top: 6px solid var(--kds-normal);
+    }
+    .kds-card.warning {
+      border-top: 6px solid var(--kds-warning);
+    }
+    .kds-card.urgent {
+      border-top: 6px solid var(--kds-urgent);
+      animation: pulseAlert 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseAlert {
+      0%, 100% { border-color: var(--kds-urgent); box-shadow: 0 0 10px rgba(239,68,68,0.3); }
+      50% { border-color: #7f1d1d; box-shadow: 0 0 20px rgba(239,68,68,0.6); }
+    }
+
+    .card-header {
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--kds-card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ticket-num-badge {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .timer-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-badge.normal {
+      background: var(--kds-normal-bg);
+      color: var(--kds-normal);
+    }
+    .timer-badge.warning {
+      background: var(--kds-warning-bg);
+      color: var(--kds-warning);
+    }
+    .timer-badge.urgent {
+      background: var(--kds-urgent-bg);
+      color: var(--kds-urgent);
+    }
+
+    .card-submeta {
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--kds-text-dim);
+      border-bottom: 1px dashed var(--kds-card-border);
+    }
+
+    .table-tag {
+      background: #8b5cf6;
+      color: #fff;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* Items List */
+    .card-body {
+      padding: 14px;
+      flex: 1;
+    }
+
+    .items-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .item-row.done {
+      text-decoration: line-through;
+      color: var(--kds-text-dim);
+    }
+
+    .item-qty {
+      background: rgba(249, 115, 22, 0.2);
+      color: #f97316;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .item-title {
+      flex: 1;
+    }
+
+    .notes-box {
+      margin-top: 10px;
+      background: rgba(245, 158, 11, 0.1);
+      border-right: 3px solid #f59e0b;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #fcd34d;
+    }
+
+    /* Actions */
+    .card-actions {
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid var(--kds-card-border);
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 8px;
+    }
+
+    .btn-prep {
+      background: #1e293b;
+      color: #fff;
+      border: 1px solid #475569;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-prep.in-prep {
+      background: #0284c7;
+      border-color: #0284c7;
+    }
+
+    .btn-ready {
+      background: #10b981;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-ready:hover {
+      background: #059669;
+    }
+
+    /* Empty State */
+    .kds-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--kds-text-dim);
+    }
+
+    .kds-empty-icon {
+      font-size: 4rem;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="kds-header">
+    <div class="kds-brand">
+      <div class="kds-brand-badge">🍳 KDS</div>
+      <div>
+        <div class="kds-title" id="kdsStationTitle">شاشة المطبخ وإعداد الطلبات</div>
+        <div style="font-size:0.8rem; color:var(--kds-text-dim);" id="kdsBranchTitle">فرع الرياض الرئيسي</div>
+      </div>
+    </div>
+
+    <div class="kds-stats-bar">
+      <div class="stat-pill active">
+        الطلبات النشطة: <span id="activeOrdersCount">0</span>
+      </div>
+      <div class="kds-clock" id="kdsLiveClock">--:--:--</div>
+      <button class="btn-sound" id="toggleSoundBtn" onclick="toggleSound()">🔔 الصوت: مفعّل</button>
+    </div>
+  </header>
+
+  <div class="kds-filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
+    <button class="filter-btn" onclick="setFilter('F', this)">🍳 وجبات المطبخ</button>
+    <button class="filter-btn" onclick="setFilter('T', this)">🪑 خدمة الطاولات</button>
+    <button class="filter-btn" onclick="setFilter('D', this)">🛵 استلام التوصيل</button>
+  </div>
+
+  <main class="kds-grid" id="ordersGrid">
+    <div class="kds-empty">
+      <div class="kds-empty-icon">☕</div>
+      <h2>المطبخ جاهز لاستقبال الطلبات الجديدة</h2>
+      <p style="margin-top:6px;">ستظهر الطلبات هنا فور صدور تذكرة العميل من الكاشير أو الكشك.</p>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/kitchen-display.js"></script>
+  <script>
+    var currentFilter = 'all';
+    var kds = window.MkenKitchenDisplay;
+    var params = new URLSearchParams(window.location.search);
+    var tenantSlug = params.get('tenant') || 'default';
+    var branchId = params.get('branch') || 'default';
+
+    // 1. Clock
+    function updateClock() {
+      var now = new Date();
+      document.getElementById('kdsLiveClock').textContent = now.toLocaleTimeString('ar-SA');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Sound Toggle
+    function toggleSound() {
+      if (!kds) return;
+      var cur = kds.isSoundEnabled();
+      kds.setSoundEnabled(!cur);
+      document.getElementById('toggleSoundBtn').textContent = !cur ? '🔔 الصوت: مفعّل' : '🔕 الصوت: صامت';
+    }
+
+    // 3. Filter selection
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      renderOrders();
+    }
+
+    // 4. Render Orders Cards
+    function renderOrders() {
+      var grid = document.getElementById('ordersGrid');
+      var allOrders = kds.getActiveOrders();
+      var filtered = allOrders.filter(function(o) {
+        if (currentFilter === 'all') return true;
+        return o.queue_id === currentFilter;
+      });
+
+      document.getElementById('activeOrdersCount').textContent = allOrders.length;
+
+      if (!filtered.length) {
+        grid.innerHTML = '<div class="kds-empty"><div class="kds-empty-icon">✨</div><h2>لا توجد طلبات معلقة حالياً في هذا القسم</h2></div>';
+        return;
+      }
+
+      var html = filtered.map(function(order) {
+        var elapsed = kds.calculateElapsedMinutes(order.first_arrived_at);
+        var urgency = kds.getUrgencyLevel(elapsed);
+
+        var serviceLabel = order.table_number
+          ? '<span class="table-tag">🪑 طاولة ' + order.table_number + '</span>'
+          : (order.service_type === 'delivery_pickup' ? '🛵 استلام توصيل' : 'سفري / محلي');
+
+        var itemsHtml = (order.items || []).map(function(it, idx) {
+          return '<li class="item-row" onclick="this.classList.toggle(\'done\')">' +
+            '<span class="item-qty">' + (it.qty || 1) + 'x</span>' +
+            '<span class="item-title">' + (it.name || it.title || 'صنف') + '</span>' +
+          '</li>';
+        }).join('');
+
+        var notesHtml = order.notes ? '<div class="notes-box">📌 ' + order.notes + '</div>' : '';
+
+        var prepClass = order.in_prep ? 'btn-prep in-prep' : 'btn-prep';
+        var prepText = order.in_prep ? '👨‍🍳 جارٍ الإعداد' : 'بدء التحضير';
+
+        return (
+          '<div class="kds-card ' + urgency + '" id="card-' + order.ticket_number + '">' +
+            '<div class="card-header">' +
+              '<div class="ticket-num-badge">' + order.ticket_number + '</div>' +
+              '<div class="timer-badge ' + urgency + '">⏱️ ' + elapsed + ' د</div>' +
+            '</div>' +
+            '<div class="card-submeta">' +
+              '<span>' + serviceLabel + '</span>' +
+              '<span>' + (order.customer_name || 'عميل') + '</span>' +
+            '</div>' +
+            '<div class="card-body">' +
+              '<ul class="items-list">' + itemsHtml + '</ul>' +
+              notesHtml +
+            '</div>' +
+            '<div class="card-actions">' +
+              '<button class="' + prepClass + '" onclick="startPrep(\'' + order.ticket_number + '\', this)">' + prepText + '</button>' +
+              '<button class="btn-ready" onclick="finishOrder(\'' + order.id + '\', \'' + order.ticket_number + '\', \'' + (order.phone || '') + '\', \'' + (order.table_number || '') + '\')">✅ جاهز للتسليم</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      grid.innerHTML = html;
+    }
+
+    function startPrep(ticketNumber, btn) {
+      if (kds) kds.markOrderInPrep(ticketNumber);
+      btn.classList.add('in-prep');
+      btn.textContent = '👨‍🍳 جارٍ الإعداد';
+    }
+
+    function finishOrder(ticketId, ticketNumber, phone, tableNumber) {
+      var card = document.getElementById('card-' + ticketNumber);
+      if (card) {
+        card.style.opacity = '0.4';
+        card.style.pointerEvents = 'none';
+      }
+      if (kds) {
+        kds.markOrderReady(ticketId, ticketNumber, phone, tableNumber).then(function() {
+          renderOrders();
+        });
+      }
+    }
+
+    // Refresh Loop
+    function poll() {
+      if (kds) {
+        kds.fetchActiveKitchenOrders(tenantSlug, branchId).then(function() {
+          renderOrders();
+        });
+      }
+    }
+
+    setInterval(renderOrders, 5000); // تحديث عداد الدقائق المنقضية
+    setInterval(poll, 4000);          // جلب أي طلبات جديدة دورياً
+    poll();
+  </script>
+</body>
+</html>

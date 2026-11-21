@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/instagram-posts",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron-queue-pdpl",
+      "schedule": "0 2 * * *"
     }
   ],
   "headers": [
@@ -60,6 +64,22 @@
     {
       "source": "/api/cron-whatsapp",
       "destination": "/api/cron/whatsapp"
+    },
+    {
+      "source": "/kitchen-display",
+      "destination": "/kitchen-display.html"
+    },
+    {
+      "source": "/admin-tables",
+      "destination": "/admin-tables.html"
+    },
+    {
+      "source": "/ticket-print",
+      "destination": "/ticket-print.html"
+    },
+    {
+      "source": "/invoice-print",
+      "destination": "/invoice-print.html"
     }
   ],
   "redirects": [

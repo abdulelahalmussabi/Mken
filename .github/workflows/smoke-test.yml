@@ -57,6 +57,9 @@ jobs:
         node tests/queue-prayer-onboarding.test.cjs
         node tests/queue-tenant-isolation.test.cjs
         node tests/queue-persistence-auth.test.cjs
+        node tests/queue-optional-identity.test.cjs
+        node tests/queue-concurrency.test.cjs
+        node tests/queue-hall-policy.test.cjs
 
     - name: Prove legacy and queue URLs resolve in mkn
       run: node scripts/verify-api-routes.cjs

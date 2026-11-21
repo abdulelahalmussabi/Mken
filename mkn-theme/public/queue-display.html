@@ -239,6 +239,33 @@
     }
 
     /* Ticker Banner */
+    .disp-gate-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 13, 29, 0.92);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 40px;
+    }
+    .disp-gate-overlay.is-on { display: flex; }
+    .disp-prayer-soon {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: #f59e0b;
+      color: #1c1917;
+      font-weight: 800;
+      font-size: 1.15rem;
+      padding: 10px 20px;
+      text-align: center;
+      z-index: 20;
+    }
+    .disp-prayer-soon.is-on { display: block; }
+
     footer.disp-footer {
       background: #070d1d;
       padding: 14px 40px;
@@ -251,6 +278,11 @@
   </style>
 </head>
 <body>
+  <div id="dispPrayerSoonBar" class="disp-prayer-soon"></div>
+  <div id="dispGateOverlay" class="disp-gate-overlay" aria-live="polite">
+    <div id="dispGateMessage" style="font-size:2.4rem; font-weight:800; max-width:900px; line-height:1.4;"></div>
+    <div id="dispGateNextOpen" style="margin-top:18px; font-size:1.3rem; color:#93c5fd;"></div>
+  </div>
 
   <!-- Header -->
   <header class="disp-header">
@@ -314,6 +346,7 @@
   <!-- Scripts -->
   <script src="js/services-store.js"></script>
   <script src="js/queue-store.js"></script>
+  <script src="js/queue-announcer.js"></script>
   <script>
     (function () {
       'use strict';
@@ -431,10 +464,16 @@
           });
           var serviceName = assignedQueue ? assignedQueue.name : 'خدمة العملاء';
 
-          // فحص نداء جديد لإطلاق الصوت
+          // فحص نداء جديد لإطلاق الصوت والنطق العربي
           if (c.current_ticket_id && lastCalledMap[c.id] !== c.current_ticket_id) {
             lastCalledMap[c.id] = c.current_ticket_id;
             playChime();
+            var ticketNumToAnnounce = c.current_ticket_number;
+            if (window.MkenQueueAnnouncer && ticketNumToAnnounce) {
+              setTimeout(function () {
+                MkenQueueAnnouncer.announceTicket(ticketNumToAnnounce, c.name || c.counter_number);
+              }, 1200);
+            }
           }
 
           var cardClass = 'counter-card' + (isCalling ? ' calling' : '');
@@ -469,13 +508,53 @@
         return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
       }
 
+      function applyPublicGate(gate) {
+        var overlay = document.getElementById('dispGateOverlay');
+        var msg = document.getElementById('dispGateMessage');
+        var nxt = document.getElementById('dispGateNextOpen');
+        var soon = document.getElementById('dispPrayerSoonBar');
+        if (!gate || !overlay) return;
+        var blocking = ['force_locked', 'paused', 'after_hours', 'capacity_full', 'official_holiday'];
+        if (blocking.indexOf(gate.gate_state) !== -1) {
+          overlay.classList.add('is-on');
+          if (msg) msg.textContent = gate.message_ar || '';
+          if (nxt) nxt.textContent = gate.next_open ? ('نعود ' + gate.next_open) : '';
+        } else {
+          overlay.classList.remove('is-on');
+        }
+        if (soon) {
+          if (gate.gate_state === 'prayer_now') {
+            soon.classList.add('is-on');
+            soon.textContent = '🕌 ' + (gate.current_prayer || 'الصلاة') +
+              (gate.next_prayer_time ? ' — حتى ' + gate.next_prayer_time : '') +
+              ' — الطابور يعمل وقد يتأخر النداء بسبب الصلاة';
+          } else if (gate.gate_state === 'prayer_soon') {
+            soon.classList.add('is-on');
+            soon.textContent = '🕌 يقترب موعد ' + (gate.next_prayer || 'الصلاة') +
+              (gate.next_prayer_time ? ' ' + gate.next_prayer_time : '') +
+              (gate.minutes_until_next_prayer != null ? ' (بعد ' + gate.minutes_until_next_prayer + ' د)' : '') +
+              ' — الطابور مستمر';
+          } else {
+            soon.classList.remove('is-on');
+          }
+        }
+      }
+
+      function pollGate() {
+        if (!queueStore.publicGate) return;
+        queueStore.publicGate().then(applyPublicGate).catch(function () {});
+      }
+
       // Initial Load & SSE
       refreshDisplay();
+      pollGate();
       setInterval(refreshDisplay, 6000);
+      setInterval(pollGate, 15000);
 
       queueStore.listenToEvents(function (evt) {
         if (['ticket_called', 'ticket_in_service', 'service_completed', 'counter_status_changed', 'config_updated'].indexOf(evt) !== -1) {
           refreshDisplay();
+          pollGate();
         }
       });
 

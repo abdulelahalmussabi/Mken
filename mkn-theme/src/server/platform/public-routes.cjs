@@ -28,6 +28,14 @@ const PAGE_REWRITES = [
   { source: '/queue/scan/', destination: '/queue.html' },
   { source: '/queue-display', destination: '/queue-display.html' },
   { source: '/queue-display/', destination: '/queue-display.html' },
+  { source: '/kitchen-display', destination: '/kitchen-display.html' },
+  { source: '/kitchen-display/', destination: '/kitchen-display.html' },
+  { source: '/admin-tables', destination: '/admin-tables.html' },
+  { source: '/admin-tables/', destination: '/admin-tables.html' },
+  { source: '/ticket-print', destination: '/ticket-print.html' },
+  { source: '/ticket-print/', destination: '/ticket-print.html' },
+  { source: '/invoice-print', destination: '/invoice-print.html' },
+  { source: '/invoice-print/', destination: '/invoice-print.html' },
   { source: '/track', destination: '/track.html' },
   { source: '/track/', destination: '/track.html' }
 ];

@@ -153,6 +153,140 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // =========================================================================
+    // 5. تقرير تحليلات الطابور ونقاط البيع (Queue & POS Real-time Analytics)
+    // =========================================================================
+    if (action === 'queue-pos-analytics' || action === 'queue-analytics') {
+      const fromDate = req.query.from || req.query.from_date || new Date().toISOString().slice(0, 10);
+      const toDate = req.query.to || req.query.to_date || new Date().toISOString().slice(0, 10);
+      const branchId = req.query.branch || req.query.branch_id || null;
+      const format = String(req.query.format || 'json').toLowerCase();
+
+      let records = [];
+
+      if (supabase) {
+        let q = supabase
+          .from('queue_ticket_pos_link')
+          .select('*')
+          .eq('tenant_slug', tenantSlug)
+          .gte('ticket_date', fromDate)
+          .lte('ticket_date', toDate);
+
+        if (branchId) q = q.eq('branch_id', branchId);
+        const { data: dbRows, error: dbErr } = await q.order('ticket_issued_at', { ascending: false });
+        if (!dbErr && Array.isArray(dbRows)) {
+          records = dbRows;
+        }
+      }
+
+      // حساب المقاييس
+      let totalTickets = records.length;
+      let paidTickets = records.filter(r => r.link_status === 'paid');
+      let cancelledTickets = records.filter(r => r.link_status === 'cancelled');
+
+      let totalRevenue = paidTickets.reduce((acc, r) => acc + (parseFloat(r.total_amount) || 0), 0);
+      let avgOrderValue = paidTickets.length > 0 ? (totalRevenue / paidTickets.length) : 0;
+
+      // حساب أوقات الانتظار والخدمة
+      let totalWaitSec = 0;
+      let countWithWait = 0;
+      let totalServiceSec = 0;
+      let countWithService = 0;
+
+      records.forEach(r => {
+        if (r.called_at && r.ticket_issued_at) {
+          const wait = Math.max(0, (new Date(r.called_at) - new Date(r.ticket_issued_at)) / 1000);
+          totalWaitSec += wait;
+          countWithWait++;
+        }
+        if (r.service_ended_at && r.service_started_at) {
+          const srv = Math.max(0, (new Date(r.service_ended_at) - new Date(r.service_started_at)) / 1000);
+          totalServiceSec += srv;
+          countWithService++;
+        }
+      });
+
+      const avgWaitMinutes = countWithWait > 0 ? Math.round((totalWaitSec / countWithWait / 60) * 10) / 10 : 0;
+      const avgServiceMinutes = countWithService > 0 ? Math.round((totalServiceSec / countWithService / 60) * 10) / 10 : 0;
+      const noShowPercent = totalTickets > 0 ? Math.round((cancelledTickets.length / totalTickets) * 1000) / 10 : 0;
+
+      // التوزيع حسب المسار (byQueue)
+      const queueGroups = {};
+      const queueNames = { C: 'مشروبات وقهوة', F: 'مطبخ ووجبات', T: 'خدمة الطاولات', D: 'استلام التوصيل', K: 'كشك سريع' };
+
+      records.forEach(r => {
+        const qId = r.queue_id || 'C';
+        if (!queueGroups[qId]) {
+          queueGroups[qId] = {
+            queue_id: qId,
+            name_ar: queueNames[qId] || qId,
+            tickets_count: 0,
+            revenue: 0
+          };
+        }
+        queueGroups[qId].tickets_count++;
+        if (r.link_status === 'paid') {
+          queueGroups[qId].revenue += (parseFloat(r.total_amount) || 0);
+        }
+      });
+
+      const byQueue = Object.values(queueGroups).map(g => ({
+        ...g,
+        revenue: Math.round(g.revenue * 100) / 100
+      }));
+
+      // التوزيع بساعات اليوم (hourlyDemand)
+      const hourlyDemand = [];
+      for (let h = 0; h < 24; h++) {
+        hourlyDemand.push({ hour: h, hour_label: `${h}:00`, orders_count: 0, revenue: 0 });
+      }
+
+      records.forEach(r => {
+        const d = r.ticket_issued_at ? new Date(r.ticket_issued_at) : new Date();
+        const hr = d.getHours();
+        if (hourlyDemand[hr]) {
+          hourlyDemand[hr].orders_count++;
+          if (r.link_status === 'paid') {
+            hourlyDemand[hr].revenue += (parseFloat(r.total_amount) || 0);
+          }
+        }
+      });
+
+      hourlyDemand.forEach(h => {
+        h.revenue = Math.round(h.revenue * 100) / 100;
+      });
+
+      // تصدير CSV
+      if (format === 'csv') {
+        let csv = 'Ticket Number,Queue,Status,Total Amount,Issued At,Called At,Ended At\n';
+        records.forEach(r => {
+          csv += `"${r.ticket_number}","${r.queue_id}","${r.link_status}",${r.total_amount || 0},"${r.ticket_issued_at || ''}","${r.called_at || ''}","${r.service_ended_at || ''}"\n`;
+        });
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="queue_analytics_${fromDate}.csv"`);
+        if (res.send) return res.status(200).send(csv);
+        return res.status(200).json(csv);
+      }
+
+      return res.status(200).json({
+        success: true,
+        tenant_slug: tenantSlug,
+        from_date: fromDate,
+        to_date: toDate,
+        summary: {
+          total_tickets: totalTickets,
+          paid_tickets_count: paidTickets.length,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          average_order_value: Math.round(avgOrderValue * 100) / 100,
+          average_wait_minutes: avgWaitMinutes,
+          average_service_minutes: avgServiceMinutes,
+          no_show_percent: noShowPercent
+        },
+        by_queue: byQueue,
+        hourly_demand: hourlyDemand
+      });
+    }
+
     return res.status(400).json({ error: `Unknown report action: ${action}` });
   } catch (err) {
     console.error('ERP Reports API error:', err);

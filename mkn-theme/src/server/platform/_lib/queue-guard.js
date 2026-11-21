@@ -274,10 +274,12 @@ function shapeConfig(data, staff) {
       return Object.assign({}, session);
     }) : sessions.map(publicSession)
   };
+  if (data.hallPolicy) body.hallPolicy = data.hallPolicy;
   if (staff) {
     body.users = (data.users || []).map(function (user) {
       const copy = Object.assign({}, user);
       delete copy.pin_code;
+      delete copy.pin_hash;
       return copy;
     });
     body.agentBreaks = data.agentBreaks || [];

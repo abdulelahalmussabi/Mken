@@ -1,0 +1,61 @@
+{
+  "slug": "cafe-chain",
+  "brand": {
+    "name": "سلسلة مقاهي نجد المختصة | Najd Speciality Coffee",
+    "tagline": "قهوة مختصة، ومخبوزات طازجة يومياً",
+    "logo": "/brand/najd-coffee.png"
+  },
+  "seller_name": "شركة مقاهي نجد المحدودة",
+  "vat_number": "310123456700003",
+  "queues": {
+    "C": {
+      "name": "مشروبات وقهوة",
+      "prefix": "C",
+      "target_service_minutes": 4,
+      "color": "#3B82F6"
+    },
+    "F": {
+      "name": "مطبخ ومأكولات",
+      "prefix": "F",
+      "target_service_minutes": 10,
+      "color": "#10B981"
+    },
+    "T": {
+      "name": "خدمة الطاولات (داين-إن)",
+      "prefix": "T",
+      "target_service_minutes": 20,
+      "color": "#F59E0B"
+    }
+  },
+  "branches": [
+    {
+      "id": "riyadh-01",
+      "name": "فرع الرياض - العليا الرئيسي",
+      "city": "الرياض",
+      "phone": "0551234567",
+      "tables_count": 24,
+      "kds_enabled": true
+    },
+    {
+      "id": "jeddah-01",
+      "name": "فرع جدة - حي الروضة",
+      "city": "جدة",
+      "phone": "0559876543",
+      "tables_count": 18,
+      "kds_enabled": true
+    }
+  ],
+  "loyalty": {
+    "enabled": true,
+    "earn_ratio": 0.1,
+    "spend_ratio": 0.1,
+    "points_per_sar": 0.1,
+    "sar_per_point": 0.1,
+    "welcome_bonus_points": 50
+  },
+  "pdpl": {
+    "retention_days": 30,
+    "anonymize_after_days": 30,
+    "auto_purge_enabled": true
+  }
+}

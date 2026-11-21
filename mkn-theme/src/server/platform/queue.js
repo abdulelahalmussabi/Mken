@@ -7,10 +7,15 @@ const pushLib = require('./_lib/web-push');
 const { isRateLimited } = require('./_lib/rate-limit');
 const queueGuard = require('./_lib/queue-guard');
 const queuePersist = require('./_lib/queue-persist');
+const queueGate = require('./_lib/queue-gate');
+const crypto = require('crypto');
 
 const MISSING_IP_LIMIT = queuePersist.MISSING_IP_LIMIT;
 const STAFF_ONLY_ACTIONS = new Set([
   'save-config',
+  'create-queue',
+  'update-queue',
+  'delete-queue',
   'staff-config',
   'staff-board',
   'add-counter',
@@ -63,13 +68,15 @@ const RAW_DB = {
   overrides: {},           // tenantSlug -> overrideObj (Revision & Operational Overrides)
   auditLogs: {},           // tenantSlug -> [logEntry] (NCA/PDPL Immutable Audit Trail)
   idempotencyKeys: {},     // tenantSlug -> { idempotencyKey: { revision, override } }
-  dailyCounters: {}
+  dailyCounters: {},
+  hallPolicies: {},
+  displayPreviews: {}
 };
 
 const TENANT_COLLECTIONS = [
   'queues', 'counters', 'tickets', 'serviceLogs', 'users', 'settings',
   'counterSessions', 'agentBreaks', 'receptionHandovers', 'overrides',
-  'auditLogs', 'idempotencyKeys'
+  'auditLogs', 'idempotencyKeys', 'hallPolicies'
 ];
 
 function requestBucket(key) {
@@ -338,7 +345,146 @@ function getOrCreateMemoryTenant(tenantSlug) {
     };
   }
   if (!MEMORY_DB.sseClients[slug]) MEMORY_DB.sseClients[slug] = [];
+  if (!MEMORY_DB.hallPolicies[slug]) {
+    MEMORY_DB.hallPolicies[slug] = queueGate.defaultHallPolicy({
+      city: (MEMORY_DB.settings[slug] && MEMORY_DB.settings[slug].city) || 'Riyadh'
+    });
+  }
+  if (MEMORY_DB.displayPreviews[slug] === undefined) MEMORY_DB.displayPreviews[slug] = null;
   return slug;
+}
+
+
+function staffSecret() {
+  return process.env.QUEUE_STAFF_SECRET || process.env.ADMIN_PIN || 'mken-queue-staff';
+}
+
+function signStaffToken(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', staffSecret()).update(body).digest('base64url');
+  return body + '.' + sig;
+}
+
+function readStaffToken(req) {
+  const h = req.headers || {};
+  const raw = String((h.authorization || '').replace(/^Bearer\s+/i, '') || h['x-queue-staff-token'] || '').trim();
+  if (!raw || raw.indexOf('.') === -1) return null;
+  const parts = raw.split('.');
+  const body = parts[0];
+  const sig = parts[1];
+  const expect = crypto.createHmac('sha256', staffSecret()).update(body).digest('base64url');
+  if (expect !== sig) return null;
+  try {
+    const p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (p.exp && Date.now() > p.exp) return null;
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
+
+function requirePolicyStaff(req) {
+  const tok = readStaffToken(req);
+  if (tok && (tok.role === 'admin' || tok.role === 'receptionist')) return tok;
+  return null;
+}
+
+function issuedTodayCount(slug) {
+  const key = queueGate.ksaDateKey();
+  return (MEMORY_DB.tickets[slug] || []).filter((t) => {
+    const day = t.ticket_date || String(t.booked_at || '').slice(0, 10);
+    return day === key && t.status !== 'cancelled';
+  }).length;
+}
+
+function waitingNowCount(slug) {
+  return (MEMORY_DB.tickets[slug] || []).filter(
+    (t) => t.status === 'waiting' || t.status === 'bumped'
+  ).length;
+}
+
+function resolveOperationalGate(slug, opts) {
+  const preview = MEMORY_DB.displayPreviews[slug];
+  if (opts && opts.allowPreview && preview && preview.until && new Date(preview.until) > new Date() && preview.gate) {
+    return Object.assign({ preview: true }, preview.gate);
+  }
+  const settings = MEMORY_DB.settings[slug] || {};
+  const prayer = checkPrayerStatus(settings.city || 'Riyadh');
+  return queueGate.evaluateGate({
+    policy: MEMORY_DB.hallPolicies[slug] || queueGate.defaultHallPolicy(),
+    override: MEMORY_DB.overrides[slug] || {},
+    prayer: prayer,
+    issuedToday: issuedTodayCount(slug),
+    waitingNow: waitingNowCount(slug),
+    holidays: queueGate.KSA_OFFICIAL_HOLIDAYS
+  });
+}
+
+function gateRejectBody(gate) {
+  return {
+    ok: false,
+    error: gate.message_ar,
+    gate_state: gate.gate_state,
+    message_ar: gate.message_ar,
+    next_open: gate.next_open || null,
+    is_paused: gate.gate_state === 'paused',
+    is_locked: gate.gate_state === 'force_locked'
+  };
+}
+
+async function hydrateHallPolicy(slug) {
+  const current = MEMORY_DB.hallPolicies[slug];
+  if (current && current._persistedLoaded) return;
+  try {
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const supabaseKey = sbEnv.getSupabaseServiceKey();
+    if (!supabaseUrl || !supabaseKey) {
+      if (current) current._persistedLoaded = true;
+      return;
+    }
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data } = await supabase
+      .from('branch_queue_policies')
+      .select('*')
+      .eq('tenant_slug', slug)
+      .eq('branch_id', 'default')
+      .maybeSingle();
+    if (data) {
+      MEMORY_DB.hallPolicies[slug] = queueGate.policyFromDbRow(data);
+    }
+  } catch (e) {}
+  if (MEMORY_DB.hallPolicies[slug]) MEMORY_DB.hallPolicies[slug]._persistedLoaded = true;
+}
+
+async function persistHallPolicy(slug, policy, supervisorId) {
+  try {
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const supabaseKey = sbEnv.getSupabaseServiceKey();
+    if (!supabaseUrl || !supabaseKey) return;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    await supabase.from('branch_queue_policies').upsert(
+      queueGate.policyToDbRow(slug, policy, supervisorId),
+      { onConflict: 'tenant_slug,branch_id' }
+    );
+  } catch (e) {}
+}
+
+async function updatePosLinkStatus(slug, ticketId, linkStatus, extra = {}) {
+  try {
+    const supabaseUrl = sbEnv.getSupabaseUrl();
+    const supabaseKey = sbEnv.getSupabaseServiceKey();
+    if (!supabaseUrl || !supabaseKey || !ticketId) return;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    await supabase
+      .from('queue_ticket_pos_link')
+      .update({
+        link_status: linkStatus,
+        updated_at: new Date().toISOString(),
+        ...extra
+      })
+      .eq('tenant_slug', slug)
+      .eq('ticket_id', ticketId);
+  } catch (e) {}
 }
 
 function broadcastSSE(tenantSlug, event, data) {
@@ -584,7 +730,8 @@ async function queueHandler(req, res) {
   const tenantSlug = getOrCreateMemoryTenant(resolved.slug);
   await queuePersist.prepare(tenantSlug, MEMORY_DB);
   const memoryFp = queuePersist.fingerprint(tenantSlug, MEMORY_DB);
-  const staff = resolved.staff;
+  const staffToken = readStaffToken(req);
+  const staff = resolved.staff || Boolean(staffToken && (!staffToken.tenant_slug || staffToken.tenant_slug === resolved.slug));
   const queueRole = queueGuard.queueRoleFromSession(resolved.session);
   const byTicketId = Boolean((req.query && req.query.ticket_id) || (req.body && req.body.ticket_id));
   const byToken = Boolean(
@@ -753,7 +900,7 @@ async function queueHandler(req, res) {
       const counterSessions = MEMORY_DB.counterSessions[tenantSlug] || [];
       const agentBreaks = MEMORY_DB.agentBreaks[tenantSlug] || [];
       const receptionHandovers = MEMORY_DB.receptionHandovers[tenantSlug] || [];
-      return res.status(200).json({ ok: true, settings, queues, counters, users, counterSessions, agentBreaks, receptionHandovers });
+      return res.status(200).json({ ok: true, settings, queues, counters, users, counterSessions, agentBreaks, receptionHandovers, hallPolicy: MEMORY_DB.hallPolicies[tenantSlug] });
     }
 
     // ---------------------------------------------------------------
@@ -860,6 +1007,262 @@ async function queueHandler(req, res) {
       counters.splice(idx, 1);
       broadcastSSE(tenantSlug, 'config_updated', { counters, settings: MEMORY_DB.settings[tenantSlug] });
       return res.status(200).json({ ok: true, counters, message: 'تم حذف الكاونتر بنجاح.' });
+    }
+
+    // ---------------------------------------------------------------
+    // 3.04 إنشاء طابور / قسم جديد (Create Queue)
+    // ---------------------------------------------------------------
+    if (action === 'create-queue') {
+      const body = req.body || {};
+      const name = (body.name || '').trim();
+      const codeStr = (body.code || body.prefix || 'Q').trim().toUpperCase().slice(0, 4);
+      const targetServiceMinutes = parseInt(body.targetServiceMinutes || '6', 10);
+      const maxDailyCapacity = parseInt(body.maxDailyCapacity || '100', 10);
+      const queues = MEMORY_DB.queues[tenantSlug] || [];
+
+      if (!name) {
+        return res.status(400).json({ error: 'الرجاء إدخال اسم الطابور / القسم بشكل صحيح.' });
+      }
+
+      const newQueue = {
+        id: 'q-' + codeStr.toLowerCase() + '-' + Math.random().toString(36).substring(2, 6) + '-' + tenantSlug,
+        tenant_slug: tenantSlug,
+        name: name,
+        code: codeStr,
+        prefix: codeStr,
+        target_service_minutes: targetServiceMinutes,
+        max_daily_capacity: maxDailyCapacity,
+        is_active: true
+      };
+
+      queues.push(newQueue);
+      broadcastSSE(tenantSlug, 'config_updated', { queues, settings: MEMORY_DB.settings[tenantSlug] });
+      return res.status(201).json({ ok: true, queue: newQueue, queues, message: 'تم إنشاء الطابور الجديد بنجاح.' });
+    }
+
+    if (action === 'update-queue') {
+      const body = req.body || {};
+      const queueId = body.queueId || body.id;
+      const queues = MEMORY_DB.queues[tenantSlug] || [];
+      const queue = queues.find(q => q.id === queueId);
+
+      if (!queue) {
+        return res.status(404).json({ error: 'الطابور / القسم المطلوب غير موجود.' });
+      }
+
+      if (body.name) queue.name = (body.name || '').trim();
+      if (body.code) {
+        queue.code = body.code.trim().toUpperCase().slice(0, 4);
+        queue.prefix = queue.code;
+      }
+      if (body.targetServiceMinutes !== undefined) queue.target_service_minutes = parseInt(body.targetServiceMinutes, 10);
+      if (body.maxDailyCapacity !== undefined) queue.max_daily_capacity = parseInt(body.maxDailyCapacity, 10);
+      if (body.isActive !== undefined) queue.is_active = Boolean(body.isActive);
+
+      broadcastSSE(tenantSlug, 'config_updated', { queues, settings: MEMORY_DB.settings[tenantSlug] });
+      return res.status(200).json({ ok: true, queue, queues, message: 'تم تحديث بيانات الطابور بنجاح.' });
+    }
+
+    if (action === 'delete-queue') {
+      const queueId = req.body?.queueId || req.query.queueId;
+      const queues = MEMORY_DB.queues[tenantSlug] || [];
+      const idx = queues.findIndex(q => q.id === queueId);
+
+      if (idx === -1) {
+        return res.status(404).json({ error: 'الطابور / القسم المطلوب غير موجود.' });
+      }
+
+      const tickets = MEMORY_DB.tickets[tenantSlug] || [];
+      const activeTicketsInQueue = tickets.some(t => t.queue_id === queueId && ['waiting', 'in_service', 'called'].includes(t.status));
+      if (activeTicketsInQueue) {
+        return res.status(400).json({ error: 'لا يمكن حذف الطابور لوجود مراجعين في الانتظار أو قيد الخدمة حالياً.' });
+      }
+
+      queues.splice(idx, 1);
+      broadcastSSE(tenantSlug, 'config_updated', { queues, settings: MEMORY_DB.settings[tenantSlug] });
+      return res.status(200).json({ ok: true, queues, message: 'تم حذف الطابور بنجاح.' });
+    }
+
+    if (action === 'staff-login') {
+      const pin = String(req.body?.pin || req.query.pin || '').trim();
+      const users = MEMORY_DB.users[tenantSlug] || [];
+      const user = users.find(u => u.pin_code === pin && u.is_active !== false);
+      if (!user) {
+        return res.status(401).json({ error: 'رمز الدخول PIN غير صحيح.' });
+      }
+      const token = signStaffToken({
+        id: user.id,
+        role: user.role,
+        name: user.full_name,
+        tenant_slug: tenantSlug,
+        exp: Date.now() + 86400000
+      });
+      return res.status(200).json({
+        ok: true,
+        token,
+        user: { id: user.id, name: user.full_name, role: user.role }
+      });
+    }
+
+    if (action === 'public-gate') {
+      await hydrateHallPolicy(tenantSlug);
+      const gate = resolveOperationalGate(tenantSlug, { allowPreview: true });
+      return res.status(200).json(queueGate.publicGatePayload(gate));
+    }
+
+    if (action === 'get-hall-policy') {
+      if (!requirePolicyStaff(req)) {
+        return res.status(401).json({ error: 'يلزم جلسة مشرف (staff-login). لا تُقبل ترويسة الإدارة وحدها.' });
+      }
+      await hydrateHallPolicy(tenantSlug);
+      const policy = MEMORY_DB.hallPolicies[tenantSlug];
+      const gate = resolveOperationalGate(tenantSlug);
+      return res.status(200).json({
+        ok: true,
+        policy,
+        gate: queueGate.publicGatePayload(gate),
+        holidays: queueGate.KSA_OFFICIAL_HOLIDAYS,
+        open_warnings: queueGate.warnLongOpenDay(policy.weekly_hours)
+      });
+    }
+
+    if (action === 'save-hall-policy') {
+      const supervisor = requirePolicyStaff(req);
+      if (!supervisor) return res.status(401).json({ error: 'يلزم جلسة مشرف لاعتماد سياسة الصالة. لا تُقبل ترويسة الإدارة وحدها.' });
+      const body = req.body || {};
+      const reason = String(body.reason || '').trim();
+      if (!reason) return res.status(400).json({ error: 'سبب الاعتماد إلزامي لسجل التدقيق.' });
+      await hydrateHallPolicy(tenantSlug);
+      const merged = queueGate.mergeHallPolicy(MEMORY_DB.hallPolicies[tenantSlug], body.policy || body);
+      merged.updated_at = new Date().toISOString();
+      merged.updated_by_user_id = supervisor.id || 'supervisor';
+      MEMORY_DB.hallPolicies[tenantSlug] = merged;
+      merged._persistedLoaded = true;
+      await persistHallPolicy(tenantSlug, merged, supervisor.id);
+      const gate = resolveOperationalGate(tenantSlug);
+      broadcastSSE(tenantSlug, 'config_updated', {
+        policy: merged,
+        gate: queueGate.publicGatePayload(gate),
+        settings: MEMORY_DB.settings[tenantSlug]
+      });
+      return res.status(200).json({
+        ok: true,
+        policy: merged,
+        gate: queueGate.publicGatePayload(gate),
+        message: 'تم حفظ واعتماد سياسة الصالة بنجاح.'
+      });
+    }
+
+    if (action === 'preview-display') {
+      const supervisor = requirePolicyStaff(req);
+      if (!supervisor) return res.status(401).json({ error: 'يلزم جلسة مشرف لمعاينة الشاشة.' });
+      const state = String((req.body && req.body.gate_state) || req.query.state || 'prayer_now');
+      const previewMinutes = Math.min(60, Math.max(1, parseInt((req.body && req.body.minutes) || '5', 10)));
+      await hydrateHallPolicy(tenantSlug);
+      const fakeGate = queueGate.evaluateGate({
+        policy: MEMORY_DB.hallPolicies[tenantSlug],
+        override: {},
+        prayer: currentPrayerStatus(tenantSlug),
+        issuedToday: 1,
+        waitingNow: 1,
+        forcedState: state
+      });
+      MEMORY_DB.displayPreviews[tenantSlug] = {
+        until: new Date(Date.now() + previewMinutes * 60000).toISOString(),
+        gate: fakeGate
+      };
+      broadcastSSE(tenantSlug, 'config_updated', { gate: fakeGate });
+      return res.status(200).json({ ok: true, preview: MEMORY_DB.displayPreviews[tenantSlug] });
+    }
+
+    if (action === 'bind-place') {
+      if (!requirePolicyStaff(req)) {
+        return res.status(401).json({ error: 'يلزم جلسة مشرف لربط المكان. لا تُقبل ترويسة الإدارة وحدها.' });
+      }
+      const body = req.body || {};
+      const mapsUrl = (body.mapsUrl || body.maps_url || '').trim();
+      let placeId = (body.placeId || body.google_place_id || '').trim() || queueGate.extractPlaceIdFromMapsUrl(mapsUrl);
+      let periods = body.openingPeriods || (body.regularHours && body.regularHours.periods) || body.periods || [];
+      let snapshot = null;
+      if (!periods.length) {
+        snapshot = await queueGate.fetchPlaceSnapshotFromGoogle(placeId, mapsUrl);
+        if (snapshot) {
+          placeId = snapshot.placeId || placeId;
+          periods = snapshot.periods || [];
+          if (!body.city && snapshot.city) body.city = snapshot.city;
+          if (body.lat == null && snapshot.lat != null) body.lat = snapshot.lat;
+          if (body.lng == null && snapshot.lng != null) body.lng = snapshot.lng;
+          if (!mapsUrl && snapshot.maps_url) body.mapsUrl = snapshot.maps_url;
+        }
+      }
+      const suggested = periods.length ? queueGate.googlePeriodsToWeeklyHours(periods) : (snapshot && snapshot.suggested_weekly_hours) || null;
+      await hydrateHallPolicy(tenantSlug);
+      const policy = MEMORY_DB.hallPolicies[tenantSlug];
+      policy.google_place_id = placeId || policy.google_place_id;
+      policy.gbp_location_id = body.gbpLocationId || body.gbp_location_id || policy.gbp_location_id;
+      policy.lat = body.lat != null ? body.lat : policy.lat;
+      policy.lng = body.lng != null ? body.lng : policy.lng;
+      if (body.city) policy.city = body.city;
+      policy.maps_url = mapsUrl || body.mapsUrl || queueGate.mapsUrlFromPlaceId(placeId) || policy.maps_url;
+      policy.hours_source = body.hoursSource || (body.gbpLocationId ? 'gbp' : 'places');
+      policy.hours_imported_at = new Date().toISOString();
+      if (suggested) policy.suggested_weekly_hours = suggested;
+      if (body.specialCloses) policy.suggested_special_closes = body.specialCloses;
+      const apply = body.apply === true;
+      const warnings = suggested ? queueGate.warnLongOpenDay(suggested) : [];
+      if (apply) {
+        if (!String(body.reason || '').trim()) {
+          return res.status(400).json({ error: 'اعتماد ساعات جوجل يتطلب سبباً. لا تُكتب فوق السياسة صامتة.' });
+        }
+        if (suggested) policy.weekly_hours = suggested;
+      }
+      MEMORY_DB.hallPolicies[tenantSlug] = policy;
+      policy._persistedLoaded = true;
+      await persistHallPolicy(tenantSlug, policy, (requirePolicyStaff(req) || {}).id);
+      broadcastSSE(tenantSlug, 'config_updated', { hallPolicy: policy });
+      return res.status(200).json({
+        ok: true,
+        policy,
+        suggested_weekly_hours: suggested,
+        applied: apply,
+        open_warnings: warnings,
+        message: apply
+          ? 'تم اعتماد ساعات الملف على سياسة الصالة.'
+          : 'تم حفظ هوية المكان ومسودة الساعات دون تعديل البوابة المعتمدة.'
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // 6.5 نقاط البيع وواتساب والولاء و PDPL
+    // ---------------------------------------------------------------
+    if (action === 'create-order-with-ticket' || action === 'pos-ticket' || action === 'create-pos-order') {
+      const posCreateHandler = require('./pos/create-order-with-ticket');
+      return posCreateHandler(req, res);
+    }
+
+    if (action === 'get-pos-ticket-details' || action === 'pos-ticket-details') {
+      const posDetailsHandler = require('./pos/get-ticket-details');
+      return posDetailsHandler(req, res);
+    }
+
+    if (action === 'notify-whatsapp') {
+      const notifyHandler = require('./queue/notify-whatsapp');
+      return notifyHandler(req, res);
+    }
+
+    if (action === 'pos-complete-service' || action === 'complete-pos-order' || action === 'finalize-pos-invoice') {
+      const posCompleteHandler = require('./pos/complete-service');
+      return posCompleteHandler(req, res);
+    }
+
+    if (action === 'loyalty-balance' || action === 'loyalty-redeem' || action === 'loyalty-earn' || action === 'loyalty') {
+      const loyaltyHandler = require('./pos/loyalty');
+      return loyaltyHandler(req, res);
+    }
+
+    if (action === 'pdpl-anonymize' || action === 'pdpl-audit') {
+      const pdplCronHandler = require('./cron-queue-pdpl');
+      return pdplCronHandler(req, res);
     }
 
     // ---------------------------------------------------------------
@@ -984,7 +1387,8 @@ async function queueHandler(req, res) {
         queues: queueStats,
         settings,
         override: MEMORY_DB.overrides[tenantSlug],
-        state_revision: MEMORY_DB.overrides[tenantSlug] ? MEMORY_DB.overrides[tenantSlug].state_revision : 1
+        state_revision: MEMORY_DB.overrides[tenantSlug] ? MEMORY_DB.overrides[tenantSlug].state_revision : 1,
+        gate: queueGate.publicGatePayload(resolveOperationalGate(tenantSlug))
       });
     }
 
@@ -1030,6 +1434,11 @@ async function queueHandler(req, res) {
           is_paused: true,
           paused_until: currentOverride.paused_until
         });
+      }
+
+      const issueGate = resolveOperationalGate(tenantSlug);
+      if (!issueGate.allows_issue) {
+        return res.status(409).json(gateRejectBody(issueGate));
       }
 
       const sessionToken = (body.sessionToken && body.sessionToken.length > 8)
@@ -1117,6 +1526,10 @@ async function queueHandler(req, res) {
     // 6. إصدار تذكرة يدوية عبر موظف الاستقبال (Manual Ticket Issuing)
     // ---------------------------------------------------------------
     if (action === 'manual-ticket') {
+      const issueGate = resolveOperationalGate(tenantSlug);
+      if (!issueGate.allows_issue) {
+        return res.status(409).json(gateRejectBody(issueGate));
+      }
       const body = req.body || {};
       const queueId = body.queueId;
       const customerName = optionalCustomerName(body.customerName);
@@ -1314,6 +1727,10 @@ async function queueHandler(req, res) {
     // 9. استدعاء العميل التالي (Call Next) بنظام الأولويات الهرمي
     // ---------------------------------------------------------------
     if (action === 'call-next') {
+      const callGate = resolveOperationalGate(tenantSlug);
+      if (!callGate.allows_call_next) {
+        return res.status(409).json(gateRejectBody(callGate));
+      }
       const counterId = req.body?.counterId;
       if (queuePersist.mode() !== 'memory') {
         return claimAndRespond(counterId, null, null, {

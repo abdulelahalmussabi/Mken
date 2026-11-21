@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طباعة تذكرة الطابور — منصة مكّن</title>
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    body {
+      background: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .ticket-card {
+      width: 78mm;
+      max-width: 320px;
+      background: #fff;
+      padding: 16px 14px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      color: #000;
+      text-align: center;
+    }
+    .store-name {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .branch-name {
+      font-size: 11px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    .divider {
+      border-top: 1px dashed #000;
+      margin: 10px 0;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .ticket-number-box {
+      border: 2px solid #000;
+      border-radius: 6px;
+      padding: 8px;
+      margin: 8px 0;
+      background: #fafafa;
+    }
+    .ticket-number {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      line-height: 1.1;
+    }
+    .queue-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .table-badge {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      background: #000;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 3px;
+    }
+    .items-table {
+      width: 100%;
+      text-align: right;
+      font-size: 11px;
+      border-collapse: collapse;
+      margin: 8px 0;
+    }
+    .items-table th {
+      border-bottom: 1px solid #000;
+      padding-bottom: 4px;
+      font-weight: bold;
+    }
+    .items-table td {
+      padding: 4px 0;
+    }
+    .items-table td.price {
+      text-align: left;
+      direction: ltr;
+      font-weight: bold;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 900;
+      margin: 6px 0;
+    }
+    .eta-box {
+      background: #f8fafc;
+      border: 1px solid #000;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 8px 0;
+    }
+    .footer-note {
+      font-size: 10px;
+      color: #444;
+      margin-top: 8px;
+    }
+    .timestamp {
+      font-size: 10px;
+      color: #555;
+      margin-top: 4px;
+    }
+    .actions-bar {
+      margin-top: 15px;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-print {
+      flex: 1;
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+      }
+      .ticket-card {
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+        padding: 4px;
+      }
+      .actions-bar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ticket-card" id="ticketCard">
+    <div class="store-name" id="storeNameDisplay">منصة مكّن</div>
+    <div class="branch-name" id="branchNameDisplay">فرع الرياض</div>
+    <div class="divider"></div>
+
+    <div class="section-title">رقمك في الطابور / Your Queue Number</div>
+    <div class="ticket-number-box">
+      <div class="ticket-number" id="ticketNumberDisplay">C-042</div>
+      <div class="queue-title" id="queueTitleDisplay">(مشروبات وقهوة)</div>
+      <div id="tableBadgeContainer" style="display:none;">
+        <span class="table-badge" id="tableNumberDisplay">طاولة 7</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>الصنف</th>
+          <th style="text-align:left;">السعر (ر.س)</th>
+        </tr>
+      </thead>
+      <tbody id="itemsTableBody">
+        <tr>
+          <td>قهوة لاتيه x1</td>
+          <td class="price">18.00</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="divider"></div>
+
+    <div class="total-row">
+      <span>الإجمالي (شامل الضريبة):</span>
+      <span id="totalDisplay">18.00 ر.س</span>
+    </div>
+
+    <div class="eta-box">
+      وقت الانتظار التقريبي: <span id="etaDisplay">~5 دقائق</span>
+    </div>
+
+    <div class="footer-note" id="sessionUrlNote">
+      تابع دورك عبر الرابط: <br>
+      <strong id="trackUrlDisplay">mken.live/q/C-042</strong>
+    </div>
+
+    <div class="timestamp" id="timestampDisplay">--:--</div>
+
+    <div class="actions-bar">
+      <button class="btn-print" onclick="window.print()">طباعة الآن (Print)</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+
+      var ticketNumber = params.get('ticket_number') || params.get('ticketNumber') || 'C-042';
+      var queueName = params.get('queue_name') || params.get('queueName') || 'مشروبات وقهوة';
+      var branchName = params.get('branch_name') || params.get('branchName') || 'الفرع الرئيسي';
+      var storeName = params.get('store_name') || params.get('storeName') || 'مقهى مكّن';
+      var total = params.get('total') || '0.00';
+      var eta = params.get('eta') || params.get('eta_minutes') || '5';
+      var tableNumber = params.get('table') || params.get('table_number');
+      var rawItems = params.get('items');
+      var autoprint = params.get('autoprint') === '1' || params.get('auto') === 'true';
+
+      document.getElementById('ticketNumberDisplay').textContent = ticketNumber;
+      document.getElementById('queueTitleDisplay').textContent = '(' + queueName + ')';
+      document.getElementById('branchNameDisplay').textContent = branchName;
+      document.getElementById('storeNameDisplay').textContent = storeName;
+      document.getElementById('totalDisplay').textContent = Number(total).toFixed(2) + ' ر.س';
+      document.getElementById('etaDisplay').textContent = '~' + eta + ' دقيقة';
+      document.getElementById('trackUrlDisplay').textContent = 'mken.live/q/' + ticketNumber;
+
+      if (tableNumber) {
+        document.getElementById('tableNumberDisplay').textContent = 'طاولة ' + tableNumber;
+        document.getElementById('tableBadgeContainer').style.display = 'block';
+      }
+
+      if (rawItems) {
+        try {
+          var itemsList = JSON.parse(rawItems);
+          if (Array.isArray(itemsList) && itemsList.length > 0) {
+            var tbody = document.getElementById('itemsTableBody');
+            tbody.innerHTML = '';
+            itemsList.forEach(function(it) {
+              var tr = document.createElement('tr');
+              var nameTd = document.createElement('td');
+              nameTd.textContent = (it.name || it.title || 'صنف') + ' x' + (it.qty || 1);
+              var priceTd = document.createElement('td');
+              priceTd.className = 'price';
+              priceTd.textContent = Number((it.price || 0) * (it.qty || 1)).toFixed(2);
+              tr.appendChild(nameTd);
+              tr.appendChild(priceTd);
+              tbody.appendChild(tr);
+            });
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+
+      var now = new Date();
+      document.getElementById('timestampDisplay').textContent = now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+      // PostMessage support for seamless iframe printing
+      window.addEventListener('message', function(e) {
+        if (e.data && e.data.action === 'load-ticket') {
+          var d = e.data.data;
+          if (d.ticket_number) document.getElementById('ticketNumberDisplay').textContent = d.ticket_number;
+          if (d.total) document.getElementById('totalDisplay').textContent = Number(d.total).toFixed(2) + ' ر.س';
+          if (d.eta_minutes) document.getElementById('etaDisplay').textContent = '~' + d.eta_minutes + ' دقيقة';
+          if (e.data.autoprint) window.print();
+        }
+      });
+
+      if (autoprint) {
+        setTimeout(function() {
+          window.print();
+        }, 300);
+      }
+    })();
+  </script>
+</body>
+</html>

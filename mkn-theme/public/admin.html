@@ -325,6 +325,7 @@
 
         <!-- مساحة العمل 1: شاشة موظف الاستقبال والمشرف (High-Density Dispatcher Dashboard) -->
         <div id="queueDispatcherWorkspace" class="queue-workspace-panel">
+          <div id="dispatcherPrayerBanner" style="display:none; margin-bottom:12px; background:#fffbeb; border:1px solid #f59e0b; color:#92400e; border-radius:10px; padding:10px 14px; font-weight:700;"></div>
           <div style="display: grid; grid-template-columns: 280px 1fr 340px; gap: 18px; align-items: start;">
             
             <!-- [1] اللوحة اليسرى: الإجراءات السريعة ومؤشرات الضغط -->
@@ -333,9 +334,30 @@
                 <span>⚡</span> إجراءات الاستقبال السريعة
               </h4>
 
-              <button type="button" id="dispatcherNewTicketBtn" class="btn btn--primary" style="width: 100%; margin-bottom: 12px; justify-content: center; font-weight: 700;">
-                ➕ تذكرة يدوية جديدة
-              </button>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <button type="button" id="dispatcherNewTicketBtn" class="btn btn--primary" style="justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                  ➕ تذكرة جديدة
+                </button>
+                <button type="button" id="dispatcherManageQueuesBtn" class="btn btn--outline" style="justify-content: center; font-weight: 700; font-size: 0.85rem; border-color: #2563eb; color: #1d4ed8;">
+                  ⚙️ أسماء الطوابير
+                </button>
+              </div>
+
+              <!-- بانر خوارزمية الجدولة العادلة والأولوية الإنسانية (Anti-Starvation) -->
+              <div id="antiStarvationBanner" style="background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <strong style="color: #1e40af; font-size: 0.82rem; display: flex; align-items: center; gap: 5px;">
+                    <span>⚖️</span> الجدولة العادلة (ANTI-STARVATION 2:1)
+                  </strong>
+                  <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 0.72rem; font-weight: 700;">مسار الأولوية</span>
+                </div>
+                <p style="margin: 0 0 8px; font-size: 0.76rem; color: #334155; line-height: 1.4;">
+                  يقدم مسار الرعاية الخاصة (كبار السن وذوي الهمم) مع تقديم عميل عام بعد كل استدعاءين لمسار الأولوية لمنع تجميد الطابور.
+                </p>
+                <button type="button" id="btnIssuePriorityCareTicket" class="btn btn--outline btn--sm" style="width: 100%; font-size: 0.78rem; font-weight: 700; border-color: #10b981; color: #047857; background: #ecfdf5; justify-content: center;">
+                  ➕ إصدار تذكرة رعاية (ذوي الهمم / كبار السن)
+                </button>
+              </div>
 
               <!-- [1.1] شريط التدخل البشري السريع (Manual Override Bar) -->
               <div id="adminManualOverrideBar" style="background: #fff; border: 1px solid #fecaca; border-right: 4px solid #ef4444; border-radius: var(--radius); padding: 12px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -504,6 +526,24 @@
                     </div>
                   </div>
 
+                  <!-- لوحة تفاصيل وبنود الطلب المرتبط بالفاتورة (POS Integration) -->
+                  <div id="counterOrderSummaryPanel" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 8px;">
+                      <strong style="color: #0f172a; font-size: 0.95rem;">📋 تفاصيل الطلب والفاتورة</strong>
+                      <span id="counterOrderTypeBadge" style="font-size: 0.78rem; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 4px;">طلب محلي</span>
+                    </div>
+                    <div id="counterOrderItemsList" style="font-size: 0.88rem; color: #334155; line-height: 1.6; margin-bottom: 8px;">
+                      <!-- بنود الطلب -->
+                    </div>
+                    <div id="counterOrderNotesBox" style="display: none; background: #fffbeb; border-right: 3px solid #f59e0b; padding: 6px 10px; font-size: 0.82rem; color: #92400e; margin-bottom: 8px;">
+                      📝 <span id="counterOrderNotesText">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1rem; font-weight: 800; color: #0f172a; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+                      <span>الإجمالي المطلوب:</span>
+                      <span id="counterOrderTotalText" style="color: #16a34a;">0.00 ر.س</span>
+                    </div>
+                  </div>
+
                   <!-- أزرار التحكم بالخدمة -->
                   <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 10px; margin-bottom: 12px;">
                     <button type="button" id="counterCompleteBtn" class="btn btn--primary" style="background: #16a34a; border-color: #16a34a; font-weight: 700; padding: 12px; font-size: 1rem;">
@@ -514,6 +554,15 @@
                     </button>
                     <button type="button" id="counterHoldBtn" class="btn btn--outline" style="font-weight: 700; padding: 12px; color: #ea580c;">
                       ⏸️ تعليق مؤقت
+                    </button>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <button type="button" id="counterMarkReadyBtn" class="btn btn--outline" style="font-weight: 700; padding: 10px; color: #0284c7; border-color: #bae6fd; background: #f0f9ff;">
+                      🥘 تم تجهيز الطلب (إشعار واتساب)
+                    </button>
+                    <button type="button" id="counterPrintTicketBtn" class="btn btn--outline" style="font-weight: 700; padding: 10px; color: #475569;">
+                      🖨️ طباعة إيصال الطابور
                     </button>
                   </div>
 
@@ -672,6 +721,53 @@
         </div>
       </div>
 
+      <!-- النافذة المنبثقة لإدارة وتسمية الطوابير والشبابيك (Manage Queues Modal) -->
+      <div id="manageQueuesModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: #fff; border-radius: var(--radius-lg); width: min(520px, 100%); padding: 24px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+              <span>⚙️</span> إدارة وتسمية الطوابير والشبابيك
+            </h3>
+            <button type="button" id="closeQueueManageModalBtn" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+          </div>
+
+          <p class="admin-hint" style="margin-top: 0; margin-bottom: 14px; font-size: 0.82rem;">
+            تعديل وتخصيص أسماء الأقسام وشبابيك الخدمة بحرية كاملة، أو إضافة أقسام جديدة لتوزيع المراجعين حسب رغبة المنشأة.
+          </p>
+
+          <!-- قائمة الأقسام الحالية -->
+          <div id="queueManageList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+            <!-- توليد عناصر الأقسام ديناميكياً مع حقول التعديل المباشر -->
+          </div>
+
+          <!-- إضافة قسم جديد -->
+          <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: var(--radius); padding: 14px; margin-bottom: 16px;">
+            <h5 style="margin: 0 0 10px; font-size: 0.88rem; color: #0f172a;">➕ إضافة طابور / شباك جديد:</h5>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 8px;">
+              <input type="text" id="newQueueNameInput" class="admin-input" placeholder="اسم القسم (مثال: الاستشارات أو شباك 4)" style="font-size: 0.85rem;">
+              <input type="text" id="newQueueCodeInput" class="admin-input" placeholder="الرمز (D)" maxlength="4" style="font-size: 0.85rem; text-transform: uppercase;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+              <div>
+                <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 2px;">الوقت المستهدف (دقائق):</label>
+                <input type="number" id="newQueueTargetMinInput" class="admin-input" value="10" min="1" max="120" style="font-size: 0.85rem;">
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 2px;">الطاقة الاستيعابية:</label>
+                <input type="number" id="newQueueCapInput" class="admin-input" value="100" min="10" max="1000" style="font-size: 0.85rem;">
+              </div>
+            </div>
+            <button type="button" id="btnSubmitCreateQueue" class="btn btn--primary btn--sm" style="width: 100%; justify-content: center; font-weight: 700;">
+              حفظ وإضافة الطابور 🚀
+            </button>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="button" id="doneQueueManageBtn" class="btn btn--outline" style="min-width: 100px;">إغلاق</button>
+          </div>
+        </div>
+      </div>
+
       <!-- النافذة المنبثقة لعملية التحويل الذكي (Smart Transfer Modal) -->
       <div id="adminTransferModal" class="admin-modal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
         <div style="background: #fff; border-radius: var(--radius-lg); width: min(520px, 100%); padding: 24px; box-shadow: var(--shadow-xl); max-height: 90vh; overflow-y: auto;">
@@ -748,6 +844,15 @@
             <div class="admin-field" style="margin-bottom: 14px;">
               <label for="manualCustomerPhoneInput" style="font-weight: 700; margin-bottom: 6px; display: block;">رقم الجوال (اختياري):</label>
               <input type="tel" id="manualCustomerPhoneInput" class="admin-input" placeholder="05XXXXXXXX" dir="ltr">
+            </div>
+
+            <div class="admin-field" style="margin-bottom: 14px;">
+              <label style="font-weight: 700; margin-bottom: 6px; display: block;">مسار الأولوية والخدمة:</label>
+              <select id="manualTicketPrioritySelect" class="admin-input" style="font-size: 0.9rem;">
+                <option value="standard">المسار العام المعتاد</option>
+                <option value="care_track">مسار الرعاية الخاصة (كبار السن وذوي الهمم) 🌟</option>
+                <option value="immediate_next">أولوية فورية مباشرة (Next)</option>
+              </select>
             </div>
 
             <div class="admin-field" style="margin-bottom: 20px;">

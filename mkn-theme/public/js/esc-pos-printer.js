@@ -159,6 +159,212 @@
   }
 
   /**
+   * Builds ESC/POS Receipt bytes for a given POS Queue Ticket object
+   */
+  function buildQueueTicket(ticketData, tenantInfo) {
+    tenantInfo = tenantInfo || {};
+    ticketData = ticketData || {};
+    var storeName = tenantInfo.brandName || tenantInfo.siteTitle || ticketData.branch_name || 'منصة مكِّن';
+
+    var chunks = [];
+    function add(str) {
+      chunks.push(encodeText(str));
+    }
+
+    add(CMD.INIT);
+    add(CMD.ALIGN_CENTER);
+    add(CMD.BOLD_ON);
+    add(storeName + '\n');
+    add(CMD.BOLD_OFF);
+    add('--------------------------------\n');
+    add('رقمك في الطابور / Your Number\n');
+    add(CMD.BOLD_ON);
+    add(CMD.TEXT_LARGE);
+    add('\n  ' + (ticketData.ticket_number || 'A-001') + '  \n\n');
+    add(CMD.TEXT_NORMAL);
+    add(CMD.BOLD_OFF);
+
+    if (ticketData.queue_name) {
+      add('(' + ticketData.queue_name + ')\n');
+    }
+    if (ticketData.table_number) {
+      add('🪑 طاولة: ' + ticketData.table_number + '\n');
+    }
+    add('--------------------------------\n');
+
+    // بنود الطلب
+    var items = ticketData.items || [];
+    if (items.length > 0) {
+      add(CMD.ALIGN_LEFT);
+      add(CMD.BOLD_ON);
+      add('تفاصيل الطلب / Order Items:\n');
+      add(CMD.BOLD_OFF);
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var itName = ((it.name || it.title || 'صنف') + ' x' + (it.qty || 1)).slice(0, 20);
+        var itPrice = (Number((it.price || 0) * (it.qty || 1))).toFixed(2);
+        add(formatLine(itName, itPrice));
+      }
+      add('--------------------------------\n');
+    }
+
+    if (ticketData.total !== undefined) {
+      add(CMD.BOLD_ON);
+      add(formatLine('الإجمالي:', Number(ticketData.total || 0).toFixed(2) + ' ر.س'));
+      add(CMD.BOLD_OFF);
+      add('--------------------------------\n');
+    }
+
+    if (ticketData.eta_minutes) {
+      add(CMD.ALIGN_CENTER);
+      add('وقت الانتظار المتوقع: ~' + ticketData.eta_minutes + ' دقيقة\n');
+    }
+
+    var now = new Date();
+    var timeStr = now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    add(timeStr + '\n');
+
+    if (ticketData.session_token) {
+      add('لمتابعة دورك عبر الجوال:\n');
+      add('mken.live/q/' + ticketData.ticket_number + '\n');
+    }
+
+    add('\nشكراً لاختياركم لنا!\n\n\n');
+    add(CMD.CUT_PAPER);
+
+    var totalLength = chunks.reduce(function (acc, curr) { return acc + curr.length; }, 0);
+    var merged = new Uint8Array(totalLength);
+    var offset = 0;
+    for (var j = 0; j < chunks.length; j++) {
+      merged.set(chunks[j], offset);
+      offset += chunks[j].length;
+    }
+    return merged;
+  }
+
+  /**
+   * Print queue ticket via Bluetooth printer or reject with connection error
+   */
+  function printQueueTicket(ticketData, tenantInfo) {
+    var rawBytes = buildQueueTicket(ticketData, tenantInfo);
+
+    if (_characteristic && _bluetoothDevice && _bluetoothDevice.gatt.connected) {
+      return _characteristic.writeValue(rawBytes);
+    }
+
+    return connectBluetooth().then(function () {
+      if (_characteristic) {
+        return _characteristic.writeValue(rawBytes);
+      }
+      throw new Error('لم يتم الاتصال بالطابعة الحرارية.');
+    });
+  }
+
+  /**
+   * Builds ESC/POS Receipt bytes for ZATCA Tax Invoice linked with Queue Ticket
+   */
+  function buildZatcaTicketInvoice(invoiceData, tenantInfo) {
+    tenantInfo = tenantInfo || {};
+    invoiceData = invoiceData || {};
+    var storeName = tenantInfo.brandName || tenantInfo.siteTitle || invoiceData.seller_name || 'منصة مكِّن';
+    var vatNumber = tenantInfo.vatNumber || invoiceData.vat_number || '300000000000003';
+
+    var chunks = [];
+    function add(str) {
+      chunks.push(encodeText(str));
+    }
+
+    add(CMD.INIT);
+    add(CMD.ALIGN_CENTER);
+    add(CMD.BOLD_ON);
+    add(CMD.TEXT_DOUBLE_HEIGHT);
+    add(storeName + '\n');
+    add(CMD.TEXT_NORMAL);
+    add(CMD.BOLD_OFF);
+    add('فاتورة ضريبية مبسطة\n');
+    add('Simplified Tax Invoice (ZATCA)\n');
+    add('الرقم الضريبي: ' + vatNumber + '\n');
+    add('--------------------------------\n');
+
+    add(CMD.ALIGN_LEFT);
+    add('رقم الفاتورة: ' + (invoiceData.invoice_ref || invoiceData.invoiceNumber || 'INV-001') + '\n');
+    add(CMD.BOLD_ON);
+    add('رقم الطلب / الطابور: ' + (invoiceData.ticket_number || '---') + '\n');
+    add(CMD.BOLD_OFF);
+    if (invoiceData.table_number) {
+      add('طاولة رقم: ' + invoiceData.table_number + '\n');
+    }
+    var now = invoiceData.timestamp ? new Date(invoiceData.timestamp) : new Date();
+    add('التاريخ: ' + now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) + '\n');
+    add('طريقة الدفع: ' + (invoiceData.payment_method === 'cash' ? 'نقداً (Cash)' : (invoiceData.payment_method === 'card' ? 'بطاقة مدى / فيزا' : (invoiceData.payment_method || 'مدى'))) + '\n');
+    add('--------------------------------\n');
+
+    // Header row
+    add(formatLine('البند', 'السعر (ر.س)'));
+    add('--------------------------------\n');
+
+    var items = invoiceData.items || [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var name = ((item.title || item.name || 'صنف') + ' x' + (item.qty || item.quantity || 1)).slice(0, 18);
+      var price = (Number((item.price || item.total || 0) * (item.qty || 1))).toFixed(2);
+      add(formatLine(name, price));
+    }
+
+    add('--------------------------------\n');
+    var subtotal = Number(invoiceData.subtotal || (invoiceData.total ? invoiceData.total / 1.15 : 0)).toFixed(2);
+    var taxVal = Number(invoiceData.tax || invoiceData.tax_amount || (invoiceData.total ? invoiceData.total - subtotal : 0)).toFixed(2);
+    var totalVal = Number(invoiceData.total || invoiceData.total_amount || 0).toFixed(2);
+
+    add(formatLine('المجموع الخاضع للضريبة:', subtotal));
+    add(formatLine('ضريبة القيمة المضافة (15%):', taxVal));
+    add(CMD.BOLD_ON);
+    add(CMD.TEXT_DOUBLE_HEIGHT);
+    add(formatLine('الإجمالي النهائي:', totalVal + ' ر.س'));
+    add(CMD.TEXT_NORMAL);
+    add(CMD.BOLD_OFF);
+    add('--------------------------------\n');
+
+    if (invoiceData.zatca_qr) {
+      add(CMD.ALIGN_CENTER);
+      add('[ رمز الفاتورة المشفر المعتمد ZATCA QR ]\n');
+      add((invoiceData.zatca_qr.slice(0, 32)) + '...\n');
+    }
+
+    add(CMD.ALIGN_CENTER);
+    add('\nشكراً لزيارتكم!\n');
+    add('Powered by Mken SaaS — mken.live\n\n\n');
+    add(CMD.CUT_PAPER);
+
+    var totalLength = chunks.reduce(function (acc, curr) { return acc + curr.length; }, 0);
+    var merged = new Uint8Array(totalLength);
+    var offset = 0;
+    for (var j = 0; j < chunks.length; j++) {
+      merged.set(chunks[j], offset);
+      offset += chunks[j].length;
+    }
+    return merged;
+  }
+
+  /**
+   * Print ZATCA Ticket Invoice silently via connected Bluetooth printer
+   */
+  function printZatcaTicketInvoice(invoiceData, tenantInfo) {
+    var rawBytes = buildZatcaTicketInvoice(invoiceData, tenantInfo);
+
+    if (_characteristic && _bluetoothDevice && _bluetoothDevice.gatt.connected) {
+      return _characteristic.writeValue(rawBytes);
+    }
+
+    return connectBluetooth().then(function () {
+      if (_characteristic) {
+        return _characteristic.writeValue(rawBytes);
+      }
+      throw new Error('لم يتم الاتصال بالطابعة الحرارية.');
+    });
+  }
+
+  /**
    * Print invoice silently via connected Bluetooth characteristic or web print fallback
    */
   function printInvoice(invoice, tenantInfo) {
@@ -181,6 +387,10 @@
     connectBluetooth: connectBluetooth,
     buildInvoiceReceipt: buildInvoiceReceipt,
     printInvoice: printInvoice,
+    buildQueueTicket: buildQueueTicket,
+    printQueueTicket: printQueueTicket,
+    buildZatcaTicketInvoice: buildZatcaTicketInvoice,
+    printZatcaTicketInvoice: printZatcaTicketInvoice,
     isConnected: function () {
       return !!(_bluetoothDevice && _bluetoothDevice.gatt && _bluetoothDevice.gatt.connected);
     },

@@ -82,12 +82,20 @@
       if (adminPin && !headers['x-admin-pin']) {
         headers['x-admin-pin'] = adminPin;
       }
+      var staffTok = sessionStorage.getItem('mken_queue_staff_token');
+      if (staffTok) {
+        headers['x-queue-staff-token'] = staffTok;
+      }
       if (store && typeof store.isAdminLoggedIn === 'function' && store.isAdminLoggedIn()) {
         headers['x-admin-authenticated'] = '1';
       }
       if (window.MkenAdminAuth && typeof window.MkenAdminAuth.isSuperAdmin === 'function' && window.MkenAdminAuth.isSuperAdmin()) {
         headers['x-is-super-admin'] = '1';
       }
+      var activeRev = sessionStorage.getItem('mken_queue_state_revision');
+      var activeDelta = sessionStorage.getItem('mken_queue_capacity_delta');
+      if (activeRev) headers['x-state-revision'] = activeRev;
+      if (activeDelta) headers['x-override-delta'] = activeDelta;
     } catch (e) {}
 
     var options = {
@@ -304,12 +312,48 @@
       return apiCall('delete-counter', 'POST', { counterId: counterId });
     },
 
+    createQueue: function (payload) {
+      return apiCall('create-queue', 'POST', payload);
+    },
+
+    updateQueue: function (payload) {
+      return apiCall('update-queue', 'POST', payload);
+    },
+
+    deleteQueue: function (queueId) {
+      return apiCall('delete-queue', 'POST', { queueId: queueId });
+    },
+
     manualOverride: function (payload) {
       return apiCall('manual-override', 'POST', payload);
     },
 
     getOverrideState: function () {
       return apiCall('get-override-state', 'GET');
+    },
+
+    publicGate: function () {
+      return apiCall('public-gate', 'GET');
+    },
+
+    getHallPolicy: function () {
+      return apiCall('get-hall-policy', 'GET');
+    },
+
+    saveHallPolicy: function (payload) {
+      return apiCall('save-hall-policy', 'POST', payload);
+    },
+
+    previewDisplay: function (payload) {
+      return apiCall('preview-display', 'POST', payload);
+    },
+
+    bindPlace: function (payload) {
+      return apiCall('bind-place', 'POST', payload);
+    },
+
+    staffLogin: function (pin) {
+      return apiCall('staff-login', 'POST', { pin: pin });
     },
 
     listenToEvents: listenToEvents
