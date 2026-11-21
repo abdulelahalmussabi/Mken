@@ -28,6 +28,7 @@ import {
   X,
   Type,
   Megaphone,
+  ListOrdered,
 } from "lucide-react";
 import { PlatformMark } from "@/components/PlatformMark";
 import { applyDocumentIcon, brandIconPath } from "@/lib/mken/logo-crop";
@@ -70,6 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const operationsLinks = [
+    { name: "إدارة الطوابير", href: "/admin/queue" as Route, icon: ListOrdered },
     { name: "المواعيد والتقويم", href: "/admin/appointments" as Route, icon: CalendarDays },
     { name: "الطلبات الواردة", href: "/admin/orders" as Route, icon: Inbox },
     { name: "الخدمات والكتالوج", href: "/admin/services" as Route, icon: LayoutGrid },

@@ -190,6 +190,19 @@ function resolveQueueTenant(req) {
     };
   }
 
+  // Super admin on the platform host picks the facility from ?client=
+  // (the same query the control panel already uses). Public `tenant` stays ignored.
+  if (session && session.role === 'super') {
+    const requested = validSlug(req.query && req.query.client);
+    if (requested) {
+      return {
+        slug: requested,
+        session: session,
+        staff: true
+      };
+    }
+  }
+
   return {
     error: 'تعذر تحديد المنشأة من نطاق الطلب. افتح شاشة الطابور من النطاق الفرعي للمنشأة.',
     status: 400,
