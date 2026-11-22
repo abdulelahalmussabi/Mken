@@ -28,7 +28,7 @@ export interface SocialPlatform {
 }
 
 export const SOCIAL_PLATFORMS: SocialPlatform[] = [
-  { id: "whatsapp", name: "واتساب", icon: "💬", placeholder: "966543530333", hint: "رقم الجوال بصيغة دولية بدون + أو صفر", inputMode: "tel" },
+  { id: "whatsapp", name: "واتساب", icon: "💬", placeholder: "966148462524", hint: "رقم الواتساب بصيغة دولية بدون + أو صفر (جوال أو هاتف ثابت)", inputMode: "tel" },
   { id: "instagram", name: "إنستغرام", icon: "📷", placeholder: "mkenalkhayal", hint: "اسم المستخدم فقط أو الرابط الكامل" },
   { id: "twitter", name: "إكس (تويتر)", icon: "𝕏", placeholder: "mkenalkhayal", hint: "اسم المستخدم فقط أو الرابط الكامل" },
   { id: "facebook", name: "فيسبوك", icon: "👤", placeholder: "mkenalkhayal", hint: "اسم الصفحة أو الرابط الكامل" },
@@ -131,7 +131,10 @@ export function buildSocialUrl(platformId: string, rawValue: string): string {
 
   switch (platformId) {
     case "whatsapp": {
-      const digits = digitsOnly(value);
+      let digits = digitsOnly(value);
+      if (digits.startsWith("00966")) digits = digits.slice(2);
+      else if (digits.startsWith("0")) digits = `966${digits.slice(1)}`;
+      else if (digits.length === 9) digits = `966${digits}`;
       return digits ? `https://wa.me/${digits}` : "";
     }
     case "instagram":
@@ -310,7 +313,7 @@ export function validateSettings(update: SettingsUpdate): string | null {
 
   if (update.phone !== undefined && update.phone.trim()) {
     const digits = digitsOnly(update.phone);
-    if (digits.length < 9 || digits.length > 15) return "رقم الجوال غير صحيح";
+    if (digits.length < 9 || digits.length > 15) return "رقم الهاتف غير صحيح";
   }
 
   if (update.commercialRegistryNumber !== undefined && update.commercialRegistryNumber.trim()) {
@@ -396,7 +399,11 @@ export async function updateTenantSettings(
     }
     // The legacy site falls back to config.phone when WhatsApp has no number.
     if (next.whatsapp.enabled && !next.whatsapp.value) {
-      next.whatsapp.value = digitsOnly(str(config.phone));
+      let phoneDigits = digitsOnly(str(config.phone));
+      if (phoneDigits.startsWith("00966")) phoneDigits = phoneDigits.slice(2);
+      else if (phoneDigits.startsWith("0")) phoneDigits = `966${phoneDigits.slice(1)}`;
+      else if (phoneDigits.length === 9) phoneDigits = `966${phoneDigits}`;
+      next.whatsapp.value = phoneDigits;
     }
     config.social = next;
   }

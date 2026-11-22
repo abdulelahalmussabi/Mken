@@ -250,7 +250,7 @@ export default function ClientDetailPage() {
                 type="text"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="9665XXXXXXXX"
+                placeholder="966XXXXXXXXX"
                 dir="ltr"
                 className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-mono"
               />

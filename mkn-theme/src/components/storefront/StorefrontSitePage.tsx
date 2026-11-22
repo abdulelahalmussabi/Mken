@@ -48,9 +48,21 @@ function ServiceCard({
   bookLabel?: string;
   onBook: () => void;
 }) {
+  const dynamicAccent = accentColor || "#10B981";
   return (
-    <div className="bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col justify-between group shadow-sm">
-      <div>
+    <div
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+        e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+      }}
+      className="bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/35 border-x border-b border-slate-200/80 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/15 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col justify-between group shadow-xl shadow-slate-900/[0.03] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] spotlight-card"
+      style={{
+        borderTopColor: `${dynamicAccent}55`,
+        "--spotlight-color": `${dynamicAccent}18`,
+      } as React.CSSProperties}
+    >
+      <div className="relative z-10">
         <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-zinc-900">
           {srv.image ? (
             <img src={srv.image} alt={srv.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -59,14 +71,14 @@ function ServiceCard({
               <Star className="w-8 h-8 opacity-40" />
             </div>
           )}
-          <div className="absolute top-3 right-3 bg-white/90 dark:bg-[#09090B]/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-white/10 shadow-xs">
+          <div className="absolute top-3 right-3 bg-white/80 dark:bg-[#09090B]/80 backdrop-blur-xl px-3 py-1 rounded-full text-xs font-bold text-slate-800 dark:text-zinc-200 border border-white/20 shadow-xs">
             {srv.badge}
           </div>
         </div>
         <div className="p-6 space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug group-hover:text-[#059669] dark:group-hover:text-emerald-400 transition-colors">{srv.name}</h3>
-            {showPrice ? <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 shrink-0">{srv.price}</span> : null}
+            {showPrice ? <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 shrink-0 font-display">{srv.price}</span> : null}
           </div>
           {srv.description ? <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">{srv.description}</p> : null}
           <ul className="space-y-2 text-xs text-slate-600 dark:text-zinc-400">
@@ -79,12 +91,12 @@ function ServiceCard({
           </ul>
         </div>
       </div>
-      <div className="p-6 pt-0 flex flex-col gap-2">
+      <div className="p-6 pt-0 flex flex-col gap-2 relative z-10">
         <button
           type="button"
           onClick={onBook}
-          className="w-full py-3 font-bold text-xs text-white rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/15 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
-          style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
+          className="w-full py-3 font-bold text-xs text-white rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 ring-1 ring-white/20 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
+          style={{ backgroundColor: dynamicAccent }}
         >
           <CalendarCheck className="w-4 h-4" />
           {bookLabel || "احجز هذه الخدمة الآن"}

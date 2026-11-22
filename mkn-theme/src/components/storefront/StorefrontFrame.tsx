@@ -883,18 +883,32 @@ export function StorefrontFrame({
 
   const primaryCta = pages.home.ctaLabel || (isCommerce ? "اطلب الآن" : isHotel ? "احجز إقامتك" : "احجز موعدك");
   const bookHref = `/book?tenant=${slug}`;
+  const dynamicAccent = accentColor || "#10B981";
 
   return (
     <StorefrontContext.Provider value={value}>
-      <div className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans transition-colors duration-500 relative">
-        <div className="w-full py-2 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 text-white text-xs font-bold text-center flex items-center justify-center gap-2 px-4 shadow-md">
+      <div
+        className="min-h-screen flex flex-col bg-theme-main text-foreground font-sans transition-colors duration-500 relative overflow-x-hidden"
+        style={{
+          "--tenant-accent": dynamicAccent,
+          "--specular-top": `${dynamicAccent}55`,
+          "--specular-top-light": `${dynamicAccent}40`,
+          "--spotlight-color": `${dynamicAccent}20`,
+        } as React.CSSProperties}
+      >
+        {/* Subtle Frosted Noise Texture Overlay */}
+        <div className="fixed inset-0 frosted-noise pointer-events-none opacity-[0.025] z-0" />
+
+        <div className="w-full py-2 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 text-white text-xs font-bold text-center flex items-center justify-center gap-2 px-4 shadow-md relative z-10">
           <span>{storeInfo.demoNotice}</span>
         </div>
         {value.storeClient.claimStatus === "unclaimed" || value.storeClient.claimStatus === "pending" ? (
-          <UnclaimedClaimBanner slug={slug} accentColor={accentColor} />
+          <div className="relative z-10">
+            <UnclaimedClaimBanner slug={slug} accentColor={dynamicAccent} />
+          </div>
         ) : null}
 
-        <header className="sticky top-0 z-40 bg-white/85 dark:bg-[#09090B]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 transition-colors duration-300">
+        <header className="sticky top-0 z-40 bg-white/85 dark:bg-[#09090B]/85 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-[inset_0_-1px_0_0_rgba(255,255,255,0.05)] transition-colors duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
@@ -902,8 +916,8 @@ export function StorefrontFrame({
                   <BrandCutout src={storeInfo.logo} alt={storeInfo.name} className="h-11 sm:h-12 max-w-[4.75rem]" />
                 ) : (
                   <div
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-slate-950 shadow-lg shrink-0"
-                    style={{ backgroundColor: accentColor }}
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-black text-xl text-white shadow-lg shrink-0 ring-1 ring-white/20"
+                    style={{ backgroundColor: dynamicAccent }}
                   >
                     {isSalon ? "💈" : isCommerce ? "📦" : "🏢"}
                   </div>
@@ -918,14 +932,14 @@ export function StorefrontFrame({
               <ColorSchemeToggle />
             </div>
 
-            <nav className="hidden lg:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">
+            <nav className="hidden lg:flex items-center gap-1 bg-white/60 dark:bg-white/[0.04] p-1.5 rounded-full border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-xs">
               {navItems.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href as Route}
                   className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition ${
                     isActive(item.id)
-                      ? "text-foreground bg-surface-2"
+                      ? "text-foreground bg-surface-2 shadow-xs"
                       : "text-muted hover:text-foreground hover:bg-surface-2"
                   }`}
                 >
@@ -934,7 +948,7 @@ export function StorefrontFrame({
               ))}
               <Link
                 href={bookHref as Route}
-                className="px-3.5 py-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-full transition flex items-center gap-1"
+                className="px-3.5 py-1.5 text-xs font-bold text-amber-500 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-full transition flex items-center gap-1"
               >
                 <CalendarCheck className="w-3.5 h-3.5" />
                 حجز موعد أونلاين
@@ -950,7 +964,7 @@ export function StorefrontFrame({
                   <button
                     type="button"
                     onClick={logout}
-                    className="p-2 rounded-xl bg-surface border border-line text-muted hover:text-foreground"
+                    className="p-2 rounded-xl bg-surface border border-line text-muted hover:text-foreground cursor-pointer"
                     title="تسجيل الخروج"
                   >
                     <LogOut className="w-4 h-4" />
@@ -959,7 +973,7 @@ export function StorefrontFrame({
               ) : (
                 <Link
                   href={`/login?next=${encodeURIComponent("/")}` as Route}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line text-xs font-bold text-foreground hover:border-amber-500/50"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-line text-xs font-bold text-foreground hover:border-emerald-500/50"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   دخول الزائر
@@ -967,8 +981,8 @@ export function StorefrontFrame({
               )}
               <Link
                 href={bookHref as Route}
-                className="px-4 py-2 text-xs font-bold text-slate-950 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5"
-                style={{ backgroundColor: accentColor }}
+                className="px-4 py-2 text-xs font-bold text-white rounded-xl shadow-lg shadow-emerald-500/20 ring-1 ring-white/20 transition-transform hover:scale-105 flex items-center gap-1.5"
+                style={{ backgroundColor: dynamicAccent }}
               >
                 <CalendarCheck className="w-4 h-4" />
                 <span className="hidden sm:inline">احجز موعدك أونلاين</span>

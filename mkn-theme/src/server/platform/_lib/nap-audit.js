@@ -1,6 +1,7 @@
 function normalizePhoneDigits(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return '';
+  if (digits.indexOf('00966') === 0) digits = digits.slice(2);
   if (digits.indexOf('966') === 0) return digits;
   if (digits.indexOf('0') === 0) return '966' + digits.slice(1);
   if (digits.length === 9) return '966' + digits;

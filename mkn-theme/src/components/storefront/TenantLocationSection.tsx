@@ -319,7 +319,16 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.15 }}
           transition={{ duration: 0.6, ease: ONEPLUS_EASE }}
-          className="lg:col-span-7 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between space-y-6"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+            e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+          }}
+          className="lg:col-span-7 bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/35 border-x border-b border-slate-200/80 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-900/[0.03] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] flex flex-col justify-between space-y-6 spotlight-card overflow-hidden"
+          style={{
+            borderTopColor: `${accentColor}55`,
+            "--spotlight-color": `${accentColor}18`,
+          } as React.CSSProperties}
         >
           {/* CASE A: SINGLE BRANCH MODE */}
           {!isMultipleBranches && !isCoverage ? (
@@ -629,7 +638,10 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.15 }}
           transition={{ duration: 0.6, delay: 0.1, ease: ONEPLUS_EASE }}
-          className="lg:col-span-5 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm flex flex-col relative min-h-[440px] lg:min-h-[520px]"
+          className="lg:col-span-5 bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/35 border-x border-b border-slate-200/80 dark:border-white/10 rounded-3xl overflow-hidden shadow-xl shadow-slate-900/[0.03] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] flex flex-col relative min-h-[440px] lg:min-h-[520px]"
+          style={{
+            borderTopColor: `${accentColor}55`,
+          }}
         >
           {/* Map Preview Iframe */}
           <div className="absolute inset-0 w-full h-full bg-slate-100 dark:bg-zinc-900">

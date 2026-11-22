@@ -308,21 +308,23 @@ export function toPublicWhatsappApi(stored: WhatsappApiStored, slug: string): Wh
 }
 
 export function normalizeWaPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
+  let digits = value.replace(/\D/g, "");
   if (!digits) return "";
+  if (digits.startsWith("00966")) digits = digits.slice(2);
   if (digits.startsWith("966")) return digits;
   if (digits.startsWith("0")) return `966${digits.slice(1)}`;
   if (digits.length === 9) return `966${digits}`;
   return digits;
 }
 
-/** Saudi mobile: 05X… (10 digits). X is 0 or 3–9 (not 051/052 land-line ranges). */
+/** Saudi mobile (05xxxxxxxx / 9665xxxxxxxx) or Saudi landline (011, 012, 013, 014, 016, 017 / 9661xxxxxxxx). */
 export function whatsappPhoneIssue(phoneRaw: string): string | null {
   const phone = normalizeWaPhone(phoneRaw);
-  if (!phone) return "رقم الجوال غير صالح";
-  // 966 + 5 + [03456789] + 7 digits = 12 digits (0543530333 → 966543530333)
-  if (!/^9665[03456789]\d{7}$/.test(phone)) {
-    return `الرقم (${phoneRaw.trim()} → ${phone}) ليس جوالاً سعودياً يبدأ بـ 05. مثال: 0551234567`;
+  if (!phone) return "رقم الهاتف غير صالح";
+  // Saudi Mobile: 966 + 5 + 8 digits = 12 digits
+  // Saudi Landline: 966 + 1 + [1,2,3,4,6,7] + 7 digits = 12 digits (e.g. 966148462524)
+  if (!/^966(5\d{8}|1[1-467]\d{7})$/.test(phone)) {
+    return `الرقم (${phoneRaw.trim()} → ${phone}) ليس رقماً سعودياً صالحاً (جوال 05 أو هاتف ثابت 01). مثال: 0551234567 أو 0148462524`;
   }
   return null;
 }

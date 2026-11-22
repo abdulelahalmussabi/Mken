@@ -307,15 +307,21 @@ export default function StaffHomePage() {
                   <MapPin className="w-3 h-3" />
                 </p>
               )}
-              {item.phone && (
-                <a
-                  href={`https://wa.me/${item.phone.replace(/\D/g, "")}`}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400"
-                >
-                  واتساب العميل
-                  <Phone className="w-3 h-3" />
-                </a>
-              )}
+              {item.phone && (() => {
+                let p = item.phone.replace(/\D/g, "");
+                if (p.startsWith("00966")) p = p.slice(2);
+                else if (p.startsWith("0")) p = `966${p.slice(1)}`;
+                else if (p.length === 9) p = `966${p}`;
+                return (
+                  <a
+                    href={`https://wa.me/${p}`}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400"
+                  >
+                    واتساب العميل
+                    <Phone className="w-3 h-3" />
+                  </a>
+                );
+              })()}
             </article>
           ))}
         </section>

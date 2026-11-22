@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Suspense } from "react";
-import { Cairo } from "next/font/google";
+import { Cairo, IBM_Plex_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
@@ -28,6 +28,18 @@ const cairo = Cairo({
   variable: "--font-cairo",
   subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700", "800"],
+});
+
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-ibm-plex-arabic",
+  subsets: ["arabic"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-display-number",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -78,7 +90,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" data-scheme="dark" suppressHydrationWarning className={`${cairo.variable} h-full antialiased`}>
+    <html lang="ar" dir="rtl" data-scheme="dark" suppressHydrationWarning className={`${cairo.variable} ${ibmPlexArabic.variable} ${plusJakartaSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans bg-theme-main text-foreground selection:bg-emerald-500 selection:text-white transition-colors duration-500">
         <Script id="mken-kill-legacy-sw" strategy="beforeInteractive">
           {`(function(){if(!("serviceWorker"in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()});});if(window.caches){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}})();`}

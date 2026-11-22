@@ -22,8 +22,9 @@ export function digitsOnly(value: string): string {
 }
 
 export function normalizeClickPhone(value: string): string {
-  const digits = digitsOnly(value);
+  let digits = digitsOnly(value);
   if (!digits) return "";
+  if (digits.startsWith("00966")) digits = digits.slice(2);
   if (digits.startsWith("966")) return digits;
   if (digits.startsWith("0")) return `966${digits.slice(1)}`;
   if (digits.length === 9) return `966${digits}`;

@@ -217,7 +217,10 @@ export default function AdminOrdersPage() {
               const statusOptions: OrderStatus[] = isTailoring
                 ? ["pending", ...TAILORING_STATUSES, "completed", "cancelled"]
                 : [...BASE_ORDER_STATUSES];
-              const digits = order.phone.replace(/\D/g, "");
+              let digits = order.phone.replace(/\D/g, "");
+              if (digits.startsWith("00966")) digits = digits.slice(2);
+              else if (digits.startsWith("0")) digits = `966${digits.slice(1)}`;
+              else if (digits.length === 9) digits = `966${digits}`;
 
               return (
                 <div

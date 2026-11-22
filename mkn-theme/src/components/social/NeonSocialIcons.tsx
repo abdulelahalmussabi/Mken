@@ -469,7 +469,11 @@ export function NeonSocialButton({
   // Parse phone / whatsapp URLs if raw digits are provided
   let href = url || "#";
   if (platform === "whatsapp" && url && !url.startsWith("http")) {
-    href = `https://wa.me/${url.replace(/[^\d]/g, "")}`;
+    let digits = url.replace(/[^\d]/g, "");
+    if (digits.startsWith("00966")) digits = digits.slice(2);
+    else if (digits.startsWith("0")) digits = `966${digits.slice(1)}`;
+    else if (digits.length === 9) digits = `966${digits}`;
+    href = `https://wa.me/${digits}`;
   } else if (platform === "phone" && url && !url.startsWith("tel:")) {
     href = `tel:${url.replace(/[^\d+]/g, "")}`;
   }

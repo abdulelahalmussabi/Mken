@@ -6,9 +6,9 @@ export function normalizeE164(phone: string): string | null {
   if (!phone || typeof phone !== "string") return null;
   let p = phone.trim().replace(/[\s\-()]/g, "");
   if (p.startsWith("00")) p = `+${p.slice(2)}`;
-  if (/^05\d{8}$/.test(p)) p = `+966${p.slice(1)}`; // local SA mobile
-  if (/^5\d{8}$/.test(p)) p = `+966${p}`;
-  if (!p.startsWith("+") && /^9665\d{8}$/.test(p)) p = `+${p}`;
+  if (/^0[15]\d{8}$/.test(p)) p = `+966${p.slice(1)}`; // local SA mobile or landline
+  if (/^[15]\d{8}$/.test(p)) p = `+966${p}`;
+  if (!p.startsWith("+") && /^966(5\d{8}|1[1-467]\d{7})$/.test(p)) p = `+${p}`;
   if (!E164_RE.test(p)) return null;
   return p;
 }

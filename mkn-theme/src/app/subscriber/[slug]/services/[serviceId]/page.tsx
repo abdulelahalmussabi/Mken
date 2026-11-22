@@ -184,7 +184,10 @@ export default async function SmartServiceDetailPage({ params }: Props) {
     ],
   };
 
-  const waNumber = (client.whatsapp || client.phone || "").replace(/\D/g, "");
+  let waNumber = (client.whatsapp || client.phone || "").replace(/\D/g, "");
+  if (waNumber.startsWith("00966")) waNumber = waNumber.slice(2);
+  else if (waNumber.startsWith("0")) waNumber = `966${waNumber.slice(1)}`;
+  else if (waNumber.length === 9) waNumber = `966${waNumber}`;
   const waInquiryUrl = waNumber
     ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`مرحباً ${client.name}، أود الاستفسار عن خدمة «${service.name}».`)}`
     : "";

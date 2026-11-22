@@ -143,9 +143,14 @@ export default function SubscriberStorefrontPage() {
       )}
 
       <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-line bg-background">
+        {/* Dynamic Multi-Layered Ambient Mesh Background Orbs */}
         <div
-          className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-25"
-          style={{ backgroundColor: accentColor }}
+          className="ambient-glow-orb-primary -top-24 right-1/4 -z-10 opacity-60"
+          style={{ background: `radial-gradient(circle, ${accentColor}40 0%, transparent 70%)` }}
+        />
+        <div
+          className="ambient-glow-orb-secondary top-1/3 left-6 -z-10 opacity-45"
+          style={{ background: `radial-gradient(circle, ${accentColor}25 0%, transparent 70%)` }}
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -155,7 +160,7 @@ export default function SubscriberStorefrontPage() {
               transition={{ duration: 0.6, ease: ONEPLUS_EASE }}
               className="lg:col-span-7 space-y-6 text-right"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-zinc-200 text-xs font-bold shadow-xs">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-[#141417]/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 text-slate-800 dark:text-zinc-200 text-xs font-bold shadow-xs">
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 <span>{heroKicker}</span>
               </div>
@@ -178,7 +183,7 @@ export default function SubscriberStorefrontPage() {
                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${
                       selectedCategory === "all"
                         ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-transparent shadow-sm"
-                        : "bg-white dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
+                        : "bg-white/80 dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
                     }`}
                   >
                     الخدمات المتوفرة
@@ -191,7 +196,7 @@ export default function SubscriberStorefrontPage() {
                       className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${
                         selectedCategory === srv.id
                           ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-transparent shadow-sm"
-                          : "bg-white dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
+                          : "bg-white/80 dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
                       }`}
                     >
                       {srv.badge}
@@ -203,7 +208,7 @@ export default function SubscriberStorefrontPage() {
                 {ctaHref ? (
                   <a
                     href={ctaHref}
-                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-emerald-500/20 ring-1 ring-white/20 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
                     style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
                   >
                     <CalendarCheck className="w-5 h-5" />
@@ -213,7 +218,7 @@ export default function SubscriberStorefrontPage() {
                   <button
                     type="button"
                     onClick={() => openBooking()}
-                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-emerald-500/20 ring-1 ring-white/20 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                     style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
                   >
                     <CalendarCheck className="w-5 h-5" />
@@ -222,7 +227,7 @@ export default function SubscriberStorefrontPage() {
                 )}
                 <Link
                   href={`/book?tenant=${slug}` as Route}
-                  className="px-6 py-4 bg-white dark:bg-[#141417] hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 font-bold text-base rounded-2xl flex items-center gap-2 shadow-xs transition-colors"
+                  className="px-6 py-4 bg-white/90 dark:bg-[#141417] hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 font-bold text-base rounded-2xl flex items-center gap-2 shadow-xs transition-colors backdrop-blur-xl"
                 >
                   <Clock className="w-5 h-5 text-amber-500" />
                   احجز موعد أونلاين
@@ -236,7 +241,18 @@ export default function SubscriberStorefrontPage() {
               transition={{ duration: 0.7, delay: 0.1, ease: ONEPLUS_EASE }}
               className="lg:col-span-5"
             >
-              <div className="relative rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-[#141417] shadow-2xl p-4 space-y-4">
+              <div
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+                  e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+                }}
+                className="relative rounded-3xl overflow-hidden bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/35 border-x border-b border-slate-200/80 dark:border-white/10 shadow-2xl shadow-slate-900/[0.04] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] p-4 space-y-4 spotlight-card"
+                style={{
+                  borderTopColor: `${accentColor}55`,
+                  "--spotlight-color": `${accentColor}18`,
+                } as React.CSSProperties}
+              >
                 {yt ? (
                   <iframe
                     title={storeInfo.name}
@@ -250,7 +266,7 @@ export default function SubscriberStorefrontPage() {
                 ) : storeInfo.heroImage ? (
                   <img src={storeInfo.heroImage} alt={storeInfo.name} className="w-full h-64 object-cover rounded-2xl" />
                 ) : null}
-                <div className="space-y-3 text-right p-2">
+                <div className="space-y-3 text-right p-2 relative z-10">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-xs font-bold px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -284,9 +300,18 @@ export default function SubscriberStorefrontPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.5, delay: idx * 0.08, ease: ONEPLUS_EASE }}
-              className="p-5 rounded-3xl bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 shadow-sm text-center"
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+                e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+              }}
+              className="p-5 rounded-3xl bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/30 border-x border-b border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-900/[0.03] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] text-center spotlight-card"
+              style={{
+                borderTopColor: `${accentColor}45`,
+                "--spotlight-color": `${accentColor}15`,
+              } as React.CSSProperties}
             >
-              <p className="text-xl font-black text-slate-900 dark:text-white">{item.value}</p>
+              <p className="font-display text-2xl font-black text-slate-900 dark:text-white tracking-tight">{item.value}</p>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">{item.label}</p>
             </motion.div>
           ))}

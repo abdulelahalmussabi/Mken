@@ -306,7 +306,10 @@ function socialHref(platformId: string, rawValue: string): string {
   const handle = value.replace(/^@+/, "");
   switch (platformId) {
     case "whatsapp": {
-      const digits = value.replace(/\D/g, "");
+      let digits = value.replace(/\D/g, "");
+      if (digits.startsWith("00966")) digits = digits.slice(2);
+      else if (digits.startsWith("0")) digits = `966${digits.slice(1)}`;
+      else if (digits.length === 9) digits = `966${digits}`;
       return digits ? `https://wa.me/${digits}` : "";
     }
     case "instagram":

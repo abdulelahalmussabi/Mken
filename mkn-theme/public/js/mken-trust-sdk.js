@@ -414,8 +414,9 @@
     if (!phone || typeof phone !== 'string') return null;
     var p = phone.trim().replace(/[\s\-()]/g, '');
     if (p.indexOf('00') === 0) p = '+' + p.slice(2);
-    if (/^05\d{8}$/.test(p)) p = '+966' + p.slice(1);
-    if (/^5\d{8}$/.test(p)) p = '+966' + p;
+    if (/^0[15]\d{8}$/.test(p)) p = '+966' + p.slice(1);
+    if (/^[15]\d{8}$/.test(p)) p = '+966' + p;
+    if (/^966\d{8,11}$/.test(p)) p = '+' + p;
     if (!/^\+[1-9]\d{7,14}$/.test(p)) return null;
     return p;
   }

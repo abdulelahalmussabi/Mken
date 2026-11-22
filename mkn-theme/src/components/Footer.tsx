@@ -10,7 +10,13 @@ export default function Footer() {
   const { activeOccasion, occasionDetails, openModal } = useOccasion();
 
   return (
-    <footer className="bg-background border-t border-line pt-16 pb-12 text-muted text-sm relative overflow-hidden">
+    <footer className="bg-[#09090B] border-t border-white/10 pt-16 pb-12 text-zinc-400 text-sm relative overflow-hidden">
+      {/* Subtle Frosted Noise Texture */}
+      <div className="absolute inset-0 frosted-noise pointer-events-none opacity-40 -z-10" />
+
+      {/* Ambient Emerald Mesh Glow */}
+      <div className="ambient-glow-orb-primary -bottom-24 right-1/4 -z-10 opacity-30" />
+
       {/* Decorative Top Occasion Accent Bar */}
       <div
         className="absolute top-0 inset-x-0 h-1 transition-colors duration-500"

@@ -467,7 +467,7 @@ const SEED_CONFIG: Record<string, MkenConfig> = {
     customServices: REWA_CUSTOM_SERVICES,
     ads: { secondary: [...REWA_PROMO_ADS] },
     social: {
-      whatsapp: { enabled: true, value: "966549462524" },
+      whatsapp: { enabled: true, value: "966148462524" },
       instagram: { enabled: true, value: "rewa.100000" },
       tiktok: { enabled: true, value: "rewa.1000" },
       snapchat: { enabled: true, value: "rewa.1000" },
@@ -626,11 +626,16 @@ function stripRewaSpa(config: MkenConfig): MkenConfig {
   next.phone = REWA_PHONE;
   const social = (next.social || {}) as Record<string, { enabled?: boolean; value?: string }>;
   const savedWhatsapp = typeof social.whatsapp?.value === "string" ? social.whatsapp.value.trim() : "";
+  const cleanSaved = savedWhatsapp.replace(/\D/g, "");
+  const effectiveWhatsapp =
+    cleanSaved === "966549462524" || cleanSaved === "0549462524" || !cleanSaved
+      ? REWA_WHATSAPP
+      : savedWhatsapp;
   next.social = {
     ...social,
     whatsapp: {
       enabled: social.whatsapp?.enabled !== false,
-      value: savedWhatsapp || REWA_WHATSAPP,
+      value: effectiveWhatsapp,
     },
   };
   return next;
@@ -850,10 +855,14 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
   if (key === "rewa") {
     client.subtitle = merged.subtitle || client.subtitle;
     client.phone = merged.phone || REWA_PHONE;
+    const rawWa = typeof merged.social?.whatsapp?.value === "string" ? merged.social.whatsapp.value.trim() : "";
+    const cleanWa = rawWa.replace(/\D/g, "");
     client.whatsapp =
-      (typeof merged.social?.whatsapp?.value === "string" && merged.social.whatsapp.value.trim()) ||
-      client.whatsapp ||
-      REWA_WHATSAPP;
+      cleanWa && cleanWa !== "966549462524" && cleanWa !== "0549462524"
+        ? rawWa
+        : client.whatsapp && client.whatsapp.replace(/\D/g, "") !== "966549462524"
+          ? client.whatsapp
+          : REWA_WHATSAPP;
     client.location = merged.location || REWA_LOCATION;
     client.commercialRegistryName = merged.commercialRegistryName || REWA_CR_NAME;
     client.commercialRegistryNumber = merged.commercialRegistryNumber || REWA_CR_NUMBER;

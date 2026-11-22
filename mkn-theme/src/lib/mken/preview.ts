@@ -256,12 +256,13 @@ export function normalizeSaudiPhone(input: string): string | null {
     /* keep */
   } else if (n.startsWith("0") && n.length === 10) {
     n = `966${n.slice(1)}`;
-  } else if (n.length === 9 && n.startsWith("5")) {
+  } else if (n.length === 9 && (n.startsWith("5") || n.startsWith("1"))) {
     n = `966${n}`;
   } else {
     return null;
   }
-  if (!/^9665\d{8}$/.test(n)) return null;
+  // Support both Saudi mobile (9665xxxxxxxx) and Saudi landlines (9661xxxxxxxx: 011, 012, 013, 014, 016, 017)
+  if (!/^966(5\d{8}|1[1-467]\d{7})$/.test(n)) return null;
   return n;
 }
 

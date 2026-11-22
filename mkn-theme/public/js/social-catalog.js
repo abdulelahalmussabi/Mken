@@ -92,6 +92,9 @@
     switch (platformId) {
       case 'whatsapp': {
         var digits = digitsOnly(value);
+        if (digits.indexOf('00966') === 0) digits = digits.slice(2);
+        else if (digits.indexOf('0') === 0) digits = '966' + digits.slice(1);
+        else if (digits.length === 9) digits = '966' + digits;
         return digits ? 'https://wa.me/' + digits : '';
       }
       case 'instagram':

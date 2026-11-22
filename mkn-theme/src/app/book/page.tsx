@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { WhatsappCta } from "@/components/social/NeonSocialIcons";
 import { submitPublicBooking } from "@/lib/mken/book-request";
+import { normalizeClickPhone } from "@/lib/mken/wa-click";
 
 interface ServiceOption {
   id: string;
@@ -199,7 +200,7 @@ function BookAppointmentContent() {
         const tagline = data?.client?.tagline;
         setTenantTagline(typeof tagline === "string" ? tagline : "");
         const wa = data?.client?.whatsapp;
-        setTenantWhatsapp(typeof wa === "string" ? wa.replace(/\D/g, "") : "");
+        setTenantWhatsapp(typeof wa === "string" ? normalizeClickPhone(wa) : "");
         const services = Array.isArray(data?.catalog?.services)
           ? data.catalog.services.map((item: { id: string; name: string; duration?: string; price?: string; description?: string }) => ({
               id: item.id,

@@ -32,7 +32,7 @@ const expected = {
   instagram: buildSocialUrl("instagram", "rewa.100000"),
   tiktok: buildSocialUrl("tiktok", "rewa.1000"),
   snapchat: buildSocialUrl("snapchat", "rewa.1000"),
-  whatsapp: buildSocialUrl("whatsapp", "966549462524"),
+  whatsapp: buildSocialUrl("whatsapp", "966148462524"),
 };
 
 let failed = 0;
@@ -62,8 +62,8 @@ assert(
   expected.snapchat
 );
 assert(
-  expected.whatsapp === "https://wa.me/966549462524",
-  "whatsapp 966549462524",
+  expected.whatsapp === "https://wa.me/966148462524",
+  "whatsapp 966148462524",
   expected.whatsapp
 );
 
