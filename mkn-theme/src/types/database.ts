@@ -100,6 +100,39 @@ export interface ClientRecord {
   active: boolean;
   createdAt: string;
   claimStatus?: "unclaimed" | "pending" | "claimed";
+  locationConfig?: TenantLocationConfig;
+}
+
+export type LocationMode = "single" | "multiple" | "coverage";
+
+export interface TenantBranch {
+  id: string;
+  name: string;
+  city: string;
+  district?: string;
+  address?: string;
+  googleMapsUrl?: string;
+  phone?: string;
+  whatsapp?: string;
+  workingHours?: string;
+  isOpen?: boolean;
+  isMain?: boolean;
+}
+
+export interface TenantLocationConfig {
+  mode: LocationMode;
+  primaryLocation: {
+    name?: string;
+    city: string;
+    district?: string;
+    address?: string;
+    googleMapsUrl?: string;
+    workingHours?: string;
+    isOpen?: boolean;
+  };
+  branches: TenantBranch[];
+  coverageRegions: string[];
+  coverageNote?: string;
 }
 
 /** Fields a public storefront may expose. No admin emails or credentials. */
@@ -127,6 +160,7 @@ export type StorefrontClient = Pick<
   | "discountEnabled"
   | "socialLinks"
   | "claimStatus"
+  | "locationConfig"
 >;
 
 export type StorefrontKind = "hotel" | "salon" | "commerce" | "generic";

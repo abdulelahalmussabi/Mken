@@ -49,6 +49,7 @@ export interface MkenConfig {
   emails?: Record<string, Toggle>;
   heroImage?: string;
   featuredActivity?: string;
+  locationConfig?: import("@/types/database").TenantLocationConfig;
   serviceArea?: {
     enabled?: boolean;
     displayOnHomepage?: boolean;
@@ -428,6 +429,7 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     discountText: pack.promo?.text || (config.ads?.primary as { text?: string } | undefined)?.text,
     promoTitle: (config.ads?.primary as { title?: string } | undefined)?.title,
     discountEnabled: pack.enabled ?? false,
+    locationConfig: config.locationConfig || seed?.locationConfig,
     active: (row.subscription_status || "").toLowerCase() === "active",
     createdAt: row.subscription_start || row.created_at || "",
   };
@@ -520,6 +522,7 @@ export function mergeIntoConfig(
 
   if (updates.phone !== undefined) next.phone = updates.phone;
   if (updates.location !== undefined) next.location = updates.location;
+  if (updates.locationConfig !== undefined) next.locationConfig = updates.locationConfig;
   if (updates.subtitle !== undefined) next.subtitle = updates.subtitle;
   if (updates.commercialRegistryName !== undefined) {
     next.commercialRegistryName = String(updates.commercialRegistryName || "").trim();

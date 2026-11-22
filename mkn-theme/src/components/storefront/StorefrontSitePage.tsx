@@ -49,28 +49,30 @@ function ServiceCard({
   onBook: () => void;
 }) {
   return (
-    <div className="bg-surface/90 border border-line hover:border-amber-500/50 rounded-3xl overflow-hidden transition-all flex flex-col justify-between group shadow-xl">
+    <div className="bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col justify-between group shadow-sm">
       <div>
-        <div className="relative h-48 overflow-hidden">
+        <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-zinc-900">
           {srv.image ? (
             <img src={srv.image} alt={srv.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           ) : (
-            <div className="w-full h-full bg-surface-2" />
+            <div className="w-full h-full bg-slate-100 dark:bg-zinc-800/80 flex items-center justify-center text-slate-400">
+              <Star className="w-8 h-8 opacity-40" />
+            </div>
           )}
-          <div className="absolute top-3 right-3 bg-background/80 px-3 py-1 rounded-full text-xs font-bold text-amber-300 border border-amber-500/30">
+          <div className="absolute top-3 right-3 bg-white/90 dark:bg-[#09090B]/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-white/10 shadow-xs">
             {srv.badge}
           </div>
         </div>
         <div className="p-6 space-y-3 text-right">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-lg font-extrabold text-foreground">{srv.name}</h3>
-            {showPrice ? <span className="text-sm font-black text-amber-400">{srv.price}</span> : null}
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug group-hover:text-[#059669] dark:group-hover:text-emerald-400 transition-colors">{srv.name}</h3>
+            {showPrice ? <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 shrink-0">{srv.price}</span> : null}
           </div>
-          {srv.description ? <p className="text-xs text-muted leading-relaxed">{srv.description}</p> : null}
-          <ul className="space-y-2 text-xs text-muted">
+          {srv.description ? <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">{srv.description}</p> : null}
+          <ul className="space-y-2 text-xs text-slate-600 dark:text-zinc-400">
             {srv.features.slice(0, 5).map((feat) => (
               <li key={feat} className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{feat}</span>
               </li>
             ))}
@@ -81,14 +83,14 @@ function ServiceCard({
         <button
           type="button"
           onClick={onBook}
-          className="w-full py-3 text-slate-950 font-bold text-xs rounded-xl flex items-center justify-center gap-2"
-          style={{ backgroundColor: accentColor }}
+          className="w-full py-3 font-bold text-xs text-white rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/15 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
+          style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
         >
           <CalendarCheck className="w-4 h-4" />
           {bookLabel || "احجز هذه الخدمة الآن"}
         </button>
         {detailsHref ? (
-          <Link href={detailsHref as Route} className="w-full py-2 text-center text-xs font-bold text-muted hover:text-foreground">
+          <Link href={detailsHref as Route} className="w-full py-2 text-center text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors">
             التفاصيل
           </Link>
         ) : null}

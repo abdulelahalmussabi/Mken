@@ -9,6 +9,7 @@ import { logoValidationError } from "@/lib/mken/logo-crop";
 import { applyAlmahrusaDefaults } from "@/lib/mken/almahrusa-content";
 import { applyRewaqDefaults } from "@/lib/mken/rewaq-content";
 import { applyRewaDefaults } from "@/lib/mken/rewa-content";
+import type { TenantLocationConfig, TenantBranch, LocationMode } from "@/types/database";
 
 /**
  * Tenant identity settings stored in `config_data`: brand, phone, social
@@ -76,6 +77,7 @@ export interface TenantSettings {
   social: Record<string, Toggle>;
   emails: Record<string, Toggle>;
   serviceArea: ServiceArea;
+  locationConfig: TenantLocationConfig;
   updatedAt: string;
 }
 
@@ -185,6 +187,61 @@ function normalizeServiceArea(raw: unknown): ServiceArea {
   };
 }
 
+export function normalizeLocationConfig(raw: unknown, fallbackCity = "الرياض"): TenantLocationConfig {
+  const incoming = (raw || {}) as Partial<TenantLocationConfig>;
+  const mode: LocationMode =
+    incoming.mode === "multiple" || incoming.mode === "coverage" || incoming.mode === "single"
+      ? incoming.mode
+      : "single";
+
+  const primary = incoming.primaryLocation || {
+    name: "الفرع الرئيسي",
+    city: fallbackCity,
+    district: "",
+    address: "",
+    googleMapsUrl: "",
+    workingHours: "09:00 ص - 10:00 م",
+    isOpen: true,
+  };
+
+  const branches: TenantBranch[] = Array.isArray(incoming.branches)
+    ? incoming.branches.map((b, idx) => ({
+        id: b.id || `branch-${idx + 1}`,
+        name: str(b.name, `فرع ${idx + 1}`),
+        city: str(b.city, fallbackCity),
+        district: str(b.district),
+        address: str(b.address),
+        googleMapsUrl: str(b.googleMapsUrl),
+        phone: str(b.phone),
+        whatsapp: str(b.whatsapp),
+        workingHours: str(b.workingHours, "09:00 ص - 10:00 م"),
+        isOpen: b.isOpen !== false,
+        isMain: Boolean(b.isMain || idx === 0),
+      }))
+    : [];
+
+  const coverageRegions =
+    Array.isArray(incoming.coverageRegions) && incoming.coverageRegions.length > 0
+      ? incoming.coverageRegions.map(String).filter(Boolean)
+      : [fallbackCity, "جدة", "مكة المكرمة", "الدمام"];
+
+  return {
+    mode,
+    primaryLocation: {
+      name: str(primary.name, "الفرع الرئيسي"),
+      city: str(primary.city, fallbackCity),
+      district: str(primary.district),
+      address: str(primary.address),
+      googleMapsUrl: str(primary.googleMapsUrl),
+      workingHours: str(primary.workingHours, "09:00 ص - 10:00 م"),
+      isOpen: primary.isOpen !== false,
+    },
+    branches,
+    coverageRegions,
+    coverageNote: str(incoming.coverageNote, "خدمة معتمدة وتغطية لجميع الأحياء"),
+  };
+}
+
 export function resolveSettings(config: MkenConfig): TenantSettings {
   const brand = (config.brand || {}) as Record<string, unknown>;
 
@@ -201,6 +258,10 @@ export function resolveSettings(config: MkenConfig): TenantSettings {
     social: toggleMap(config.social, SOCIAL_PLATFORMS.map((p) => p.id)),
     emails: toggleMap(config.emails, EMAIL_TYPES.map((t) => t.id)),
     serviceArea: normalizeServiceArea(config.serviceArea),
+    locationConfig: normalizeLocationConfig(
+      config.locationConfig,
+      config.serviceArea?.city || (typeof (config as Record<string, unknown>).location === "string" ? String((config as Record<string, unknown>).location) : "الرياض")
+    ),
     updatedAt: str(config.updatedAt),
   };
 }
@@ -236,6 +297,7 @@ export interface SettingsUpdate {
   serviceArea?: Partial<Omit<ServiceArea, "center">> & {
     center?: { lat?: number; lng?: number };
   };
+  locationConfig?: TenantLocationConfig;
 }
 
 export function validateSettings(update: SettingsUpdate): string | null {
@@ -312,6 +374,7 @@ export async function updateTenantSettings(
 
   if (update.phone !== undefined) config.phone = update.phone.trim();
   if (update.heroImage !== undefined) config.heroImage = update.heroImage.trim();
+  if (update.locationConfig !== undefined) config.locationConfig = update.locationConfig;
   if (update.commercialRegistryName !== undefined) {
     config.commercialRegistryName = update.commercialRegistryName.trim();
   }

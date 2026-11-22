@@ -39,6 +39,7 @@ import {
 } from "@/lib/mken/wa-click";
 import { newBookingId, submitPublicBooking } from "@/lib/mken/book-request";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
+import { TenantLocationSelector } from "@/components/storefront/TenantLocationSelector";
 import {
   CalendarCheck,
   Loader2,
@@ -894,7 +895,7 @@ export function StorefrontFrame({
           <UnclaimedClaimBanner slug={slug} accentColor={accentColor} />
         ) : null}
 
-        <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-line">
+        <header className="sticky top-0 z-40 bg-white/85 dark:bg-[#09090B]/85 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 transition-colors duration-300">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Link href={href("home") as Route} className="flex items-center gap-2.5 min-w-0">
@@ -916,6 +917,12 @@ export function StorefrontFrame({
                 </div>
               </Link>
               <ColorSchemeToggle />
+              <TenantLocationSelector
+                locationConfig={storeClient?.locationConfig}
+                storeInfo={storeInfo}
+                accentColor={accentColor}
+                variant="navbar"
+              />
             </div>
 
             <nav className="hidden lg:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">

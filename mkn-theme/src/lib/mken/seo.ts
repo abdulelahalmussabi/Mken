@@ -550,6 +550,7 @@ export async function localBusinessJsonLd(client: StorefrontClient) {
   const schemaType = resolveSchemaType(client, config);
   const ratingVal = extractRating(client.rating);
   const reviewCountVal = extractReviewCount(client.reviewsCount);
+  const locationConfig = client.locationConfig || (config.locationConfig as import("@/types/database").TenantLocationConfig | undefined);
 
   // 1. الكيان الأساسي لنشاط العمل المحلي (LocalBusiness Schema)
   const localBusinessEntity: Record<string, unknown> = {
@@ -560,17 +561,25 @@ export async function localBusinessJsonLd(client: StorefrontClient) {
     image: client.logo || client.heroImage || undefined,
     telephone: client.phone || undefined,
     priceRange: "$$",
-    address: client.location
+    address: locationConfig?.primaryLocation
       ? {
           "@type": "PostalAddress",
           addressCountry: "SA",
-          addressLocality: client.location,
+          addressLocality: locationConfig.primaryLocation.city || client.location || "المملكة العربية السعودية",
+          streetAddress: locationConfig.primaryLocation.address || locationConfig.primaryLocation.district || undefined,
         }
-      : undefined,
+      : client.location
+        ? {
+            "@type": "PostalAddress",
+            addressCountry: "SA",
+            addressLocality: client.location,
+          }
+        : undefined,
     geo:
       Number.isFinite(lat) && Number.isFinite(lng)
         ? { "@type": "GeoCoordinates", latitude: lat, longitude: lng }
         : undefined,
+    hasMap: locationConfig?.primaryLocation?.googleMapsUrl || undefined,
     openingHoursSpecification: buildSaudiOpeningHours(booking.workingHours),
     potentialAction: {
       "@type": "ReserveAction",
@@ -583,6 +592,35 @@ export async function localBusinessJsonLd(client: StorefrontClient) {
       result: { "@type": "Reservation", name: `حجز موعد — ${client.name}` },
     },
   };
+
+  // إدراج نطاق التغطية والمناطق المخدومة (areaServed) لمتاجر الخدمات والمقاولات والتوصيل
+  if (locationConfig?.coverageRegions && locationConfig.coverageRegions.length > 0) {
+    localBusinessEntity.areaServed = locationConfig.coverageRegions.map((region) => ({
+      "@type": "City",
+      name: region,
+      containedInPlace: {
+        "@type": "Country",
+        name: "Saudi Arabia",
+        alternateName: "المملكة العربية السعودية",
+      },
+    }));
+  }
+
+  // إدراج فروع المنشأة المتعددة (department / subOrganization)
+  if (locationConfig?.branches && locationConfig.branches.length > 0) {
+    localBusinessEntity.department = locationConfig.branches.map((b) => ({
+      "@type": schemaType,
+      name: b.name,
+      telephone: b.phone || client.phone || undefined,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: b.city,
+        streetAddress: b.address || b.district || undefined,
+        addressCountry: "SA",
+      },
+      hasMap: b.googleMapsUrl || undefined,
+    }));
+  }
 
   // 2. إدراج تقييمات العملاء ونجوم الظهور المعتمدة (AggregateRating Schema)
   if (ratingVal !== null) {

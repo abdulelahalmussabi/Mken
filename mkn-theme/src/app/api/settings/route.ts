@@ -55,6 +55,9 @@ export async function PUT(request: Request) {
     if (isObject(body.serviceArea)) {
       update.serviceArea = body.serviceArea as SettingsUpdate["serviceArea"];
     }
+    if (isObject(body.locationConfig)) {
+      update.locationConfig = body.locationConfig as SettingsUpdate["locationConfig"];
+    }
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json(

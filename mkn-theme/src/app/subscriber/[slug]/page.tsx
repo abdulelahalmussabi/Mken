@@ -11,6 +11,10 @@ import { ServiceCard } from "@/components/storefront/StorefrontSitePage";
 import { WhatsappCta } from "@/components/social/NeonSocialIcons";
 import { isAdLive, liveAds, type SecondaryAd } from "@/lib/mken/appearance";
 import { CalendarCheck, Clock, MapPin, Sparkles, Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { TenantLocationSelector } from "@/components/storefront/TenantLocationSelector";
+
+const ONEPLUS_EASE = [0.16, 1, 0.3, 1] as const;
 
 function adToServiceOption(ad: SecondaryAd): StorefrontServiceOption {
   return {
@@ -34,6 +38,7 @@ export default function SubscriberStorefrontPage() {
   const {
     slug,
     storeInfo,
+    storeClient,
     appearance,
     pages,
     currentServices,
@@ -104,19 +109,14 @@ export default function SubscriberStorefrontPage() {
   return (
     <>
       {showPromo && (
-        <div
-          className="w-full py-2.5 px-4 text-center text-xs font-bold border-b border-line flex items-center justify-center gap-2 flex-wrap bg-surface text-foreground"
-          style={{
-            background: `linear-gradient(90deg, var(--surface) 0%, ${accentColor}25 50%, var(--surface) 100%)`,
-          }}
-        >
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span>
+        <div className="w-full py-3 px-4 text-center text-xs font-bold border-b border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/70 text-amber-950 dark:text-amber-100 flex items-center justify-center gap-2 flex-wrap shadow-xs transition-colors">
+          <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="font-extrabold">
             {promoTitle || occasionDetails.slogan}
             {(promoText || occasionDetails.discountText) ? (
               <>
                 {" "}
-                — <strong>{promoText || occasionDetails.discountText}</strong>
+                — <span className="font-normal opacity-90">{promoText || occasionDetails.discountText}</span>
               </>
             ) : null}
           </span>
@@ -124,35 +124,44 @@ export default function SubscriberStorefrontPage() {
             <button
               type="button"
               onClick={() => copyCoupon(promoCoupon || occasionDetails.couponCode)}
-              className="underline text-amber-300 mr-2 hover:opacity-80"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/80 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors cursor-pointer mr-2 shadow-xs"
+              title="انقر لنسخ كود الخصم"
             >
-              كود الخصم:{" "}
-              <strong className="font-mono">{promoCoupon || occasionDetails.couponCode}</strong>
+              <span>كود الخصم:</span>
+              <strong className="font-mono font-black">{promoCoupon || occasionDetails.couponCode}</strong>
             </button>
           )}
           {appearance?.ads?.primary?.ctaLabel && appearance.ads.primary.ctaHref && (
-            <a href={isolateTenantHref(appearance.ads.primary.ctaHref, slug)} className="underline text-amber-200 mr-2">
+            <a
+              href={isolateTenantHref(appearance.ads.primary.ctaHref, slug)}
+              className="underline text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100 font-bold mr-2 transition-colors"
+            >
               {appearance.ads.primary.ctaLabel}
             </a>
           )}
         </div>
       )}
 
-      <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-line">
+      <section id="hero" className="relative overflow-hidden pt-12 pb-20 border-b border-line bg-background">
         <div
           className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 opacity-25"
           style={{ backgroundColor: accentColor }}
         />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7 space-y-6 text-right">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-foreground text-xs font-bold">
-                <Sparkles className="w-4 h-4 text-amber-400" />
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: ONEPLUS_EASE }}
+              className="lg:col-span-7 space-y-6 text-right"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-zinc-200 text-xs font-bold shadow-xs">
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 <span>{heroKicker}</span>
               </div>
               <OccasionSymbolsStrip />
               <div className="space-y-2">
-                <h2 className="text-3xl sm:text-5xl font-black text-foreground leading-tight tracking-tight">{storeInfo.name}</h2>
+                <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">{storeInfo.name}</h2>
                 <p
                   className="text-lg sm:text-2xl font-bold bg-clip-text text-transparent leading-snug"
                   style={{ backgroundImage: `linear-gradient(135deg, var(--foreground) 0%, ${accentColor} 100%)` }}
@@ -160,16 +169,16 @@ export default function SubscriberStorefrontPage() {
                   {storeInfo.tagline}
                 </p>
               </div>
-              <p className="text-base sm:text-lg text-muted leading-relaxed">{storeInfo.subtitle}</p>
+              <p className="text-base sm:text-lg text-slate-600 dark:text-zinc-400 leading-relaxed">{storeInfo.subtitle}</p>
               {!servicesPageOn ? (
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setSelectedCategory("all")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold border ${
+                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${
                       selectedCategory === "all"
-                        ? "bg-amber-500 text-slate-950 border-amber-400"
-                        : "bg-surface text-muted border-line"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-transparent shadow-sm"
+                        : "bg-white dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
                     }`}
                   >
                     الخدمات المتوفرة
@@ -179,10 +188,10 @@ export default function SubscriberStorefrontPage() {
                       key={srv.id}
                       type="button"
                       onClick={() => setSelectedCategory(srv.id)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold border ${
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${
                         selectedCategory === srv.id
-                          ? "bg-amber-500 text-slate-950 border-amber-400"
-                          : "bg-surface text-muted border-line"
+                          ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 border-transparent shadow-sm"
+                          : "bg-white dark:bg-[#141417] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 hover:border-slate-300"
                       }`}
                     >
                       {srv.badge}
@@ -194,8 +203,8 @@ export default function SubscriberStorefrontPage() {
                 {ctaHref ? (
                   <a
                     href={ctaHref}
-                    className="px-7 py-4 text-slate-950 font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2"
-                    style={{ backgroundColor: accentColor }}
+                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                    style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
                   >
                     <CalendarCheck className="w-5 h-5" />
                     {primaryCta}
@@ -204,8 +213,8 @@ export default function SubscriberStorefrontPage() {
                   <button
                     type="button"
                     onClick={() => openBooking()}
-                    className="px-7 py-4 text-slate-950 font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2"
-                    style={{ backgroundColor: accentColor }}
+                    className="px-7 py-4 text-white font-extrabold text-base rounded-2xl shadow-xl flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                    style={{ backgroundColor: accentColor || "var(--primary-accent)" }}
                   >
                     <CalendarCheck className="w-5 h-5" />
                     {primaryCta}
@@ -213,16 +222,21 @@ export default function SubscriberStorefrontPage() {
                 )}
                 <Link
                   href={`/book?tenant=${slug}` as Route}
-                  className="px-6 py-4 bg-surface hover:bg-surface-2 text-foreground border border-line font-bold text-base rounded-2xl flex items-center gap-2"
+                  className="px-6 py-4 bg-white dark:bg-[#141417] hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 font-bold text-base rounded-2xl flex items-center gap-2 shadow-xs transition-colors"
                 >
-                  <Clock className="w-5 h-5 text-amber-400" />
+                  <Clock className="w-5 h-5 text-amber-500" />
                   احجز موعد أونلاين
                 </Link>
                 {whatsappHref ? <WhatsappCta href={whatsappHref} size="lg" /> : null}
               </div>
-            </div>
-            <div className="lg:col-span-5">
-              <div className="relative rounded-3xl overflow-hidden border border-line bg-surface shadow-2xl p-4 space-y-4">
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 25 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: ONEPLUS_EASE }}
+              className="lg:col-span-5"
+            >
+              <div className="relative rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-[#141417] shadow-2xl p-4 space-y-4">
                 {yt ? (
                   <iframe
                     title={storeInfo.name}
@@ -236,43 +250,52 @@ export default function SubscriberStorefrontPage() {
                 ) : storeInfo.heroImage ? (
                   <img src={storeInfo.heroImage} alt={storeInfo.name} className="w-full h-64 object-cover rounded-2xl" />
                 ) : null}
-                <div className="space-y-2 text-right p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full border border-amber-500/30 flex items-center gap-1">
+                <div className="space-y-3 text-right p-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-bold px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-800/60 flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                       {storeInfo.rating} ({storeInfo.reviewsCount})
                     </span>
-                    <span className="text-xs text-muted flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {storeInfo.location}
-                    </span>
+                    <TenantLocationSelector
+                      locationConfig={storeClient?.locationConfig}
+                      storeInfo={storeInfo}
+                      accentColor={accentColor}
+                      variant="hero"
+                    />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">{storeInfo.name} - خيارك الأبرز</h3>
-                  <p className="text-xs text-muted leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{storeInfo.name} - خيارك الأبرز ووجهتك المفضلة</h3>
+                  <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {stats.length > 0 ? (
         <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((item) => (
-            <div key={item.label} className="p-5 rounded-2xl bg-surface border border-line text-center">
-              <p className="text-xl font-black text-foreground">{item.value}</p>
-              <p className="text-[11px] text-muted mt-1">{item.label}</p>
-            </div>
+          {stats.map((item, idx) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.5, delay: idx * 0.08, ease: ONEPLUS_EASE }}
+              className="p-5 rounded-3xl bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 shadow-sm text-center"
+            >
+              <p className="text-xl font-black text-slate-900 dark:text-white">{item.value}</p>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">{item.label}</p>
+            </motion.div>
           ))}
         </section>
       ) : null}
 
       {pages.home.partners.length > 0 ? (
         <section className="pb-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs text-muted mb-4">شركاؤنا وأبرز العملاء</p>
+          <p className="text-center text-xs text-slate-500 dark:text-zinc-400 mb-4">شركاؤنا وأبرز العملاء</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             {pages.home.partners.map((item) => (
-              <div key={item.name} className="px-4 py-2 rounded-full bg-surface border border-line text-xs font-bold text-foreground">
+              <div key={item.name} className="px-4 py-2 rounded-full bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-zinc-200 shadow-xs">
                 {item.image ? <img src={item.image} alt={item.name} className="h-8 inline-block ml-2 rounded" /> : null}
                 {item.name}
               </div>
@@ -284,39 +307,53 @@ export default function SubscriberStorefrontPage() {
       {secondaryAds.length > 0 || gridServices.length > 0 ? (
         <section id="services" className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-10">
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-foreground">{servicesHeading}</h2>
-            <p className="text-sm text-muted">{servicesIntro}</p>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-[1.35]">{servicesHeading}</h2>
+            <p className="text-sm text-slate-600 dark:text-zinc-400">{servicesIntro}</p>
           </div>
           {secondaryAds.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-              {secondaryAds.map((ad) => (
-                <ServiceCard
+              {secondaryAds.map((ad, idx) => (
+                <motion.div
                   key={ad.id}
-                  srv={adToServiceOption(ad)}
-                  accentColor={accentColor}
-                  showPrice={pages.services.showPrices}
-                  bookLabel={ad.ctaLabel || "احجز هذه الخدمة الآن"}
-                  onBook={() => openBooking(adToServiceOption(ad))}
-                />
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ duration: 0.6, delay: idx * 0.1, ease: ONEPLUS_EASE }}
+                >
+                  <ServiceCard
+                    srv={adToServiceOption(ad)}
+                    accentColor={accentColor}
+                    showPrice={pages.services.showPrices}
+                    bookLabel={ad.ctaLabel || "احجز هذه الخدمة الآن"}
+                    onBook={() => openBooking(adToServiceOption(ad))}
+                  />
+                </motion.div>
               ))}
             </div>
           ) : null}
           {gridServices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {gridServices.map((srv) => (
-                <ServiceCard
+              {gridServices.map((srv, idx) => (
+                <motion.div
                   key={srv.id}
-                  srv={srv}
-                  accentColor={accentColor}
-                  showPrice={pages.services.showPrices}
-                  detailsHref={servicesPageOn ? `${href("services")}` : undefined}
-                  onBook={() => openBooking(srv)}
-                />
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ duration: 0.6, delay: idx * 0.1, ease: ONEPLUS_EASE }}
+                >
+                  <ServiceCard
+                    srv={srv}
+                    accentColor={accentColor}
+                    showPrice={pages.services.showPrices}
+                    detailsHref={servicesPageOn ? `${href("services")}` : undefined}
+                    onBook={() => openBooking(srv)}
+                  />
+                </motion.div>
               ))}
             </div>
           ) : null}
           {appearance?.interfaceCopy?.servicesFooter && !servicesPageOn ? (
-            <p className="text-center text-sm text-muted max-w-2xl mx-auto leading-relaxed">
+            <p className="text-center text-sm text-slate-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
               {appearance.interfaceCopy.servicesFooter}
             </p>
           ) : null}

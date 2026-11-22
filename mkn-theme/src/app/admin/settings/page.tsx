@@ -25,7 +25,32 @@ import {
   Phone,
   Globe,
   FileBadge,
+  Plus,
+  Trash2,
+  Truck,
+  Check,
 } from "lucide-react";
+
+const SAUDI_MAJOR_CITIES = [
+  "الرياض",
+  "جدة",
+  "مكة المكرمة",
+  "المدينة المنورة",
+  "الدمام",
+  "الخبر",
+  "الظهران",
+  "الطائف",
+  "ينبع",
+  "القصيم",
+  "تبوك",
+  "أبها",
+  "حائل",
+  "نجران",
+  "الجبيل",
+  "خميس مشيط",
+  "حفر الباطن",
+  "الأحساء",
+];
 
 const inputClass =
   "w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 text-right focus:outline-none focus:border-amber-500 transition-colors";
@@ -171,6 +196,7 @@ export default function AdminSettingsPage() {
           social: next.social,
           emails: next.emails,
           serviceArea: next.serviceArea,
+          locationConfig: next.locationConfig,
         }),
       });
       const data = await res.json();
@@ -673,144 +699,525 @@ export default function AdminSettingsPage() {
               </div>
             </Section>
 
-            <Section title="نطاق الخدمة" icon={MapPin}>
-              <div className="flex items-center gap-6 flex-wrap justify-end">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                  عرضه في الصفحة الرئيسية
-                  <Toggle
-                    on={settings.serviceArea.displayOnHomepage}
-                    disabled={saving}
-                    onChange={() =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          displayOnHomepage: !settings.serviceArea.displayOnHomepage,
-                        },
-                      })
-                    }
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                  تغطية المدينة كاملة
-                  <Toggle
-                    on={settings.serviceArea.showAsFullCity}
-                    disabled={saving}
-                    onChange={() =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          showAsFullCity: !settings.serviceArea.showAsFullCity,
-                        },
-                      })
-                    }
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                  تمكين نطاق الخدمة
-                  <Toggle
-                    on={settings.serviceArea.enabled}
-                    disabled={saving}
-                    onChange={() =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          enabled: !settings.serviceArea.enabled,
-                        },
-                      })
-                    }
-                  />
-                </label>
+            <Section title="مواقع وفروع المنشأة ونطاق التغطية" icon={MapPin}>
+              <p className="text-xs text-slate-400 leading-relaxed mb-3">
+                حدد نمط تواجد منشأتك لتخصيص القائمة المنسدلة في واجهة المتجر وتوليد بيانات Schema.org تلقائياً لدعم SEO المحلي.
+              </p>
+
+              {/* Mode Selection Tabs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    patch({
+                      locationConfig: {
+                        ...settings.locationConfig,
+                        mode: "single",
+                      },
+                    })
+                  }
+                  className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer space-y-1 ${
+                    settings.locationConfig.mode === "single"
+                      ? "bg-amber-500/10 border-amber-500 text-amber-300 shadow-sm"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-100">فرع واحد</span>
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <p className="text-[11px] text-slate-500">موقع فعلي واحد يستقبل العملاء</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    patch({
+                      locationConfig: {
+                        ...settings.locationConfig,
+                        mode: "multiple",
+                        branches:
+                          settings.locationConfig.branches.length > 0
+                            ? settings.locationConfig.branches
+                            : [
+                                {
+                                  id: "branch-1",
+                                  name: "الفرع الرئيسي",
+                                  city: settings.locationConfig.primaryLocation.city || "الرياض",
+                                  district: settings.locationConfig.primaryLocation.district || "",
+                                  address: settings.locationConfig.primaryLocation.address || "",
+                                  phone: settings.phone,
+                                  whatsapp: settings.social.whatsapp?.value || "",
+                                  googleMapsUrl: settings.locationConfig.primaryLocation.googleMapsUrl || "",
+                                  workingHours: "09:00 ص - 10:00 م",
+                                  isOpen: true,
+                                  isMain: true,
+                                },
+                              ],
+                      },
+                    })
+                  }
+                  className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer space-y-1 ${
+                    settings.locationConfig.mode === "multiple"
+                      ? "bg-amber-500/10 border-amber-500 text-amber-300 shadow-sm"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-100">فروع متعددة</span>
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <p className="text-[11px] text-slate-500">عدة فروع في مدن أو أحياء مختلفة</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    patch({
+                      locationConfig: {
+                        ...settings.locationConfig,
+                        mode: "coverage",
+                        coverageRegions:
+                          settings.locationConfig.coverageRegions.length > 0
+                            ? settings.locationConfig.coverageRegions
+                            : [settings.locationConfig.primaryLocation.city || "الرياض", "جدة", "مكة المكرمة", "الدمام"],
+                      },
+                    })
+                  }
+                  className={`p-3.5 rounded-2xl border text-right transition-all cursor-pointer space-y-1 ${
+                    settings.locationConfig.mode === "coverage"
+                      ? "bg-amber-500/10 border-amber-500 text-amber-300 shadow-sm"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-100">تغطية مناطق متعددة</span>
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <p className="text-[11px] text-slate-500">توصيل/مقاولات/خدمات بدون فروع</p>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">المدينة</label>
-                  <input
-                    value={settings.serviceArea.city}
-                    onChange={(e) =>
-                      patch({ serviceArea: { ...settings.serviceArea, city: e.target.value } })
-                    }
-                    className={inputClass}
-                  />
+              {/* Mode A Details */}
+              {settings.locationConfig.mode === "single" && (
+                <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 space-y-4 mb-4">
+                  <h4 className="text-xs font-bold text-slate-300">بيانات الفرع الفعلي والوصول:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-400">اسم الفرع / المركز</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.name || ""}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                name: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="الفرع الرئيسي"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-400">المدينة</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.city}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                city: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="المدينة المنورة"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-400">الحي / المنطقة</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.district || ""}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                district: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="حي الجماوات"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-400">العنوان التفصيلي</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.address || ""}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                address: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="شارع شداد بن عارض، حي الجماوات، المدينة المنورة"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-slate-400">ساعات العمل</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.workingHours || ""}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                workingHours: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        placeholder="يومياً: 09:00 ص - 11:00 م"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-3">
+                      <label className="block text-[11px] font-bold text-slate-400">رابط خرائط Google (Maps URL)</label>
+                      <input
+                        value={settings.locationConfig.primaryLocation.googleMapsUrl || ""}
+                        onChange={(e) =>
+                          patch({
+                            locationConfig: {
+                              ...settings.locationConfig,
+                              primaryLocation: {
+                                ...settings.locationConfig.primaryLocation,
+                                googleMapsUrl: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        dir="ltr"
+                        placeholder="https://maps.google.com/?q=..."
+                        className={`${inputClass} text-left`}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">
-                    نطاق التغطية (كم)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    value={settings.serviceArea.radiusKm}
-                    onChange={(e) =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          radiusKm: Number(e.target.value),
-                        },
-                      })
-                    }
-                    className={inputClass}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">خط العرض</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={settings.serviceArea.center.lat}
-                    onChange={(e) =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          center: {
-                            ...settings.serviceArea.center,
-                            lat: Number(e.target.value),
+              )}
+
+              {/* Mode B Details */}
+              {settings.locationConfig.mode === "multiple" && (
+                <div className="space-y-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-300">
+                      قائمة الفروع ({settings.locationConfig.branches.length}):
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newId = `branch-${Date.now()}`;
+                        const newBranch = {
+                          id: newId,
+                          name: `فرع جديد ${settings.locationConfig.branches.length + 1}`,
+                          city: "الرياض",
+                          district: "",
+                          address: "",
+                          phone: settings.phone,
+                          whatsapp: settings.social.whatsapp?.value || "",
+                          googleMapsUrl: "",
+                          workingHours: "09:00 ص - 10:00 م",
+                          isOpen: true,
+                          isMain: false,
+                        };
+                        patch({
+                          locationConfig: {
+                            ...settings.locationConfig,
+                            branches: [...settings.locationConfig.branches, newBranch],
                           },
-                        },
-                      })
-                    }
-                    dir="ltr"
-                    className={`${inputClass} text-left`}
-                  />
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold hover:bg-amber-500/30 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>إضافة فرع جديد</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {settings.locationConfig.branches.map((b, idx) => (
+                      <div
+                        key={b.id || idx}
+                        className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-amber-400">#{idx + 1}</span>
+                            <span className="text-xs font-bold text-slate-200">{b.name}</span>
+                            {b.isMain && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                الفرع الرئيسي
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!b.isMain && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = settings.locationConfig.branches.map((item, i) => ({
+                                    ...item,
+                                    isMain: i === idx,
+                                  }));
+                                  patch({
+                                    locationConfig: {
+                                      ...settings.locationConfig,
+                                      branches: updated,
+                                    },
+                                  });
+                                }}
+                                className="text-[11px] text-slate-400 hover:text-amber-300 underline"
+                              >
+                                تعيين كرئيسي
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = settings.locationConfig.branches.filter((_, i) => i !== idx);
+                                patch({
+                                  locationConfig: {
+                                    ...settings.locationConfig,
+                                    branches: updated,
+                                  },
+                                });
+                              }}
+                              className="p-1 rounded-lg hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
+                              title="حذف الفرع"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                          <input
+                            value={b.name}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, name: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="اسم الفرع"
+                            className={inputClass}
+                          />
+                          <input
+                            value={b.city}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, city: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="المدينة (مثال: جدة)"
+                            className={inputClass}
+                          />
+                          <input
+                            value={b.district || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, district: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="الحي / الشارع"
+                            className={inputClass}
+                          />
+                          <input
+                            value={b.workingHours || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, workingHours: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="ساعات العمل"
+                            className={inputClass}
+                          />
+                          <input
+                            value={b.phone || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, phone: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="هاتف الفرع"
+                            dir="ltr"
+                            className={`${inputClass} text-left`}
+                          />
+                          <input
+                            value={b.whatsapp || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, whatsapp: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="واتساب الفرع"
+                            dir="ltr"
+                            className={`${inputClass} text-left`}
+                          />
+                          <input
+                            value={b.googleMapsUrl || ""}
+                            onChange={(e) => {
+                              const updated = [...settings.locationConfig.branches];
+                              updated[idx] = { ...b, googleMapsUrl: e.target.value };
+                              patch({ locationConfig: { ...settings.locationConfig, branches: updated } });
+                            }}
+                            placeholder="رابط خرائط Google"
+                            dir="ltr"
+                            className={`${inputClass} text-left sm:col-span-2`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-300">خط الطول</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={settings.serviceArea.center.lng}
-                    onChange={(e) =>
-                      patch({
-                        serviceArea: {
-                          ...settings.serviceArea,
-                          center: {
-                            ...settings.serviceArea.center,
-                            lng: Number(e.target.value),
+              )}
+
+              {/* Mode C Details */}
+              {settings.locationConfig.mode === "coverage" && (
+                <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 space-y-4 mb-4">
+                  <h4 className="text-xs font-bold text-slate-300">
+                    المدن والمناطق المغطاة ({settings.locationConfig.coverageRegions.length}):
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {SAUDI_MAJOR_CITIES.map((city) => {
+                      const isIncluded = settings.locationConfig.coverageRegions.includes(city);
+                      return (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => {
+                            const updated = isIncluded
+                              ? settings.locationConfig.coverageRegions.filter((c) => c !== city)
+                              : [...settings.locationConfig.coverageRegions, city];
+                            patch({
+                              locationConfig: {
+                                ...settings.locationConfig,
+                                coverageRegions: updated,
+                              },
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isIncluded
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                              : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200"
+                          }`}
+                        >
+                          {isIncluded && <Check className="w-3 h-3 text-emerald-400" />}
+                          <span>{city}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-xs font-bold text-slate-300">ملاحظة التغطية والتوصيل للعملاء</label>
+                    <input
+                      value={settings.locationConfig.coverageNote || ""}
+                      onChange={(e) =>
+                        patch({
+                          locationConfig: {
+                            ...settings.locationConfig,
+                            coverageNote: e.target.value,
                           },
-                        },
-                      })
-                    }
-                    dir="ltr"
-                    className={`${inputClass} text-left`}
-                  />
+                        })
+                      }
+                      placeholder="نصل إليك في موقعك أو مشروعك مع التوريد والتركيب الفوري"
+                      className={inputClass}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5 md:col-span-2 lg:col-span-4">
-                  <label className="block text-xs font-bold text-slate-300">ملاحظة التغطية</label>
-                  <input
-                    value={settings.serviceArea.coverageNote}
-                    onChange={(e) =>
-                      patch({
-                        serviceArea: { ...settings.serviceArea, coverageNote: e.target.value },
-                      })
-                    }
-                    placeholder="نصل إلى جميع أحياء المدينة خلال ساعتين"
-                    className={inputClass}
-                  />
+              )}
+
+              {/* Geographic Coordinates for Ads & Geo-Grid */}
+              <div className="pt-4 border-t border-slate-800/80">
+                <p className="text-xs font-bold text-slate-300 mb-2">إحداثيات المركز الجغرافي (لحملات واتساب ميتا و Geo-Grid):</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-400">خط العرض (Latitude)</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={settings.serviceArea.center.lat}
+                      onChange={(e) =>
+                        patch({
+                          serviceArea: {
+                            ...settings.serviceArea,
+                            center: {
+                              ...settings.serviceArea.center,
+                              lat: Number(e.target.value),
+                            },
+                          },
+                        })
+                      }
+                      dir="ltr"
+                      className={`${inputClass} text-left`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-400">خط الطول (Longitude)</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={settings.serviceArea.center.lng}
+                      onChange={(e) =>
+                        patch({
+                          serviceArea: {
+                            ...settings.serviceArea,
+                            center: {
+                              ...settings.serviceArea.center,
+                              lng: Number(e.target.value),
+                            },
+                          },
+                        })
+                      }
+                      dir="ltr"
+                      className={`${inputClass} text-left`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-400">نطاق التغطية الدائري (كم)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={settings.serviceArea.radiusKm}
+                      onChange={(e) =>
+                        patch({
+                          serviceArea: {
+                            ...settings.serviceArea,
+                            radiusKm: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className={inputClass}
+                    />
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 md:col-span-2 lg:col-span-4">
-                  خط العرض والطول المحفوظان هنا إلزاميان لنشر حملات واتساب ميتا. بدونها يُرفض النشر ولا يُستخدم موقع افتراضي.
-                </p>
               </div>
             </Section>
           </>
