@@ -394,6 +394,43 @@ export function toClientRecord(row: TenantRow): ClientRecord {
   const seed = DEFAULT_CLIENTS.find((client) => client.slug === row.tenant_slug);
   const customThemes = customThemesFromConfig(config, row.tenant_slug);
 
+  const resolvedBusinessName = brand.name || row.business_name || seed?.name || row.tenant_slug;
+  const rawLoc = config.locationConfig || seed?.locationConfig;
+  const fallbackLat = config.serviceArea?.center?.lat ?? seed?.locationConfig?.primaryLocation?.latitude;
+  const fallbackLng = config.serviceArea?.center?.lng ?? seed?.locationConfig?.primaryLocation?.longitude;
+  const fallbackMaps = config.mapsUrl || seed?.locationConfig?.primaryLocation?.googleMapsUrl;
+  const resolvedLocConfig = rawLoc
+    ? {
+        ...rawLoc,
+        primaryLocation: {
+          ...rawLoc.primaryLocation,
+          name: (!rawLoc.primaryLocation?.name || rawLoc.primaryLocation.name === "الفرع الرئيسي")
+            ? resolvedBusinessName
+            : rawLoc.primaryLocation.name,
+          latitude: rawLoc.primaryLocation?.latitude ?? fallbackLat,
+          longitude: rawLoc.primaryLocation?.longitude ?? fallbackLng,
+          googleMapsUrl: rawLoc.primaryLocation?.googleMapsUrl || fallbackMaps,
+        },
+      }
+    : (fallbackLat && fallbackLng) || fallbackMaps
+      ? {
+          mode: "single" as const,
+          primaryLocation: {
+            name: resolvedBusinessName,
+            city: config.serviceArea?.city || (typeof config.location === "string" ? config.location.split(/[-–,]/)[0]?.trim() : "") || "المدينة المنورة",
+            district: typeof config.location === "string" ? config.location.split(/[-–,]/)[1]?.trim() : "",
+            address: typeof config.location === "string" ? config.location : "",
+            googleMapsUrl: fallbackMaps || "",
+            latitude: fallbackLat,
+            longitude: fallbackLng,
+            workingHours: "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
+            isOpen: true,
+          },
+          branches: [],
+          coverageRegions: [config.serviceArea?.city || "المدينة المنورة"],
+        }
+      : undefined;
+
   return {
     slug: row.tenant_slug,
     name: brand.name || row.business_name || seed?.name || row.tenant_slug,
@@ -432,7 +469,7 @@ export function toClientRecord(row: TenantRow): ClientRecord {
     discountText: pack.promo?.text || (config.ads?.primary as { text?: string } | undefined)?.text,
     promoTitle: (config.ads?.primary as { title?: string } | undefined)?.title,
     discountEnabled: pack.enabled ?? false,
-    locationConfig: config.locationConfig || seed?.locationConfig,
+    locationConfig: resolvedLocConfig,
     active: (row.subscription_status || "").toLowerCase() === "active",
     createdAt: row.subscription_start || row.created_at || "",
   };

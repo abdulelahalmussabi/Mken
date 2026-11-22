@@ -393,7 +393,7 @@ export function hasRewaIdentityTheme(config: MkenConfig): boolean {
 export const REWA_MAPS_URL = "https://maps.app.goo.gl/LMtjeaD2SKHfdMYV8";
 export const REWA_MAP_CENTER = { lat: 24.46624, lng: 39.550085 };
 export const REWA_MAP_CITY = "المدينة المنورة";
-export const REWA_LOCATION = "الحماوات، المدينة المنورة، المملكة العربية السعودية";
+export const REWA_LOCATION = "الجماوات، المدينة المنورة، المملكة العربية السعودية";
 export const REWA_PHONE = "0148462524";
 export const REWA_WHATSAPP = "966148462524";
 /** Official Ministry of Commerce registration — distinct from the public brand name. */
@@ -723,9 +723,26 @@ export function applyRewaDefaults(config: MkenConfig): MkenConfig {
     showAsFullCity: true,
   };
   next.mapsUrl = REWA_MAPS_URL;
-  if (!next.location || String(next.location).includes("جدة")) {
+  if (!next.location || String(next.location).includes("جدة") || String(next.location).includes("الحماوات")) {
     next.location = REWA_LOCATION;
   }
+  next.locationConfig = {
+    mode: "single",
+    primaryLocation: {
+      name: "منتجع رواء الاستشفاء الرقمي",
+      city: REWA_MAP_CITY,
+      district: "الجماوات",
+      address: "حي الجماوات، المدينة المنورة، المملكة العربية السعودية",
+      googleMapsUrl: REWA_MAPS_URL,
+      latitude: REWA_MAP_CENTER.lat,
+      longitude: REWA_MAP_CENTER.lng,
+      workingHours: "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
+      isOpen: true,
+    },
+    branches: [],
+    coverageRegions: [REWA_MAP_CITY],
+    coverageNote: "منتجع رواء الاستشفاء الرقمي — المدينة المنورة",
+  };
 
   if (!hasRewaIdentityTheme(next)) {
     const existing = Array.isArray(next.customThemes) ? next.customThemes : [];

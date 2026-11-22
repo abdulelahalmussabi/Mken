@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { TenantLocationConfig, TenantBranch } from "@/types/database";
 import { buildWhatsappClickUrl, openWhatsappClick } from "@/lib/mken/wa-click";
+import { resolveGoogleMapsUrl } from "@/components/storefront/TenantLocationSection";
 
 interface TenantLocationSelectorProps {
   locationConfig?: TenantLocationConfig | null;
@@ -266,7 +267,11 @@ export function TenantLocationSelector({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                     <Navigation className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>{config.primaryLocation?.name || storeInfo.name}</span>
+                    <span>
+                      {(!config.primaryLocation?.name || config.primaryLocation.name === "الفرع الرئيسي")
+                        ? storeInfo.name
+                        : config.primaryLocation.name}
+                    </span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -288,18 +293,16 @@ export function TenantLocationSelector({
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
-                {config.primaryLocation?.googleMapsUrl ? (
-                  <a
-                    href={config.primaryLocation.googleMapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>فتح في خرائط Google</span>
-                    <ExternalLink className="w-3 h-3 opacity-80" />
-                  </a>
-                ) : null}
+                <a
+                  href={resolveGoogleMapsUrl(config.primaryLocation || {}, storeInfo.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>فتح في خرائط Google</span>
+                  <ExternalLink className="w-3 h-3 opacity-80" />
+                </a>
 
                 {(storeInfo.whatsapp || storeInfo.phone) && (
                   <a
@@ -409,18 +412,16 @@ export function TenantLocationSelector({
                           <span>{branch.workingHours || "متاح للزيارة"}</span>
                         </span>
 
-                        {branch.googleMapsUrl && (
-                          <a
-                            href={branch.googleMapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
-                          >
-                            <span>الاتجاهات</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
+                        <a
+                          href={resolveGoogleMapsUrl(branch, storeInfo.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
+                        >
+                          <span>الاتجاهات</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
                       </div>
                     </div>
                   );
@@ -430,17 +431,15 @@ export function TenantLocationSelector({
               {/* Active branch footer summary */}
               {activeBranch && (
                 <div className="pt-2 flex items-center gap-2 border-t border-slate-100 dark:border-white/10">
-                  {activeBranch.googleMapsUrl && (
-                    <a
-                      href={activeBranch.googleMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95"
-                    >
-                      <Navigation className="w-3.5 h-3.5" />
-                      <span>خرائط Google ({activeBranch.city})</span>
-                    </a>
-                  )}
+                  <a
+                    href={resolveGoogleMapsUrl(activeBranch, storeInfo.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>خرائط Google ({activeBranch.city})</span>
+                  </a>
                   {activeBranch.whatsapp || storeInfo.whatsapp ? (
                     <a
                       href={buildWhatsappClickUrl(

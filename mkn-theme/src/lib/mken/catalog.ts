@@ -866,6 +866,23 @@ export async function loadPublicStorefront(slug: string): Promise<PublicStorefro
     client.location = merged.location || REWA_LOCATION;
     client.commercialRegistryName = merged.commercialRegistryName || REWA_CR_NAME;
     client.commercialRegistryNumber = merged.commercialRegistryNumber || REWA_CR_NUMBER;
+    client.locationConfig = {
+      mode: "single",
+      primaryLocation: {
+        name: "منتجع رواء الاستشفاء الرقمي",
+        city: REWA_MAP_CITY,
+        district: "الجماوات",
+        address: "حي الجماوات، المدينة المنورة، المملكة العربية السعودية",
+        googleMapsUrl: REWA_MAPS_URL,
+        latitude: REWA_MAP_CENTER.lat,
+        longitude: REWA_MAP_CENTER.lng,
+        workingHours: "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
+        isOpen: true,
+      },
+      branches: [],
+      coverageRegions: [REWA_MAP_CITY],
+      coverageNote: "منتجع رواء الاستشفاء الرقمي — المدينة المنورة",
+    };
   }
   if (key === "almahrusa") {
     client.name = merged.brand?.name || client.name;

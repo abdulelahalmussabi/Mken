@@ -11,7 +11,6 @@ import {
   ExternalLink,
   CheckCircle2,
   Check,
-  Star,
   Building2,
   Truck,
   Zap,
@@ -21,6 +20,28 @@ import { useStorefront } from "@/components/storefront/StorefrontFrame";
 import { buildWhatsappClickUrl, openWhatsappClick } from "@/lib/mken/wa-click";
 
 const ONEPLUS_EASE = [0.16, 1, 0.3, 1] as const;
+
+import {
+  extractCoordinatesFromMapsUrl,
+  extractPlaceIdFromMapsUrl,
+  getCleanBusinessName,
+  resolveCoordinates,
+  resolveMapEmbedSrc,
+  resolveGoogleMapsUrl,
+  type LocationTarget,
+  type LocationMapCoordinates,
+} from "@/lib/mken/location-resolver";
+
+export {
+  extractCoordinatesFromMapsUrl,
+  extractPlaceIdFromMapsUrl,
+  getCleanBusinessName,
+  resolveCoordinates,
+  resolveMapEmbedSrc,
+  resolveGoogleMapsUrl,
+  type LocationTarget,
+  type LocationMapCoordinates,
+};
 
 interface SaudiRegionGroup {
   name: string;
@@ -49,43 +70,6 @@ const SAUDI_REGIONS: SaudiRegionGroup[] = [
     cities: ["تبوك", "حائل", "عرعر", "سكاكا", "الجوف", "القريات"],
   },
 ];
-
-function resolveGoogleMapsUrl(
-  location: {
-    googleMapsUrl?: string;
-    name?: string;
-    city?: string;
-    district?: string;
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  },
-  defaultName: string
-) {
-  if (location.googleMapsUrl) return location.googleMapsUrl;
-  if (location.latitude && location.longitude) {
-    return `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
-  }
-  const query = `${location.name || defaultName} ${location.city || ""} ${location.district || ""}`.trim();
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
-function resolveMapEmbedSrc(
-  location: {
-    name?: string;
-    city?: string;
-    district?: string;
-    latitude?: number;
-    longitude?: number;
-  },
-  defaultName: string
-) {
-  if (location.latitude && location.longitude) {
-    return `https://maps.google.com/maps?q=${location.latitude},${location.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
-  }
-  const query = `${location.name || defaultName} ${location.city || ""} ${location.district || ""}`.trim();
-  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
-}
 
 export interface TenantLocationSectionProps {
   locationConfig?: TenantLocationConfig | null;
@@ -120,10 +104,11 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
       return {
         mode: "coverage",
         primaryLocation: {
+          name: storeInfo.name,
           city: "المدينة المنورة",
           district: "",
           address: rawLoc,
-          workingHours: "08:00 ص - 10:00 م",
+          workingHours: "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
           isOpen: true,
         },
         branches: [],
@@ -135,16 +120,17 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
     return {
       mode: "single",
       primaryLocation: {
+        name: storeInfo.name,
         city: rawLoc.split(/[-–,]/)[0]?.trim() || "المدينة المنورة",
         district: rawLoc.split(/[-–,]/)[1]?.trim() || "",
         address: rawLoc,
-        workingHours: "مفتوح الآن • أوقات عمل مرنة",
+        workingHours: "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
         isOpen: true,
       },
       branches: [],
       coverageRegions: [],
     };
-  }, [locationConfig, storeInfo.location]);
+  }, [locationConfig, storeInfo.location, storeInfo.name]);
 
   const mode = config.mode || "single";
   const isMultipleBranches = (mode === "multiple" || (mode as string) === "branches") && config.branches.length > 0;
@@ -236,39 +222,89 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
     return "نسعد باستقبالكم في موقعنا وتوفير تجربة متميزة تلبي تطلعاتكم طوال أوقات العمل.";
   }, [isCoverage, isMultipleBranches]);
 
-  // Left card active map location resolution
+  // Resolved active map location metadata
   const activeMapLocation = useMemo(() => {
+    const businessName = storeInfo.name || "المنشأة";
+
     if (isMultipleBranches && activeBranch) {
+      const branchTitle = `${businessName} — ${activeBranch.name}`;
+      const cleanDistrict = (activeBranch.district || "").replace(/^حي\s+/, "").trim();
+      const city = activeBranch.city || "";
+      const displayLocation = cleanDistrict && city
+        ? `${cleanDistrict}، ${city}`
+        : cleanDistrict || city || activeBranch.address || "المملكة العربية السعودية";
+
       return {
-        name: activeBranch.name,
-        city: activeBranch.city,
-        district: activeBranch.district || "",
-        address: activeBranch.address || `${activeBranch.city}، المملكة العربية السعودية`,
+        name: branchTitle,
+        shortName: activeBranch.name,
+        businessName,
+        city,
+        district: cleanDistrict,
+        address: activeBranch.address || `${displayLocation}، المملكة العربية السعودية`,
+        displayLocation,
         googleMapsUrl: activeBranch.googleMapsUrl,
         latitude: activeBranch.latitude,
         longitude: activeBranch.longitude,
+        placeId: activeBranch.placeId,
       };
     }
+
     if (isCoverage) {
+      const coverageTitle = `${businessName} — ${selectedCoverageCity}`;
       return {
-        name: `${storeInfo.name} - ${selectedCoverageCity}`,
+        name: coverageTitle,
+        shortName: selectedCoverageCity,
+        businessName,
         city: selectedCoverageCity,
         district: "",
         address: `تغطية ميدانية مباشرة في ${selectedCoverageCity} وكافة الأحياء المجاورة`,
+        displayLocation: selectedCoverageCity,
         googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedCoverageCity + " المملكة العربية السعودية")}`,
+        latitude: undefined,
+        longitude: undefined,
+        placeId: undefined,
       };
     }
+
     const prim = config.primaryLocation || {};
+    const singleTitle = businessName;
+    const contactMap = storefront.contactExtras?.map;
+
+    const rawDistrict = prim.district || (prim.address ? prim.address.split(/[-–,]/)[1]?.trim() : "") || "";
+    const cleanDistrict = rawDistrict.replace(/^حي\s+/, "").trim();
+    const city = prim.city || contactMap?.city || "المدينة المنورة";
+    const displayLocation = cleanDistrict && city
+      ? `${cleanDistrict}، ${city}`
+      : cleanDistrict || city || prim.address || storeInfo.location || "المملكة العربية السعودية";
+
+    const latitude = prim.latitude ?? (typeof contactMap?.lat === "number" ? contactMap.lat : undefined);
+    const longitude = prim.longitude ?? (typeof contactMap?.lng === "number" ? contactMap.lng : undefined);
+    const googleMapsUrl = prim.googleMapsUrl || contactMap?.mapsUrl || storefront.storeClient?.socialLinks?.map;
+
     return {
-      name: prim.name || storeInfo.name,
-      city: prim.city,
-      district: prim.district || "",
-      address: prim.address || `${prim.city}، ${prim.district || ""}`,
-      googleMapsUrl: prim.googleMapsUrl,
-      latitude: prim.latitude,
-      longitude: prim.longitude,
+      name: singleTitle,
+      shortName: singleTitle,
+      businessName,
+      city,
+      district: cleanDistrict,
+      address: prim.address || (cleanDistrict && city ? `حي ${cleanDistrict}، ${city}` : storeInfo.location || `${city}، المملكة العربية السعودية`),
+      displayLocation,
+      googleMapsUrl,
+      latitude,
+      longitude,
+      placeId: prim.placeId,
     };
-  }, [isMultipleBranches, activeBranch, isCoverage, selectedCoverageCity, config.primaryLocation, storeInfo.name]);
+  }, [
+    isMultipleBranches,
+    activeBranch,
+    isCoverage,
+    selectedCoverageCity,
+    config.primaryLocation,
+    storeInfo.name,
+    storeInfo.location,
+    storefront.contactExtras?.map,
+    storefront.storeClient?.socialLinks?.map,
+  ]);
 
   const mapEmbedSrc = useMemo(() => {
     return resolveMapEmbedSrc(activeMapLocation, storeInfo.name);
@@ -334,28 +370,23 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
           {!isMultipleBranches && !isCoverage ? (
             <div className="space-y-6 flex-1 flex flex-col justify-between">
               <div className="space-y-5">
-                {/* Header line with branch name and status badge */}
+                {/* Header line with real business name and status badge */}
                 <div className="flex items-start justify-between gap-4 flex-wrap pb-4 border-b border-slate-100 dark:border-white/5">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                        {config.primaryLocation?.name || storeInfo.name}
+                        {activeMapLocation.name}
                       </h3>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 flex items-center gap-1.5">
                       <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>
-                        {config.primaryLocation?.city || "المدينة المنورة"}{" "}
-                        {config.primaryLocation?.district ? `• حي ${config.primaryLocation.district}` : ""}
-                      </span>
+                      <span>{activeMapLocation.displayLocation}</span>
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-xs">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    {config.primaryLocation?.workingHours
-                      ? `مفتوح الآن • ${config.primaryLocation.workingHours}`
-                      : "مفتوح الآن • يغلق ١١:٠٠ م"}
+                    <span>مفتوح الآن • يغلق ١١:٠٠ م</span>
                   </span>
                 </div>
 
@@ -363,9 +394,9 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
                 <div className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/70 dark:border-white/5">
                   <MapPin className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">العنوان الوطني والوصول</p>
+                    <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">العنوان والوصول</p>
                     <p className="text-slate-600 dark:text-zinc-400 text-xs sm:text-sm leading-relaxed">
-                      {config.primaryLocation?.address || `${config.primaryLocation?.city || "المدينة المنورة"}، المملكة العربية السعودية`}
+                      {activeMapLocation.address}
                     </p>
                   </div>
                 </div>
@@ -391,20 +422,20 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
                   </div>
                 ) : null}
 
-                {/* Working hours grid */}
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/70 dark:border-white/5 space-y-2">
+                {/* Working hours box: clean vertical flex stack formatting weekdays and Friday on two clean lines */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/70 dark:border-white/5 space-y-3">
                   <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                     <Clock className="w-4 h-4 text-amber-500" />
                     <span>أوقات العمل واستقبال العملاء</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 dark:text-zinc-400 pt-1">
-                    <div className="flex justify-between border-b border-slate-200/40 dark:border-white/5 pb-1">
-                      <span>السبت - الخميس:</span>
-                      <span className="font-bold text-slate-900 dark:text-zinc-200">٩:٠٠ ص - ١١:٠٠ م</span>
+                  <div className="flex flex-col space-y-2 text-xs text-slate-600 dark:text-zinc-400 pt-1">
+                    <div className="flex items-center justify-between border-b border-slate-200/40 dark:border-white/5 pb-2">
+                      <span className="font-medium text-slate-700 dark:text-zinc-300">السبت - الخميس:</span>
+                      <span className="font-bold text-slate-900 dark:text-zinc-100">٩:٠٠ ص - ١١:٠٠ م</span>
                     </div>
-                    <div className="flex justify-between border-b border-slate-200/40 dark:border-white/5 pb-1">
-                      <span>الجمعة:</span>
-                      <span className="font-bold text-slate-900 dark:text-zinc-200">٤:٠٠ م - ١١:٠٠ م</span>
+                    <div className="flex items-center justify-between pt-0.5">
+                      <span className="font-medium text-slate-700 dark:text-zinc-300">الجمعة:</span>
+                      <span className="font-bold text-slate-900 dark:text-zinc-100">٤:٠٠ م - ١١:٠٠ م</span>
                     </div>
                   </div>
                 </div>
@@ -426,7 +457,7 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
                   type="button"
                   onClick={() =>
                     handleWhatsapp(
-                      `السلام عليكم ورحمة الله، أود الاستفسار عن تفاصيل الزيارة في موقع ${config.primaryLocation?.name || storeInfo.name}.`
+                      `السلام عليكم ورحمة الله، أود الاستفسار عن تفاصيل الزيارة في موقع ${activeMapLocation.name}.`
                     )
                   }
                   className="w-full py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/40 hover:bg-emerald-500/10 flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -502,7 +533,7 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
                           <p className="text-xs text-slate-600 dark:text-zinc-400 flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>
-                              {branch.city} {branch.district ? `• حي ${branch.district}` : ""}
+                              {branch.city} {branch.district ? `• حي ${branch.district.replace(/^حي\s+/, "")}` : ""}
                             </span>
                           </p>
                           <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
@@ -643,7 +674,7 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
             borderTopColor: `${accentColor}55`,
           }}
         >
-          {/* Map Preview Iframe */}
+          {/* Map Preview Iframe: Real Business Coordinates / Clean Address Query */}
           <div className="absolute inset-0 w-full h-full bg-slate-100 dark:bg-zinc-900">
             <iframe
               key={mapEmbedSrc}
@@ -661,45 +692,27 @@ export function TenantLocationSection(props: TenantLocationSectionProps) {
             <span>خريطة تفاعلية مباشرة</span>
           </div>
 
-          {/* Bottom Floating Glassmorphism Overlay Card */}
+          {/* Bottom Floating Glassmorphism Overlay Card (PDPL Compliant - No fake review metrics) */}
           <div className="mt-auto relative z-20 m-3 sm:m-4 p-4 sm:p-5 rounded-2xl backdrop-blur-xl bg-white/92 dark:bg-[#09090B]/92 border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-3 text-right">
-            {/* Business / Branch Name + Verified Badge */}
+            {/* Real Business / Branch Name + Verified Badge */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <h4 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                   {activeMapLocation.name}
                 </h4>
-                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 shrink-0">
-                  ✓ نشاط موثّق
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 shrink-0">
+                  ✓ نشاط موثّق عبر مكّن
                 </span>
               </div>
             </div>
 
-            {/* Star Rating & Review count */}
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center text-amber-500 font-bold gap-1">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span>{storeInfo.rating || "4.9"}</span>
-              </div>
-              <div className="flex text-amber-400">
-                {"★★★★★".split("").map((s, i) => (
-                  <span key={i} className="text-xs">
-                    ★
-                  </span>
-                ))}
-              </div>
-              <span className="text-slate-500 dark:text-zinc-400 text-[11px]">
-                ({storeInfo.reviewsCount || "128 تقييم على Google"})
-              </span>
-            </div>
-
-            {/* District / Address description */}
-            <p className="text-xs text-slate-600 dark:text-zinc-400 truncate flex items-center gap-1.5">
+            {/* Actual Neighborhood & City */}
+            <p className="text-xs text-slate-600 dark:text-zinc-300 truncate flex items-center gap-1.5 font-medium">
               <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{activeMapLocation.address}</span>
+              <span>{activeMapLocation.displayLocation}</span>
             </p>
 
-            {/* Get Directions Button */}
+            {/* Prominent Get Directions Button */}
             <a
               href={directionsUrl}
               target="_blank"

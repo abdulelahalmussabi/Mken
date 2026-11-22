@@ -36,7 +36,24 @@
     "showAsFullCity": true
   },
   "mapsUrl": "https://maps.app.goo.gl/LMtjeaD2SKHfdMYV8",
-  "location": "الحماوات، المدينة المنورة، المملكة العربية السعودية",
+  "location": "الجماوات، المدينة المنورة، المملكة العربية السعودية",
+  "locationConfig": {
+    "mode": "single",
+    "primaryLocation": {
+      "name": "منتجع رواء الاستشفاء الرقمي",
+      "city": "المدينة المنورة",
+      "district": "الجماوات",
+      "address": "حي الجماوات، المدينة المنورة، المملكة العربية السعودية",
+      "googleMapsUrl": "https://maps.app.goo.gl/LMtjeaD2SKHfdMYV8",
+      "latitude": 24.46624,
+      "longitude": 39.550085,
+      "workingHours": "السبت - الخميس: ٩:٠٠ ص - ١١:٠٠ م",
+      "isOpen": true
+    },
+    "branches": [],
+    "coverageRegions": ["المدينة المنورة"],
+    "coverageNote": "منتجع رواء الاستشفاء الرقمي — المدينة المنورة"
+  },
   "saas": { "baseDomain": "mken.live", "useSubdomains": true },
   "subscription": {
     "tier": "growth",

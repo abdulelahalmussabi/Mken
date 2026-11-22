@@ -190,15 +190,16 @@ function normalizeServiceArea(raw: unknown): ServiceArea {
   };
 }
 
-export function normalizeLocationConfig(raw: unknown, fallbackCity = "الرياض"): TenantLocationConfig {
+export function normalizeLocationConfig(raw: unknown, fallbackCity = "الرياض", fallbackBusinessName = ""): TenantLocationConfig {
   const incoming = (raw || {}) as Partial<TenantLocationConfig>;
   const mode: LocationMode =
     incoming.mode === "multiple" || incoming.mode === "coverage" || incoming.mode === "single"
       ? incoming.mode
       : "single";
 
+  const defaultName = fallbackBusinessName.trim() || "الفرع الرئيسي";
   const primary = incoming.primaryLocation || {
-    name: "الفرع الرئيسي",
+    name: defaultName,
     city: fallbackCity,
     district: "",
     address: "",
@@ -215,6 +216,9 @@ export function normalizeLocationConfig(raw: unknown, fallbackCity = "الريا
         district: str(b.district),
         address: str(b.address),
         googleMapsUrl: str(b.googleMapsUrl),
+        latitude: typeof b.latitude === "number" ? b.latitude : typeof b.lat === "number" ? b.lat : undefined,
+        longitude: typeof b.longitude === "number" ? b.longitude : typeof b.lng === "number" ? b.lng : undefined,
+        placeId: str(b.placeId),
         phone: str(b.phone),
         whatsapp: str(b.whatsapp),
         workingHours: str(b.workingHours, "09:00 ص - 10:00 م"),
@@ -228,14 +232,22 @@ export function normalizeLocationConfig(raw: unknown, fallbackCity = "الريا
       ? incoming.coverageRegions.map(String).filter(Boolean)
       : [fallbackCity, "جدة", "مكة المكرمة", "الدمام"];
 
+  const primaryName = str(primary.name);
+  const resolvedPrimaryName = (primaryName === "الفرع الرئيسي" && fallbackBusinessName.trim())
+    ? fallbackBusinessName.trim()
+    : (primaryName || defaultName);
+
   return {
     mode,
     primaryLocation: {
-      name: str(primary.name, "الفرع الرئيسي"),
+      name: resolvedPrimaryName,
       city: str(primary.city, fallbackCity),
       district: str(primary.district),
       address: str(primary.address),
       googleMapsUrl: str(primary.googleMapsUrl),
+      latitude: typeof primary.latitude === "number" ? primary.latitude : typeof primary.lat === "number" ? primary.lat : undefined,
+      longitude: typeof primary.longitude === "number" ? primary.longitude : typeof primary.lng === "number" ? primary.lng : undefined,
+      placeId: str(primary.placeId),
       workingHours: str(primary.workingHours, "09:00 ص - 10:00 م"),
       isOpen: primary.isOpen !== false,
     },
@@ -263,7 +275,8 @@ export function resolveSettings(config: MkenConfig): TenantSettings {
     serviceArea: normalizeServiceArea(config.serviceArea),
     locationConfig: normalizeLocationConfig(
       config.locationConfig,
-      config.serviceArea?.city || (typeof (config as Record<string, unknown>).location === "string" ? String((config as Record<string, unknown>).location) : "الرياض")
+      config.serviceArea?.city || (typeof (config as Record<string, unknown>).location === "string" ? String((config as Record<string, unknown>).location) : "الرياض"),
+      str(brand.name)
     ),
     updatedAt: str(config.updatedAt),
   };
