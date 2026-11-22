@@ -39,7 +39,6 @@ import {
 } from "@/lib/mken/wa-click";
 import { newBookingId, submitPublicBooking } from "@/lib/mken/book-request";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
-import { TenantLocationSelector } from "@/components/storefront/TenantLocationSelector";
 import {
   CalendarCheck,
   Loader2,
@@ -917,12 +916,6 @@ export function StorefrontFrame({
                 </div>
               </Link>
               <ColorSchemeToggle />
-              <TenantLocationSelector
-                locationConfig={storeClient?.locationConfig}
-                storeInfo={storeInfo}
-                accentColor={accentColor}
-                variant="navbar"
-              />
             </div>
 
             <nav className="hidden lg:flex items-center gap-1 bg-surface/80 p-1.5 rounded-full border border-line">

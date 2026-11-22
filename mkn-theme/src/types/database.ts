@@ -112,6 +112,8 @@ export interface TenantBranch {
   district?: string;
   address?: string;
   googleMapsUrl?: string;
+  latitude?: number;
+  longitude?: number;
   phone?: string;
   whatsapp?: string;
   workingHours?: string;
@@ -127,6 +129,8 @@ export interface TenantLocationConfig {
     district?: string;
     address?: string;
     googleMapsUrl?: string;
+    latitude?: number;
+    longitude?: number;
     workingHours?: string;
     isOpen?: boolean;
   };

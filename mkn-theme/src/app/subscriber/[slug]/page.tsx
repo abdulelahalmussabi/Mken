@@ -12,7 +12,7 @@ import { WhatsappCta } from "@/components/social/NeonSocialIcons";
 import { isAdLive, liveAds, type SecondaryAd } from "@/lib/mken/appearance";
 import { CalendarCheck, Clock, MapPin, Sparkles, Star } from "lucide-react";
 import { motion } from "framer-motion";
-import { TenantLocationSelector } from "@/components/storefront/TenantLocationSelector";
+import { TenantLocationSection } from "@/components/storefront/TenantLocationSection";
 
 const ONEPLUS_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -256,12 +256,15 @@ export default function SubscriberStorefrontPage() {
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                       {storeInfo.rating} ({storeInfo.reviewsCount})
                     </span>
-                    <TenantLocationSelector
-                      locationConfig={storeClient?.locationConfig}
-                      storeInfo={storeInfo}
-                      accentColor={accentColor}
-                      variant="hero"
-                    />
+                    <a
+                      href="#tenant-locations"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 rounded-full border border-slate-200 dark:border-white/10 text-xs font-bold transition-all shadow-xs cursor-pointer group"
+                      title="الانتقال إلى خريطة المواقع والفروع ونطاق الخدمة"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <span>{storeInfo.location.split(/[-–,]/)[0]?.trim() || "مواقعنا وفروعنا"}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal">| الخريطة والفروع ↓</span>
+                    </a>
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">{storeInfo.name} - خيارك الأبرز ووجهتك المفضلة</h3>
                   <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">{storeInfo.subtitle || storeInfo.tagline}</p>
@@ -359,6 +362,8 @@ export default function SubscriberStorefrontPage() {
           ) : null}
         </section>
       ) : null}
+
+      <TenantLocationSection />
     </>
   );
 }
