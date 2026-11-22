@@ -13,6 +13,7 @@ import { isAdLive, liveAds, type SecondaryAd } from "@/lib/mken/appearance";
 import { CalendarCheck, Clock, MapPin, Sparkles, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { TenantLocationSection } from "@/components/storefront/TenantLocationSection";
+import { TenantStatsStrip } from "@/components/storefront/AnimatedStatValue";
 
 const ONEPLUS_EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -291,32 +292,7 @@ export default function SubscriberStorefrontPage() {
         </div>
       </section>
 
-      {stats.length > 0 ? (
-        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((item, idx) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.5, delay: idx * 0.08, ease: ONEPLUS_EASE }}
-              onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
-                e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
-              }}
-              className="p-5 rounded-3xl bg-white/90 dark:bg-[#141417]/85 backdrop-blur-2xl border-t border-emerald-400/30 border-x border-b border-slate-200/80 dark:border-white/10 shadow-lg shadow-slate-900/[0.03] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] text-center spotlight-card"
-              style={{
-                borderTopColor: `${accentColor}45`,
-                "--spotlight-color": `${accentColor}15`,
-              } as React.CSSProperties}
-            >
-              <p className="font-display text-2xl font-black text-slate-900 dark:text-white tracking-tight">{item.value}</p>
-              <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">{item.label}</p>
-            </motion.div>
-          ))}
-        </section>
-      ) : null}
+      <TenantStatsStrip stats={stats} accentColor={accentColor} />
 
       {pages.home.partners.length > 0 ? (
         <section className="pb-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
