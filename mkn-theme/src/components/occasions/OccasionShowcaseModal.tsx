@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { useOccasion, SAUDI_OCCASIONS, OccasionId } from "@/context/OccasionContext";
+import { useOccasion, SAUDI_OCCASIONS, OccasionId, OccasionDetails } from "@/context/OccasionContext";
 import { useAdmin } from "@/context/AdminContext";
 import { isAdminPathname } from "@/lib/mken/admin-path";
 import { X, Sparkles, Check, Copy, Layers, Layout, Palette, Calendar, Gift, History, Lightbulb } from "lucide-react";
@@ -75,7 +75,7 @@ export const OccasionShowcaseModal: React.FC = () => {
 
         {/* Occasion Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto p-3 bg-slate-950/60 border-b border-slate-800 no-scrollbar">
-          {Object.values(SAUDI_OCCASIONS).map((occ) => {
+          {Object.values(SAUDI_OCCASIONS).map((occ: OccasionDetails) => {
             const isActive = selectedTab === occ.id;
             return (
               <button

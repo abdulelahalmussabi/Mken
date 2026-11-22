@@ -114,6 +114,8 @@ const heroStaggerContainer = {
   },
 };
 
+const ONEPLUS_EASE = [0.16, 1, 0.3, 1] as const;
+
 const heroRiseItem = {
   hidden: { opacity: 0, y: 30 },
   visible: {
@@ -121,7 +123,7 @@ const heroRiseItem = {
     y: 0,
     transition: {
       duration: 0.8,
-      ease: [0.16, 1, 0.3, 1],
+      ease: ONEPLUS_EASE,
     },
   },
 };
@@ -483,11 +485,11 @@ export default function HomePage() {
                 transition={{
                   duration: 0.7,
                   delay: index * 0.12,
-                  ease: [0.16, 1, 0.3, 1],
+                  ease: ONEPLUS_EASE,
                 }}
                 whileHover={{
                   y: -6,
-                  transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] },
+                  transition: { duration: 0.3, ease: ONEPLUS_EASE },
                 }}
                 className="relative bg-surface border border-slate-200 dark:border-slate-800 hover:border-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/15 rounded-3xl p-6 shadow-sm transition-colors duration-300 flex flex-col justify-between space-y-6 group overflow-hidden"
               >
@@ -545,7 +547,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.6, delay: 0.1, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
                   className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
@@ -562,7 +564,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.6, delay: 0.2, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
                   className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
@@ -579,7 +581,7 @@ export default function HomePage() {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.6, delay: 0.3, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
                   className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
@@ -599,7 +601,7 @@ export default function HomePage() {
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.7, ease: ONEPLUS_EASE }}
               className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl relative overflow-hidden"
             >
               <div className="flex items-center justify-between pb-4 border-b border-line">
@@ -633,9 +635,6 @@ export default function HomePage() {
                 </span>
               </div>
             </motion.div>
-          </div>
-        </div>
-      </section>
           </div>
         </div>
       </section>
