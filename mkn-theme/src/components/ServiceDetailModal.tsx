@@ -26,23 +26,29 @@ export default function ServiceDetailModal({ service, onClose }: ServiceDetailMo
 
         <div className="space-y-2">
           {service.badge && (
-            <span className="px-3 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-full">
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                service.badge === "الأكثر طلباً"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60"
+                  : "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700"
+              }`}
+            >
               {service.badge}
             </span>
           )}
-          <h3 className="text-2xl font-extrabold text-[#09090B] dark:text-white">{service.title}</h3>
-          <p className="text-slate-600 dark:text-slate-400 text-sm">{service.shortDesc}</p>
+          <h3 className="text-2xl font-extrabold text-[#09090B] dark:text-white leading-[1.35]">{service.title}</h3>
+          <p className="text-slate-600 dark:text-zinc-400 text-sm leading-relaxed">{service.shortDesc}</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141417] border border-slate-200 dark:border-white/8 text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#141417] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 text-sm leading-relaxed">
           {service.fullDesc}
         </div>
 
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400">ما الذي تتضمنه هذه الخدمة؟</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-400">ما الذي تتضمنه هذه الخدمة؟</h4>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {service.features.map((feat, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-xs text-slate-800 dark:text-slate-200">
+              <li key={idx} className="flex items-center gap-2 text-xs text-slate-800 dark:text-zinc-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{feat}</span>
               </li>

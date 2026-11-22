@@ -463,14 +463,14 @@ export default function HomePage() {
       <section id="services" data-section="light" className="relative z-10 py-20 bg-background border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <h2 className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center justify-center gap-1.5">
+            <div className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
               <Sparkles className="w-4 h-4" />
               <span>خدماتنا المتخصصة</span>
-            </h2>
-            <h3 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white">
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white leading-[1.35] tracking-tight max-w-2xl mx-auto">
               كل ما يحتاجه نشاطك التجاري لتصدر نتائج البحث والخرائط
-            </h3>
-            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+            </h2>
+            <p className="text-slate-600 dark:text-zinc-400 text-sm leading-relaxed max-w-2xl mx-auto">
               نقدم حلولاً متكاملة ومصممة خصيصاً للتوافق مع خوارزميات Google المحلية والجمهور السعودي.
             </p>
           </div>
@@ -491,7 +491,7 @@ export default function HomePage() {
                   y: -6,
                   transition: { duration: 0.3, ease: ONEPLUS_EASE },
                 }}
-                className="relative bg-surface border border-slate-200 dark:border-slate-800 hover:border-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/15 rounded-3xl p-6 shadow-sm transition-colors duration-300 flex flex-col justify-between space-y-6 group overflow-hidden"
+                className="relative bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/15 rounded-3xl p-6 shadow-sm transition-all duration-300 flex flex-col justify-between space-y-6 group overflow-hidden"
               >
                 {/* Internal ambient spotlight illumination */}
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -506,20 +506,26 @@ export default function HomePage() {
                       {service.iconName === "Search" && <Search className="w-6 h-6" />}
                       {service.iconName === "Star" && <Star className="w-6 h-6" />}
                     </div>
-                    <span className="px-3 py-1 bg-slate-100 dark:bg-surface-2 text-slate-700 dark:text-slate-300 rounded-full text-xs font-semibold border border-slate-200 dark:border-line">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        service.badge === "الأكثر طلباً"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60"
+                          : "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700"
+                      }`}
+                    >
                       {service.badge}
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold text-[#09090B] dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+                  <h3 className="text-xl font-bold text-[#09090B] dark:text-white group-hover:text-[#059669] dark:group-hover:text-emerald-400 transition-colors leading-[1.35]">
                     {service.title}
-                  </h4>
-                  <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{service.shortDesc}</p>
+                  </h3>
+                  <p className="text-slate-600 dark:text-zinc-400 text-sm leading-relaxed">{service.shortDesc}</p>
                 </div>
 
                 <button
                   onClick={() => setSelectedService(service)}
-                  className="relative z-10 w-full py-3 bg-slate-100 hover:bg-emerald-600 dark:bg-surface-2 dark:hover:bg-emerald-500 text-slate-900 hover:text-white dark:text-foreground dark:hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
+                  className="relative z-10 w-full py-3 bg-slate-100 hover:bg-[#059669] dark:bg-zinc-800 dark:hover:bg-emerald-600 text-slate-900 hover:text-white dark:text-zinc-100 dark:hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
                 >
                   <span>عرض تفاصيل الخدمة</span>
                   <ArrowLeft className="w-4 h-4" />
@@ -535,10 +541,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-right">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white luxury-gradient-text leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#09090B] dark:text-white leading-[1.35] tracking-tight">
                 لماذا تختار منصة &quot;مكّن&quot; لإدارة نشاطك التجاري على الخريطة؟
               </h2>
-              <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+              <p className="text-slate-600 dark:text-zinc-400 text-sm leading-relaxed">
                 نجمع بين الخبرة التقنية العميقة في SEO المحلي وفهم سلوك العميل في المملكة لتقديم نتائج سريعة وملموسة.
               </p>
 
@@ -549,14 +555,14 @@ export default function HomePage() {
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.6, delay: 0.1, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                  className="flex items-start gap-4 p-4 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
                   <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-[#09090B] dark:text-white">متوافق 100% مع السياسات المحلية والسعودية</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
+                    <p className="text-xs text-slate-600 dark:text-zinc-400 mt-1">نتبع أفضل الممارسات البرمجية بدون مخالطة الثغرات أو التقييمات الوهمية الضارة.</p>
                   </div>
                 </motion.div>
 
@@ -566,14 +572,14 @@ export default function HomePage() {
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.6, delay: 0.2, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                  className="flex items-start gap-4 p-4 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
                   <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-[#09090B] dark:text-white">دعم حزمة المناسبات الدينية والوطنية 🇸🇦</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">إمكانية تفعيل واجهات احتفالية لنشاطك التجاري في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
+                    <p className="text-xs text-slate-600 dark:text-zinc-400 mt-1">إمكانية تفعيل واجهات احتفالية لنشاطك التجاري في اليوم الوطني، يوم التأسيس، رمضان، والأعياد.</p>
                   </div>
                 </motion.div>
 
@@ -583,14 +589,14 @@ export default function HomePage() {
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.6, delay: 0.3, ease: ONEPLUS_EASE }}
                   whileHover={{ y: -3, transition: { duration: 0.2 } }}
-                  className="flex items-start gap-4 p-4 bg-surface/70 border border-line rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
+                  className="flex items-start gap-4 p-4 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-2xl hover:border-emerald-500/30 transition-colors shadow-sm"
                 >
                   <div className="p-2 bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl shrink-0">
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-[#09090B] dark:text-white">محادثة مباشرة ومتابعة لحظية لكل طلب</h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">نظام تواصل متكامل يربط صاحب النشاط التجاري بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
+                    <p className="text-xs text-slate-600 dark:text-zinc-400 mt-1">نظام تواصل متكامل يربط صاحب النشاط التجاري بمدير الطلب لإرسال التحديثات والاستفسارات.</p>
                   </div>
                 </motion.div>
               </div>
@@ -602,33 +608,33 @@ export default function HomePage() {
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.7, ease: ONEPLUS_EASE }}
-              className="p-8 bg-surface/90 border border-line rounded-3xl space-y-6 shadow-2xl relative overflow-hidden"
+              className="p-8 bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-3xl space-y-6 shadow-2xl relative overflow-hidden"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-line">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10">
                 <h3 className="font-bold text-base text-[#09090B] dark:text-white">إحصائيات التأثير المحقق</h3>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold px-2.5 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-bold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 rounded-full border border-emerald-200 dark:border-emerald-800/60">
                   تقرير النمو 2026
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                <div className="p-4 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200 dark:border-white/10 text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
                   <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
                     <AnimatedCounter target={350} prefix="+" suffix="%" />
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">زيادة الاتصالات المباشرة</div>
+                  <div className="text-xs text-slate-600 dark:text-zinc-400">زيادة الاتصالات المباشرة</div>
                   <div className="absolute -inset-1 rounded-2xl bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
-                <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                <div className="p-4 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200 dark:border-white/10 text-center space-y-1 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
                   <div className="text-3xl font-extrabold text-[#09090B] dark:text-white tabular-nums">
                     <AnimatedCounter target={4.9} decimals={1} suffix=" / 5" />
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-400">متوسط رضا أصحاب الأنشطة التجارية</div>
+                  <div className="text-xs text-slate-600 dark:text-zinc-400">متوسط رضا أصحاب الأنشطة التجارية</div>
                   <div className="absolute -inset-1 rounded-2xl bg-emerald-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-background rounded-2xl border border-line flex items-center justify-between text-xs">
-                <span className="text-slate-700 dark:text-slate-300">سرعة بدء تنفيذ الطلب:</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+              <div className="p-4 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs">
+                <span className="text-slate-600 dark:text-zinc-400">سرعة بدء تنفيذ الطلب:</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
                   <span>خلال</span>
                   <AnimatedCounter target={24} suffix=" ساعة" className="font-extrabold tabular-nums" />
                   <span>من التقديم</span>
@@ -643,42 +649,42 @@ export default function HomePage() {
       <section id="contact" data-section="light" className="relative z-10 py-20 bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center space-y-3">
-            <h2 className="text-3xl font-extrabold text-[#09090B] dark:text-white">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
-            <p className="text-slate-700 dark:text-slate-300 text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
+            <h2 className="text-3xl font-extrabold text-[#09090B] dark:text-white leading-[1.35]">تواصل مع فريق منصة &quot;مكّن&quot;</h2>
+            <p className="text-slate-600 dark:text-zinc-400 text-sm">أدخل بياناتك وسيستجيب فريقنا الفني خلال ساعات قليلة.</p>
           </div>
 
-          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-surface border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+          <form onSubmit={handleSubmit(onContactSubmit)} className="bg-white dark:bg-[#141417] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">الاسم الكامل</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">الاسم الكامل</label>
                 <input
                   {...register("name")}
                   type="text"
                   placeholder="عبدالرحمن الشمري"
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-sm outline-none transition-colors"
                 />
                 {errors.name && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">البريد الإلكتروني</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">البريد الإلكتروني</label>
                 <input
                   {...register("email")}
                   type="email"
                   placeholder="name@company.sa"
-                  className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-sm outline-none transition-colors"
                 />
                 {errors.email && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email.message}</p>}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">تفاصيل النشاط التجاري أو الاستفسار</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">تفاصيل النشاط التجاري أو الاستفسار</label>
               <textarea
                 {...register("message")}
                 rows={4}
                 placeholder="أذكر اسم نشاطك التجاري ومدينتك وما هي الخدمة المطلوبة لتحسين خريطتك..."
-                className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 text-sm outline-none transition-colors"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 focus:border-emerald-500 rounded-xl text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-sm outline-none transition-colors"
               />
               {errors.message && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.message.message}</p>}
             </div>
@@ -686,7 +692,7 @@ export default function HomePage() {
             <button
               type="submit"
               disabled={submittingContact}
-              className="w-full py-4 font-bold text-white rounded-xl shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-4 font-bold text-white rounded-xl shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               style={{ backgroundColor: activeOccasion === "none" ? "var(--primary-accent)" : occasionDetails.accentColor }}
             >
               {submittingContact ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

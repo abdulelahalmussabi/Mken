@@ -61,19 +61,19 @@ export default function Footer() {
               <li>
                 <button
                   onClick={openModal}
-                  className="hover:text-emerald-400 transition-colors text-emerald-400 font-semibold flex items-center gap-1"
+                  className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>دراسة حزمة المناسبات السعودية</span>
                 </button>
               </li>
               <li>
-                <Link href="/auth" className="hover:text-emerald-400 transition-colors">
+                <Link href="/auth" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   تسجيل الدخول / إنشاء حساب
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="hover:text-emerald-400 transition-colors">
+                <Link href="/dashboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                   لوحة تحكم الطلبات
                 </Link>
               </li>
@@ -146,15 +146,15 @@ export default function Footer() {
             <Heart className="w-3.5 h-3.5 text-rose-500 inline fill-rose-500" />
           </p>
           <div className="flex items-center gap-4">
-            <a href="https://mken.live/privacy" className="hover:text-emerald-400 transition-colors">
+            <a href="https://mken.live/privacy" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
               سياسة الخصوصية
             </a>
             <span>•</span>
-            <a href="https://mken.live/terms" className="hover:text-emerald-400 transition-colors">
+            <a href="https://mken.live/terms" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
               شروط الخدمة
             </a>
             <span>•</span>
-            <span>ثيم المناسبة النشط: <strong className="text-emerald-400">{occasionDetails.shortName}</strong></span>
+            <span>ثيم المناسبة النشط: <strong className="text-emerald-600 dark:text-emerald-400">{occasionDetails.shortName}</strong></span>
             <span>•</span>
             <span>السعودية 🇸🇦</span>
           </div>
