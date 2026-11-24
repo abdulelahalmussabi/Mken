@@ -86,12 +86,11 @@ function readMigration(name) {
 }
 
 function migrationSql() {
+  // Runtime bootstrap only. The classic schema migrations reference public.branches
+  // and are applied manually with db/queue-management-schema.sql.
   return [
     '2026-11-17-queue-postgres-runtime.sql',
     '2026-11-17-queue-delta-commit.sql',
-    '2026-11-22-queue-multi-zone.sql',
-    '2026-11-23-queue-appointments-kiosk.sql',
-    '2026-11-24-enterprise-licensing-zones.sql',
     '2026-11-24-queue-day-rollover.sql'
   ].map(readMigration).join('\n');
 }

@@ -60,6 +60,7 @@ jobs:
         node tests/queue-optional-identity.test.cjs
         node tests/queue-concurrency.test.cjs
         node tests/queue-hall-policy.test.cjs
+        node tests/queue-day-rollover.test.cjs
 
     - name: Prove legacy and queue URLs resolve in mkn
       run: node scripts/verify-api-routes.cjs
