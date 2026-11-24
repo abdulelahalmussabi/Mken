@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
 const sbEnv = require('./supabase-env');
+const queueDay = require('./queue-day');
 
 /**
  * Postgres is the source of truth when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
@@ -33,12 +34,7 @@ function warnMemory() {
 }
 
 function riyadhDay(date) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Riyadh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(date || new Date());
+  return queueDay.riyadhDateKey(date || queueDay.now());
 }
 
 function freshStore() {
@@ -84,17 +80,20 @@ function noteEvent(name, payload) {
   store.events.push({ name: name, payload: payload });
 }
 
-function migrationSql() {
+function readMigration(name) {
   const dir = path.join(__dirname, '../../../../../db/migrations');
+  return fs.readFileSync(path.join(dir, name), 'utf8');
+}
+
+function migrationSql() {
   return [
     '2026-11-17-queue-postgres-runtime.sql',
     '2026-11-17-queue-delta-commit.sql',
     '2026-11-22-queue-multi-zone.sql',
     '2026-11-23-queue-appointments-kiosk.sql',
-    '2026-11-24-enterprise-licensing-zones.sql'
-  ].map(function (name) {
-    return fs.readFileSync(path.join(dir, name), 'utf8');
-  }).join('\n');
+    '2026-11-24-enterprise-licensing-zones.sql',
+    '2026-11-24-queue-day-rollover.sql'
+  ].map(readMigration).join('\n');
 }
 
 function stableStringify(value) {
@@ -130,18 +129,37 @@ async function deltaReady(client) {
   return Boolean(found.rows[0] && found.rows[0].ok);
 }
 
+async function rolloverReady(client) {
+  const found = await client.query(
+    "SELECT to_regprocedure('public.queue_apply_day_rollover(text)') IS NOT NULL AS ok"
+  );
+  return Boolean(found.rows[0] && found.rows[0].ok);
+}
+
+function missingRollover(err) {
+  const message = String((err && (err.message || err)) || '');
+  return message.indexOf('queue_apply_day_rollover') !== -1 && (
+    message.indexOf('does not exist') !== -1 ||
+    message.indexOf('Could not find') !== -1 ||
+    message.indexOf('schema cache') !== -1
+  );
+}
+
 async function ensureSchema() {
   if (mode() !== 'pg') return;
   if (!schemaReady) {
     schemaReady = (async function () {
       const client = await getPool().connect();
       try {
-        if (await deltaReady(client)) return;
+        if (await deltaReady(client) && await rolloverReady(client)) return;
         await client.query('BEGIN');
         try {
           // Held until commit so a second process cannot write while CREATE INDEX takes AccessExclusiveLock.
           await client.query('SELECT pg_advisory_xact_lock(8675309)');
           if (!(await deltaReady(client))) await client.query(migrationSql());
+          else if (!(await rolloverReady(client))) {
+            await client.query(readMigration('2026-11-24-queue-day-rollover.sql'));
+          }
           await client.query('COMMIT');
         } catch (err) {
           try { await client.query('ROLLBACK'); } catch (rollbackErr) { /* connection already closed */ }
@@ -379,11 +397,14 @@ async function callNext(slug, counterId, ticketId, statuses) {
 }
 
 function memoryAllocate(slug, queueId, prefix, db) {
-  const day = riyadhDay();
+  const settings = (db.settings && db.settings[slug]) || {};
+  const extended = db.overrides && db.overrides[slug] ? Number(db.overrides[slug].extended_closing_minutes) || 0 : 0;
+  const day = queueDay.currentPeriod(settings, queueDay.now(), extended);
   if (!db.dailyCounters) db.dailyCounters = {};
   if (!db.dailyCounters[slug]) db.dailyCounters[slug] = {};
   const key = queueId + '|' + day;
-  const next = (db.dailyCounters[slug][key] || 0) + 1;
+  const open = queueDay.openSequences(db.tickets && db.tickets[slug], queueId);
+  const next = queueDay.nextSequence(db.dailyCounters[slug][key] || 0, open);
   db.dailyCounters[slug][key] = next;
   const queues = db.queues[slug] || [];
   const queue = queues.find(function (item) { return item.id === queueId; });
@@ -393,8 +414,45 @@ function memoryAllocate(slug, queueId, prefix, db) {
   }
   return {
     sequence: next,
-    ticket_number: String(prefix || 'A') + '-' + String(next).padStart(2, '0')
+    ticket_number: queueDay.formatTicketNumber(prefix || 'A', next)
   };
+}
+
+async function applySqlRollover(slug) {
+  if (mode() === 'pg') {
+    const result = await getPool().query('SELECT public.queue_apply_day_rollover($1) AS result', [slug]);
+    return result.rows[0].result;
+  }
+  const { data, error } = await supabase().rpc('queue_apply_day_rollover', { p_tenant: slug });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+async function ensureRollover(slug, db) {
+  if (mode() === 'memory') return queueDay.applyRollover(db, slug);
+  await ensureSchema();
+  try {
+    const result = await applySqlRollover(slug);
+    await reload(slug, db);
+    return result;
+  } catch (err) {
+    if (!missingRollover(err)) throw err;
+    const result = queueDay.applyRollover(db, slug);
+    await finish(slug, db);
+    return result;
+  }
+}
+
+async function rolloverAll() {
+  if (mode() === 'memory') return { ok: true, mode: 'memory', tenants: 0 };
+  await ensureSchema();
+  if (mode() === 'pg') {
+    const result = await getPool().query('SELECT public.queue_rollover_all() AS result');
+    return result.rows[0].result;
+  }
+  const { data, error } = await supabase().rpc('queue_rollover_all');
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 async function allocate(slug, queueId, prefix, db) {
@@ -509,6 +567,8 @@ module.exports = {
   adoptClaim: adoptClaim,
   fingerprint: fingerprint,
   allocate: allocate,
+  ensureRollover: ensureRollover,
+  rolloverAll: rolloverAll,
   latestEventId: latestEventId,
   pollEvents: pollEvents,
   ensureSchema: ensureSchema,

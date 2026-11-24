@@ -657,6 +657,32 @@
             </div>
           </section>
 
+          <section class="admin-section" style="margin-top: 24px; border-right: 4px solid var(--color-primary);">
+            <h4 style="margin: 0 0 6px; color: var(--color-primary);">اليوم التشغيلي وإغلاق التذاكر</h4>
+            <p class="admin-hint" style="margin: 0 0 14px;">التوقيت آسيا/الرياض. الإغلاق الثابت يُنهي كل التذاكر المفتوحة عند وقت الإغلاق ويعيد الترقيم في اليوم التالي. الفرع على مدار الساعة يُبقي الدور عبر منتصف الليل، ويُغلق التذكرة فقط إذا تجاوزت حد الانتظار، ويعيد الترقيم عند ساعة هادئة دون تكرار رقم ما زال مفتوحاً.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              <div class="admin-field">
+                <label for="adminQueueOperatingMode">نمط التشغيل</label>
+                <select id="adminQueueOperatingMode" class="admin-input">
+                  <option value="fixed_close" selected>إغلاق بوقت ثابت</option>
+                  <option value="always_open">فرع على مدار الساعة (24 ساعة)</option>
+                </select>
+              </div>
+              <div class="admin-field" id="adminQueueClosingTimeField">
+                <label for="adminQueueClosingTime">وقت الإغلاق</label>
+                <input type="time" id="adminQueueClosingTime" class="admin-input" value="00:00" dir="ltr">
+              </div>
+              <div class="admin-field" id="adminQueueMaxWaitField">
+                <label for="adminQueueMaxWaitHours">أقصى انتظار قبل اعتبار العميل غادر (ساعات)</label>
+                <input type="number" id="adminQueueMaxWaitHours" class="admin-input" min="1" max="72" value="6" dir="ltr">
+              </div>
+              <div class="admin-field" id="adminQueueResetHourField">
+                <label for="adminQueueResetHour">ساعة إعادة الترقيم (0–23)</label>
+                <input type="number" id="adminQueueResetHour" class="admin-input" min="0" max="23" value="4" dir="ltr">
+              </div>
+            </div>
+          </section>
+
           <!-- قسم إدارة الكاونترات وتعديل أسمائها وعددها -->
           <section class="admin-section" style="margin-top: 24px; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px; background: #fff;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
