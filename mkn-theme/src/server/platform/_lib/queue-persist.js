@@ -84,17 +84,37 @@ function noteEvent(name, payload) {
   store.events.push({ name: name, payload: payload });
 }
 
-function migrationSql() {
+const CORE_MIGRATIONS = [
+  '2026-11-17-queue-postgres-runtime.sql',
+  '2026-11-17-queue-delta-commit.sql'
+];
+const ADDON_MIGRATIONS = [
+  '2026-11-22-queue-multi-zone.sql',
+  '2026-11-23-queue-appointments-kiosk.sql',
+  '2026-11-24-enterprise-licensing-zones.sql'
+];
+
+function readMigrations(names) {
   const dir = path.join(__dirname, '../../../../../db/migrations');
-  return [
-    '2026-11-17-queue-postgres-runtime.sql',
-    '2026-11-17-queue-delta-commit.sql',
-    '2026-11-22-queue-multi-zone.sql',
-    '2026-11-23-queue-appointments-kiosk.sql',
-    '2026-11-24-enterprise-licensing-zones.sql'
-  ].map(function (name) {
+  return names.map(function (name) {
     return fs.readFileSync(path.join(dir, name), 'utf8');
   }).join('\n');
+}
+
+function coreMigrationSql() {
+  return readMigrations(CORE_MIGRATIONS);
+}
+
+function addonMigrationSql() {
+  return readMigrations(ADDON_MIGRATIONS);
+}
+
+async function addonMigrationsReady(client) {
+  const found = await client.query(
+    "SELECT to_regclass('public.branches') IS NOT NULL" +
+      " AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') AS ok"
+  );
+  return Boolean(found.rows[0] && found.rows[0].ok);
 }
 
 function stableStringify(value) {
@@ -141,7 +161,13 @@ async function ensureSchema() {
         try {
           // Held until commit so a second process cannot write while CREATE INDEX takes AccessExclusiveLock.
           await client.query('SELECT pg_advisory_xact_lock(8675309)');
-          if (!(await deltaReady(client))) await client.query(migrationSql());
+          if (!(await deltaReady(client))) {
+            await client.query(coreMigrationSql());
+            // Zone, kiosk, and licensing SQL assume the classic queue tables
+            // and the Supabase authenticated role. A blank Postgres (CI) only
+            // needs the runtime functions.
+            if (await addonMigrationsReady(client)) await client.query(addonMigrationSql());
+          }
           await client.query('COMMIT');
         } catch (err) {
           try { await client.query('ROLLBACK'); } catch (rollbackErr) { /* connection already closed */ }
