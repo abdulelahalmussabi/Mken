@@ -9,6 +9,7 @@
 
 const assert = require('assert');
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const path = require('path');
 
 const themeRoot = path.join(__dirname, '..', 'mkn-theme');
@@ -17,12 +18,16 @@ const BASE = 'http://127.0.0.1:' + PORT;
 const HOST = 'demo.mken.live';
 const PHONE = '0550001122';
 const NAME = 'عميل تجربة الطابور';
+const E2E_SESSION_SECRET = 'e2e-session-' + crypto.randomBytes(16).toString('hex');
+const E2E_DEMO_PASSWORD = 'E2e!' + crypto.randomBytes(12).toString('hex');
 
 function childEnv() {
   const env = Object.assign({}, process.env, {
     NODE_ENV: 'development',
     PORT: String(PORT),
-    ADMIN_PIN: 'e2e-pin'
+    ADMIN_PIN: 'e2e-pin',
+    ADMIN_SESSION_SECRET: E2E_SESSION_SECRET,
+    ADMIN_SEED_PASSWORDS: JSON.stringify({ demo: E2E_DEMO_PASSWORD })
   });
   Object.keys(env).forEach(function (key) {
     if (
@@ -122,14 +127,21 @@ async function main() {
     });
     assert.strictEqual(badLogin.status, 401, JSON.stringify(badLogin.body));
 
-    const login = await fetch(BASE + '/api/v1/auth/admin-login', {
+    const legacyEmailLogin = await api('/api/v1/auth/admin-login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: { email: 'demo@mken.live', password: E2E_DEMO_PASSWORD }
+    });
+    assert.strictEqual(legacyEmailLogin.status, 410, JSON.stringify(legacyEmailLogin.body));
+
+    const login = await fetch(BASE + '/api/admin/login', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-forwarded-host': HOST,
         origin: 'https://' + HOST
       },
-      body: JSON.stringify({ email: 'demo@mken.live', password: 'Aa#321321' })
+      body: JSON.stringify({ email: 'demo@mken.live', password: E2E_DEMO_PASSWORD })
     });
     const loginBody = await login.json();
     assert.strictEqual(login.status, 200, JSON.stringify(loginBody));

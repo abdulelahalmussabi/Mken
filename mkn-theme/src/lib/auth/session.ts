@@ -85,14 +85,16 @@ export async function sha256Hex(value: string): Promise<string> {
  * Sessions are unusable unless ADMIN_SESSION_SECRET is configured, so a missing
  * secret fails closed instead of silently issuing forgeable tokens.
  */
-function getSecret(): string {
-  const secret = process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
-  if (secret && secret.length >= 16) return secret;
-  return "mken-saas-platform-secure-default-session-secret-2026";
+function getSecret(): string | null {
+  const secret = (process.env.ADMIN_SESSION_SECRET || "").trim();
+  if (secret.length >= 16) return secret;
+  return null;
 }
 
 export async function createSessionToken(session: AdminSession): Promise<string | null> {
   const secret = getSecret();
+  if (!secret) return null;
+
   const payload: SessionPayload = {
     ...session,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
@@ -103,6 +105,7 @@ export async function createSessionToken(session: AdminSession): Promise<string 
 
 export async function verifySessionToken(token: string): Promise<AdminSession | null> {
   const secret = getSecret();
+  if (!secret) return null;
 
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;

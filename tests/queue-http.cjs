@@ -1,5 +1,11 @@
 'use strict';
 
+const crypto = require('crypto');
+
+if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.trim().length < 16) {
+  process.env.ADMIN_SESSION_SECRET = 'test-' + crypto.randomBytes(24).toString('hex');
+}
+
 const { signStaffSession } = require('../mkn-theme/src/server/platform/_lib/queue-guard');
 
 function tenantHeaders(options) {

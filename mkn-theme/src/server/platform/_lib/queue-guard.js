@@ -36,12 +36,8 @@ const SECRET_KEYS = new Set([
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/;
 
 function sessionSecret() {
-  return (
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_KEY ||
-    'mken-saas-platform-secure-default-session-secret-2026'
-  );
+  const secret = String(process.env.ADMIN_SESSION_SECRET || '').trim();
+  return secret.length >= 16 ? secret : null;
 }
 
 function b64url(value) {
@@ -53,6 +49,10 @@ function b64url(value) {
 }
 
 function signStaffSession(session) {
+  const secret = sessionSecret();
+  if (!secret) {
+    throw new Error('ADMIN_SESSION_SECRET environment variable must be at least 16 characters.');
+  }
   const payload = {
     email: session.email,
     role: session.role,
@@ -63,7 +63,7 @@ function signStaffSession(session) {
     payload.queueRole = session.queueRole;
   }
   const body = b64url(Buffer.from(JSON.stringify(payload), 'utf8'));
-  const sig = b64url(crypto.createHmac('sha256', sessionSecret()).update(body).digest());
+  const sig = b64url(crypto.createHmac('sha256', secret).update(body).digest());
   return body + '.' + sig;
 }
 
@@ -75,12 +75,14 @@ function safeEqual(a, b) {
 }
 
 function verifyStaffSession(token) {
+  const secret = sessionSecret();
+  if (!secret) return null;
   if (!token || typeof token !== 'string' || !token.includes('.')) return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const body = parts[0];
   const signature = parts[1];
-  const expected = b64url(crypto.createHmac('sha256', sessionSecret()).update(body).digest());
+  const expected = b64url(crypto.createHmac('sha256', secret).update(body).digest());
   if (!safeEqual(signature, expected)) return null;
   try {
     const padded = body.replace(/-/g, '+').replace(/_/g, '/');
