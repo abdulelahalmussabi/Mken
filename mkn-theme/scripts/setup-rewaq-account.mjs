@@ -67,7 +67,11 @@ const sb = createClient(url, serviceKey, {
 
 const tenantSlug = "rewaq";
 const email = "rewaqresident@gmail.com";
-const password = process.env.REWAQ_ADMIN_PASSWORD || "Aa#321321";
+const password = process.env.REWAQ_ADMIN_PASSWORD || "";
+if (password.length < 12) {
+  console.error("Set REWAQ_ADMIN_PASSWORD to a new secret of at least 12 characters. This script no longer ships a password.");
+  process.exit(1);
+}
 const phone = "0541303411";
 const businessName = "Rewaq Resident | رواق ريزدنت";
 const configData = JSON.parse(fs.readFileSync(path.join(repoRoot, "data", "tenants", "rewaq.json"), "utf8"));

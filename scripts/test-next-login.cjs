@@ -11,6 +11,12 @@ const testAccounts = [
 ];
 
 async function testNextLogin() {
+  const password = process.env.MKEN_ADMIN_PASSWORD || '';
+  if (!password) {
+    console.error('Set MKEN_ADMIN_PASSWORD. This script no longer ships a password.');
+    process.exit(1);
+  }
+
   console.log(`📡 Testing Next.js login endpoint: ${siteUrl}/api/admin/login ...\n`);
 
   for (const email of testAccounts) {
@@ -18,7 +24,7 @@ async function testNextLogin() {
       const res = await fetch(`${siteUrl}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'Aa#321321' })
+        body: JSON.stringify({ email, password })
       });
 
       const status = res.status;

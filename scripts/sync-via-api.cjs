@@ -1,11 +1,14 @@
 'use strict';
 
 const siteUrl = 'https://mken.live';
-const pin = 'mken2026';
+const pin = process.env.ADMIN_PIN || '';
+if (!pin) {
+  console.error('Set ADMIN_PIN. This script no longer ships a PIN.');
+  process.exit(1);
+}
 
 const tenantSlug = 'almahrusa';
 const email = 'stayinmedina@gmail.com';
-const password = 'Aa#321321';
 const phone = '0554453287';
 const businessName = 'المحروسة للشقق المفروشة | Mahrousa Apartment';
 const mapsUrl = 'https://maps.app.goo.gl/J3yxQx6r4HF6yeYM8';

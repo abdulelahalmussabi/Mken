@@ -26,8 +26,12 @@ async function testLiveLogin() {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    const email = 'admin@mken.live';
-    const password = 'Aa#321321';
+    const email = process.env.MKEN_ADMIN_EMAIL || 'admin@mken.live';
+    const password = process.env.MKEN_ADMIN_PASSWORD || '';
+    if (!password) {
+      console.error('Set MKEN_ADMIN_PASSWORD. This script no longer ships a password.');
+      return;
+    }
 
     console.log(`⏳ Attempting direct Supabase sign-in for ${email}...`);
     const { data: authRes, error: authErr } = await supabase.auth.signInWithPassword({

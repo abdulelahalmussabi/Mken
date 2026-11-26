@@ -58,7 +58,11 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 
 const tenantSlug = 'almahrusa';
 const email = 'stayinmedina@gmail.com';
-const password = 'Aa#321321';
+const password = process.env.MAHROUSA_ADMIN_PASSWORD || process.env.MKEN_ADMIN_PASSWORD || '';
+if (password.length < 12) {
+  console.error('Set MAHROUSA_ADMIN_PASSWORD to a new secret of at least 12 characters. This script no longer ships a password.');
+  process.exit(1);
+}
 const phone = '0554453287';
 const businessName = 'المحروسة للشقق المفروشة | Mahrousa Apartment';
 const mapsUrl = 'https://maps.app.goo.gl/J3yxQx6r4HF6yeYM8';
@@ -78,7 +82,6 @@ async function run() {
   if (existingUser) {
     userId = existingUser.id;
     console.log(`✅ المستخدم موجود مسبقاً في Auth. UUID: ${userId}`);
-    // Update password to ensure it matches Aa#321321
     const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, {
       password: password,
       email_confirm: true,
@@ -352,7 +355,7 @@ async function run() {
   console.log(`- رابط الموقع: https://almahrusa.mken.live أو https://mken.live/book.html?tenant=almahrusa`);
   console.log(`- لوحة التحكم: https://almahrusa.mken.live/admin.html أو https://mken.live/admin.html?tenant=almahrusa`);
   console.log(`- البريد الإلكتروني: ${email}`);
-  console.log(`- كلمة المرور: ${password}`);
+  console.log('- كلمة المرور: (من البيئة، غير مطبوعة)');
   console.log(`- رقم الجوال: ${phone}`);
   console.log(`- خرائط جوجل: ${mapsUrl}`);
   console.log(`- عدد الغرف والوحدات: 18 غرفة مفصلة ومفعلة بالحالة والأرقام والدور`);

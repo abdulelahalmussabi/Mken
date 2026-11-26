@@ -278,87 +278,14 @@ async function handleAdminOperations(req, res) {
   const crypto = require('crypto');
   const body = req.body || {};
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const password = typeof body.password === 'string' ? body.password.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
 
-  // 1. Email & Password Admin Login Flow
-  if (email && password) {
-    const isStandardPass = password === 'Aa#321321' || password.startsWith('Aa#321321');
-    let matchedSession = null;
-    let welcomeMessage = '';
-
-    if (isStandardPass) {
-      if (email === 'admin@mken.live' || email === 'admin@mkem.live' || email.startsWith('admin@')) {
-        matchedSession = { email: 'admin@mken.live', role: 'super' };
-        welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
-      } else if (
-        email === 'rewa@mken.live' ||
-        email === 'rewaa@mken.live' ||
-        email.includes('rewa')
-      ) {
-        matchedSession = { email: 'rewa@mken.live', role: 'client', clientSlug: 'rewa' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم منتجع رواء الاستشفاء الرقمي!';
-      } else if (email === 'almasabi@mken.live' || email.includes('masabi') || email.includes('msabi')) {
-        matchedSession = { email: 'almasabi@mken.live', role: 'client', clientSlug: 'almasabi' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!';
-      } else if (
-        email === 'almahrusa@mken.live' ||
-        email === 'almahrosa@mken.live' ||
-        email.includes('mahrus') ||
-        email.includes('mahros')
-      ) {
-        matchedSession = { email: 'almahrusa@mken.live', role: 'client', clientSlug: 'almahrusa' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم مجموعة المحروسة!';
-      } else if (email === 'demo@mken.live' || email.includes('demo')) {
-        matchedSession = { email: 'demo@mken.live', role: 'client', clientSlug: 'demo' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم صالون النخبة!';
-      }
-    }
-
-    if (matchedSession) {
-      const secret =
-        process.env.ADMIN_SESSION_SECRET ||
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.SUPABASE_KEY ||
-        'mken-saas-platform-secure-default-session-secret-2026';
-      const payload = {
-        ...matchedSession,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 8)
-      };
-      const bodyBase64 = Buffer.from(JSON.stringify(payload), 'utf8')
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      const sig = crypto
-        .createHmac('sha256', secret)
-        .update(bodyBase64)
-        .digest('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      const token = `${bodyBase64}.${sig}`;
-
-      res.setHeader(
-        'Set-Cookie',
-        `mkn_admin_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800${
-          process.env.NODE_ENV === 'production' ? '; Secure' : ''
-        }`
-      );
-
-      return res.status(200).json({
-        success: true,
-        email: matchedSession.email,
-        role: matchedSession.role,
-        clientSlug: matchedSession.clientSlug,
-        message: welcomeMessage
-      });
-    }
-  }
-
-  // 2. PIN-based Admin Login Flow
-  const pin = (req.body && req.body.pin) || req.query.pin || req.headers['x-admin-pin'];
+  // Staff sessions are issued only by POST /api/admin/login.
+  // This route stays PIN-gated for legacy admin actions and never mints
+  // mkn_admin_session from a shared password.
+  const pin = (body.pin) || req.query.pin || req.headers['x-admin-pin'];
   const expectedPin = process.env.ADMIN_PIN;
-  const action = (req.body && req.body.action) || req.query.action || 'login';
+  const action = (body.action) || req.query.action || 'login';
 
   const safeCompare = (a, b) => {
     if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -371,21 +298,30 @@ async function handleAdminOperations(req, res) {
   const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
   const rateLimitKey = 'admin_login_failed:' + ip;
 
-  if (action !== 'create-super-admin') {
-    if (!expectedPin) {
-      console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
-      return res.status(500).json({ success: false, error: 'تكوين الخادم غير مكتمل: لم يتم إعداد رمز الدخول الرئيسي.' });
+  if (email && password && !pin) {
+    const passwordBlock = isRateLimited('admin_password_login_failed:' + ip, 5, 60000, false);
+    if (passwordBlock.limited) {
+      res.setHeader('Retry-After', String(passwordBlock.retryAfterSec));
+      return res.status(429).json({ success: false, error: 'تم تجاوز الحد الأقصى للمحاولات.' });
     }
+    isRateLimited('admin_password_login_failed:' + ip, 5, 60000, true);
+    return res.status(401).json({ success: false, error: 'بيانات الدخول غير صحيحة' });
+  }
 
-    const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
-    if (checkBlock.limited) {
-      return res.status(429).json({ success: false, error: `تم تجاوز الحد الأقصى للمحاولات الخاطئة. الرجاء الانتظار ${checkBlock.retryAfterSec} ثانية.` });
-    }
+  if (!expectedPin) {
+    console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
+    return res.status(500).json({ success: false, error: 'تكوين الخادم غير مكتمل: لم يتم إعداد رمز الدخول الرئيسي.' });
+  }
 
-    if (!pin || !safeCompare(pin, expectedPin)) {
-      isRateLimited(rateLimitKey, 5, 60000, true);
-      return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر' });
-    }
+  const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
+  if (checkBlock.limited) {
+    res.setHeader('Retry-After', String(checkBlock.retryAfterSec));
+    return res.status(429).json({ success: false, error: 'تم تجاوز الحد الأقصى للمحاولات.' });
+  }
+
+  if (!pin || !safeCompare(String(pin), expectedPin)) {
+    isRateLimited(rateLimitKey, 5, 60000, true);
+    return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر' });
   }
 
   if (action === 'login') {
@@ -989,7 +925,10 @@ async function handleAdminOperations(req, res) {
   }
 
   if (action === 'create-super-admin') {
-    const targetPassword = (req.body && req.body.password) || req.query.password || 'Aa#321321';
+    const targetPassword = typeof body.password === 'string' ? body.password : '';
+    if (targetPassword.length < 12) {
+      return res.status(400).json({ success: false, error: 'كلمة المرور مطلوبة ويجب ألا تقل عن 12 محرفاً' });
+    }
 
     const accounts = [
       { email: 'admin@mken.live', slug: 'admin', name: 'الإدارة العامة (Super Admin)' },

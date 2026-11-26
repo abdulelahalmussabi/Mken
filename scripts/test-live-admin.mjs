@@ -21,7 +21,12 @@ async function run() {
 
     console.log('Logging in...');
     await page.selectOption('#loginAuthType', 'local');
-    await page.fill('#pinInput', 'mken2026');
+    const pin = process.env.ADMIN_PIN || '';
+    if (!pin) {
+      console.error('Set ADMIN_PIN. This script no longer ships a PIN.');
+      process.exit(1);
+    }
+    await page.fill('#pinInput', pin);
     await page.click('#loginSubmitBtn');
     await page.waitForSelector('#adminView:not([hidden])', { timeout: 10000 });
     console.log('Login successful!');

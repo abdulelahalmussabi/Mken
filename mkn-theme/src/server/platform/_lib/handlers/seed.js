@@ -1,9 +1,49 @@
 'use strict';
 
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const { isRateLimited } = require('../rate-limit');
+
+function secretsEqual(a, b) {
+  const aHash = crypto.createHash('sha256').update(String(a)).digest();
+  const bHash = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
+}
+
+function clientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '';
+  return String(forwarded).split(',')[0].trim() || 'unknown';
+}
+
+/** Disabled unless SEED_ADMIN_SECRET and SEED_ADMIN_PASSWORD are set. */
+function authorizeSeed(req) {
+  const secret = process.env.SEED_ADMIN_SECRET || '';
+  const password = process.env.SEED_ADMIN_PASSWORD || '';
+  const presented = String(req.headers['x-seed-secret'] || '');
+  const configured = secret.length >= 16 && password.length >= 12;
+  const matches = presented.length > 0 && secret.length > 0 && secretsEqual(presented, secret);
+  if (!configured || !matches) return null;
+  return password;
+}
 
 module.exports = async function handler(req, res) {
-  // Allow GET and POST
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
+
+  const ip = clientIp(req);
+  const blocked = isRateLimited('seed_admin:' + ip, 5, 60000, false);
+  if (blocked.limited) {
+    res.setHeader('Retry-After', String(blocked.retryAfterSec));
+    return res.status(429).json({ success: false, error: 'Forbidden' });
+  }
+
+  const defaultPassword = authorizeSeed(req);
+  if (!defaultPassword) {
+    isRateLimited('seed_admin:' + ip, 5, 60000, true);
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
   try {
     const supabaseUrl = (
       process.env.SUPABASE_URL ||
@@ -29,7 +69,6 @@ module.exports = async function handler(req, res) {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const defaultPassword = 'Aa#321321';
     const accounts = [
       { email: 'admin@mken.live', slug: 'admin', name: 'الإدارة العامة (Super Admin)' },
       { email: 'almahrusa@mken.live', slug: 'almahrusa', name: 'مجموعة المحروسة' },
