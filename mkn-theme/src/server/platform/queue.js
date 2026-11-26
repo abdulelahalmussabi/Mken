@@ -12,6 +12,7 @@ const pushLib = require('./_lib/web-push');
 const { isRateLimited } = require('./_lib/rate-limit');
 const queueGuard = require('./_lib/queue-guard');
 const queuePersist = require('./_lib/queue-persist');
+const queueDay = require('./_lib/queue-day');
 const queueGate = require('./_lib/queue-gate');
 const onpremLicense = require('./_lib/onprem-license');
 const crypto = require('crypto');
@@ -58,7 +59,8 @@ const STAFF_ONLY_ACTIONS = new Set([
   'reception-handover',
   'cleanup-ghost-counters',
   'manual-override',
-  'get-override-state'
+  'get-override-state',
+  'restore-ticket'
 ]);
 
 /**
@@ -167,6 +169,12 @@ function getOrCreateMemoryTenant(tenantSlug) {
   if (!slug) {
     throw new Error('tenant slug required');
   }
+  const servedToday = queueDay.currentPeriod({
+    operating_mode: 'fixed_close',
+    closing_time: '00:00',
+    max_wait_hours: 6,
+    reset_hour: 4
+  }, queueDay.now(), 0);
   if (!MEMORY_DB.queues[slug]) {
     MEMORY_DB.queues[slug] = [
       {
@@ -214,6 +222,7 @@ function getOrCreateMemoryTenant(tenantSlug) {
         current_session_started_at: null,
         ewma_service_seconds: 360,
         completed_today_count: 14,
+        completed_today_service_date: servedToday,
         current_break_id: null
       },
       {
@@ -229,6 +238,7 @@ function getOrCreateMemoryTenant(tenantSlug) {
         current_session_started_at: null,
         ewma_service_seconds: 720,
         completed_today_count: 9,
+        completed_today_service_date: servedToday,
         current_break_id: null
       },
       {
@@ -244,6 +254,7 @@ function getOrCreateMemoryTenant(tenantSlug) {
         current_session_started_at: null,
         ewma_service_seconds: 300,
         completed_today_count: 22,
+        completed_today_service_date: servedToday,
         current_break_id: null
       }
     ];
@@ -359,7 +370,11 @@ function getOrCreateMemoryTenant(tenantSlug) {
         freeze_ewma_during_breaks: true,
         notify_waiting_whatsapp: true,
         audio_chime_on_resume: true
-      }
+      },
+      operating_mode: 'fixed_close',
+      closing_time: '00:00',
+      max_wait_hours: 6,
+      reset_hour: 4
     };
   }
   if (!MEMORY_DB.sseClients[slug]) MEMORY_DB.sseClients[slug] = [];
@@ -744,6 +759,16 @@ function hashKioskToken(raw) {
  * 4. Standard (الحضور المباشر): بحسب وقت الوصول booked_at.
  * - يتم تطبيق appointment_interleave_ratio (افتراضياً 3 مواعيد ثم 1 انتظار مباشر) لمنع تجويع المرضى بدون موعد.
  */
+function queueClock(slug) {
+  const settings = (MEMORY_DB.settings && MEMORY_DB.settings[slug]) || {};
+  const override = MEMORY_DB.overrides && MEMORY_DB.overrides[slug];
+  return {
+    settings: settings,
+    extended: override ? Number(override.extended_closing_minutes) || 0 : 0,
+    now: queueDay.now()
+  };
+}
+
 function sortEligibleTickets(ticketsList, hallPolicy, counterState) {
   if (!ticketsList || !ticketsList.length) return [];
 
@@ -1030,6 +1055,13 @@ async function queueHandler(req, res) {
   }
 
   try {
+    const dayResult = await queuePersist.ensureRollover(tenantSlug, MEMORY_DB);
+    if (dayResult && Array.isArray(dayResult.expiredIds) && dayResult.expiredIds.length) {
+      broadcastSSE(tenantSlug, 'tickets_expired', {
+        count: dayResult.expiredIds.length,
+        period: dayResult.period
+      });
+    }
     if (STAFF_ONLY_ACTIONS.has(action) && !staff) {
       return res.status(401).json({
         ok: false,
@@ -1802,7 +1834,8 @@ async function queueHandler(req, res) {
     if (action === 'save-config') {
       const body = req.body || {};
       if (body.settings) {
-        MEMORY_DB.settings[tenantSlug] = Object.assign(MEMORY_DB.settings[tenantSlug], body.settings);
+        const merged = Object.assign({}, MEMORY_DB.settings[tenantSlug], body.settings);
+        MEMORY_DB.settings[tenantSlug] = Object.assign(merged, queueDay.normalizeSettings(merged));
       }
       if (Array.isArray(body.queues)) {
         MEMORY_DB.queues[tenantSlug] = body.queues;
@@ -2278,10 +2311,9 @@ async function queueHandler(req, res) {
           Array.isArray(c.assigned_queue_ids) && 
           c.assigned_queue_ids.includes(q.id)
         );
-        const waitingTickets = tickets.filter(t => 
-          t.queue_id === q.id && 
-          ['waiting', 'bumped', 'snoozed', 'on_hold', 'sync_watch'].includes(t.status)
-        );
+        const clock = queueClock(tenantSlug);
+        const waitingTickets = tickets.filter(t => t.queue_id === q.id && queueDay.isOnBoard(t, clock.settings, clock.now, clock.extended));
+        const expiredTickets = queueDay.recentlyAutoClosed(tickets, q.id, clock.now);
 
         const throughput = calculateQueueThroughput(activeCountersForQueue, q.target_service_minutes);
         const etwMinutes = calculateETW(waitingTickets.length + 1, throughput, settings.safety_multiplier);
@@ -2300,7 +2332,22 @@ async function queueHandler(req, res) {
             called_counter_number: t.called_counter_number || null,
             customer_name: t.customer_name,
             customer_phone: t.customer_phone
-          }))
+          })),
+          expiredTickets: expiredTickets.map(function (t) {
+            return {
+              id: t.id,
+              ticket_number: t.ticket_number,
+              status: t.status,
+              close_reason: t.close_reason,
+              auto_closed: true,
+              closed_at: t.closed_at,
+              service_date: t.service_date,
+              customer_name: t.customer_name || '',
+              customer_phone: t.customer_phone || '',
+              first_arrived_at: t.first_arrived_at,
+              queue_id: t.queue_id
+            };
+          })
         };
       });
 
@@ -2404,14 +2451,15 @@ async function queueHandler(req, res) {
       const queueEstimates = queueIds.map(qid => {
         const q = queues.find(item => item.id === qid);
         const activeCounters = counters.filter(c => c.status === 'active' && c.assigned_queue_ids?.includes(qid));
-        const waiting = tickets.filter(t => t.queue_id === qid && ['waiting', 'bumped'].includes(t.status));
+        const clock = queueClock(tenantSlug);
+        const waiting = tickets.filter(t => t.queue_id === qid && queueDay.isCallable(t, clock.settings, clock.now, clock.extended, ['waiting', 'bumped']));
         const throughput = calculateQueueThroughput(activeCounters, q?.target_service_minutes || 10);
         const etw = calculateETW(waiting.length + 1, throughput, settings.safety_multiplier);
         return { queueId: qid, queue: q, etw, waitingCount: waiting.length };
       });
 
       queueEstimates.sort((a, b) => a.etw - b.etw);
-      const arrivalNow = new Date().toISOString();
+      const arrivalNow = queueDay.now().toISOString();
 
       for (let i = 0; i < queueEstimates.length; i++) {
         const est = queueEstimates[i];
@@ -2458,7 +2506,8 @@ async function queueHandler(req, res) {
           called_at: null,
           service_started_at: null,
           service_completed_at: null,
-          notes: i > 0 ? 'مسار متزامن تحت مراقبة التزامن (Sync Watch)' : 'المسار الأساسي النشط'
+          notes: i > 0 ? 'مسار متزامن تحت مراقبة التزامن (Sync Watch)' : 'المسار الأساسي النشط',
+          service_date: queueDay.currentPeriod(settings, queueDay.now(), queueClock(tenantSlug).extended)
         };
 
         tickets.push(newTicket);
@@ -2507,10 +2556,11 @@ async function queueHandler(req, res) {
       const seq = allocated.sequence;
       const ticketNumber = allocated.ticket_number;
       const sessionToken = 'mkn_tok_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      const arrivalNow = new Date().toISOString();
+      const arrivalNow = queueDay.now().toISOString();
 
       const activeCounters = counters.filter(c => c.status === 'active' && c.assigned_queue_ids?.includes(q.id));
-      const waiting = tickets.filter(t => t.queue_id === q.id && ['waiting', 'bumped'].includes(t.status));
+      const clock = queueClock(tenantSlug);
+      const waiting = tickets.filter(t => t.queue_id === q.id && queueDay.isCallable(t, clock.settings, clock.now, clock.extended, ['waiting', 'bumped']));
       const throughput = calculateQueueThroughput(activeCounters, q.target_service_minutes || 10);
       const etw = calculateETW(waiting.length + 1, throughput, settings.safety_multiplier);
 
@@ -2538,7 +2588,8 @@ async function queueHandler(req, res) {
         called_counter_number: null,
         is_manual: true,
         booked_at: arrivalNow,
-        notes: notes
+        notes: notes,
+        service_date: queueDay.currentPeriod(settings, queueDay.now(), queueClock(tenantSlug).extended)
       };
 
       tickets.push(manualTicket);
@@ -2726,9 +2777,10 @@ async function queueHandler(req, res) {
       }
 
       // تصفية التذاكر المؤهلة
-      const eligibleTicketsRaw = tickets.filter(t => 
-        assignedQueues.includes(t.queue_id) && 
-        ['waiting', 'bumped', 'sync_watch'].includes(t.status)
+      const clock = queueClock(tenantSlug);
+      const eligibleTicketsRaw = tickets.filter(t =>
+        assignedQueues.includes(t.queue_id) &&
+        queueDay.isCallable(t, clock.settings, clock.now, clock.extended, ['waiting', 'bumped', 'sync_watch'])
       );
 
       // فرز التذاكر وفق مصفوفة الأولوية الهرمية مع منع التجويع
@@ -2836,12 +2888,16 @@ async function queueHandler(req, res) {
       const tickets = MEMORY_DB.tickets[tenantSlug];
       let ticketToCall = null;
 
+      const clock = queueClock(tenantSlug);
       if (targetTicketId) {
         ticketToCall = tickets.find(t => t.id === targetTicketId);
+        if (ticketToCall && (ticketToCall.status === 'expired' || queueDay.shouldExpire(ticketToCall, clock.settings, clock.now, clock.extended))) {
+          ticketToCall = null;
+        }
       } else {
-        const eligible = sortEligibleTickets(tickets.filter(t => 
-          counter.assigned_queue_ids?.includes(t.queue_id) && 
-          ['waiting', 'bumped', 'sync_watch', 'on_hold'].includes(t.status)
+        const eligible = sortEligibleTickets(tickets.filter(t =>
+          counter.assigned_queue_ids?.includes(t.queue_id) &&
+          queueDay.isCallable(t, clock.settings, clock.now, clock.extended, ['waiting', 'bumped', 'sync_watch', 'on_hold'])
         ));
         ticketToCall = eligible[0];
       }
@@ -3808,6 +3864,62 @@ async function queueHandler(req, res) {
     // ---------------------------------------------------------------
     // 29. استرجاع حالة التدخل البشري وسجل التدقيق (Get Override State)
     // ---------------------------------------------------------------
+    if (action === 'restore-ticket') {
+      const body = req.body || {};
+      const ticketId = body.ticketId || body.ticket_id;
+      if (!ticketId) return res.status(400).json({ error: 'معرّف التذكرة مطلوب.' });
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const tickets = MEMORY_DB.tickets[tenantSlug] || [];
+        const ticket = tickets.find(function (item) { return item.id === ticketId; });
+        if (!ticket) return res.status(404).json({ error: 'التذكرة غير موجودة.' });
+        if (ticket.status !== 'expired' || !ticket.auto_closed) {
+          return res.status(409).json({ error: 'لا يمكن إعادة تذكرة ليست مغلقة تلقائياً.' });
+        }
+        const clock = queueClock(tenantSlug);
+        const period = queueDay.currentPeriod(clock.settings, clock.now, clock.extended);
+        const seq = queueDay.sequenceOf(ticket);
+        const open = queueDay.openSequences(tickets, ticket.queue_id);
+        if (seq && open.has(seq)) {
+          const q = (MEMORY_DB.queues[tenantSlug] || []).find(function (item) { return item.id === ticket.queue_id; });
+          const allocated = await queuePersist.allocate(tenantSlug, ticket.queue_id, (q && q.prefix) || 'A', MEMORY_DB);
+          ticket.ticket_number = allocated.ticket_number;
+          ticket.daily_sequence = allocated.sequence;
+        }
+        const actor = (resolved.session && resolved.session.email) || 'staff';
+        ticket.status = 'waiting';
+        ticket.service_date = period;
+        ticket.restored_at = clock.now.toISOString();
+        ticket.auto_closed = false;
+        ticket.restored_by = actor;
+        if (!MEMORY_DB.auditLogs[tenantSlug]) MEMORY_DB.auditLogs[tenantSlug] = [];
+        MEMORY_DB.auditLogs[tenantSlug].push({
+          id: 'aud_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
+          tenant_slug: tenantSlug,
+          action_type: 'QUEUE_TICKET_RESTORE',
+          delta_value: 1,
+          reason: 'إعادة تذكرة أُغلقت تلقائياً إلى الطابور',
+          ticket_id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          performed_by_user_id: actor,
+          performed_by_name: actor,
+          user_ip_address: queueGuard.clientIp(req) || 'staff',
+          created_at: clock.now.toISOString()
+        });
+        broadcastSSE(tenantSlug, 'ticket_restored', { ticketId: ticket.id, ticket_number: ticket.ticket_number });
+        if (queuePersist.mode() === 'memory') {
+          return res.status(200).json({ ok: true, ticket: ticket });
+        }
+        try {
+          await queuePersist.finish(tenantSlug, MEMORY_DB);
+          return res.status(200).json({ ok: true, ticket: ticket });
+        } catch (err) {
+          queuePersist.clearEvents();
+          if (!queuePersist.isConflict(err) || attempt === 5) throw err;
+          await queuePersist.reload(tenantSlug, MEMORY_DB);
+        }
+      }
+    }
+
     if (action === 'get-override-state') {
       if (!MEMORY_DB.overrides[tenantSlug]) {
         MEMORY_DB.overrides[tenantSlug] = {

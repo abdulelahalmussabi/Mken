@@ -75,6 +75,13 @@
   var alertThresholdInput = document.getElementById('adminQueueAlertThreshold');
   var safetyMultiplierInput = document.getElementById('adminQueueSafetyMultiplier');
   var snoozeMinutesInput = document.getElementById('adminQueueSnoozeMinutes');
+  var operatingModeSelect = document.getElementById('adminQueueOperatingMode');
+  var closingTimeInput = document.getElementById('adminQueueClosingTime');
+  var closingTimeField = document.getElementById('adminQueueClosingTimeField');
+  var maxWaitInput = document.getElementById('adminQueueMaxWaitHours');
+  var maxWaitField = document.getElementById('adminQueueMaxWaitField');
+  var resetHourInput = document.getElementById('adminQueueResetHour');
+  var resetHourField = document.getElementById('adminQueueResetHourField');
   var qrCodeImg = document.getElementById('adminQueueQrImg');
   var qrLinkInput = document.getElementById('adminQueueQrLink');
   var openHallDisplayBtn = document.getElementById('adminQueueOpenHallDisplayBtn');
@@ -790,6 +797,44 @@
     });
   }
 
+  function renderExpiredTickets(queue) {
+    var rows = (queue && queue.expiredTickets) || [];
+    if (!rows.length) return '';
+    var cards = rows.map(function (t) {
+      return (
+        '<div style="background:#fff7ed; border:1px solid #fdba74; border-radius:6px; padding:8px 10px; margin-bottom:6px;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+            '<strong style="color:#9a3412; font-size:0.92rem;">' + escHtml(t.ticket_number) + '</strong>' +
+            '<button type="button" class="btn btn--sm btn-restore-ticket" data-ticket-id="' + escHtml(t.id) + '" style="padding:2px 8px; font-size:0.72rem;">إعادة للطابور</button>' +
+          '</div>' +
+          '<div style="font-size:0.75rem; color:#9a3412; margin-top:4px;">' + escHtml(t.close_reason || 'انتهى اليوم التشغيلي') + '</div>' +
+        '</div>'
+      );
+    }).join('');
+    return (
+      '<div style="margin-top:8px; border-top:1px dashed #fdba74; padding-top:8px;">' +
+        '<div style="font-size:0.72rem; color:#9a3412; font-weight:700; margin-bottom:6px;">أُغلقت تلقائياً</div>' +
+        cards +
+      '</div>'
+    );
+  }
+
+  function restoreAutoClosedTicket(ticketId, btn) {
+    if (!ticketId || !queueStore.restoreTicket) return;
+    if (btn) btn.disabled = true;
+    queueStore.restoreTicket({ ticketId: ticketId }).then(function (res) {
+      if (res && res.ok) {
+        toast('أُعيدت التذكرة ' + ((res.ticket && res.ticket.ticket_number) || '') + ' إلى الطابور', 'success');
+        refresh();
+      } else if (btn) {
+        btn.disabled = false;
+      }
+    }).catch(function (err) {
+      if (btn) btn.disabled = false;
+      toast(err.message, 'error');
+    });
+  }
+
   function renderDispatcherQueuesColumns() {
     if (!dispatcherQueuesContainer) return;
     if (!currentQueues.length) {
@@ -840,6 +885,7 @@
           '</div>' +
           '<div class="queue-drop-zone" style="min-height:50px;">' +
             ticketsHtml +
+            renderExpiredTickets(q) +
           '</div>' +
         '</div>'
       );
@@ -851,6 +897,13 @@
     setupDragAndDrop();
 
     // أزرار التحويل المباشرة
+    dispatcherQueuesContainer.querySelectorAll('.btn-restore-ticket').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        restoreAutoClosedTicket(btn.getAttribute('data-ticket-id'), btn);
+      });
+    });
+
     dispatcherQueuesContainer.querySelectorAll('.btn-row-transfer').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -1261,6 +1314,13 @@
   // -------------------------------------------------------------
   // 6. الإعدادات وتحديد نمط الخدمة
   // -------------------------------------------------------------
+  function syncOperatingModeFields() {
+    var allDay = operatingModeSelect && operatingModeSelect.value === 'always_open';
+    if (closingTimeField) closingTimeField.style.display = allDay ? 'none' : '';
+    if (maxWaitField) maxWaitField.style.display = allDay ? '' : 'none';
+    if (resetHourField) resetHourField.style.display = allDay ? '' : 'none';
+  }
+
   function renderSettingsView() {
     if (serviceModeSelect && currentSettings.service_mode) {
       serviceModeSelect.value = currentSettings.service_mode;
@@ -1277,6 +1337,15 @@
     if (snoozeMinutesInput && currentSettings.snooze_minutes) {
       snoozeMinutesInput.value = currentSettings.snooze_minutes;
     }
+    if (operatingModeSelect) {
+      operatingModeSelect.value = currentSettings.operating_mode === 'always_open' ? 'always_open' : 'fixed_close';
+    }
+    if (closingTimeInput && currentSettings.closing_time) closingTimeInput.value = currentSettings.closing_time;
+    if (maxWaitInput && currentSettings.max_wait_hours) maxWaitInput.value = currentSettings.max_wait_hours;
+    if (resetHourInput && currentSettings.reset_hour !== undefined && currentSettings.reset_hour !== null) {
+      resetHourInput.value = currentSettings.reset_hour;
+    }
+    syncOperatingModeFields();
 
     var tenantSlug = queueStore.getTenantSlug();
     var url = window.location.origin + '/queue.html?tenant=' + encodeURIComponent(tenantSlug);
@@ -1500,7 +1569,12 @@
                   (customerLabel ? ' - <span style="font-size:0.82rem;">' + escHtml(customerLabel) + '</span>' : '') +
                   '<div style="font-size:0.75rem; color:var(--color-text-muted);">' + escHtml(t.queue_name) + ' (' + escHtml(t.status) + ')</div>' +
                 '</div>' +
-                '<button type="button" class="btn btn--sm btn-search-transfer" data-ticket-id="' + t.id + '" style="font-size:0.75rem; padding:3px 8px;">تحويل 🔀</button>' +
+                '<span style="display:flex; gap:6px;">' +
+                  (t.status === 'expired' && t.auto_closed
+                    ? '<button type="button" class="btn btn--sm btn-search-restore" data-ticket-id="' + t.id + '" style="font-size:0.75rem; padding:3px 8px;">إعادة للطابور</button>'
+                    : '') +
+                  '<button type="button" class="btn btn--sm btn-search-transfer" data-ticket-id="' + t.id + '" style="font-size:0.75rem; padding:3px 8px;">تحويل 🔀</button>' +
+                '</span>' +
               '</div>'
             );
           }).join('');
@@ -1508,6 +1582,12 @@
           dispatcherSearchResults.innerHTML = html;
           dispatcherSearchResults.style.display = 'block';
 
+          dispatcherSearchResults.querySelectorAll('.btn-search-restore').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              dispatcherSearchResults.style.display = 'none';
+              restoreAutoClosedTicket(btn.getAttribute('data-ticket-id'), btn);
+            });
+          });
           dispatcherSearchResults.querySelectorAll('.btn-search-transfer').forEach(function (btn) {
             btn.addEventListener('click', function () {
               dispatcherSearchResults.style.display = 'none';
@@ -1982,6 +2062,8 @@
     }
 
     // 7.7 حفظ الإعدادات
+    if (operatingModeSelect) operatingModeSelect.addEventListener('change', syncOperatingModeFields);
+    syncOperatingModeFields();
     if (saveSettingsBtn) {
       saveSettingsBtn.addEventListener('click', function () {
         var newSettings = {
@@ -1989,7 +2071,11 @@
           target_service_minutes: targetMinutesInput ? parseInt(targetMinutesInput.value, 10) : 10,
           alert_threshold: alertThresholdInput ? parseInt(alertThresholdInput.value, 10) : 2,
           safety_multiplier: safetyMultiplierInput ? parseFloat(safetyMultiplierInput.value) : 1.15,
-          snooze_minutes: snoozeMinutesInput ? parseInt(snoozeMinutesInput.value, 10) : 5
+          snooze_minutes: snoozeMinutesInput ? parseInt(snoozeMinutesInput.value, 10) : 5,
+          operating_mode: operatingModeSelect ? operatingModeSelect.value : (currentSettings.operating_mode || 'fixed_close'),
+          closing_time: closingTimeInput ? closingTimeInput.value : (currentSettings.closing_time || '00:00'),
+          max_wait_hours: maxWaitInput ? parseInt(maxWaitInput.value, 10) : (currentSettings.max_wait_hours || 6),
+          reset_hour: resetHourInput ? parseInt(resetHourInput.value, 10) : (currentSettings.reset_hour != null ? currentSettings.reset_hour : 4)
         };
 
         queueStore.saveConfig({ settings: newSettings }).then(function (res) {

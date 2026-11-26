@@ -283,6 +283,10 @@
       return apiCall('manual-ticket', 'POST', payload);
     },
 
+    restoreTicket: function (payload) {
+      return apiCall('restore-ticket', 'POST', payload);
+    },
+
     searchTickets: function (q) {
       return apiCall('search-tickets', 'GET', null, { q: q });
     },
