@@ -58,7 +58,6 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 
 const tenantSlug = 'almahrusa';
 const email = 'stayinmedina@gmail.com';
-const password = 'Aa#321321';
 const phone = '0554453287';
 const businessName = 'المحروسة للشقق المفروشة | Mahrousa Apartment';
 const mapsUrl = 'https://maps.app.goo.gl/J3yxQx6r4HF6yeYM8';
@@ -309,7 +308,6 @@ async function run() {
   console.log(`- رابط الحجز المباشر: https://almahrusa.mken.live أو https://mken.live/book.html?tenant=almahrusa`);
   console.log(`- لوحة التحكم: https://almahrusa.mken.live/admin.html أو https://mken.live/admin.html?tenant=almahrusa`);
   console.log(`- البريد الإلكتروني: ${email}`);
-  console.log(`- كلمة المرور / الرمز: ${password}`);
   console.log(`- رقم الجوال: ${phone}`);
   console.log(`- خرائط جوجل: ${mapsUrl}`);
   console.log(`- عدد الغرف والوحدات: 18 غرفة مفصلة ومفعلة بالحالة والأرقام والدور`);

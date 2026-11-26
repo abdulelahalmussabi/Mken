@@ -86,8 +86,13 @@ const supabase = createClient(supabaseUrl, serviceKey, {
 });
 
 const email = process.env.MKEN_ADMIN_EMAIL || 'admin@mken.live';
-const password = process.env.MKEN_ADMIN_PASSWORD || 'Aa#321321';
+const password = process.env.MKEN_ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD || '';
 const LEGACY_ADMIN_EMAIL = 'admin@mkem.live';
+
+if (password.length < 12) {
+  console.error('Set MKEN_ADMIN_PASSWORD to a new secret of at least 12 characters. This script no longer ships a password.');
+  process.exit(1);
+}
 
 async function seedAdmin() {
   console.log(`\n⏳ بدء عملية تسجيل حساب المشرف الرئيسي: ${email}...`);
@@ -250,7 +255,7 @@ async function seedAdmin() {
   console.log('\n======================================================');
   console.log('🎉 تم تأسيس حساب المشرف الرئيسي وتحديث الصلاحيات بنجاح!');
   console.log(`البريد الإلكتروني: ${email}`);
-  console.log(`الرمز السري: ${password}`);
+  console.log('تم تعيين كلمة المرور من البيئة دون طباعتها.');
   console.log('======================================================\n');
 }
 

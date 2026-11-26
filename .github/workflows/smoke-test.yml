@@ -51,6 +51,7 @@ jobs:
         node tests/queue-transfer-rbac.test.cjs
         node tests/queue-production-chaos.test.cjs
         node tests/queue-admin-auth.test.cjs
+        node tests/admin-login-backdoor.test.cjs
         node tests/queue-manual-override.test.cjs
         node tests/queue-zero-pii-display.test.cjs
         node tests/queue-dynamic-counters.test.cjs

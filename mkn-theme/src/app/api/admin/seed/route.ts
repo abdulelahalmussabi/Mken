@@ -1,15 +1,75 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-export async function GET() {
-  return handleSeed();
+const seedBuckets = new Map<string, { windowStart: number; count: number }>();
+
+function secretsEqual(a: string, b: string): boolean {
+  const aHash = crypto.createHash("sha256").update(a).digest();
+  const bHash = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
 }
 
-export async function POST() {
-  return handleSeed();
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  return request.headers.get("x-real-ip") || "unknown";
 }
 
-async function handleSeed() {
+function seedLimited(ip: string, increment: boolean): { limited: boolean; retryAfterSec: number } {
+  const now = Date.now();
+  const windowMs = 60_000;
+  let bucket = seedBuckets.get(ip);
+  if (!bucket || now - bucket.windowStart >= windowMs) {
+    if (!increment) return { limited: false, retryAfterSec: 0 };
+    bucket = { windowStart: now, count: 0 };
+  }
+  if (bucket.count >= 5) {
+    const retryAfterSec = Math.max(1, Math.ceil((windowMs - (now - bucket.windowStart)) / 1000));
+    return { limited: true, retryAfterSec };
+  }
+  if (increment) {
+    bucket.count += 1;
+    seedBuckets.set(ip, bucket);
+  }
+  return { limited: false, retryAfterSec: 0 };
+}
+
+/** Disabled unless SEED_ADMIN_SECRET and SEED_ADMIN_PASSWORD are set. */
+function authorizeSeed(request: Request): string | null {
+  const secret = process.env.SEED_ADMIN_SECRET || "";
+  const password = process.env.SEED_ADMIN_PASSWORD || "";
+  const presented = request.headers.get("x-seed-secret") || "";
+  const configured = secret.length >= 16 && password.length >= 12;
+  const matches = presented.length > 0 && secret.length > 0 && secretsEqual(presented, secret);
+  if (!configured || !matches) return null;
+  return password;
+}
+
+export async function GET(request: Request) {
+  return handleSeed(request);
+}
+
+export async function POST(request: Request) {
+  return handleSeed(request);
+}
+
+async function handleSeed(request: Request) {
+  const ip = clientIp(request);
+  const blocked = seedLimited(ip, false);
+  if (blocked.limited) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden" },
+      { status: 429, headers: { "Retry-After": String(blocked.retryAfterSec) } }
+    );
+  }
+
+  const defaultPassword = authorizeSeed(request);
+  if (!defaultPassword) {
+    seedLimited(ip, true);
+    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
     const serviceKey = (
@@ -29,7 +89,6 @@ async function handleSeed() {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const defaultPassword = "Aa#321321";
     const accounts = [
       { email: "admin@mken.live", slug: "admin", name: "الإدارة العامة (Super Admin)" },
       { email: "almahrusa@mken.live", slug: "almahrusa", name: "مجموعة المحروسة" },

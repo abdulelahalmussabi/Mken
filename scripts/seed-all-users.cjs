@@ -7,7 +7,7 @@
  * - almasabi@mken.live (tenant: almasabi)
  * - demo@mken.live (tenant: demo)
  *
- * Password for all: Aa#321321
+ * Password: MKEN_ADMIN_PASSWORD or SEED_ADMIN_PASSWORD (required, 12+ characters).
  */
 
 const fs = require('fs');
@@ -57,7 +57,11 @@ async function seedAllUsers() {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
-  const defaultPassword = 'Aa#321321';
+  const defaultPassword = process.env.MKEN_ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD || '';
+  if (defaultPassword.length < 12) {
+    console.error('Set MKEN_ADMIN_PASSWORD to a new secret of at least 12 characters. This script no longer ships a password.');
+    process.exit(1);
+  }
   const targetUsers = [
     { email: 'admin@mken.live', slug: 'admin', name: 'الإدارة العامة (Super Admin)' },
     { email: 'almahrusa@mken.live', slug: 'almahrusa', name: 'مجموعة المحروسة' },
@@ -94,7 +98,7 @@ async function seedAllUsers() {
       if (updErr) {
         console.error(`  ❌ فشل تحديث كلمة المرور:`, updErr.message);
       } else {
-        console.log(`  ✅ تم تحديث كلمة المرور بنجاح إلى "${defaultPassword}".`);
+        console.log('  ✅ تم تحديث كلمة المرور بنجاح.');
       }
     } else {
       console.log(`  ⏳ إنشاء مستخدم جديد في Auth...`);
