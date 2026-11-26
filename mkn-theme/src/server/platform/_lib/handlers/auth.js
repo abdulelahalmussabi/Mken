@@ -277,88 +277,19 @@ async function handleRegisterVerify(req, res) {
 async function handleAdminOperations(req, res) {
   const crypto = require('crypto');
   const body = req.body || {};
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const password = typeof body.password === 'string' ? body.password.trim() : '';
+  const action = (req.body && req.body.action) || req.query.action || 'login';
+  const pin = (req.body && req.body.pin) || req.query.pin || req.headers['x-admin-pin'];
 
-  // 1. Email & Password Admin Login Flow
-  if (email && password) {
-    const isStandardPass = password === 'Aa#321321' || password.startsWith('Aa#321321');
-    let matchedSession = null;
-    let welcomeMessage = '';
-
-    if (isStandardPass) {
-      if (email === 'admin@mken.live' || email === 'admin@mkem.live' || email.startsWith('admin@')) {
-        matchedSession = { email: 'admin@mken.live', role: 'super' };
-        welcomeMessage = 'مرحباً بك في لوحة التحكم المركزية!';
-      } else if (
-        email === 'rewa@mken.live' ||
-        email === 'rewaa@mken.live' ||
-        email.includes('rewa')
-      ) {
-        matchedSession = { email: 'rewa@mken.live', role: 'client', clientSlug: 'rewa' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم منتجع رواء الاستشفاء الرقمي!';
-      } else if (email === 'almasabi@mken.live' || email.includes('masabi') || email.includes('msabi')) {
-        matchedSession = { email: 'almasabi@mken.live', role: 'client', clientSlug: 'almasabi' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم مؤسسة المصعبي للتجارة!';
-      } else if (
-        email === 'almahrusa@mken.live' ||
-        email === 'almahrosa@mken.live' ||
-        email.includes('mahrus') ||
-        email.includes('mahros')
-      ) {
-        matchedSession = { email: 'almahrusa@mken.live', role: 'client', clientSlug: 'almahrusa' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم مجموعة المحروسة!';
-      } else if (email === 'demo@mken.live' || email.includes('demo')) {
-        matchedSession = { email: 'demo@mken.live', role: 'client', clientSlug: 'demo' };
-        welcomeMessage = 'مرحباً بك في لوحة تحكم صالون النخبة!';
-      }
-    }
-
-    if (matchedSession) {
-      const secret =
-        process.env.ADMIN_SESSION_SECRET ||
-        process.env.SUPABASE_SERVICE_ROLE_KEY ||
-        process.env.SUPABASE_KEY ||
-        'mken-saas-platform-secure-default-session-secret-2026';
-      const payload = {
-        ...matchedSession,
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 8)
-      };
-      const bodyBase64 = Buffer.from(JSON.stringify(payload), 'utf8')
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      const sig = crypto
-        .createHmac('sha256', secret)
-        .update(bodyBase64)
-        .digest('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      const token = `${bodyBase64}.${sig}`;
-
-      res.setHeader(
-        'Set-Cookie',
-        `mkn_admin_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800${
-          process.env.NODE_ENV === 'production' ? '; Secure' : ''
-        }`
-      );
-
-      return res.status(200).json({
-        success: true,
-        email: matchedSession.email,
-        role: matchedSession.role,
-        clientSlug: matchedSession.clientSlug,
-        message: welcomeMessage
-      });
-    }
+  // Email/password login on this legacy endpoint is permanently disabled; use /api/admin/login.
+  if (action === 'login' && !pin && (typeof body.email === 'string' || typeof body.password === 'string')) {
+    return res.status(410).json({
+      success: false,
+      error: 'تم إيقاف مسار تسجيل الدخول القديم؛ استخدم /api/admin/login.'
+    });
   }
 
-  // 2. PIN-based Admin Login Flow
-  const pin = (req.body && req.body.pin) || req.query.pin || req.headers['x-admin-pin'];
+  // PIN-based Admin Operations
   const expectedPin = process.env.ADMIN_PIN;
-  const action = (req.body && req.body.action) || req.query.action || 'login';
 
   const safeCompare = (a, b) => {
     if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -371,25 +302,27 @@ async function handleAdminOperations(req, res) {
   const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
   const rateLimitKey = 'admin_login_failed:' + ip;
 
-  if (action !== 'create-super-admin') {
-    if (!expectedPin) {
-      console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
-      return res.status(500).json({ success: false, error: 'تكوين الخادم غير مكتمل: لم يتم إعداد رمز الدخول الرئيسي.' });
-    }
+  if (!expectedPin) {
+    console.error('CRITICAL: ADMIN_PIN environment variable is not configured.');
+    return res.status(500).json({ success: false, error: 'تكوين الخادم غير مكتمل: لم يتم إعداد رمز الدخول الرئيسي.' });
+  }
 
-    const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
-    if (checkBlock.limited) {
-      return res.status(429).json({ success: false, error: `تم تجاوز الحد الأقصى للمحاولات الخاطئة. الرجاء الانتظار ${checkBlock.retryAfterSec} ثانية.` });
-    }
+  const checkBlock = isRateLimited(rateLimitKey, 5, 60000, false);
+  if (checkBlock.limited) {
+    return res.status(429).json({ success: false, error: `تم تجاوز الحد الأقصى للمحاولات الخاطئة. الرجاء الانتظار ${checkBlock.retryAfterSec} ثانية.` });
+  }
 
-    if (!pin || !safeCompare(pin, expectedPin)) {
-      isRateLimited(rateLimitKey, 5, 60000, true);
-      return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر' });
-    }
+  if (!pin || !safeCompare(pin, expectedPin)) {
+    isRateLimited(rateLimitKey, 5, 60000, true);
+    return res.status(401).json({ success: false, error: 'رمز الدخول PIN غير صحيح أو غير متوفر' });
   }
 
   if (action === 'login') {
     return res.status(200).json({ success: true });
+  }
+
+  if (action === 'create-super-admin') {
+    return res.status(410).json({ success: false, error: 'تم إيقاف عملية create-super-admin؛ تتم إدارة الحسابات عبر Supabase Auth فقط.' });
   }
 
   // Intercept save-config if Supabase is not configured (local fallback)
@@ -986,95 +919,6 @@ async function handleAdminOperations(req, res) {
     }
 
     return res.status(200).json({ success: true });
-  }
-
-  if (action === 'create-super-admin') {
-    const targetPassword = (req.body && req.body.password) || req.query.password || 'Aa#321321';
-
-    const accounts = [
-      { email: 'admin@mken.live', slug: 'admin', name: 'الإدارة العامة (Super Admin)' },
-      { email: 'almahrusa@mken.live', slug: 'almahrusa', name: 'مجموعة المحروسة' },
-      { email: 'almasabi@mken.live', slug: 'almasabi', name: 'مؤسسة المصعبي للتجارة' },
-      { email: 'demo@mken.live', slug: 'demo', name: 'صالون النخبة' }
-    ];
-
-    const { data: usersData, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    if (listErr) throw listErr;
-    const usersList = usersData.users || [];
-
-    const results = [];
-
-    for (const acc of accounts) {
-      let userId;
-      const existingUser = usersList.find(u => {
-        const e = (u.email || '').toLowerCase();
-        return e === acc.email.toLowerCase() || (acc.slug === 'admin' && e === 'admin@mkem.live');
-      });
-
-      if (existingUser) {
-        userId = existingUser.id;
-        const { error: updAuthErr } = await supabase.auth.admin.updateUserById(userId, {
-          email: acc.email,
-          password: targetPassword,
-          email_confirm: true
-        });
-        if (updAuthErr) console.error(`Error updating auth for ${acc.email}:`, updAuthErr.message);
-      } else {
-        const { data: newAuth, error: createAuthErr } = await supabase.auth.admin.createUser({
-          email: acc.email,
-          password: targetPassword,
-          email_confirm: true
-        });
-        if (createAuthErr) {
-          console.error(`Error creating auth for ${acc.email}:`, createAuthErr.message);
-          continue;
-        }
-        userId = newAuth.user.id;
-      }
-
-      const { data: existingClient, error: clientErr } = await supabase
-        .from('mken_saas_clients')
-        .select('id')
-        .eq('tenant_slug', acc.slug)
-        .maybeSingle();
-
-      if (clientErr) throw clientErr;
-
-      const oneYear = new Date();
-      oneYear.setFullYear(oneYear.getFullYear() + 10);
-
-      if (existingClient) {
-        const { error: updErr } = await supabase
-          .from('mken_saas_clients')
-          .update({
-            owner_id: userId,
-            email: acc.email,
-            business_name: acc.name,
-            updated_at: new Date().toISOString()
-          })
-          .eq('tenant_slug', acc.slug);
-        if (updErr) console.error(`Error updating client for ${acc.slug}:`, updErr.message);
-      } else {
-        const insertObj = {
-          tenant_slug: acc.slug,
-          owner_id: userId,
-          business_name: acc.name,
-          email: acc.email,
-          phone: '966543530333',
-          subscription_end: oneYear.toISOString(),
-          config_data: { brand: { name: acc.name } },
-          subscription_status: 'active'
-        };
-        const { error: insertErr } = await supabase
-          .from('mken_saas_clients')
-          .insert(insertObj);
-        if (insertErr) console.error(`Error inserting client for ${acc.slug}:`, insertErr.message);
-      }
-
-      results.push({ email: acc.email, slug: acc.slug });
-    }
-
-    return res.status(200).json({ success: true, seeded: results });
   }
 
   return res.status(400).json({ error: 'العملية المطلوبة غير مدعومة' });
