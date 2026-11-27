@@ -116,9 +116,17 @@ export default function AdminLoginPage() {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-300">
-                كلمة المرور
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-300">
+                  كلمة المرور
+                </label>
+                <Link
+                  href={{ pathname: "/forgot-password", query: { from: "admin" } }}
+                  className="text-xs text-amber-400 hover:underline font-medium"
+                >
+                  نسيت كلمة المرور؟
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="admin-password"

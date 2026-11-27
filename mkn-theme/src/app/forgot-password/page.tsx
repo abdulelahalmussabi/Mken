@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,6 +8,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, ArrowRight, AlertCircle, Loader2, CheckCircle2, KeyRound } from "lucide-react";
+import {
+  RECOVERY_TARGET_STORAGE_KEY,
+  requestPasswordReset,
+  resolveRecoveryLoginTarget,
+  type RecoveryLoginTarget,
+} from "@/lib/auth/password-recovery";
 
 const forgotSchema = z.object({
   email: z.string().email({ message: "يرجى إدخال بريد إلكتروني صحيح" }),
@@ -15,8 +21,28 @@ const forgotSchema = z.object({
 
 type ForgotFormValues = z.infer<typeof forgotSchema>;
 
+const subscribeEmpty = () => () => {};
+
 export default function ForgotPasswordPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const loginTarget = useSyncExternalStore<RecoveryLoginTarget>(
+    subscribeEmpty,
+    () => resolveRecoveryLoginTarget(new URLSearchParams(window.location.search).get("from")),
+    () => "/login"
+  );
+
+  useEffect(() => {
+    try {
+      if (loginTarget === "/admin/login") {
+        window.sessionStorage.setItem(RECOVERY_TARGET_STORAGE_KEY, loginTarget);
+      } else {
+        window.sessionStorage.removeItem(RECOVERY_TARGET_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage access errors in restricted browsers.
+    }
+  }, [loginTarget]);
 
   const {
     register,
@@ -28,8 +54,17 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotFormValues) => {
     setSuccessMessage(null);
-    await new Promise((r) => setTimeout(r, 700));
-    setSuccessMessage(`تم إرسال رابط إعادة تعيين كلمة المرور إلى ${data.email}. يرجى مراجعة صندوق الوارد.`);
+    setSubmitError(null);
+
+    const result = await requestPasswordReset(data.email, window.location.origin);
+    if (!result.ok) {
+      setSubmitError(result.error || "تعذّر إرسال رابط استعادة كلمة المرور.");
+      return;
+    }
+
+    setSuccessMessage(
+      `إذا كان البريد ${data.email.trim().toLowerCase()} مسجّلاً لدينا، فقد أرسلنا رابط إعادة تعيين كلمة المرور. يرجى مراجعة صندوق الوارد والبريد غير الهام.`
+    );
   };
 
   return (
@@ -39,11 +74,11 @@ export default function ForgotPasswordPage() {
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6">
         <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
           <Link
-            href="/login"
+            href={loginTarget}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-orange-400 transition-colors"
           >
             <ArrowRight className="w-4 h-4" />
-            العودة لصفحة تسجيل الدخول
+            {loginTarget === "/admin/login" ? "العودة لدخول لوحة الإدارة" : "العودة لصفحة تسجيل الدخول"}
           </Link>
 
           {/* Header */}
@@ -57,6 +92,13 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
+          {submitError && (
+            <div className="p-3.5 bg-rose-950/60 border border-rose-800/80 rounded-xl text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {successMessage ? (
             <div className="p-4 bg-emerald-950/60 border border-emerald-800/80 rounded-2xl text-emerald-300 text-xs space-y-3">
               <div className="flex items-start gap-2.5">
@@ -64,10 +106,10 @@ export default function ForgotPasswordPage() {
                 <p className="leading-relaxed font-medium">{successMessage}</p>
               </div>
               <Link
-                href="/login"
+                href={loginTarget}
                 className="block text-center w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all"
               >
-                العودة لتسجيل الدخول
+                {loginTarget === "/admin/login" ? "العودة لدخول لوحة الإدارة" : "العودة لتسجيل الدخول"}
               </Link>
             </div>
           ) : (
@@ -80,6 +122,7 @@ export default function ForgotPasswordPage() {
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="example@domain.com"
                   {...register("email")}
                   disabled={isSubmitting}
