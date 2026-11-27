@@ -12,6 +12,7 @@ export const PLATFORM_SYSTEM_SLUGS = new Set([
   "login",
   "register",
   "forgot-password",
+  "reset-password",
   "dashboard",
   "book",
   "store",
