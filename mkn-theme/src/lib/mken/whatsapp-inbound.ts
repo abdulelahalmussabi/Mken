@@ -212,11 +212,29 @@ export function whatsappVerifyResponse(request: Request): NextResponse {
     });
   }
 
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || "mken_verify_token_2026";
+  const verifyToken = (process.env.WHATSAPP_VERIFY_TOKEN || "").trim();
+  if (!verifyToken) {
+    console.error("whatsapp-webhook: WHATSAPP_VERIFY_TOKEN is not configured");
+    return new NextResponse("Webhook verify token not configured", { status: 500 });
+  }
   if (mode === "subscribe" && token && safeEqual(token, verifyToken)) {
     return new NextResponse(challenge || "", { status: 200 });
   }
   return new NextResponse("Forbidden: Token mismatch", { status: 403 });
+}
+
+function requireValidMetaSignature(rawBody: string, request: Request): NextResponse | null {
+  const appSecret = (process.env.WHATSAPP_APP_SECRET || "").trim();
+  if (!appSecret) {
+    console.error("whatsapp-webhook: WHATSAPP_APP_SECRET is not configured");
+    return NextResponse.json({ error: "WHATSAPP_APP_SECRET not configured" }, { status: 500 });
+  }
+  const signature = request.headers.get("x-hub-signature-256");
+  if (!verifyMetaSignature(rawBody, signature, appSecret)) {
+    console.warn("whatsapp-webhook: Meta signature missing or invalid");
+    return NextResponse.json({ error: "Forbidden: Invalid Meta signature" }, { status: 403 });
+  }
+  return null;
 }
 
 export async function handleWhatsappInbound(request: Request): Promise<NextResponse> {
@@ -236,9 +254,18 @@ export async function handleWhatsappInbound(request: Request): Promise<NextRespo
     });
   }
 
+  const parsed = parseInbound(body, contentType);
+  const isMetaRequest =
+    str(body.object) === "whatsapp_business_account" ||
+    parsed.provider === "whatsapp_business" ||
+    Boolean(request.headers.get("x-hub-signature-256"));
+  if (isMetaRequest) {
+    const sigErr = requireValidMetaSignature(rawBody, request);
+    if (sigErr) return sigErr;
+  }
+
   const url = new URL(request.url);
   const querySlug = url.searchParams.get("tenant") || url.searchParams.get("slug") || "";
-  const parsed = parseInbound(body, contentType);
   const db = getServiceRoleDb();
   if (!db) {
     return NextResponse.json({ error: "Supabase credentials missing" }, { status: 500 });
@@ -265,16 +292,9 @@ export async function handleWhatsappInbound(request: Request): Promise<NextRespo
     return NextResponse.json({ status: "ignored", message: "WhatsApp API not enabled for tenant" });
   }
 
-  if (str(wa.provider) === "whatsapp_business") {
-    const appSecret = process.env.WHATSAPP_APP_SECRET || "";
-    const signature = request.headers.get("x-hub-signature-256");
-    if (appSecret && signature && !verifyMetaSignature(rawBody, signature, appSecret)) {
-      console.warn("whatsapp-webhook: Meta signature failed", { tenantSlug });
-      return NextResponse.json({ error: "Forbidden: Invalid Meta signature" }, { status: 403 });
-    }
-    if (appSecret && !signature) {
-      console.warn("whatsapp-webhook: missing x-hub-signature-256, continuing");
-    }
+  if (str(wa.provider) === "whatsapp_business" && !isMetaRequest) {
+    const sigErr = requireValidMetaSignature(rawBody, request);
+    if (sigErr) return sigErr;
   }
 
   const phone = normalizeWaPhone(parsed.phone);
