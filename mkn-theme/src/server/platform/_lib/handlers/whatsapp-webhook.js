@@ -114,22 +114,41 @@ module.exports = async function handler(req, res) {
         service: 'mken-whatsapp-webhook',
         tenant: tenantSlug,
         message: 'Webhook endpoint is live. Meta will call this URL with hub.mode=subscribe during verification.',
-        verifyTokenHint: 'Use the same value as WHATSAPP_VERIFY_TOKEN on the server (default: mken_verify_token_2026).',
+        verifyTokenHint: 'Set WHATSAPP_VERIFY_TOKEN on the server and use that exact value in Meta.',
         note: 'Phone Number ID and Access Token are saved in admin settings — they are separate from the Webhook Verify Token.'
       });
     }
 
-    const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'mken_verify_token_2026';
-    if (mode === 'subscribe' && safeEqual(token, verifyToken)) {
+    const verifyToken = (process.env.WHATSAPP_VERIFY_TOKEN || '').trim();
+    if (!verifyToken) {
+      console.error('Webhook verify failed: WHATSAPP_VERIFY_TOKEN is not configured');
+      return res.status(500).send('Webhook verify token not configured');
+    }
+    if (mode === 'subscribe' && token && safeEqual(token, verifyToken)) {
       console.log('Webhook verified successfully!');
       return res.status(200).send(challenge);
     }
-    console.warn('Webhook verify failed', { mode, tokenMatch: !!token && token === verifyToken, hasEnv: !!process.env.WHATSAPP_VERIFY_TOKEN });
+    console.warn('Webhook verify failed', { mode, tokenMatch: !!token && safeEqual(token, verifyToken), hasEnv: true });
     return res.status(403).send('Forbidden: Token mismatch');
   }
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const isMetaRequest =
+    (req.body && req.body.object === 'whatsapp_business_account') ||
+    Boolean(req.headers['x-hub-signature-256']);
+  if (isMetaRequest) {
+    const appSecret = (process.env.WHATSAPP_APP_SECRET || '').trim();
+    if (!appSecret) {
+      console.error('WHATSAPP_APP_SECRET environment variable is not configured');
+      return res.status(500).json({ error: 'WHATSAPP_APP_SECRET not configured' });
+    }
+    if (!verifyMetaSignature(req, appSecret)) {
+      console.warn('Meta signature verification failed');
+      return res.status(403).json({ error: 'Forbidden: Invalid Meta signature' });
+    }
   }
 
   const tenantSlug = req.query.tenant || req.query.slug || 'default';
@@ -173,15 +192,15 @@ module.exports = async function handler(req, res) {
     } else {
       console.warn(`Twilio Auth Token not configured for tenant ${tenantSlug}, bypassing signature check`);
     }
-  } else if (wa.provider === 'whatsapp_business') {
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (appSecret) {
-      if (!verifyMetaSignature(req, appSecret)) {
-        console.warn(`Meta signature verification failed for tenant ${tenantSlug}`);
-        return res.status(403).json({ error: 'Forbidden: Invalid Meta signature' });
-      }
-    } else {
-      console.warn(`WHATSAPP_APP_SECRET environment variable not configured on server, bypassing signature check`);
+  } else if (wa.provider === 'whatsapp_business' && !isMetaRequest) {
+    const appSecret = (process.env.WHATSAPP_APP_SECRET || '').trim();
+    if (!appSecret) {
+      console.error(`WHATSAPP_APP_SECRET environment variable not configured for tenant ${tenantSlug}`);
+      return res.status(500).json({ error: 'WHATSAPP_APP_SECRET not configured' });
+    }
+    if (!verifyMetaSignature(req, appSecret)) {
+      console.warn(`Meta signature verification failed for tenant ${tenantSlug}`);
+      return res.status(403).json({ error: 'Forbidden: Invalid Meta signature' });
     }
   }
 

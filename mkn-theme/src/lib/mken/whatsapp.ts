@@ -217,7 +217,7 @@ function asGatewayProvider(value: unknown): GatewayProvider {
 }
 
 export function inboundWebhookUrl(slug: string): string {
-  return `https://mken.live/api/whatsapp-webhook?tenant=${encodeURIComponent(slug)}`;
+  return `https://www.mken.live/api/whatsapp-webhook?tenant=${encodeURIComponent(slug)}`;
 }
 
 export function n8nWebhookExample(slug: string): string {
@@ -473,7 +473,7 @@ export async function saveWhatsappApi(
   return { config: toPublicWhatsappApi(next, slug), webhook };
 }
 
-const META_INBOUND_CALLBACK = "https://mken.live/api/whatsapp-webhook";
+const META_INBOUND_CALLBACK = "https://www.mken.live/api/whatsapp-webhook";
 const GRAPH_VERSION = "v22.0";
 
 function graphErrorMessage(data: unknown): string {
@@ -618,7 +618,7 @@ export async function subscribeCloudApiWebhook(
     return {
       ok: true,
       message:
-        "اشتُرك التطبيق في الحساب. إن لم يصل الوارد، اضبط Callback URL في ميتا على https://mken.live/api/whatsapp-webhook",
+        "اشتُرك التطبيق في الحساب. إن لم يصل الوارد، اضبط Callback URL في ميتا على https://www.mken.live/api/whatsapp-webhook",
     };
   }
 
@@ -627,7 +627,7 @@ export async function subscribeCloudApiWebhook(
     ok: false,
     message:
       explainGraphTokenError(last) ||
-      "تعذّر ربط وارد ميتا. في developers.facebook.com → WhatsApp → Configuration ضع Callback URL: https://mken.live/api/whatsapp-webhook واشترك في حقل messages.",
+      "تعذّر ربط وارد ميتا. في developers.facebook.com → WhatsApp → Configuration ضع Callback URL: https://www.mken.live/api/whatsapp-webhook واشترك في حقل messages.",
   };
 }
 
